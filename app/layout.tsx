@@ -1,33 +1,33 @@
 import type { Metadata } from "next";
 import { config } from "@/lib/server/core";
 import "./globals.css";
+import "./sidedish.css";
 export async function generateMetadata(): Promise<Metadata> {
   const origin = config("APP_ORIGIN");
-  const image = origin
+  const images = origin
     ? [
         {
-          url: new URL("/og.png", origin).href,
-          width: 1730,
-          height: 909,
-          alt: "Dishlight — Your food, in its best light",
+          url: new URL("/burger.jpg", origin).href,
+          alt: "Food photography inspiration for SideDish",
         },
       ]
     : [];
   return {
-    title: "Dishlight — Your food, in its best light",
+    title: "SideDish — Good food. Less on your plate.",
     description:
-      "Believable food photos, social captions, and a beautiful menu. A simple workspace for independent restaurants.",
+      "Your restaurant’s new right hand. Food photos, social captions, and your online menu, together in one simple workspace.",
     icons: { icon: "/favicon.svg", shortcut: "/favicon.svg" },
     openGraph: {
-      title: "Dishlight",
-      description: "Your food, in its best light",
-      images: image,
+      title: "SideDish — Good food. Less on your plate.",
+      description:
+        "Food photos, social posts, and your online menu. A little help for the restaurant you love.",
+      images,
     },
     twitter: {
       card: "summary_large_image",
-      title: "Dishlight",
-      description: "Your food, in its best light",
-      images: image.map((i) => i.url),
+      title: "SideDish",
+      description: "Good food. Less on your plate.",
+      images: images.map((i) => i.url),
     },
   };
 }

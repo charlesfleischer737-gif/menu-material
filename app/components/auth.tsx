@@ -10,18 +10,21 @@ import {
 } from "@/components/ui/dialog";
 import { Tabs, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { api } from "@/lib/client";
+import Brand from "./brand";
 export default function Auth({
   open,
   setOpen,
   local,
   ownerSetup,
   onDone,
+  initialMode = "login",
 }: {
   open: boolean;
   setOpen: (v: boolean) => void;
   local: boolean;
   ownerSetup: boolean;
   onDone: () => Promise<void>;
+  initialMode?: "login" | "signup";
 }) {
   const [mode, setMode] = useState("login"),
     [email, setEmail] = useState(""),
@@ -30,6 +33,12 @@ export default function Auth({
     [restaurant, setRestaurant] = useState(""),
     [error, setError] = useState(""),
     [busy, setBusy] = useState(false);
+  useEffect(() => {
+    if (open && !new URLSearchParams(location.search).get("invite")) {
+      setMode(initialMode);
+      setError("");
+    }
+  }, [open, initialMode]);
   useEffect(() => {
     const q = new URLSearchParams(location.search);
     if (q.get("invite")) {
@@ -57,12 +66,11 @@ export default function Auth({
   }
   return (
     <Dialog open={open} onOpenChange={setOpen}>
-      <DialogContent>
+      <DialogContent className="auth-dialog">
+        <Brand />
         <DialogHeader>
           <DialogTitle>
-            {mode === "login"
-              ? "Welcome back."
-              : "Your next great dish starts here."}
+            {mode === "login" ? "Welcome back." : "A little help starts here."}
           </DialogTitle>
           <DialogDescription>
             {mode === "login"
@@ -76,7 +84,7 @@ export default function Auth({
             <TabsTrigger value="signup">Accept an invitation</TabsTrigger>
           </TabsList>
         </Tabs>
-        {ownerSetup && mode === "login" && (
+        {ownerSetup && !invite && (
           <Button
             variant="outline"
             disabled={busy}

@@ -1,6 +1,6 @@
-# Dishlight MVP implementation
+# SideDish MVP implementation
 
-Build specification: Restaurant Support MVP PRD v0.2, 12 September 2026. The user's confirmed decisions take precedence over the attached document. Dishlight is a working product name.
+Build specification: Restaurant Support MVP PRD v0.2, 12 September 2026. The user's confirmed decisions take precedence over the attached document. The product name is SideDish.
 
 1. Mobile-first dish studio and invitation onboarding.
 2. Shared restaurant, dish, asset, caption, job, usage, and menu schema with persistent SQL and private object storage.
@@ -18,3 +18,12 @@ Private source images and normalized working images remain separate from public 
 Image requests reserve two allowance units atomically. Each output has a durable status and independent completion. Only completed images consume units; failed outputs release their reservations. Idempotency keys deduplicate repeat submissions. Provider response identifiers are retained to recover progress after refresh. Ambiguous submissions are not automatically reissued.
 
 OpenAI is an initial configurable integration candidate, not a benchmark winner. The 20-dish comparison in the PRD is a release gate and needs real dish references and provider credentials.
+
+## SideDish redesign
+
+- Introduce SideDish across the site identity, page metadata, menus, and downloads. Preserve existing sessions and storage identifiers.
+- Give new visitors a focused food-led introduction and interactive photo, caption, and menu examples. Use the existing invitation flow.
+- Simplify the authenticated workspace with compact page headings, neutral surfaces, and optional presentation settings.
+- Validate and publish to the existing private Site.
+
+Design references reviewed: https://foodshot.ai/ and https://www.trybeautifulfood.com/. The distinct SideDish focus is the connected photo–caption–menu workflow, with restaurant support as the broader promise. No competitor imagery, testimonials, or performance claims are reused.

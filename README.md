@@ -1,6 +1,6 @@
-# Dishlight restaurant support MVP
+# SideDish restaurant support MVP
 
-Dishlight is a mobile-friendly, invitation-only restaurant workspace based on PRD v0.2. It includes persistent restaurant and dish records, private photo uploads, two-option image jobs, revision history, owner approval, image exports, captions, and versioned menu publishing. Dishlight is a working name.
+SideDish is a mobile-friendly, invitation-only restaurant workspace based on PRD v0.2. It includes persistent restaurant and dish records, private photo uploads, two-option image jobs, revision history, owner approval, image exports, captions, and versioned menu publishing.
 
 ## Run locally
 
@@ -97,4 +97,4 @@ Configure secrets through the hosting provider, deploy the saved build, bootstra
 - `lib/local-runtime.ts`: local SQLite and object-storage adapter
 - `tests/integration.mjs`: isolated core-flow checks
 
-The inspiration photo is by [Adrian Vieriu on Pexels](https://www.pexels.com/photo/pasta-on-a-plate-11654225/) under the [Pexels license](https://www.pexels.com/license/). It is labeled as a real inspiration photo. The branded social card is AI generated and is not a restaurant dish result.
+The inspiration photo is by [Adrian Vieriu on Pexels](https://www.pexels.com/photo/pasta-on-a-plate-11654225/) under the [Pexels license](https://www.pexels.com/license/). It is labeled as a real inspiration photo. The hero photograph is by [Valeria Boltneva on Pexels](https://www.pexels.com/photo/close-up-photo-of-burger-1639562/), also under the Pexels license. The landing-page examples are labeled inspiration and are not claimed as generated results.

@@ -61,7 +61,7 @@ export default function MenuView({
           ))}
         </section>
       ))}
-      <footer>Made with dishlight</footer>
+      <footer>Made with SideDish</footer>
     </article>
   );
 }

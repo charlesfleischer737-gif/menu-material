@@ -9,7 +9,6 @@ import {
   Images,
   BookOpen,
   Check,
-  Leaf,
   Plus,
   Settings,
   LogOut,
@@ -34,6 +33,8 @@ import {
 } from "@/components/ui/dialog";
 import { Pick, ConfirmDelete } from "./components/controls";
 import Auth from "./components/auth";
+import Landing from "./components/landing";
+import Brand from "./components/brand";
 import MenuView from "./components/menu-view";
 import {
   api,
@@ -64,7 +65,9 @@ export default function Home() {
     }),
     [loaded, setLoaded] = useState(false),
     [view, setView] = useState("studio"),
+    [overview, setOverview] = useState(false),
     [auth, setAuth] = useState(false),
+    [authMode, setAuthMode] = useState<"login" | "signup">("login"),
     [mode, setMode] = useState("photo"),
     [dish, setDish] = useState({ ...emptyDish }),
     [dishId, setDishId] = useState(""),
@@ -306,716 +309,760 @@ export default function Home() {
 
   return (
     <>
-      <header className="topbar">
-        <a className="brand" href="/">
-          <span className="brand-icon">
-            <UtensilsCrossed size={21} />
-          </span>
-          dishlight<span className="pilot">PRIVATE PILOT</span>
-        </a>
-        <nav aria-label="Workspace">
-          <button
-            className={view === "studio" ? "active" : ""}
-            onClick={() => setView("studio")}
-          >
-            <Sparkles size={17} />
-            Image studio
-          </button>
-          <button
-            className={view === "library" ? "active" : ""}
-            onClick={() => (state.user ? setView("library") : setAuth(true))}
-          >
-            <Images size={17} />
-            Dish library
-          </button>
-          <button
-            className={view === "menu" ? "active" : ""}
-            onClick={() => (state.user ? setView("menu") : setAuth(true))}
-          >
-            <BookOpen size={17} />
-            Your menu
-          </button>
-        </nav>
-        <div className="account-controls">
-          {state.user ? (
-            <>
+      {!state.user || overview ? (
+        <>
+          <Landing
+            signedIn={!!state.user}
+            onStart={() => {
+              if (state.user) {
+                setOverview(false);
+                return;
+              }
+              setAuthMode("signup");
+              setAuth(true);
+            }}
+            onSignIn={() => {
+              if (state.user) {
+                setOverview(false);
+                return;
+              }
+              setAuthMode("login");
+              setAuth(true);
+            }}
+          />
+          {error && (
+            <div className="landing-error error" role="alert">
+              {error}
+              <button onClick={() => setError("")} aria-label="Dismiss error">
+                ×
+              </button>
+            </div>
+          )}
+        </>
+      ) : (
+        <>
+          <header className="topbar">
+            <button
+              className="brand brand-home"
+              onClick={() => setOverview(true)}
+              aria-label="About SideDish"
+            >
+              <Brand />
+              <span className="pilot">WORKSPACE</span>
+            </button>
+            <nav aria-label="Workspace">
               <button
-                aria-label="Restaurant settings"
-                onClick={() => setSettings(true)}
-                className="avatar"
+                className={view === "studio" ? "active" : ""}
+                onClick={() => setView("studio")}
               >
-                {state.restaurant?.name?.slice(0, 1) || "R"}
+                <Camera size={17} />
+                Photos
               </button>
               <button
-                aria-label="Sign out"
-                className="icon-button"
+                className={view === "library" ? "active" : ""}
                 onClick={() =>
-                  act("Signing out", async () => {
-                    await api("auth/logout", {});
-                    setView("studio");
-                    newDish();
-                    await refresh();
-                  })
+                  state.user ? setView("library") : setAuth(true)
                 }
               >
-                <LogOut size={17} />
+                <Images size={17} />
+                Your dishes
               </button>
-            </>
-          ) : (
-            <Button variant="outline" onClick={() => setAuth(true)}>
-              Sign in <ArrowRight />
-            </Button>
-          )}
-        </div>
-      </header>
-      <main className="workspace">
-        <div className="intro">
-          <div>
-            <p className="eyebrow">
-              {state.user
-                ? state.restaurant?.name?.toUpperCase()
-                : "YOUR FOOD, IN ITS BEST LIGHT"}
-            </p>
-            <h1>
-              {view === "studio" ? (
+              <button
+                className={view === "menu" ? "active" : ""}
+                onClick={() => (state.user ? setView("menu") : setAuth(true))}
+              >
+                <BookOpen size={17} />
+                Your menu
+              </button>
+            </nav>
+            <div className="account-controls">
+              {state.user ? (
                 <>
-                  Good food deserves
-                  <br />
-                  <em>a great first impression.</em>
-                </>
-              ) : view === "library" ? (
-                <>
-                  Your dishes.
-                  <br />
-                  <em>Everything in one place.</em>
-                </>
-              ) : (
-                <>
-                  A menu worth
-                  <br />
-                  <em>passing around.</em>
-                </>
-              )}
-            </h1>
-            <p>
-              {view === "studio"
-                ? "Believable food photos, ready-to-share captions, and a menu that brings it all together."
-                : view === "library"
-                  ? "Pick up where you left off. Your photos, details and captions are saved with each dish."
-                  : "Make it yours, then share it with your customers. Edits stay private until you publish."}
-            </p>
-          </div>
-          {state.user ? (
-            <div className="allowance">
-              <Sparkles size={19} />
-              <div>
-                <b>{state.remaining ?? 0} free images remaining</b>
-                <p>2 options per request · No charge for captions</p>
-                <span>Free private pilot</span>
-              </div>
-            </div>
-          ) : (
-            <div className="pilot-note">
-              <Leaf size={21} />
-              <div>
-                <b>A little help. A lot more time.</b>
-                <p>
-                  Free for our pilot restaurants.
-                  <br />
-                  No subscriptions. Just your next great dish.
-                </p>
-              </div>
-            </div>
-          )}
-        </div>
-        {error && (
-          <div className="error global-message" role="alert">
-            {error}
-            <button onClick={() => setError("")} aria-label="Dismiss error">
-              ×
-            </button>
-          </div>
-        )}
-        {notice && (
-          <div className="notice global-message" role="status">
-            {notice}
-            <button onClick={() => setNotice("")} aria-label="Dismiss notice">
-              ×
-            </button>
-          </div>
-        )}
-        {state.user && !state.aiConnected && (
-          <div className="connection-note">
-            <Sparkles size={17} />
-            <p>
-              Image creation and AI captions are being connected. You can save
-              dishes, write captions and publish your menu now.
-            </p>
-          </div>
-        )}
-        {view === "studio" && (
-          <>
-            <section className="studio-grid">
-              <div className="studio-card">
-                <div className="card-heading">
-                  <span className="step">01</span>
-                  <div>
-                    <h2>
-                      {dishId ? "Make this dish shine" : "Start with your dish"}
-                    </h2>
-                    <p>A real photo gives the most faithful result.</p>
-                  </div>
-                  {dishId && (
-                    <button
-                      className="text-button push-right"
-                      onClick={newDish}
-                    >
-                      <Plus size={15} />
-                      New dish
-                    </button>
-                  )}
-                </div>
-                {state.user && state.dishes?.length > 0 && (
-                  <div className="saved-picker">
-                    <Pick
-                      value={dishId || "new"}
-                      onChange={(v) =>
-                        v === "new"
-                          ? newDish()
-                          : selectDish(
-                              state.dishes.find((d: Row) => d.id === v),
-                            )
-                      }
-                      label="Choose a saved dish"
-                      options={[
-                        { value: "new", label: "Create a new dish" },
-                        ...state.dishes.map((d: Row) => ({
-                          value: d.id,
-                          label: d.name,
-                        })),
-                      ]}
-                    />
-                  </div>
-                )}
-                <Tabs
-                  value={mode}
-                  onValueChange={(v) => {
-                    setMode(v);
-                    requestKey.current = "";
-                  }}
-                >
-                  <TabsList className="mode-tabs">
-                    <TabsTrigger value="photo">
-                      <Camera />
-                      Upload a photo
-                    </TabsTrigger>
-                    <TabsTrigger value="description">
-                      <Sparkles />
-                      Describe your dish
-                    </TabsTrigger>
-                  </TabsList>
-                  <TabsContent value="photo">
-                    <label
-                      className={
-                        "upload-zone " + (file || sourceId ? "has-photo" : "")
-                      }
-                    >
-                      {(filePreview &&
-                        !/hei[cf]/i.test(file?.type || file?.name || "")) ||
-                      sourceId ? (
-                        <img
-                          className="upload-thumb"
-                          src={filePreview || `/api/assets/${sourceId}`}
-                          alt="Your original dish"
-                        />
-                      ) : (
-                        <span className="upload-icon">
-                          <ImagePlus size={27} />
-                        </span>
-                      )}
-                      <b>
-                        {file
-                          ? file.name
-                          : sourceId
-                            ? "Your original photo is saved"
-                            : "Drop your dish into the spotlight"}
-                      </b>
-                      <span>
-                        {file || sourceId
-                          ? "Choose another photo"
-                          : "Choose a photo or take one on your phone"}
-                      </span>
-                      <small>JPEG, PNG or HEIC · up to 20 MB</small>
-                      <input
-                        aria-label="Upload a dish photo"
-                        type="file"
-                        accept="image/jpeg,image/png,image/heic,image/heif,.heic,.heif"
-                        onChange={(e) => {
-                          const chosen = e.target.files?.[0];
-                          if (chosen) {
-                            setFile(chosen);
-                            requestKey.current = "";
-                          }
-                        }}
-                      />
-                    </label>
-                  </TabsContent>
-                  <TabsContent value="description">
-                    <div className="description-tip">
-                      <Sparkles size={21} />
-                      <p>
-                        No photo? Start with the details.
-                        <br />
-                        <span>
-                          Be specific about ingredients, portion and
-                          presentation.
-                        </span>
-                      </p>
-                    </div>
-                  </TabsContent>
-                </Tabs>
-                <label className="field">
-                  Dish name
-                  <input
-                    value={dish.name}
-                    onChange={(e) => update("name", e.target.value)}
-                    placeholder="e.g. Our Sunday tomato pasta"
-                    maxLength={100}
-                  />
-                </label>
-                <label className="field">
-                  What makes it yours?
-                  <textarea
-                    value={dish.description}
-                    onChange={(e) => update("description", e.target.value)}
-                    placeholder="e.g. Spaghetti with our tomato sauce, three basil leaves and grated Parmesan."
-                    rows={3}
-                    maxLength={2000}
-                  />
-                </label>
-                <div className="two-fields">
-                  <label className="field">
-                    Portion
-                    <input
-                      value={dish.portion}
-                      onChange={(e) => update("portion", e.target.value)}
-                      placeholder="e.g. One serving, 250 g"
-                      maxLength={300}
-                    />
-                  </label>
-                  <label className="field">
-                    Plating
-                    <input
-                      value={dish.plating}
-                      onChange={(e) => update("plating", e.target.value)}
-                      placeholder="e.g. White ceramic bowl"
-                      maxLength={300}
-                    />
-                  </label>
-                </div>
-                <label className="field">
-                  The look you’re after
-                  <Pick
-                    label="Presentation style"
-                    value={dish.setting}
-                    onChange={(v) => update("setting", v)}
-                    options={[
-                      "Natural daylight",
-                      "Lighting and color cleanup",
-                      "Background styling — simple tabletop",
-                      "Warm restaurant lighting",
-                    ].map((v) => ({ value: v, label: v }))}
-                  />
-                </label>
-                <div className="two-fields">
-                  <label className="field">
-                    Menu price ({state.restaurant?.currency || "USD"})
-                    <input
-                      type="number"
-                      min="0"
-                      step="0.01"
-                      value={dish.price}
-                      onChange={(e) => update("price", Number(e.target.value))}
-                    />
-                  </label>
-                  <label className="check-label availability-check">
-                    <input
-                      type="checkbox"
-                      checked={dish.available}
-                      onChange={(e) => update("available", e.target.checked)}
-                    />
-                    Available on the menu
-                  </label>
-                </div>
-                <label className="check-label">
-                  <input
-                    type="checkbox"
-                    checked={dish.confirmed}
-                    onChange={(e) => update("confirmed", e.target.checked)}
-                  />
-                  <span>These details match the dish we serve.</span>
-                </label>
-                {parentId && (
-                  <div className="revision-box">
-                    <p>Revising a saved image · 2 new image units</p>
-                    <label className="field">
-                      What would you like to change?
-                      <textarea
-                        value={revision}
-                        onChange={(e) => {
-                          setRevision(e.target.value);
-                          requestKey.current = "";
-                        }}
-                        placeholder="e.g. Softer light, keep the portion exactly the same"
-                        rows={2}
-                      />
-                    </label>
-                    <button
-                      className="text-button"
-                      onClick={() => {
-                        setParentId("");
-                        setRevision("");
-                      }}
-                    >
-                      Cancel revision
-                    </button>
-                  </div>
-                )}
-                <div className="form-foot">
-                  <Button
-                    variant="outline"
-                    disabled={!!busy}
+                  <button
+                    aria-label="Restaurant settings"
+                    onClick={() => setSettings(true)}
+                    className="avatar"
+                  >
+                    {state.restaurant?.name?.slice(0, 1) || "R"}
+                  </button>
+                  <button
+                    aria-label="Sign out"
+                    className="icon-button"
                     onClick={() =>
-                      act("Saving dish", async () => {
-                        const saved = await saveDish();
-                        if (saved)
-                          setNotice(
-                            "Dish saved. You can add it to your menu anytime.",
-                          );
+                      act("Signing out", async () => {
+                        await api("auth/logout", {});
+                        setView("studio");
+                        newDish();
+                        await refresh();
                       })
                     }
                   >
-                    <Save />
-                    Save dish
-                  </Button>
-                  <Button
-                    disabled={
-                      !!busy ||
-                      (state.user &&
-                        (!state.aiConnected ||
-                          state.remaining < 2 ||
-                          state.restaurant?.paused))
-                    }
-                    onClick={generate}
-                  >
-                    {busy ||
-                      (!state.user
-                        ? "Start with this dish"
-                        : parentId
-                          ? "Create 2 revised options"
-                          : "Create 2 image options")}{" "}
-                    {!busy && <ArrowRight />}
-                  </Button>
-                </div>
-                <p className="fine">
-                  {state.user
-                    ? "Uses 2 free images. Failed options restore your allowance."
-                    : "Free, invitation-only pilot. No credit card."}
+                    <LogOut size={17} />
+                  </button>
+                </>
+              ) : (
+                <Button variant="outline" onClick={() => setAuth(true)}>
+                  Sign in <ArrowRight />
+                </Button>
+              )}
+            </div>
+          </header>
+          <main className="workspace">
+            <div className="intro">
+              <div>
+                <p className="eyebrow">{state.restaurant?.name}</p>
+                <h1>
+                  {view === "studio"
+                    ? dishId
+                      ? dish.name
+                      : "What’s cooking?"
+                    : view === "library"
+                      ? "Your dishes, all together."
+                      : view === "admin"
+                        ? "Your pilot restaurants."
+                        : "A menu that’s up to date."}
+                </h1>
+                <p>
+                  {view === "studio"
+                    ? "Start with a dish. We’ll help with the photo and the words."
+                    : view === "library"
+                      ? "Photos, captions, and details. Pick a dish to keep going."
+                      : view === "admin"
+                        ? "Manage invitations, allowances, and pilot activity."
+                        : "Make your changes here. Publish when you’re ready."}
                 </p>
               </div>
-              <div className="studio-results">
-                {dishId && assets.length > 0 ? (
-                  <div className="results-card">
+              <div className="allowance">
+                <div>
+                  <b>
+                    {state.remaining ?? 0}
+                    <span> images left</span>
+                  </b>
+                  <p>Free pilot · 2 options per request</p>
+                </div>
+              </div>
+            </div>
+            {error && (
+              <div className="error global-message" role="alert">
+                {error}
+                <button onClick={() => setError("")} aria-label="Dismiss error">
+                  ×
+                </button>
+              </div>
+            )}
+            {notice && (
+              <div className="notice global-message" role="status">
+                {notice}
+                <button
+                  onClick={() => setNotice("")}
+                  aria-label="Dismiss notice"
+                >
+                  ×
+                </button>
+              </div>
+            )}
+            {state.user && !state.aiConnected && (
+              <div className="connection-note">
+                <Sparkles size={17} />
+                <p>
+                  Image creation and AI captions are being connected. You can
+                  save dishes, write captions and publish your menu now.
+                </p>
+              </div>
+            )}
+            {view === "studio" && (
+              <>
+                <section className="studio-grid">
+                  <div className="studio-card">
                     <div className="card-heading">
-                      <span className="step">02</span>
+                      <span className="step">01</span>
                       <div>
-                        <h2>Your dish, in focus</h2>
-                        <p>Review every image against the food you serve.</p>
+                        <h2>
+                          {dishId
+                            ? "Make this dish shine"
+                            : "Start with your dish"}
+                        </h2>
+                        <p>A real photo gives the most faithful result.</p>
                       </div>
-                    </div>
-                    <div className="asset-grid">
-                      {assets.map((a: Row) => (
+                      {dishId && (
                         <button
-                          className="asset-tile"
-                          key={a.id}
-                          onClick={() => {
-                            setReview(a);
-                            setAccurate(!!a.approved_at);
-                            setRatio("square");
-                          }}
+                          className="text-button push-right"
+                          onClick={newDish}
                         >
-                          <img
-                            src={`/api/assets/${a.id}`}
-                            alt={
-                              a.kind === "source"
-                                ? "Original dish photo"
-                                : `Generated ${dish.name}`
+                          <Plus size={15} />
+                          New dish
+                        </button>
+                      )}
+                    </div>
+                    {state.user && state.dishes?.length > 0 && (
+                      <div className="saved-picker">
+                        <Pick
+                          value={dishId || "new"}
+                          onChange={(v) =>
+                            v === "new"
+                              ? newDish()
+                              : selectDish(
+                                  state.dishes.find((d: Row) => d.id === v),
+                                )
+                          }
+                          label="Choose a saved dish"
+                          options={[
+                            { value: "new", label: "Create a new dish" },
+                            ...state.dishes.map((d: Row) => ({
+                              value: d.id,
+                              label: d.name,
+                            })),
+                          ]}
+                        />
+                      </div>
+                    )}
+                    <Tabs
+                      value={mode}
+                      onValueChange={(v) => {
+                        setMode(v);
+                        requestKey.current = "";
+                      }}
+                    >
+                      <TabsList className="mode-tabs">
+                        <TabsTrigger value="photo">
+                          <Camera />
+                          Upload a photo
+                        </TabsTrigger>
+                        <TabsTrigger value="description">
+                          <Sparkles />
+                          Describe your dish
+                        </TabsTrigger>
+                      </TabsList>
+                      <TabsContent value="photo">
+                        <label
+                          className={
+                            "upload-zone " +
+                            (file || sourceId ? "has-photo" : "")
+                          }
+                        >
+                          {(filePreview &&
+                            !/hei[cf]/i.test(file?.type || file?.name || "")) ||
+                          sourceId ? (
+                            <img
+                              className="upload-thumb"
+                              src={filePreview || `/api/assets/${sourceId}`}
+                              alt="Your original dish"
+                            />
+                          ) : (
+                            <span className="upload-icon">
+                              <ImagePlus size={27} />
+                            </span>
+                          )}
+                          <b>
+                            {file
+                              ? file.name
+                              : sourceId
+                                ? "Your original photo is saved"
+                                : "Add a photo of your dish"}
+                          </b>
+                          <span>
+                            {file || sourceId
+                              ? "Choose another photo"
+                              : "Choose a photo or take one on your phone"}
+                          </span>
+                          <small>JPEG, PNG or HEIC · up to 20 MB</small>
+                          <input
+                            aria-label="Upload a dish photo"
+                            type="file"
+                            accept="image/jpeg,image/png,image/heic,image/heif,.heic,.heif"
+                            onChange={(e) => {
+                              const chosen = e.target.files?.[0];
+                              if (chosen) {
+                                setFile(chosen);
+                                requestKey.current = "";
+                              }
+                            }}
+                          />
+                        </label>
+                      </TabsContent>
+                      <TabsContent value="description">
+                        <div className="description-tip">
+                          <Sparkles size={21} />
+                          <p>
+                            No photo? Start with the details.
+                            <br />
+                            <span>
+                              Be specific about ingredients, portion and
+                              presentation.
+                            </span>
+                          </p>
+                        </div>
+                      </TabsContent>
+                    </Tabs>
+                    <label className="field">
+                      Dish name
+                      <input
+                        value={dish.name}
+                        onChange={(e) => update("name", e.target.value)}
+                        placeholder="e.g. Our Sunday tomato pasta"
+                        maxLength={100}
+                      />
+                    </label>
+                    <label className="field">
+                      What’s in the dish?
+                      <textarea
+                        value={dish.description}
+                        onChange={(e) => update("description", e.target.value)}
+                        placeholder="e.g. Spaghetti with our tomato sauce, three basil leaves and grated Parmesan."
+                        rows={3}
+                        maxLength={2000}
+                      />
+                    </label>
+                    <details className="dish-options">
+                      <summary>
+                        Presentation & menu details <Plus size={16} />
+                      </summary>
+                      <div className="two-fields">
+                        <label className="field">
+                          Portion
+                          <input
+                            value={dish.portion}
+                            onChange={(e) => update("portion", e.target.value)}
+                            placeholder="e.g. One serving, 250 g"
+                            maxLength={300}
+                          />
+                        </label>
+                        <label className="field">
+                          Plating
+                          <input
+                            value={dish.plating}
+                            onChange={(e) => update("plating", e.target.value)}
+                            placeholder="e.g. White ceramic bowl"
+                            maxLength={300}
+                          />
+                        </label>
+                      </div>
+                      <label className="field">
+                        The look you’re after
+                        <Pick
+                          label="Presentation style"
+                          value={dish.setting}
+                          onChange={(v) => update("setting", v)}
+                          options={[
+                            "Natural daylight",
+                            "Lighting and color cleanup",
+                            "Background styling — simple tabletop",
+                            "Warm restaurant lighting",
+                          ].map((v) => ({ value: v, label: v }))}
+                        />
+                      </label>
+                      <div className="two-fields">
+                        <label className="field">
+                          Menu price ({state.restaurant?.currency || "USD"})
+                          <input
+                            type="number"
+                            min="0"
+                            step="0.01"
+                            value={dish.price}
+                            onChange={(e) =>
+                              update("price", Number(e.target.value))
                             }
                           />
-                          <span>
-                            {a.kind === "source"
-                              ? "Original photo"
-                              : a.approved_at
-                                ? "Approved"
-                                : "Needs your review"}
-                            <span>View</span>
-                          </span>
-                        </button>
-                      ))}
-                    </div>
-                  </div>
-                ) : (
-                  <div className="example-card">
-                    <div className="example-top">
-                      <span>THE DISHLIGHT APPROACH</span>
-                      <span className="chip">Food first. Always.</span>
-                    </div>
-                    <div className="example-image">
-                      <img
-                        src="/pasta.jpg"
-                        alt="Tomato spaghetti topped with fresh basil on a white plate"
+                        </label>
+                        <label className="check-label availability-check">
+                          <input
+                            type="checkbox"
+                            checked={dish.available}
+                            onChange={(e) =>
+                              update("available", e.target.checked)
+                            }
+                          />
+                          Available on the menu
+                        </label>
+                      </div>
+                    </details>
+                    <label className="check-label">
+                      <input
+                        type="checkbox"
+                        checked={dish.confirmed}
+                        onChange={(e) => update("confirmed", e.target.checked)}
                       />
-                      <div className="image-overlay">
-                        <span className="chip">
-                          A little light goes a long way
-                        </span>
-                        <h2>
-                          Still your dish.
-                          <br />
-                          Just looking its best.
-                        </h2>
+                      <span>These details match the dish we serve.</span>
+                    </label>
+                    {parentId && (
+                      <div className="revision-box">
+                        <p>Revising a saved image · 2 new image units</p>
+                        <label className="field">
+                          What would you like to change?
+                          <textarea
+                            value={revision}
+                            onChange={(e) => {
+                              setRevision(e.target.value);
+                              requestKey.current = "";
+                            }}
+                            placeholder="e.g. Softer light, keep the portion exactly the same"
+                            rows={2}
+                          />
+                        </label>
+                        <button
+                          className="text-button"
+                          onClick={() => {
+                            setParentId("");
+                            setRevision("");
+                          }}
+                        >
+                          Cancel revision
+                        </button>
                       </div>
-                    </div>
-                    <div className="example-bottom">
-                      <div>
-                        <Check />
-                        <span>Keep real ingredients</span>
-                      </div>
-                      <div>
-                        <Check />
-                        <span>Keep honest portions</span>
-                      </div>
-                      <div>
-                        <Check />
-                        <span>You approve every image</span>
-                      </div>
-                      <a
-                        className="photo-credit"
-                        href="https://www.pexels.com/photo/pasta-on-a-plate-11654225/"
-                        target="_blank"
-                        rel="noreferrer"
+                    )}
+                    <div className="form-foot">
+                      <Button
+                        variant="outline"
+                        disabled={!!busy}
+                        onClick={() =>
+                          act("Saving dish", async () => {
+                            const saved = await saveDish();
+                            if (saved)
+                              setNotice(
+                                "Dish saved. You can add it to your menu anytime.",
+                              );
+                          })
+                        }
                       >
-                        Inspiration photo by Adrian Vieriu · Not an AI result
-                      </a>
+                        <Save />
+                        Save dish
+                      </Button>
+                      <Button
+                        disabled={
+                          !!busy ||
+                          (state.user &&
+                            (!state.aiConnected ||
+                              state.remaining < 2 ||
+                              state.restaurant?.paused))
+                        }
+                        onClick={generate}
+                      >
+                        {busy ||
+                          (!state.user
+                            ? "Start with this dish"
+                            : parentId
+                              ? "Create 2 revised options"
+                              : "Create 2 image options")}{" "}
+                        {!busy && <ArrowRight />}
+                      </Button>
                     </div>
+                    <p className="fine">
+                      {state.user
+                        ? "Uses 2 free images. Failed options restore your allowance."
+                        : "Free, invitation-only pilot. No credit card."}
+                    </p>
                   </div>
-                )}
-                {jobs.length > 0 && (
-                  <section className="history-card">
-                    <h2>Version history</h2>
-                    {jobs.map((j: Row) => (
-                      <div className="job" key={j.id}>
-                        <div>
-                          <b>
-                            {j.parent_id ? "Revision" : "Generation"} ·{" "}
-                            {j.input_method === "photo"
-                              ? "From your photo"
-                              : "From description"}
-                          </b>
-                          <small>
-                            {new Date(j.created_at).toLocaleString()}
-                          </small>
-                        </div>
-                        <span className={"tag " + j.status}>
-                          {j.status === "partial" ? "1 of 2 ready" : j.status}
-                        </span>
-                        {state.outputs
-                          ?.filter((o: Row) => o.job_id === j.id)
-                          .map((o: Row) => (
-                            <p key={o.id}>
-                              Option {o.slot + 1}: {o.status}
-                              {o.error && ` · ${o.error}`}
+                  <div className="studio-results">
+                    {dishId && assets.length > 0 ? (
+                      <div className="results-card">
+                        <div className="card-heading">
+                          <span className="step">02</span>
+                          <div>
+                            <h2>Your photos</h2>
+                            <p>
+                              Review every image against the food you serve.
                             </p>
+                          </div>
+                        </div>
+                        <div className="asset-grid">
+                          {assets.map((a: Row) => (
+                            <button
+                              className="asset-tile"
+                              key={a.id}
+                              onClick={() => {
+                                setReview(a);
+                                setAccurate(!!a.approved_at);
+                                setRatio("square");
+                              }}
+                            >
+                              <img
+                                src={`/api/assets/${a.id}`}
+                                alt={
+                                  a.kind === "source"
+                                    ? "Original dish photo"
+                                    : `Generated ${dish.name}`
+                                }
+                              />
+                              <span>
+                                {a.kind === "source"
+                                  ? "Original photo"
+                                  : a.approved_at
+                                    ? "Approved"
+                                    : "Needs your review"}
+                                <span>View</span>
+                              </span>
+                            </button>
                           ))}
+                        </div>
                       </div>
-                    ))}
+                    ) : (
+                      <div className="example-card">
+                        <div className="example-top">
+                          <span>A GOOD PLACE TO START</span>
+                          <span className="chip">Food first. Always.</span>
+                        </div>
+                        <div className="example-image">
+                          <img
+                            src="/pasta.jpg"
+                            alt="Tomato spaghetti topped with fresh basil on a white plate"
+                          />
+                          <div className="image-overlay">
+                            <span className="chip">
+                              Start with the real thing
+                            </span>
+                            <h2>
+                              Your food,
+                              <br />
+                              looking its best.
+                            </h2>
+                          </div>
+                        </div>
+                        <div className="example-bottom">
+                          <div>
+                            <Check />
+                            <span>Keep real ingredients</span>
+                          </div>
+                          <div>
+                            <Check />
+                            <span>Keep honest portions</span>
+                          </div>
+                          <div>
+                            <Check />
+                            <span>You approve every image</span>
+                          </div>
+                          <a
+                            className="photo-credit"
+                            href="https://www.pexels.com/photo/pasta-on-a-plate-11654225/"
+                            target="_blank"
+                            rel="noreferrer"
+                          >
+                            Inspiration photo by Adrian Vieriu · Not an AI
+                            result
+                          </a>
+                        </div>
+                      </div>
+                    )}
+                    {jobs.length > 0 && (
+                      <section className="history-card">
+                        <h2>Version history</h2>
+                        {jobs.map((j: Row) => (
+                          <div className="job" key={j.id}>
+                            <div>
+                              <b>
+                                {j.parent_id ? "Revision" : "Generation"} ·{" "}
+                                {j.input_method === "photo"
+                                  ? "From your photo"
+                                  : "From description"}
+                              </b>
+                              <small>
+                                {new Date(j.created_at).toLocaleString()}
+                              </small>
+                            </div>
+                            <span className={"tag " + j.status}>
+                              {j.status === "partial"
+                                ? "1 of 2 ready"
+                                : j.status}
+                            </span>
+                            {state.outputs
+                              ?.filter((o: Row) => o.job_id === j.id)
+                              .map((o: Row) => (
+                                <p key={o.id}>
+                                  Option {o.slot + 1}: {o.status}
+                                  {o.error && ` · ${o.error}`}
+                                </p>
+                              ))}
+                          </div>
+                        ))}
+                      </section>
+                    )}
+                  </div>
+                </section>
+                {dishId && (
+                  <section className="caption-card">
+                    <div>
+                      <p className="eyebrow">FIND THE WORDS</p>
+                      <h2>A caption to go with it</h2>
+                      <p>
+                        Based on your confirmed dish details. Give it your own
+                        voice before sharing.
+                      </p>
+                    </div>
+                    <div>
+                      <textarea
+                        aria-label="Social caption"
+                        value={caption}
+                        onChange={(e) => setCaption(e.target.value)}
+                        placeholder="Write your caption, or let SideDish give you a starting point…"
+                        rows={4}
+                        maxLength={2200}
+                      />
+                      <div className="button-row">
+                        <Button
+                          variant="outline"
+                          disabled={!!busy || !state.aiConnected}
+                          onClick={() =>
+                            act("Writing caption", async () => {
+                              const c = await api("captions/generate", {
+                                dishId,
+                              });
+                              setCaption(c.body);
+                              await refresh();
+                            })
+                          }
+                        >
+                          <Sparkles />
+                          Write a caption
+                        </Button>
+                        <Button
+                          variant="outline"
+                          disabled={!!busy || !caption}
+                          onClick={() =>
+                            act("Saving caption", async () => {
+                              await api("captions", { dishId, body: caption });
+                              await refresh();
+                              setNotice("Caption saved to this dish.");
+                            })
+                          }
+                        >
+                          Save
+                        </Button>
+                        <Button
+                          disabled={!caption}
+                          onClick={() =>
+                            act("Copying caption", async () => {
+                              await navigator.clipboard.writeText(caption);
+                              await api("events", {
+                                kind: "caption_copied",
+                                entityId: dishId,
+                              });
+                              setNotice("Caption copied.");
+                            })
+                          }
+                        >
+                          <Copy />
+                          Copy
+                        </Button>
+                      </div>
+                      {state.captions
+                        ?.filter((c: Row) => c.dish_id === dishId)
+                        .slice(0, 5)
+                        .map((c: Row) => (
+                          <button
+                            className="saved-caption"
+                            key={c.id}
+                            onClick={() => setCaption(c.body)}
+                          >
+                            {c.body.slice(0, 110)}
+                            {c.body.length > 110 ? "…" : ""}
+                          </button>
+                        ))}
+                    </div>
                   </section>
                 )}
-              </div>
-            </section>
-            {dishId && (
-              <section className="caption-card">
-                <div>
-                  <p className="eyebrow">FIND THE WORDS</p>
-                  <h2>A caption to go with it</h2>
-                  <p>
-                    Based on your confirmed dish details. Give it your own voice
-                    before sharing.
-                  </p>
-                </div>
-                <div>
-                  <textarea
-                    aria-label="Social caption"
-                    value={caption}
-                    onChange={(e) => setCaption(e.target.value)}
-                    placeholder="Write your caption, or let Dishlight give you a starting point…"
-                    rows={4}
-                    maxLength={2200}
-                  />
-                  <div className="button-row">
-                    <Button
-                      variant="outline"
-                      disabled={!!busy || !state.aiConnected}
-                      onClick={() =>
-                        act("Writing caption", async () => {
-                          const c = await api("captions/generate", { dishId });
-                          setCaption(c.body);
-                          await refresh();
-                        })
-                      }
-                    >
-                      <Sparkles />
-                      Write a caption
-                    </Button>
-                    <Button
-                      variant="outline"
-                      disabled={!!busy || !caption}
-                      onClick={() =>
-                        act("Saving caption", async () => {
-                          await api("captions", { dishId, body: caption });
-                          await refresh();
-                          setNotice("Caption saved to this dish.");
-                        })
-                      }
-                    >
-                      Save
-                    </Button>
-                    <Button
-                      disabled={!caption}
-                      onClick={() =>
-                        act("Copying caption", async () => {
-                          await navigator.clipboard.writeText(caption);
-                          await api("events", {
-                            kind: "caption_copied",
-                            entityId: dishId,
-                          });
-                          setNotice("Caption copied.");
-                        })
-                      }
-                    >
-                      <Copy />
-                      Copy
-                    </Button>
-                  </div>
-                  {state.captions
-                    ?.filter((c: Row) => c.dish_id === dishId)
-                    .slice(0, 5)
-                    .map((c: Row) => (
-                      <button
-                        className="saved-caption"
-                        key={c.id}
-                        onClick={() => setCaption(c.body)}
-                      >
-                        {c.body.slice(0, 110)}
-                        {c.body.length > 110 ? "…" : ""}
-                      </button>
-                    ))}
-                </div>
-              </section>
-            )}
-          </>
-        )}
-        {view === "library" && (
-          <section>
-            <div className="section-toolbar">
-              <h2>{state.dishes?.length || 0} saved dishes</h2>
-              <Button onClick={newDish}>
-                <Plus />
-                Add a dish
-              </Button>
-            </div>
-            {!state.dishes?.length ? (
-              <div className="empty">
-                <UtensilsCrossed />
-                <h2>Your dish library starts here.</h2>
-                <p>
-                  Save your first dish and reuse it for photos, captions and
-                  your menu.
-                </p>
-                <Button onClick={newDish}>Add your first dish</Button>
-              </div>
-            ) : (
-              <div className="library-grid">
-                {state.dishes.map((d: Row) => {
-                  const a = state.assets.find((a: Row) => a.dish_id === d.id);
-                  return (
-                    <button
-                      key={d.id}
-                      className="library-card"
-                      onClick={() => selectDish(d)}
-                    >
-                      {a ? (
-                        <img src={`/api/assets/${a.id}`} alt={d.name} />
-                      ) : (
-                        <div className="dish-no-photo">
-                          <UtensilsCrossed />
-                        </div>
-                      )}
-                      <div>
-                        <h2>{d.name}</h2>
-                        <p>{d.description}</p>
-                        <span>
-                          {
-                            state.assets.filter((a: Row) => a.dish_id === d.id)
-                              .length
-                          }{" "}
-                          saved photos <ArrowRight size={16} />
-                        </span>
-                      </div>
-                    </button>
-                  );
-                })}
-              </div>
-            )}
-          </section>
-        )}
-        {view === "menu" && (
-          <MenuEditor
-            state={state}
-            refresh={refresh}
-            act={act}
-            busy={busy}
-            selectDish={selectDish}
-            newDish={newDish}
-            setNotice={setNotice}
-          />
-        )}
-        <footer className="page-footer">
-          <span>From kitchen to camera to customer.</span>
-          <span>
-            {state.user?.role === "admin" ? (
-              <button
-                className="text-button"
-                onClick={() => setView(view === "admin" ? "studio" : "admin")}
-              >
-                <ShieldCheck size={14} />
-                Pilot admin
-              </button>
-            ) : (
-              <>
-                Images <span>✦</span> Captions <span>✦</span> Your menu
               </>
             )}
-          </span>
-        </footer>
-        {view === "admin" && <Admin act={act} refresh={refresh} busy={busy} />}
-      </main>
+            {view === "library" && (
+              <section>
+                <div className="section-toolbar">
+                  <h2>{state.dishes?.length || 0} saved dishes</h2>
+                  <Button onClick={newDish}>
+                    <Plus />
+                    Add a dish
+                  </Button>
+                </div>
+                {!state.dishes?.length ? (
+                  <div className="empty">
+                    <UtensilsCrossed />
+                    <h2>Your dish library starts here.</h2>
+                    <p>
+                      Save your first dish and reuse it for photos, captions and
+                      your menu.
+                    </p>
+                    <Button onClick={newDish}>Add your first dish</Button>
+                  </div>
+                ) : (
+                  <div className="library-grid">
+                    {state.dishes.map((d: Row) => {
+                      const a = state.assets.find(
+                        (a: Row) => a.dish_id === d.id,
+                      );
+                      return (
+                        <button
+                          key={d.id}
+                          className="library-card"
+                          onClick={() => selectDish(d)}
+                        >
+                          {a ? (
+                            <img src={`/api/assets/${a.id}`} alt={d.name} />
+                          ) : (
+                            <div className="dish-no-photo">
+                              <UtensilsCrossed />
+                            </div>
+                          )}
+                          <div>
+                            <h2>{d.name}</h2>
+                            <p>{d.description}</p>
+                            <span>
+                              {
+                                state.assets.filter(
+                                  (a: Row) => a.dish_id === d.id,
+                                ).length
+                              }{" "}
+                              saved photos <ArrowRight size={16} />
+                            </span>
+                          </div>
+                        </button>
+                      );
+                    })}
+                  </div>
+                )}
+              </section>
+            )}
+            {view === "menu" && (
+              <MenuEditor
+                state={state}
+                refresh={refresh}
+                act={act}
+                busy={busy}
+                selectDish={selectDish}
+                newDish={newDish}
+                setNotice={setNotice}
+              />
+            )}
+            <footer className="page-footer">
+              <span>SideDish. Your restaurant’s right hand.</span>
+              <span>
+                {state.user?.role === "admin" ? (
+                  <button
+                    className="text-button"
+                    onClick={() =>
+                      setView(view === "admin" ? "studio" : "admin")
+                    }
+                  >
+                    <ShieldCheck size={14} />
+                    Pilot admin
+                  </button>
+                ) : (
+                  <>Photos · Captions · Your menu</>
+                )}
+              </span>
+            </footer>
+            {view === "admin" && (
+              <Admin act={act} refresh={refresh} busy={busy} />
+            )}
+          </main>
+        </>
+      )}
       <Auth
         open={auth}
         setOpen={setAuth}
         local={!!state.local}
         ownerSetup={!!state.ownerSetup}
-        onDone={refresh}
+        initialMode={authMode}
+        onDone={async () => {
+          await refresh();
+          setOverview(false);
+        }}
       />
       <Dialog open={!!review} onOpenChange={(v) => !v && setReview(null)}>
         <DialogContent className="review-dialog">
@@ -1306,7 +1353,7 @@ function MenuEditor({
       margin: 3,
       color: { dark: "#195a42", light: "#ffffff" },
     });
-    downloadBlob(await (await fetch(url)).blob(), "dishlight-menu-qr.png");
+    downloadBlob(await (await fetch(url)).blob(), "sidedish-menu-qr.png");
   }
   return (
     <>
