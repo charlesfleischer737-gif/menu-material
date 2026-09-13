@@ -70,7 +70,9 @@ export default function Auth({
         <Brand />
         <DialogHeader>
           <DialogTitle>
-            {mode === "login" ? "Welcome back." : "A little help starts here."}
+            {mode === "login"
+              ? "Welcome back."
+              : "Make your first dish Plateworthy."}
           </DialogTitle>
           <DialogDescription>
             {mode === "login"

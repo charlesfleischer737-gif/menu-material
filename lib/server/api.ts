@@ -360,7 +360,7 @@ async function downloadAsset(
   if (new URL(req.url).searchParams.has("download"))
     h.set(
       "Content-Disposition",
-      `attachment; filename="sidedish-${a.id}.${a.mime === "image/png" ? "png" : a.mime === "image/heic" ? "heic" : "jpg"}"`,
+      `attachment; filename="plateworthy-${a.id}.${a.mime === "image/png" ? "png" : a.mime === "image/heic" ? "heic" : "jpg"}"`,
     );
   return new Response(obj.body, { headers: h });
 }

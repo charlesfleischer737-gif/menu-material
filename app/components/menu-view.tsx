@@ -61,7 +61,7 @@ export default function MenuView({
           ))}
         </section>
       ))}
-      <footer>Made with SideDish</footer>
+      <footer>Made with Plateworthy</footer>
     </article>
   );
 }

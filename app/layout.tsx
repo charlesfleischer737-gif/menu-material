@@ -1,32 +1,33 @@
 import type { Metadata } from "next";
 import { config } from "@/lib/server/core";
 import "./globals.css";
-import "./sidedish.css";
+import "./workspace.css";
+import "./plateworthy.css";
 export async function generateMetadata(): Promise<Metadata> {
   const origin = config("APP_ORIGIN");
   const images = origin
     ? [
         {
-          url: new URL("/burger.jpg", origin).href,
-          alt: "Food photography inspiration for SideDish",
+          url: new URL("/plateworthy-burger.png", origin).href,
+          alt: "Plateworthy — illustrative AI food photography edit",
         },
       ]
     : [];
   return {
-    title: "SideDish — Good food. Less on your plate.",
+    title: "Plateworthy — Food photos worth ordering from.",
     description:
-      "Your restaurant’s new right hand. Food photos, social captions, and your online menu, together in one simple workspace.",
+      "Turn everyday food photos into studio-quality images for menus, DoorDash, Instagram, and more. Upload your dish, choose a look, and download.",
     icons: { icon: "/favicon.svg", shortcut: "/favicon.svg" },
     openGraph: {
-      title: "SideDish — Good food. Less on your plate.",
+      title: "Plateworthy — Food photos worth ordering from.",
       description:
-        "Food photos, social posts, and your online menu. A little help for the restaurant you love.",
+        "Better food photos for menus, delivery apps, and social media. Made from your actual dish.",
       images,
     },
     twitter: {
       card: "summary_large_image",
-      title: "SideDish",
-      description: "Good food. Less on your plate.",
+      title: "Plateworthy",
+      description: "Food photos worth ordering from.",
       images: images.map((i) => i.url),
     },
   };

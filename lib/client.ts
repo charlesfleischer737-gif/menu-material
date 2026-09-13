@@ -85,7 +85,7 @@ export async function exportImage(asset: Row, format: string, ratio: string) {
       0.94,
     ),
   );
-  downloadBlob(blob, `sidedish-${ratio}.${format === "jpeg" ? "jpg" : "png"}`);
+  downloadBlob(blob, `plateworthy-${ratio}.${format === "jpeg" ? "jpg" : "png"}`);
   await api("events", { kind: "image_downloaded", entityId: asset.id });
 }
 export function downloadBlob(blob: Blob, name: string) {

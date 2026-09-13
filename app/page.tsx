@@ -33,7 +33,7 @@ import {
 } from "@/components/ui/dialog";
 import { Pick, ConfirmDelete } from "./components/controls";
 import Auth from "./components/auth";
-import Landing from "./components/landing";
+import Landing from "./components/plateworthy-landing";
 import Brand from "./components/brand";
 import MenuView from "./components/menu-view";
 import {
@@ -345,7 +345,7 @@ export default function Home() {
             <button
               className="brand brand-home"
               onClick={() => setOverview(true)}
-              aria-label="About SideDish"
+              aria-label="About Plateworthy"
             >
               <Brand />
               <span className="pilot">WORKSPACE</span>
@@ -415,7 +415,7 @@ export default function Home() {
                   {view === "studio"
                     ? dishId
                       ? dish.name
-                      : "What’s cooking?"
+                      : "Your next great food photo."
                     : view === "library"
                       ? "Your dishes, all together."
                       : view === "admin"
@@ -424,7 +424,7 @@ export default function Home() {
                 </h1>
                 <p>
                   {view === "studio"
-                    ? "Start with a dish. We’ll help with the photo and the words."
+                    ? "Upload your dish, choose a look, and create two image options."
                     : view === "library"
                       ? "Photos, captions, and details. Pick a dish to keep going."
                       : view === "admin"
@@ -613,6 +613,20 @@ export default function Home() {
                         maxLength={2000}
                       />
                     </label>
+                    <label className="field">
+                      The look you’re after
+                      <Pick
+                        label="Presentation style"
+                        value={dish.setting}
+                        onChange={(v) => update("setting", v)}
+                        options={[
+                          "Natural daylight",
+                          "Lighting and color cleanup",
+                          "Background styling — simple tabletop",
+                          "Warm restaurant lighting",
+                        ].map((v) => ({ value: v, label: v }))}
+                      />
+                    </label>
                     <details className="dish-options">
                       <summary>
                         Presentation & menu details <Plus size={16} />
@@ -637,20 +651,7 @@ export default function Home() {
                           />
                         </label>
                       </div>
-                      <label className="field">
-                        The look you’re after
-                        <Pick
-                          label="Presentation style"
-                          value={dish.setting}
-                          onChange={(v) => update("setting", v)}
-                          options={[
-                            "Natural daylight",
-                            "Lighting and color cleanup",
-                            "Background styling — simple tabletop",
-                            "Warm restaurant lighting",
-                          ].map((v) => ({ value: v, label: v }))}
-                        />
-                      </label>
+
                       <div className="two-fields">
                         <label className="field">
                           Menu price ({state.restaurant?.currency || "USD"})
@@ -892,7 +893,7 @@ export default function Home() {
                         aria-label="Social caption"
                         value={caption}
                         onChange={(e) => setCaption(e.target.value)}
-                        placeholder="Write your caption, or let SideDish give you a starting point…"
+                        placeholder="Write your caption, or let Plateworthy give you a starting point…"
                         rows={4}
                         maxLength={2200}
                       />
@@ -1030,7 +1031,7 @@ export default function Home() {
               />
             )}
             <footer className="page-footer">
-              <span>SideDish. Your restaurant’s right hand.</span>
+              <span>Plateworthy. Food photos worth ordering from.</span>
               <span>
                 {state.user?.role === "admin" ? (
                   <button
@@ -1353,7 +1354,7 @@ function MenuEditor({
       margin: 3,
       color: { dark: "#195a42", light: "#ffffff" },
     });
-    downloadBlob(await (await fetch(url)).blob(), "sidedish-menu-qr.png");
+    downloadBlob(await (await fetch(url)).blob(), "plateworthy-menu-qr.png");
   }
   return (
     <>

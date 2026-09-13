@@ -1,6 +1,6 @@
-# SideDish restaurant support MVP
+# Plateworthy food photography MVP
 
-SideDish is a mobile-friendly, invitation-only restaurant workspace based on PRD v0.2. It includes persistent restaurant and dish records, private photo uploads, two-option image jobs, revision history, owner approval, image exports, captions, and versioned menu publishing.
+Plateworthy is a mobile-friendly, invitation-only food photography workspace based on PRD v0.2. It includes persistent restaurant and dish records, private photo uploads, two-option image jobs, revision history, owner approval, image exports, captions, and versioned menu publishing.
 
 ## Run locally
 
@@ -97,4 +97,4 @@ Configure secrets through the hosting provider, deploy the saved build, bootstra
 - `lib/local-runtime.ts`: local SQLite and object-storage adapter
 - `tests/integration.mjs`: isolated core-flow checks
 
-The inspiration photo is by [Adrian Vieriu on Pexels](https://www.pexels.com/photo/pasta-on-a-plate-11654225/) under the [Pexels license](https://www.pexels.com/license/). It is labeled as a real inspiration photo. The hero photograph is by [Valeria Boltneva on Pexels](https://www.pexels.com/photo/close-up-photo-of-burger-1639562/), also under the Pexels license. The landing-page examples are labeled inspiration and are not claimed as generated results.
+The inspiration photo is by [Adrian Vieriu on Pexels](https://www.pexels.com/photo/pasta-on-a-plate-11654225/) under the [Pexels license](https://www.pexels.com/license/). It is labeled as a real inspiration photo. The hero photograph is by [Valeria Boltneva on Pexels](https://www.pexels.com/photo/close-up-photo-of-burger-1639562/), also under the Pexels license. The original and studio-styled comparison is a clearly labeled illustrative AI edit, generated for this design demonstration. It is not a benchmark or a verified result from the live pilot API. Food textures can change, so owner review remains required. See `docs/PLATEWORTHY_DESIGN.md` for the asset record and prompt.
