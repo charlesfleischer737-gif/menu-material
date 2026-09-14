@@ -1,31 +1,25 @@
 # Plateworthy positioning and design
 
-The current focus is photo improvement for restaurants: regular phone photos become studio-style images for menus, delivery listings, websites, and social posts. The former restaurant-partner positioning has been removed from the landing page. Captions and hosted menu tools remain available in the existing workspace without leading the marketing.
+The site focuses on improving restaurant food photos for menus, delivery listings, websites, and social posts. Captions and hosted menu tools remain available in the existing workspace.
 
-## Message
+## September 14 refinement
 
-Make your food look worth ordering. Upload your dish, choose the lighting/presentation, review two options, then crop and download. Sales language describes the purpose and potential benefit; it does not claim a measured conversion or revenue increase.
+A restrained header, one direct headline (“Studio-quality food photos. From your phone.”), a single primary action, and an equal-width before/after comparison. Three short steps explain upload, style, and review/download. Repetitive slogans, the secondary pasta feature, oversized crop demonstration, and dark promotional section have been removed. Download/crop tools in the product remain intact. On phones, the example images stack at a consistent ratio to keep the complete burger visible.
 
-## Structure
+A compact channel list, practical FAQs, and invitation-only signup explain the service without promising a measured sales increase. Buttons preserve existing login, invitation, and signed-in studio flows. Existing social-preview metadata and assets are unchanged.
 
-- Original photograph next to a labeled illustrative studio edit.
-- Three steps: upload, choose a look, review/download.
-- Interactive square, portrait, and story crop examples.
-- Food accuracy and owner review.
-- Practical FAQs and invitation-only pilot signup.
+## Comparison imagery
 
-References reviewed: [FoodShot](https://foodshot.ai/) and [Beautiful Food](https://www.trybeautifulfood.com/). No competitor imagery, testimonials, performance statistics, prices, or copy are reused.
+The old professional stock photograph was unsuitable as an everyday “before.” The new original is cyclonebill’s [Burger photograph on Wikimedia Commons](https://commons.wikimedia.org/wiki/File:Hamburger_(5).jpg), taken with a Sony Ericsson J20i phone according to its source metadata. It shows ordinary indoor light, a glass and utensils, and crumbs on the plate. The source is not artificially degraded.
 
-## Imagery
+- Original, unedited photo: `public/burger-phone-original.jpg`.
+- Studio edit: `public/burger-studio-edit.png`.
+- Source, license, full generation prompt, and fidelity assessment: `docs/burger-image-provenance.json`.
 
-Original: `public/burger.jpg`, [Valeria Boltneva, Pexels](https://www.pexels.com/photo/close-up-photo-of-burger-1639562/). Supporting pasta image: `public/pasta.jpg`, [Adrian Vieriu, Pexels](https://www.pexels.com/photo/pasta-on-a-plate-11654225/). Both under the Pexels license.
+Both source and derivative are licensed under [CC BY-SA 2.0](https://creativecommons.org/licenses/by-sa/2.0/); linked attribution and the AI edit disclosure appear on the page. One built-in imagegen edit was generated directly from the source photo. The same bun, single patty, cheese, tomato, lettuce, and mayonnaise remain recognizable, with regenerated fine textures and neater presentation. The page identifies it as an example AI edit and prompts owners to check accuracy. This is a demonstration asset, not a result from the currently disconnected production API.
 
-Edited illustration: `public/plateworthy-burger.png`, generated once with built-in image_gen, from the original licensed burger photograph. No retry or variant. The comparison is labeled on the page as an illustrative edit created for this demo; it is not represented as a live API or customer result. The bun, layers, skewer, and overall dish remain recognizable, while seed placement and fine textures change.
+Original reference sites reviewed in the previous iteration: [FoodShot](https://foodshot.ai/) and [Beautiful Food](https://www.trybeautifulfood.com/). No competitor photos, testimonials, statistics, or copy are reused.
 
-Final image prompt:
+## Validation for this refinement
 
-> Use case: precise-object-edit. Asset type: restaurant landing-page example, explicitly labeled externally as an AI-styled illustration. Input image is the edit target; preserve its exact burger. Edit the supplied photo into photorealistic high-end restaurant advertising food photography. Change lighting, surface, background, and framing only. Replace the blurred restaurant and wooden tabletop with a minimal warm light-gray seamless studio sweep and a brushed stainless-steel serving tray beneath the burger. Preserve the exact burger’s shape, proportions, sesame bun, wooden skewer, lettuce, tomato, beef patty, yellow cheese, sauce, bottom bun, and existing onion. Keep ingredient silhouettes, layer order, and handmade character recognizable; do not add or remove ingredients. Landscape 3:2, same three-quarter camera angle, full burger, skewer, and tray visible, ideally 20% breathing room. Controlled soft directional studio lighting, natural appetizing color and food texture, clean contact shadows. Restrained moisture, no excessive gloss, fries, invented sides, extra props, text, logos, or watermark.
-
-## Review status
-
-Source and generated asset inspected. Existing API integration checks, type checking, and production compilation are used to validate this iteration. Browser/device visual QA and live image quality benchmarking are still separate pilot checks.
+TypeScript check passed. Local page returned HTTP 200 and the new source/edit pair was visually reviewed in the browser. The FAQ expanded and the signed-in primary action returned to the existing photo studio. This design pass does not claim live AI API quality validation; generation still needs its existing server credentials.

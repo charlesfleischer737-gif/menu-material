@@ -1,0 +1,20 @@
+{
+  "title": "Burger",
+  "author": "cyclonebill",
+  "authorUrl": "https://www.flickr.com/people/cyclonebill/",
+  "dateTaken": "2011-09-06",
+  "sourcePage": "https://commons.wikimedia.org/wiki/File:Hamburger_(5).jpg",
+  "originalSource": "https://www.flickr.com/photos/cyclonebill/6124310134",
+  "sourceImageUrl": "https://upload.wikimedia.org/wikipedia/commons/7/77/Hamburger_%285%29.jpg",
+  "license": "CC BY-SA 2.0",
+  "licenseUrl": "https://creativecommons.org/licenses/by-sa/2.0/",
+  "camera": "Sony Ericsson J20i phone (metadata on Commons source page)",
+  "beforePath": "public/burger-phone-original.jpg",
+  "afterPath": "public/burger-studio-edit.png",
+  "generatedOriginalPath": "/Users/charlesfleischer/.codex/generated_images/01a09e73-0a46-7a50-a97d-b02902599746/exec-99056dcf-a63f-4da6-b535-3c151eb1852c.png",
+  "editMethod": "Built-in imagegen, one edit request referencing downloaded original photograph",
+  "attributionSuggested": "“Burger” by cyclonebill / Wikimedia Commons, CC BY-SA 2.0. After image edited with AI; shared under CC BY-SA 2.0.",
+  "editDescription": "Changed lighting, color balance, plate cleanliness, background and framing; source image is original photograph, after image is a disclosed AI edit derived from it.",
+  "fidelityAssessment": "Strong recognizable same-burger continuity: bun proportions, single patty, pale cheese corner, front tomato, lettuce, mayonnaise, and small dark right-side ingredient retained. Fine sesame, beef and lettuce textures are regenerated, and food is slightly neatened rather than pixel-exact. No apparent additional patty, cheese layer, side dish or new garnish.",
+  "prompt": "Use case: precise-object-edit\nAsset type: before-and-after demonstration for a restaurant food photography website.\nInput image 1 is the actual EDIT TARGET, not a loose reference.\nPrimary request: Retouch this exact real phone photo into premium restaurant menu studio photography. Preserve the unmistakably same physical burger, its actual uneven handmade silhouette, large sesame-covered domed bun, single thick beef patty, visible pale cheese corner, tomato slice, green lettuce and mayonnaise, the quantity, order and distinctive shapes of the ingredients. Do not replace this with a different idealized hamburger.\nScene/backdrop: remove the glass, utensils, striped napkin and distracting table clutter. Set the same burger on a clean simple pale neutral ceramic plate against a polished pale warm neutral tabletop and softly receding studio background.\nComposition/framing: landscape 3:2 photograph, burger centered and large, full bun and burger visible with comfortable margin, three-quarter angle close to the existing camera angle, slightly lower only if necessary to reveal ingredients that already exist. Suitable for a centered crop.\nLighting/mood: appetizing professional food photography, soft directional studio key light from the upper left and gentle fill, balanced whites, luminous but natural toasted golden bun, rich accurate food colors, realistic soft grounding shadow, subtle background blur.\nMaterials/textures: preserve recognizable sesame pattern, naturally textured beef, real bread pores and slight imperfections. Sharp appetizing food details and realistic edible moisture, not plastic or lacquered.\nConstraints: keep the burger and ALL actual ingredients faithful to the source; improve lighting, framing, background and plate cleanliness only. No added ingredients, no extra cheese, no extra patties, no fries or garnishes, no replacement bun, no taller burger, no people, logos, writing, labels, split-screen, or watermark. This must read as the same meal photographed professionally."
+}
