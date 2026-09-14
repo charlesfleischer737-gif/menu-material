@@ -611,3 +611,42 @@
     row-gap: 0;
   }
 }
+.pw-header .pw-login {
+  border: 0;
+  padding-inline: 0;
+}
+.pw-header button.pw-header-cta {
+  min-height: 44px;
+  padding: 10px 17px;
+  font-size: 0.9375rem;
+}
+.pw-start > div {
+  max-width: 790px;
+}
+.pw-start > div > p {
+  margin-top: 12px;
+  color: var(--pw-muted);
+  font-size: 1rem;
+  line-height: 1.6;
+}
+.pw-start > button {
+  flex-shrink: 0;
+}
+@media (max-width: 600px) {
+  .pw-header .pw-login {
+    display: none;
+  }
+  .pw-header button.pw-header-cta {
+    padding-inline: 14px;
+    font-size: 0.875rem;
+  }
+}
+.pw-header button.pw-header-cta,
+.pw-header button.pw-header-cta:hover {
+  color: #fff;
+}
+@media (max-width: 600px) {
+  .pw-header {
+    gap: 12px;
+  }
+}

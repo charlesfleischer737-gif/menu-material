@@ -31,3 +31,9 @@ The production AI connection still needs its existing server credentials; this d
 ## Checks
 
 TypeScript passed. The local page rendered successfully; the transformed burger and all three example layouts were inspected in the browser. Desktop and 390px mobile layouts were reviewed, and the temporary viewport override was reset. The FAQ content and imports are absent. This pass changes presentation only and does not alter data, authentication, generation jobs, usage enforcement, or publishing controls.
+
+## Conversion copy refinement
+
+The homepage now leads with “Make hungry customers choose your food.” Supporting copy emphasizes professional presentation, avoiding hours of editing, simple phone-based setup, and helping customers decide what to order. “Get started free” appears in the header, hero, and final call to action. The signup dialog carries the same benefits and uses “Sign up free” / “Create my free account.” The free pilot, invitation requirement, and no-card offer remain clear.
+
+Copy avoids unmeasured revenue lifts, guaranteed results, or an unverified seconds-to-completion promise. The two homepage disclaimer paragraphs remain removed at the user's request. Image credits and existing product accuracy review remain. TypeScript passed, the local page rendered, and the header action opened the signup tab with its invitation fields. No account was created during this review.

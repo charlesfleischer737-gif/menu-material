@@ -26,36 +26,42 @@ export default function Landing({
         </a>
         <nav aria-label="Main navigation">
           <a href="#how-it-works">How it works</a>
-          <button onClick={onSignIn}>
-            {signedIn ? "My studio" : "Log in"}
-          </button>
+          {!signedIn && (
+            <button className="pw-login" onClick={onSignIn}>
+              Log in
+            </button>
+          )}
+          <Button className="pw-header-cta" onClick={onStart}>
+            {signedIn ? "My studio" : "Get started free"}
+          </Button>
         </nav>
       </header>
       <main id="main">
         <section className="pw-hero" aria-labelledby="hero-title">
           <div className="pw-hero-intro">
             <h1 id="hero-title">
-              From phone photos
+              Make hungry customers
               <br />
-              to menus, listings, and posts.
+              choose your food.
             </h1>
             <p>
-              Studio-styled food, polished menu pages, and images formatted for
-              DoorDash and Instagram. Start with the photo you already have.
+              Turn a quick phone photo into studio-quality images, a polished
+              menu, and content ready for DoorDash and Instagram. No photoshoot.
+              No editing skills.
             </p>
             <Button onClick={onStart}>
-              {signedIn ? "Open my studio" : "Try your first photo"}
+              {signedIn ? "Open my studio" : "Get started free"}
               <ArrowRight size={17} />
             </Button>
             <span className="pw-pilot-note">
-              Free during our invitation-only pilot
+              Free pilot · No credit card · Invitation required
             </span>
           </div>
           <div className="pw-comparison" id="the-difference">
             <figure className="pw-before">
               <div className="pw-photo-label">
                 <span>Before</span>
-                <span>An everyday photo</span>
+                <span>A quick photo from your phone</span>
               </div>
               <div className="pw-photo-frame">
                 <img
@@ -70,7 +76,7 @@ export default function Landing({
             <figure className="pw-after">
               <div className="pw-photo-label">
                 <span>After</span>
-                <span>Styled for your menu</span>
+                <span>Ready to make mouths water</span>
               </div>
               <div className="pw-photo-frame">
                 <img
@@ -93,10 +99,10 @@ export default function Landing({
           aria-labelledby="examples-title"
         >
           <div className="pw-section-heading">
-            <h2 id="examples-title">See what your photos can become.</h2>
+            <h2 id="examples-title">Give customers a reason to order.</h2>
             <p>
-              One place to create the images, menu pages, and social content
-              your restaurant needs.
+              Get more from every dish photo: an appetizing menu, a stronger
+              delivery listing, and social posts that make people hungry.
             </p>
           </div>
           <div className="pw-example-grid">
@@ -131,10 +137,11 @@ export default function Landing({
                 </div>
               </figure>
               <div className="pw-example-copy">
-                <h3>A polished restaurant menu</h3>
+                <h3>Make your menu sell the dish</h3>
                 <p>
-                  Bring photos, descriptions, and prices together on a menu page
-                  you can share with a link or QR code.
+                  Show customers what they’re craving. Pair professional photos
+                  with your descriptions and prices, then share your menu with
+                  one link or QR code.
                 </p>
               </div>
             </article>
@@ -165,10 +172,11 @@ export default function Landing({
                 </div>
               </figure>
               <div className="pw-example-copy">
-                <h3>Standout delivery listings</h3>
+                <h3>Get noticed on delivery apps</h3>
                 <p>
-                  Clean backgrounds, appetizing styling, and clear crops. Get
-                  images ready to upload to DoorDash and Uber Eats.
+                  Help hungry customers choose you with beautifully presented
+                  food and clean, clear images. Download your favorites for
+                  DoorDash and Uber Eats.
                 </p>
               </div>
             </article>
@@ -196,10 +204,11 @@ export default function Landing({
                 </div>
               </figure>
               <div className="pw-example-copy">
-                <h3>A consistent Instagram feed</h3>
+                <h3>Make posting the easy part</h3>
                 <p>
-                  Create a consistent style for your food, with post and story
-                  crops plus editable captions ready to share.
+                  Turn today’s special into your next Instagram post, with
+                  polished images, post and story crops, and captions you can
+                  make your own.
                 </p>
               </div>
             </article>
@@ -211,46 +220,55 @@ export default function Landing({
           aria-labelledby="workflow-title"
         >
           <div className="pw-section-heading">
-            <h2 id="workflow-title">From photo to finished content.</h2>
-            <p>No camera equipment. No editing experience.</p>
+            <h2 id="workflow-title">Easy enough to do between orders.</h2>
+            <p>
+              Skip the hours of editing. Start with your phone and let AI handle
+              the lighting, background, and presentation.
+            </p>
           </div>
           <ol className="pw-steps">
             <li>
               <span className="pw-step-number">1</span>
               <div>
-                <h3>Upload your photo</h3>
+                <h3>Start with your dish</h3>
                 <p>
-                  A clear phone photo of your actual dish is the best place to
-                  start.
+                  Choose a photo from your phone and tell us what’s on the
+                  plate. Your everyday photo is all you need to begin.
                 </p>
               </div>
             </li>
             <li>
               <span className="pw-step-number">2</span>
               <div>
-                <h3>Style your dish</h3>
+                <h3>Pick your look</h3>
                 <p>
-                  Choose the lighting, background, and presentation. Review two
-                  options and ask for changes.
+                  Choose a style and get two professional image options. Pick
+                  your favorite or ask for a change.
                 </p>
               </div>
             </li>
             <li>
               <span className="pw-step-number">3</span>
               <div>
-                <h3>Put it to work</h3>
+                <h3>Put your food out there</h3>
                 <p>
-                  Add it to your menu page or download the right crop and
-                  caption for your next listing or post.
+                  Check your dish looks right, then add it to your menu or
+                  download the image and caption for your next post.
                 </p>
               </div>
             </li>
           </ol>
         </section>
         <section className="pw-start">
-          <h2>Start with one dish.</h2>
+          <div>
+            <h2>Start with one dish. See the difference.</h2>
+            <p>
+              Try Plateworthy free and give your food the presentation it
+              deserves.
+            </p>
+          </div>
           <Button onClick={onStart}>
-            {signedIn ? "Open my studio" : "Try your first photo"}
+            {signedIn ? "Open my studio" : "Get started free"}
             <ArrowRight size={17} />
           </Button>
         </section>

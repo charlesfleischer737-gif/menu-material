@@ -72,18 +72,18 @@ export default function Auth({
           <DialogTitle>
             {mode === "login"
               ? "Welcome back."
-              : "Make your first dish Plateworthy."}
+              : "Let’s make your food stand out."}
           </DialogTitle>
           <DialogDescription>
             {mode === "login"
               ? "Sign in to your restaurant workspace."
-              : "The pilot is free and invitation-only. Use the invitation your coordinator shared."}
+              : "Create professional food images, build your menu, and get your next post ready. Join free with your pilot invitation. No credit card needed."}
           </DialogDescription>
         </DialogHeader>
         <Tabs value={mode} onValueChange={setMode}>
           <TabsList className="mode-tabs">
             <TabsTrigger value="login">Sign in</TabsTrigger>
-            <TabsTrigger value="signup">Accept an invitation</TabsTrigger>
+            <TabsTrigger value="signup">Sign up free</TabsTrigger>
           </TabsList>
         </Tabs>
         {ownerSetup && !invite && (
@@ -166,13 +166,15 @@ export default function Auth({
               ? "Opening your workspace…"
               : mode === "login"
                 ? "Sign in"
-                : "Create my free workspace"}
+                : "Create my free account"}
           </Button>
         </form>
-        <p className="fine">
-          Forgot your password? Your pilot coordinator can give you a secure
-          reset invitation.
-        </p>
+        {mode === "login" && (
+          <p className="fine">
+            Forgot your password? Your pilot coordinator can give you a secure
+            reset invitation.
+          </p>
+        )}
         {local && (
           <Button
             variant="outline"

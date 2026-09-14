@@ -16,7 +16,7 @@ export async function generateMetadata(): Promise<Metadata> {
   return {
     title: "Plateworthy — Food photos worth ordering from.",
     description:
-      "Turn regular food photos into studio-styled images, polished menu pages, and content formatted for DoorDash and Instagram.",
+      "Make hungry customers choose your food. Turn phone photos into professional images, polished menus, and content for DoorDash and Instagram. Try Plateworthy free.",
     icons: { icon: "/favicon.svg", shortcut: "/favicon.svg" },
     openGraph: {
       title: "Plateworthy — Food photos worth ordering from.",
