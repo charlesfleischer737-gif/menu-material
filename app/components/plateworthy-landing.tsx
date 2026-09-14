@@ -40,9 +40,9 @@ export default function Landing({
         <section className="pw-hero" aria-labelledby="hero-title">
           <div className="pw-hero-intro">
             <h1 id="hero-title">
-              Make hungry customers
+              Make your food look
               <br />
-              choose your food.
+              as good as it tastes.
             </h1>
             <p>
               Turn a quick phone photo into studio-quality images, a polished
