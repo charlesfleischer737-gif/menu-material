@@ -86,10 +86,6 @@ export default function Landing({
               <ArrowRight size={20} />
             </span>
           </div>
-          <p className="pw-example-note">
-            Example AI edit; results vary. Check that the finished image
-            accurately represents your dish.
-          </p>
         </section>
         <section
           className="pw-showcase"
@@ -208,10 +204,6 @@ export default function Landing({
               </div>
             </article>
           </div>
-          <p className="pw-showcase-note">
-            Illustrative layouts and AI styling examples. You review the images
-            and publish to your own delivery and social accounts.
-          </p>
         </section>
         <section
           className="pw-workflow"
