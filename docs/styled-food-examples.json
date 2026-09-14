@@ -1,0 +1,32 @@
+[
+  {
+    "name": "burger-studio-transformation",
+    "prompt": "Use case: precise-object-edit\nAsset type: photorealistic restaurant delivery menu image and before/after website example.\nInput image: Image 1 is the actual burger photograph to edit, not a loose style reference.\nPrimary request: Radically transform the presentation of this actual burger into an appetizing professional DoorDash menu photograph. Replace the entire casual table scene and large white dinner plate with a handsome small matte charcoal ceramic plate on a seamless muted pale blue studio surface and backdrop. Remove all original clutter, cutlery, napkin and glass.\nSubject invariants: Retain the unmistakable actual sesame burger and its real portion: the broad sesame-seeded bun, one single thick beef patty, green lettuce, red tomato slices, pale cheese and mayonnaise. Preserve the ingredient order shown: lower bun with mayonnaise and lettuce, thick beef patty, pale cheese and tomato above it, sesame top bun. Retain natural food irregularity and believable proportions; no invented ingredients, extra patties or inflated portion.\nPresentation: Professionally tidy and appetizing plating with visible real burger layers. Change the camera to a lower three-quarter angle and center the complete burger on the plate. The transformation should be immediately visible and go well beyond exposure enhancement.\nStyle: Sophisticated clean commercial food photography with edible, realistic texture and warm golden bun, gently glossy tomato and crisp lettuce.\nLighting: Soft directional studio lighting, shaped highlights, gentle coherent shadows.\nComposition: Landscape 3:2, entire burger and entire charcoal plate visible, generous clean cropping margin on all sides.\nAvoid: fries, sides, extra ingredients, props, clutter, text, labels, logos, watermarks, plastic food, cartoon rendering.",
+    "referenced_image_paths": [
+      "/Users/charlesfleischer/Documents/ChatGPT/AI Restaurant Project/public/burger-phone-original.jpg"
+    ],
+    "sourcePath": "/Users/charlesfleischer/.codex/generated_images/01a0a1c4-e030-7c72-b43a-70928a2148a0/exec-a0815965-f511-49ce-b7f6-bc7117b98510.png",
+    "finalPath": "public/burger-studio-transformation.png",
+    "mode": "built-in imagegen",
+    "requestsUsed": 1,
+    "provenance": "AI-edited derivative of the provided burger photo; original author cyclonebill, CC BY-SA 2.0, per parent task source record. Retain original attribution and derivative license when publishing."
+  },
+  {
+    "name": "rigatoni-editorial-example",
+    "prompt": "Use case: ads-marketing\nAsset type: standalone illustrative food photography example for a premium restaurant menu layout.\nPrimary request: A premium photorealistic overhead to high three-quarter photograph of ridged rigatoni coated in deep rich tomato sauce, with fresh basil and a modest scattering of parmesan, served in a handmade ivory ceramic bowl.\nScene/backdrop: Sophisticated dark wine-red tabletop with a subtle linen edge.\nStyle/medium: Professional editorial restaurant food photography, realistic edible texture, beautiful sauce clinging to pasta ridges, natural ceramic detail.\nComposition/framing: Square composition; the complete bowl and whole dish are visible with comfortable cropping margins. The bowl is the clear focus.\nLighting/mood: Directional natural studio lighting that shows texture, quiet premium atmosphere.\nConstraints: Standalone illustrative style example, no text, no logos, no labels, no watermark, no hands, no unrealistic plastic food.",
+    "sourcePath": "/Users/charlesfleischer/.codex/generated_images/01a0a1c4-e030-7c72-b43a-70928a2148a0/exec-9f0b0406-23ed-4cf2-99d9-5b526abb9a53.png",
+    "finalPath": "public/rigatoni-menu-example.png",
+    "mode": "built-in imagegen",
+    "requestsUsed": 1,
+    "provenance": "AI-generated standalone illustrative style example, not a customer result."
+  },
+  {
+    "name": "fish-tacos-social-example",
+    "prompt": "Use case: ads-marketing\nAsset type: standalone illustrative food photography example for a restaurant social post layout.\nPrimary request: Premium photorealistic Mexican fish taco campaign photography: exactly three golden battered fish tacos in small corn tortillas, each filled with finely shredded cabbage, crema and fresh coriander, arranged on a simple white ceramic oval plate.\nScene/backdrop: Bold cobalt blue tabletop and background with a sunny angled shadow.\nStyle/medium: Bright vibrant professional food campaign photography, realistic crisp golden fish batter, tender corn tortillas, fresh edible texture.\nComposition/framing: Portrait 4:5, the entire plate and all three tacos fully visible with comfortable clean margins.\nLighting/mood: Beautiful sunny directional studio lighting, coherent angled shadows, energetic appetizing color.\nConstraints: Standalone illustrative style example. No extra hands, no text, no logos, no watermark, no plastic food, no additional side dishes.",
+    "sourcePath": "/Users/charlesfleischer/.codex/generated_images/01a0a1c4-e030-7c72-b43a-70928a2148a0/exec-8a153688-b412-400b-9c8e-d3a002f774bb.png",
+    "finalPath": "public/tacos-social-example.png",
+    "mode": "built-in imagegen",
+    "requestsUsed": 1,
+    "provenance": "AI-generated standalone illustrative style example, not a customer result."
+  }
+]

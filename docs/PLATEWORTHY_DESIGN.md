@@ -1,25 +1,33 @@
 # Plateworthy positioning and design
 
-The site focuses on improving restaurant food photos for menus, delivery listings, websites, and social posts. Captions and hosted menu tools remain available in the existing workspace.
+The homepage now presents the complete output: ordinary food photos become professionally styled imagery, shareable menu pages, and crops/captions for delivery and social posts. The headline is “From phone photos to menus, listings, and posts.” The product's existing menu, caption, image, and invitation flows remain intact. It does not claim to publish to DoorDash or Instagram automatically.
 
-## September 14 refinement
+## Current page
 
-A restrained header, one direct headline (“Studio-quality food photos. From your phone.”), a single primary action, and an equal-width before/after comparison. Three short steps explain upload, style, and review/download. Repetitive slogans, the secondary pasta feature, oversized crop demonstration, and dark promotional section have been removed. Download/crop tools in the product remain intact. On phones, the example images stack at a consistent ratio to keep the complete burger visible.
+- A restrained header, direct headline, primary action, and original/studio comparison.
+- Three visual examples: a restaurant menu with rigatoni, a delivery listing with the burger, and an Instagram post with fish tacos. These are labeled illustrative layouts; prices and restaurant names are sample content, not customer data.
+- Three steps: upload your dish, style the presentation, put the image into your menu or download the crop/caption.
+- A compact final invitation to start with one dish.
 
-A compact channel list, practical FAQs, and invitation-only signup explain the service without promising a measured sales increase. Buttons preserve existing login, invitation, and signed-in studio flows. Existing social-preview metadata and assets are unchanged.
+The “Good to know” FAQ and the text-only channel list have been removed. Desktop examples align their visual frames and captions; tablet examples place copy beside images, and phone layouts stack. Existing social-preview imagery is preserved.
 
-## Comparison imagery
+## Hero comparison
 
-The old professional stock photograph was unsuitable as an everyday “before.” The new original is cyclonebill’s [Burger photograph on Wikimedia Commons](https://commons.wikimedia.org/wiki/File:Hamburger_(5).jpg), taken with a Sony Ericsson J20i phone according to its source metadata. It shows ordinary indoor light, a glass and utensils, and crumbs on the plate. The source is not artificially degraded.
+`public/burger-phone-original.jpg` is cyclonebill’s [original Burger photograph](https://commons.wikimedia.org/wiki/File:Hamburger_(5).jpg), with Sony Ericsson J20i phone metadata. It shows a casual indoor photo, ordinary lighting, utensils, a glass, and crumbs. The before image is unchanged.
 
-- Original, unedited photo: `public/burger-phone-original.jpg`.
-- Studio edit: `public/burger-studio-edit.png`.
-- Source, license, full generation prompt, and fidelity assessment: `docs/burger-image-provenance.json`.
+`public/burger-studio-transformation.png` was made with one built-in imagegen edit directly from that original. It changes the large white plate to matte charcoal ceramic, replaces the table and clutter with a pale blue studio setting, lowers the camera angle, and reshapes lighting. The recognizable sesame bun, single thick patty, cheese, tomato, lettuce, and mayonnaise remain; fine textures and ingredient silhouettes are regenerated. It is labeled as an example AI edit, with owner accuracy review encouraged.
 
-Both source and derivative are licensed under [CC BY-SA 2.0](https://creativecommons.org/licenses/by-sa/2.0/); linked attribution and the AI edit disclosure appear on the page. One built-in imagegen edit was generated directly from the source photo. The same bun, single patty, cheese, tomato, lettuce, and mayonnaise remain recognizable, with regenerated fine textures and neater presentation. The page identifies it as an example AI edit and prompts owners to check accuracy. This is a demonstration asset, not a result from the currently disconnected production API.
+Source and derivative are [CC BY-SA 2.0](https://creativecommons.org/licenses/by-sa/2.0/), with linked author/license attribution in the footer. Prior illustration assets are retained for existing metadata and version history.
 
-Original reference sites reviewed in the previous iteration: [FoodShot](https://foodshot.ai/) and [Beautiful Food](https://www.trybeautifulfood.com/). No competitor photos, testimonials, statistics, or copy are reused.
+## Additional examples
 
-## Validation for this refinement
+- `public/rigatoni-menu-example.png`: generated editorial tomato rigatoni in an ivory bowl on a wine-red table.
+- `public/tacos-social-example.png`: generated fish tacos on a white plate against cobalt blue, in portrait composition.
 
-TypeScript check passed. Local page returned HTTP 200 and the new source/edit pair was visually reviewed in the browser. The FAQ expanded and the signed-in primary action returned to the existing photo studio. This design pass does not claim live AI API quality validation; generation still needs its existing server credentials.
+One built-in imagegen request per asset; these are illustrative style examples, not customer or production API results. Full prompts, generation method, source paths, and current project paths are in `docs/styled-food-examples.json`. The original phone photo provenance remains in `docs/burger-image-provenance.json`.
+
+The production AI connection still needs its existing server credentials; this design update does not claim live generation verification. The existing caption and menu features, download tools, usage controls, and data are preserved.
+
+## Checks
+
+TypeScript passed. The local page rendered successfully; the transformed burger and all three example layouts were inspected in the browser. Desktop and 390px mobile layouts were reviewed, and the temporary viewport override was reset. The FAQ content and imports are absent. This pass changes presentation only and does not alter data, authentication, generation jobs, usage enforcement, or publishing controls.

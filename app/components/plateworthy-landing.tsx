@@ -1,16 +1,10 @@
 "use client";
 import { ArrowRight } from "lucide-react";
 import { Button } from "@/components/ui/button";
-import {
-  Accordion,
-  AccordionItem,
-  AccordionTrigger,
-  AccordionContent,
-} from "@/components/ui/accordion";
 import Brand from "./brand";
 
 const beforePhoto = "/burger-phone-original.jpg";
-const afterPhoto = "/burger-studio-edit.png";
+const afterPhoto = "/burger-studio-transformation.png";
 
 export default function Landing({
   onStart,
@@ -41,13 +35,13 @@ export default function Landing({
         <section className="pw-hero" aria-labelledby="hero-title">
           <div className="pw-hero-intro">
             <h1 id="hero-title">
-              Studio-quality food photos.
+              From phone photos
               <br />
-              From your phone.
+              to menus, listings, and posts.
             </h1>
             <p>
-              Turn a quick shot of your dish into a professional image for your
-              menu, delivery apps, and Instagram.
+              Studio-styled food, polished menu pages, and images formatted for
+              DoorDash and Instagram. Start with the photo you already have.
             </p>
             <Button onClick={onStart}>
               {signedIn ? "Open my studio" : "Try your first photo"}
@@ -76,7 +70,7 @@ export default function Landing({
             <figure className="pw-after">
               <div className="pw-photo-label">
                 <span>After</span>
-                <span>With AI studio styling</span>
+                <span>Styled for your menu</span>
               </div>
               <div className="pw-photo-frame">
                 <img
@@ -98,12 +92,134 @@ export default function Landing({
           </p>
         </section>
         <section
+          className="pw-showcase"
+          id="examples"
+          aria-labelledby="examples-title"
+        >
+          <div className="pw-section-heading">
+            <h2 id="examples-title">See what your photos can become.</h2>
+            <p>
+              One place to create the images, menu pages, and social content
+              your restaurant needs.
+            </p>
+          </div>
+          <div className="pw-example-grid">
+            <article>
+              <figure
+                className="pw-example-stage pw-menu-example"
+                aria-label="Illustrative restaurant menu page"
+              >
+                <div className="pw-menu-preview">
+                  <div className="pw-menu-masthead">
+                    <span>Your restaurant</span>
+                    <strong>Lunch menu</strong>
+                  </div>
+                  <img
+                    src="/rigatoni-menu-example.png"
+                    alt="Studio-styled tomato rigatoni presented in a restaurant menu"
+                    width="1254"
+                    height="1254"
+                    loading="lazy"
+                  />
+                  <div className="pw-menu-dish">
+                    <div>
+                      <h4>Rigatoni al pomodoro</h4>
+                      <span>$18</span>
+                    </div>
+                    <p>Slow-cooked tomato, fresh basil, Parmesan.</p>
+                  </div>
+                  <div className="pw-menu-secondary">
+                    <span>Classic burger</span>
+                    <span>$16</span>
+                  </div>
+                </div>
+              </figure>
+              <div className="pw-example-copy">
+                <h3>A polished restaurant menu</h3>
+                <p>
+                  Bring photos, descriptions, and prices together on a menu page
+                  you can share with a link or QR code.
+                </p>
+              </div>
+            </article>
+            <article>
+              <figure
+                className="pw-example-stage pw-delivery-example"
+                aria-label="Illustrative food delivery listing"
+              >
+                <div className="pw-listing-preview">
+                  <img
+                    src={afterPhoto}
+                    alt="Professionally presented burger with a clean studio background for a delivery listing"
+                    width="1536"
+                    height="1024"
+                    loading="lazy"
+                  />
+                  <div className="pw-listing-copy">
+                    <span className="pw-listing-category">Burgers</span>
+                    <div>
+                      <h4>Classic burger</h4>
+                      <span>$16</span>
+                    </div>
+                    <p>
+                      Beef patty, cheese, tomato, lettuce and mayo on a sesame
+                      bun.
+                    </p>
+                  </div>
+                </div>
+              </figure>
+              <div className="pw-example-copy">
+                <h3>Standout delivery listings</h3>
+                <p>
+                  Clean backgrounds, appetizing styling, and clear crops. Get
+                  images ready to upload to DoorDash and Uber Eats.
+                </p>
+              </div>
+            </article>
+            <article>
+              <figure
+                className="pw-example-stage pw-social-example"
+                aria-label="Illustrative Instagram post"
+              >
+                <div className="pw-social-preview">
+                  <div className="pw-social-handle">
+                    <span>your.restaurant</span>
+                    <span aria-hidden="true">•••</span>
+                  </div>
+                  <img
+                    src="/tacos-social-example.png"
+                    alt="Beautifully styled fish tacos photographed for an Instagram post"
+                    width="1122"
+                    height="1402"
+                    loading="lazy"
+                  />
+                  <p>
+                    <strong>your.restaurant</strong> Crispy fish. Fresh slaw.
+                    Lunch is looking good.
+                  </p>
+                </div>
+              </figure>
+              <div className="pw-example-copy">
+                <h3>A consistent Instagram feed</h3>
+                <p>
+                  Create a consistent style for your food, with post and story
+                  crops plus editable captions ready to share.
+                </p>
+              </div>
+            </article>
+          </div>
+          <p className="pw-showcase-note">
+            Illustrative layouts and AI styling examples. You review the images
+            and publish to your own delivery and social accounts.
+          </p>
+        </section>
+        <section
           className="pw-workflow"
           id="how-it-works"
           aria-labelledby="workflow-title"
         >
           <div className="pw-section-heading">
-            <h2 id="workflow-title">A better photo in three steps.</h2>
+            <h2 id="workflow-title">From photo to finished content.</h2>
             <p>No camera equipment. No editing experience.</p>
           </div>
           <ol className="pw-steps">
@@ -120,89 +236,24 @@ export default function Landing({
             <li>
               <span className="pw-step-number">2</span>
               <div>
-                <h3>Choose a look</h3>
+                <h3>Style your dish</h3>
                 <p>
-                  Pick the lighting and setting. Get two images and ask for
-                  changes.
+                  Choose the lighting, background, and presentation. Review two
+                  options and ask for changes.
                 </p>
               </div>
             </li>
             <li>
               <span className="pw-step-number">3</span>
               <div>
-                <h3>Review and download</h3>
+                <h3>Put it to work</h3>
                 <p>
-                  Check your dish looks right. Save the image in the size you
-                  need.
+                  Add it to your menu page or download the right crop and
+                  caption for your next listing or post.
                 </p>
               </div>
             </li>
           </ol>
-        </section>
-        <section
-          className="pw-destinations"
-          aria-labelledby="destinations-title"
-        >
-          <div>
-            <h2 id="destinations-title">Ready wherever you sell.</h2>
-            <p>
-              Download JPG or PNG images for your next menu update or social
-              post.
-            </p>
-          </div>
-          <ul aria-label="Ways to use your photos">
-            <li>Menus</li>
-            <li>DoorDash & Uber Eats</li>
-            <li>Instagram</li>
-            <li>Your website</li>
-          </ul>
-        </section>
-        <section className="pw-faq" aria-labelledby="faq-title">
-          <h2 id="faq-title">Good to know.</h2>
-          <Accordion type="single" collapsible className="pw-questions">
-            <AccordionItem value="phone">
-              <AccordionTrigger>
-                What kind of photo should I upload?
-              </AccordionTrigger>
-              <AccordionContent>
-                A clear phone photo with the whole dish in view. The lighting
-                and background don’t need to be perfect. Add the dish’s
-                ingredients and portion details to help guide the edit. You can
-                also start from a written description.
-              </AccordionContent>
-            </AccordionItem>
-            <AccordionItem value="accuracy">
-              <AccordionTrigger>
-                Will it still look like my food?
-              </AccordionTrigger>
-              <AccordionContent>
-                Your photo and dish details guide the AI. Compare each result
-                with your original and check the ingredients, portion, and
-                plating before you approve it. If a detail changes, ask for a
-                revision. Every version stays in your library.
-              </AccordionContent>
-            </AccordionItem>
-            <AccordionItem value="formats">
-              <AccordionTrigger>
-                How do I use the finished photos?
-              </AccordionTrigger>
-              <AccordionContent>
-                Choose a square, portrait, or story crop and download a JPG or
-                PNG. Upload it to your menu, delivery listing, website, or
-                social account. Check the destination’s photo requirements
-                before posting.
-              </AccordionContent>
-            </AccordionItem>
-            <AccordionItem value="pilot">
-              <AccordionTrigger>How does the free pilot work?</AccordionTrigger>
-              <AccordionContent>
-                Use your invitation to create a workspace with a free image
-                allowance. Each request creates two options, and failed images
-                restore their allowance. No subscription or payment card is
-                needed.
-              </AccordionContent>
-            </AccordionItem>
-          </Accordion>
         </section>
         <section className="pw-start">
           <h2>Start with one dish.</h2>
@@ -225,7 +276,7 @@ export default function Landing({
           >
             Photo by cyclonebill
           </a>
-          . Original and AI-edited image licensed under{" "}
+          . Original burger and its AI-edited images licensed under{" "}
           <a
             href="https://creativecommons.org/licenses/by-sa/2.0/"
             target="_blank"
