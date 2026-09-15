@@ -915,8 +915,8 @@ export default function PromotionWorkspace({
                     {generating
                       ? "Creating photo options…"
                       : originalId
-                        ? "Enhance photo · 2 image units"
-                        : "Create from description · 2 image units"}
+                        ? "Enhance photo · 1 image"
+                        : "Create from description · 1 image"}
                   </Button>
                   {generating && (
                     <p role="status" className="fine">

@@ -102,7 +102,15 @@ export default function MenuView({
       </main>
     );
   return (
-    <article className="customer-menu" ref={article}>
+    <article
+      className={`customer-menu menu-layout-${menu.layout || "classic"} menu-appearance-${menu.appearance || "light"}`}
+      style={
+        {
+          "--menu-brand": menu.restaurant.style?.primary || "#235b48",
+        } as React.CSSProperties
+      }
+      ref={article}
+    >
       <header>
         {preview && <p className="eyebrow">PRIVATE PREVIEW</p>}
         {menu.restaurant.logoId ? (

@@ -1,0 +1,1 @@
+ALTER TABLE `batch_items` ADD `settings` text DEFAULT '{}' NOT NULL;

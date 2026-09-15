@@ -150,8 +150,8 @@ export default function Landing({
               <div>
                 <h3>Pick your look</h3>
                 <p>
-                  Choose a style and get two professional image options. Pick
-                  your favorite or ask for a change.
+                  Choose a look, check the framing, and create one beautiful
+                  photo. Review it or ask for a change.
                 </p>
               </div>
             </li>

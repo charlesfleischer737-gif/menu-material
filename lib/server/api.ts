@@ -27,6 +27,7 @@ import {
   viewer,
 } from "./core";
 import { enqueue, generateCaption, tick } from "./generation";
+import { creationRoute } from "./creation";
 import {
   advanceBatches,
   menuTools,
@@ -52,7 +53,7 @@ const passwordSchema = z
   .max(128);
 const dishSchema = z.object({
   name: z.string().trim().min(1).max(100),
-  description: z.string().trim().min(1).max(2000),
+  description: z.string().trim().max(2000).default(""),
   category: z.string().trim().max(100).default("Dishes"),
   preserve: z.string().max(600).default(""),
   portion: z.string().max(300).default(""),
@@ -63,6 +64,9 @@ const dishSchema = z.object({
   confirmed: z.boolean().default(false),
 });
 const menuSchema = z.object({
+  layout: z.enum(["classic", "grid", "featured"]).default("classic"),
+  appearance: z.enum(["light", "dark"]).default("light"),
+  paper: z.enum(["letter", "a4"]).default("letter"),
   sections: z
     .array(
       z.object({
@@ -265,12 +269,16 @@ async function snapshot(r: Row, draft: Row) {
       cuisine: r.cuisine,
       currency: r.currency,
       brand: r.brand,
+      style: JSON.parse(r.style || "{}"),
       orderingUrl: r.ordering_url,
       timezone: r.timezone,
       hours: JSON.parse(r.hours),
       logoId,
     },
     sections,
+    layout: draft.layout,
+    appearance: draft.appearance,
+    paper: draft.paper,
   };
 }
 function assetIsPublished(menu: Row, assetId: string) {
@@ -590,6 +598,10 @@ export async function handle(req: Request) {
           "SELECT id,dish_id,kind,mime,name,approved_at,created_at FROM assets WHERE restaurant_id=? AND deleted_at IS NULL ORDER BY created_at DESC",
           r.id,
         ),
+        assetEdits: await all(
+          "SELECT e.* FROM asset_edits e JOIN assets a ON a.id=e.asset_id WHERE a.restaurant_id=? AND a.deleted_at IS NULL",
+          r.id,
+        ),
         jobs: await all(
           "SELECT * FROM jobs WHERE restaurant_id=? ORDER BY created_at DESC LIMIT 100",
           r.id,
@@ -681,6 +693,8 @@ export async function handle(req: Request) {
       throw new AppError(404, "Not found.");
     }
     const { r } = await owner(req);
+    const creationResponse = await creationRoute(req, p, r);
+    if (creationResponse) return creationResponse;
     const toolsResponse = await menuTools(req, p, r);
     if (toolsResponse) return toolsResponse;
     const promotionResponse = await promotionRoute(req, p, r);
@@ -817,7 +831,10 @@ export async function handle(req: Request) {
       );
       assert(a, 404, "Image not found.");
       if (method === "GET") {
-        if (url.searchParams.has("download") && a.kind === "generated")
+        if (
+          url.searchParams.has("download") &&
+          ["generated", "edited"].includes(a.kind)
+        )
           assert(
             a.approved_at,
             403,
@@ -884,7 +901,7 @@ export async function handle(req: Request) {
           "Please confirm this image represents the dish you serve.",
         );
         assert(
-          ["source", "generated", "staff"].includes(a.kind),
+          ["source", "generated", "edited", "staff"].includes(a.kind),
           400,
           "Only dish photos can be approved.",
         );

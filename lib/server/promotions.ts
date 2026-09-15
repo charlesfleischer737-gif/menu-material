@@ -104,7 +104,7 @@ async function offerContent(r: Row, draft: Row, ready = false) {
     assert(dish, 404, "Dish not found.");
     const asset = item.photoId
       ? await one(
-          "SELECT * FROM assets WHERE id=? AND restaurant_id=? AND dish_id=? AND kind IN ('source','generated') AND deleted_at IS NULL",
+          "SELECT * FROM assets WHERE id=? AND restaurant_id=? AND dish_id=? AND kind IN ('source','generated','edited') AND deleted_at IS NULL",
           item.photoId,
           r.id,
           item.dishId,

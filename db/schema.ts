@@ -92,6 +92,30 @@ export const assets = sqliteTable(
   },
   (t) => [index("idx_assets_restaurant_dish").on(t.restaurantId, t.dishId)],
 );
+export const creationDrafts = sqliteTable(
+  "creation_drafts",
+  {
+    id: text().primaryKey(),
+    restaurantId: text("restaurant_id")
+      .notNull()
+      .references(() => restaurants.id),
+    kind: text().notNull(),
+    draft: text().notNull(),
+    revision: integer().notNull().default(1),
+    updatedAt: integer("updated_at").notNull(),
+  },
+  (t) => [index("idx_creation_drafts_restaurant").on(t.restaurantId)],
+);
+export const assetEdits = sqliteTable("asset_edits", {
+  assetId: text("asset_id")
+    .primaryKey()
+    .references(() => assets.id),
+  parentId: text("parent_id")
+    .notNull()
+    .references(() => assets.id),
+  sourceId: text("source_id").references(() => assets.id),
+  edits: text().notNull(),
+});
 export const jobs = sqliteTable(
   "jobs",
   {
@@ -240,6 +264,7 @@ export const batchItems = sqliteTable(
     jobId: text("job_id"),
     status: text().notNull().default("queued"),
     error: text(),
+    settings: text().notNull().default("{}"),
     createdAt: integer("created_at").notNull(),
   },
   (t) => [

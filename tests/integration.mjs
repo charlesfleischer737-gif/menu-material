@@ -65,6 +65,8 @@ globalThis.fetch = async (url, init = {}) => {
   });
 };
 async function call(path, b, expected = 200, opts = {}) {
+  // Keep the original two-candidate regression cases explicit; the studio default is now one.
+  if (path === "jobs" && b) b = {candidateCount: 2, ...b};
   const headers = { cookie, ...opts.headers };
   if (b !== undefined && !(b instanceof FormData))
     headers["Content-Type"] = "application/json";

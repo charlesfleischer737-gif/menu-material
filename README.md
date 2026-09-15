@@ -2,7 +2,7 @@
 
 Plateworthy is the existing branding in this codebase (the expansion brief calls the product Plated). It is a free, invitation-only restaurant promotion workspace, capped at 10 restaurant workspaces including outstanding invitations. It includes saved restaurant styles, a dish library, coordinated special and offer packages, private uploads, image versions, approvals, captions, menu imports, batch recovery, staff photo links, weekly suggestions, and engagement measurement.
 
-Start in **Promote** for a special, **Your dishes** for saved food and photo versions, **Menu tools** for imports/batches/staff/weekly activity, and **Your menu** for menu publication and its stable link and QR code. See [the expansion guide](docs/PROMOTION_EXPANSION.md) for behavior, verification and remaining setup.
+Start in **Photo Studio**, **Menu Builder**, or **Post Maker**, with **My Dishes** as the shared library. Each tool guides owners from their source material to reviewed, usable output. Earlier promotion campaigns and pilot tools remain under **More tools**. See [the core experience guide](docs/CORE_EXPERIENCE.md) for the rebuild, validation and connection status, and [the expansion guide](docs/PROMOTION_EXPANSION.md) for retained pilot tools.
 
 ## Run locally
 
@@ -30,7 +30,7 @@ These are initial integration candidates, not a quality benchmark winner. Your A
 
 Without a key, AI buttons explain that the service is disconnected. Saving dishes, uploading photos, writing captions manually, approving source photos, and building menus still work. No mock generation is presented as a live result.
 
-`IMAGE_COST_ESTIMATE_USD` is an optional per-completed-image estimate for the admin dashboard, not an invoice amount. Raw provider usage is retained per output and caption. Failed or ambiguous provider calls can have provider costs; review those records against invoices. The dashboard tracks approved images, failures, reservations, and manually logged support time.
+`IMAGE_COST_ESTIMATE_USD` is an optional per-completed-image estimate for the admin dashboard, not an invoice amount. Raw provider usage is retained per output, caption, menu import and cached photo analysis. Failed or ambiguous provider calls can have provider costs; review those records against invoices. The dashboard tracks approved images, failures, reservations, and manually logged support time.
 
 ## Background worker and recovery
 
@@ -77,7 +77,7 @@ npm test
 npm run build
 ```
 
-The integration suites pass 169 API/timezone checks, plus explicit persistence and flow assertions. The original suite contains 80 API assertions and creates and removes its own temporary database and object store. It checks invitation reuse and email matching, password reset/session revocation, tenant isolation, upload privacy, photo approval, atomic allowance reservations, concurrent idempotency, partial-success refunds, revisions, editable captions, immutable published menus, republishing, unpublishing, deletion from menus, and cross-origin write rejection.
+The integration suites pass 231 API/timezone checks, plus explicit persistence and flow assertions. The original suite contains 80 API assertions and creates and removes its own temporary database and object store. It checks invitation reuse and email matching, password reset/session revocation, tenant isolation, upload privacy, photo approval, atomic allowance reservations, concurrent idempotency, partial-success refunds, revisions, editable captions, immutable published menus, republishing, unpublishing, deletion from menus, and cross-origin write rejection.
 
 Provider HTTP calls are deterministic test fixtures in the test process only. Live API calls, real image quality, HEIC conversion across iPhone variants, phone download behavior, background job latency, and actual provider billing require connected-device pilot testing. The expansion’s core browser flow and representative phone/desktop/export views are verified in isolated local tests. The older WebMCP helper has not been fully verified. See `docs/PILOT_VALIDATION.md` for the launch checks.
 

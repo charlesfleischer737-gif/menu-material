@@ -88,7 +88,8 @@ export async function advanceBatches(restaurantId?: string) {
         dishId: item.dish_id,
         sourceId: item.source_id,
         requestKey: item.id,
-        style: JSON.parse(r!.style),
+        ...JSON.parse(item.settings || "{}"),
+        style: JSON.parse(item.settings || "{}").style || JSON.parse(r!.style),
         editMode: "preserve",
       });
       await run(
@@ -106,7 +107,7 @@ export async function advanceBatches(restaurantId?: string) {
   }
 }
 // Retry only failed slots. Completed images retain their asset IDs and allowance entries.
-async function retryFailed(r: Row, jobId: string) {
+export async function retryFailed(r: Row, jobId: string) {
   const job = await one(
     "SELECT * FROM jobs WHERE id=? AND restaurant_id=?",
     jobId,
@@ -186,6 +187,7 @@ export async function menuTools(req: Request, p: string[], r: Row) {
     const b = z
       .object({
         batchId: z.string().uuid(),
+        candidateCount: z.union([z.literal(1), z.literal(2)]).default(1),
         items: z
           .array(
             z.object({
@@ -240,9 +242,20 @@ export async function menuTools(req: Request, p: string[], r: Row) {
       b.items.map((i) =>
         db()
           .prepare(
-            "INSERT INTO batch_items (id,restaurant_id,batch_id,dish_id,source_id,created_at) VALUES (?,?,?,?,?,?)",
+            "INSERT INTO batch_items (id,restaurant_id,batch_id,dish_id,source_id,settings,created_at) VALUES (?,?,?,?,?,?,?)",
           )
-          .bind(id(), r.id, b.batchId, i.dishId, i.sourceId, now()),
+          .bind(
+            id(),
+            r.id,
+            b.batchId,
+            i.dishId,
+            i.sourceId,
+            JSON.stringify({
+              candidateCount: b.candidateCount,
+              style: JSON.parse(r.style),
+            }),
+            now(),
+          ),
       ),
     );
     await advanceBatches(r.id);
