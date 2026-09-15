@@ -2,6 +2,7 @@
 import { ArrowRight } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import Brand from "./brand";
+import HomepageSections from "./homepage-sections";
 
 const beforePhoto = "/burger-phone-original.jpg";
 const afterPhoto = "/burger-studio-transformation.png";
@@ -25,6 +26,8 @@ export default function Landing({
           <Brand />
         </a>
         <nav aria-label="Main navigation">
+          <a href="#use-cases">Use cases</a>
+          <a href="#features">Features</a>
           <a href="#how-it-works">How it works</a>
           {!signedIn && (
             <button className="pw-login" onClick={onSignIn}>
@@ -93,127 +96,7 @@ export default function Landing({
             </span>
           </div>
         </section>
-        <section
-          className="pw-showcase"
-          id="examples"
-          aria-labelledby="examples-title"
-        >
-          <div className="pw-section-heading">
-            <h2 id="examples-title">Give customers a reason to order.</h2>
-            <p>
-              Get more from every dish photo: an appetizing menu, a stronger
-              delivery listing, and social posts that make people hungry.
-            </p>
-          </div>
-          <div className="pw-example-grid">
-            <article>
-              <figure
-                className="pw-example-stage pw-menu-example"
-                aria-label="Illustrative restaurant menu page"
-              >
-                <div className="pw-menu-preview">
-                  <div className="pw-menu-masthead">
-                    <span>Your restaurant</span>
-                    <strong>Lunch menu</strong>
-                  </div>
-                  <img
-                    src="/rigatoni-menu-example.png"
-                    alt="Studio-styled tomato rigatoni presented in a restaurant menu"
-                    width="1254"
-                    height="1254"
-                    loading="lazy"
-                  />
-                  <div className="pw-menu-dish">
-                    <div>
-                      <h4>Rigatoni al pomodoro</h4>
-                      <span>$18</span>
-                    </div>
-                    <p>Slow-cooked tomato, fresh basil, Parmesan.</p>
-                  </div>
-                  <div className="pw-menu-secondary">
-                    <span>Classic burger</span>
-                    <span>$16</span>
-                  </div>
-                </div>
-              </figure>
-              <div className="pw-example-copy">
-                <h3>Make your menu sell the dish</h3>
-                <p>
-                  Show customers what they’re craving. Pair professional photos
-                  with your descriptions and prices, then share your menu with
-                  one link or QR code.
-                </p>
-              </div>
-            </article>
-            <article>
-              <figure
-                className="pw-example-stage pw-delivery-example"
-                aria-label="Illustrative food delivery listing"
-              >
-                <div className="pw-listing-preview">
-                  <img
-                    src={afterPhoto}
-                    alt="Professionally presented burger with a clean studio background for a delivery listing"
-                    width="1536"
-                    height="1024"
-                    loading="lazy"
-                  />
-                  <div className="pw-listing-copy">
-                    <span className="pw-listing-category">Burgers</span>
-                    <div>
-                      <h4>Classic burger</h4>
-                      <span>$16</span>
-                    </div>
-                    <p>
-                      Beef patty, cheese, tomato, lettuce and mayo on a sesame
-                      bun.
-                    </p>
-                  </div>
-                </div>
-              </figure>
-              <div className="pw-example-copy">
-                <h3>Get noticed on delivery apps</h3>
-                <p>
-                  Help hungry customers choose you with beautifully presented
-                  food and clean, clear images. Download your favorites for
-                  DoorDash and Uber Eats.
-                </p>
-              </div>
-            </article>
-            <article>
-              <figure
-                className="pw-example-stage pw-social-example"
-                aria-label="Illustrative Instagram post"
-              >
-                <div className="pw-social-preview">
-                  <div className="pw-social-handle">
-                    <span>your.restaurant</span>
-                    <span aria-hidden="true">•••</span>
-                  </div>
-                  <img
-                    src="/tacos-social-example.png"
-                    alt="Beautifully styled fish tacos photographed for an Instagram post"
-                    width="1122"
-                    height="1402"
-                    loading="lazy"
-                  />
-                  <p>
-                    <strong>your.restaurant</strong> Crispy fish. Fresh slaw.
-                    Lunch is looking good.
-                  </p>
-                </div>
-              </figure>
-              <div className="pw-example-copy">
-                <h3>Make posting the easy part</h3>
-                <p>
-                  Turn today’s special into your next Instagram post, with
-                  polished images, post and story crops, and captions you can
-                  make your own.
-                </p>
-              </div>
-            </article>
-          </div>
-        </section>
+        <HomepageSections onStart={onStart} signedIn={signedIn} />
         <section
           className="pw-workflow"
           id="how-it-works"
