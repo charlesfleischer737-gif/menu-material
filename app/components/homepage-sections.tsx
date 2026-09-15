@@ -1,7 +1,15 @@
 "use client";
 
 import { useState, type CSSProperties } from "react";
-import { ArrowLeftRight, ArrowRight, Check, Clock3, Link2 } from "lucide-react";
+import {
+  ArrowLeftRight,
+  ArrowRight,
+  Check,
+  Clock3,
+  Link2,
+  Pause,
+  Play,
+} from "lucide-react";
 import { Button } from "@/components/ui/button";
 
 const useCases = [
@@ -88,6 +96,7 @@ export default function HomepageSections({
   const [palette, setPalette] = useState("wine");
   const [enhanced, setEnhanced] = useState(true);
   const [soldOut, setSoldOut] = useState(false);
+  const [galleryPaused, setGalleryPaused] = useState(false);
   const amount = Number(price);
   const displayPrice =
     price !== "" && Number.isFinite(amount) && amount >= 0
@@ -115,29 +124,58 @@ export default function HomepageSections({
             </span>
             <h2 id="use-cases-title">Good food. So many ways to show it.</h2>
           </div>
-          <p>
-            Wherever you serve it. Wherever they discover it.
-            <br className="pw-desktop-break" /> Make every first impression look
-            delicious.
-          </p>
+          <div className="pw-use-case-intro">
+            <p>
+              Wherever you serve it. Wherever they discover it.
+              <br className="pw-desktop-break" /> Make every first impression
+              look delicious.
+            </p>
+            <button
+              type="button"
+              className="pw-gallery-toggle"
+              aria-controls="use-case-gallery"
+              onClick={() => setGalleryPaused(!galleryPaused)}
+            >
+              {galleryPaused ? (
+                <Play size={15} aria-hidden="true" />
+              ) : (
+                <Pause size={15} aria-hidden="true" />
+              )}
+              {galleryPaused ? "Play gallery" : "Pause gallery"}
+            </button>
+          </div>
         </div>
-        <div className="pw-use-case-grid">
-          {useCases.map((item) => (
-            <article className="pw-use-case" key={item.name}>
-              <div className="pw-use-case-photo">
-                <img
-                  src={item.image}
-                  alt={item.alt}
-                  width="960"
-                  height="640"
-                  loading="lazy"
-                  decoding="async"
-                />
+        <div
+          className="pw-use-case-marquee"
+          id="use-case-gallery"
+          data-paused={galleryPaused}
+        >
+          <div className="pw-use-case-track">
+            {[false, true].map((duplicate) => (
+              <div
+                className="pw-use-case-group"
+                key={String(duplicate)}
+                aria-hidden={duplicate || undefined}
+              >
+                {useCases.map((item) => (
+                  <article className="pw-use-case" key={item.name}>
+                    <div className="pw-use-case-photo">
+                      <img
+                        src={item.image}
+                        alt={duplicate ? "" : item.alt}
+                        width="960"
+                        height="640"
+                        loading="lazy"
+                        decoding="async"
+                      />
+                    </div>
+                    <h3>{item.name}</h3>
+                    <p>{item.text}</p>
+                  </article>
+                ))}
               </div>
-              <h3>{item.name}</h3>
-              <p>{item.text}</p>
-            </article>
-          ))}
+            ))}
+          </div>
         </div>
       </section>
 
