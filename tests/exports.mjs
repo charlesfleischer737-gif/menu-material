@@ -133,10 +133,32 @@ const draft = {
   caption: "The house burger\n$14.50\nTonight · 5–9 pm",
   channels: ["feed", "story"],
 };
-for (const template of ["photo", "price", "story"])
+const { postTemplates, applyPostTemplate } =
+  await import("../lib/post-templates.ts");
+for (const template of [
+  "photo",
+  "price",
+  "story",
+  ...postTemplates.map((t) => t.id),
+])
   for (const channel of ["feed", "story"]) {
     const c = canvas();
-    await renderPost(c, { ...draft, template }, restaurant, channel);
+    const design = { ...draft, ...applyPostTemplate(draft, template) };
+    const result = await renderPost(c, design, restaurant, channel);
+    assert(result.renderedText.some((t) => t.includes(design.title)));
+    assert(result.renderedText.some((t) => t.includes("14.50")));
+    assert(result.renderedText.some((t) => t.includes(draft.validity)));
+    for (const box of result.textBoxes) {
+      assert(
+        box.x >= 35 && box.x + box.width <= 1045,
+        `${template}/${channel}: text outside horizontal margin`,
+      );
+      assert(
+        box.y >= (channel === "story" ? 150 : 40) &&
+          box.y + box.height <= (channel === "story" ? 1780 : 1320),
+        `${template}/${channel}: text outside safe area`,
+      );
+    }
     assert.equal(c.width, 1080);
     assert.equal(c.height, channel === "story" ? 1920 : 1350);
     writeFileSync(
@@ -160,6 +182,36 @@ const combined = {
     },
   ],
 };
+for (const template of postTemplates)
+  for (const channel of ["feed", "story"]) {
+    const design = { ...combined, ...applyPostTemplate(combined, template.id) };
+    const c = canvas(),
+      result = await renderPost(c, design, restaurant, channel);
+    assert(
+      result.renderedText.some((t) =>
+        t.includes("2 × Tomato basil pappardelle"),
+      ),
+      `${template.id}: combo quantity missing`,
+    );
+    assert(
+      result.renderedText.some((t) => t.includes("14.50")),
+      `${template.id}: combo price missing`,
+    );
+    for (let i = 0; i < result.textBoxes.length; i++)
+      for (let j = i + 1; j < result.textBoxes.length; j++) {
+        const a = result.textBoxes[i],
+          b = result.textBoxes[j];
+        const overlapX =
+            Math.min(a.x + a.width, b.x + b.width) - Math.max(a.x, b.x),
+          overlapY =
+            Math.min(a.y + a.height, b.y + b.height) - Math.max(a.y, b.y);
+        assert(
+          !(overlapX > 4 && overlapY > 4),
+          `${template.id}/${channel}: text overlaps: ${a.value} / ${b.value}`,
+        );
+      }
+    checks++;
+  }
 const zip = await campaignZip(combined, restaurant),
   files = unzipSync(new Uint8Array(await zip.arrayBuffer()));
 assert.equal(Object.keys(files).length, 5);
@@ -178,5 +230,5 @@ assert.equal(delivery.blob.type, "image/jpeg");
 assert(delivery.width >= 550 && delivery.height >= 440);
 checks++;
 console.log(
-  `PASS: ${checks} exported PDF/image checks, embedded-text prices, US Letter/A4, all three post templates, independent feed/story dimensions, carousel ZIP and clean delivery JPEG. Artifacts: ${root}`,
+  `PASS: ${checks} exported PDF/image checks, embedded-text prices, US Letter/A4, all ten new post templates and legacy draft mappings, independent feed/story dimensions, carousel ZIP and clean delivery JPEG. Artifacts: ${root}`,
 );

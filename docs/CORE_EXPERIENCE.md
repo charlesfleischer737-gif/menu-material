@@ -4,10 +4,12 @@ The existing Plateworthy brand and stack are preserved. The Plated requirements 
 
 ## What changed
 
-- **Photo Studio:** upload/camera/drop zone, original retention and normalized working image, optional name, no-photo illustration path, destination-first framing, six visual look choices with more looks, optional lighting/surface/plate/angle/reference controls, one explicit result, before/after/history, fidelity approval, quick local adjustments saved as separate versions, restaurant look saving, and reuse into menus, posts and clean delivery exports.
+- **Photo Studio:** upload/camera/drop zone, original retention and normalized working image, optional name, no-photo illustration path, destination-first framing, 28 visual presets in seven collections, optional lighting/surface/plate/angle/reference controls, one explicit result, before/after/history, fidelity approval, quick local adjustments saved as separate versions, restaurant look saving, and reuse into menus, posts and clean delivery exports.
 - **Menu Builder:** photo/PDF import or manual/saved dishes, explicit content review, Classic text/Photo grid/Featured dish previews, optional sample-first batches, phone and actual PDF previews, A4/Letter PDFs with embedded text/fonts, effective PPI warnings, stable publication and QR. Newer shared dish details are flagged before an older menu draft can overwrite them.
-- **Post Maker:** approved dish, showcase/special/combo/event, three actual-photo designs, independent feed/story framing and simple carousel, editable factual caption starter, optional AI caption, final review, individual PNGs, campaign ZIP and native share when the device supports it.
+- **Post Maker:** approved dish, showcase/special/combo/event, ten finished Instagram designs with example/customer previews, independent feed/story framing and simple carousel, editable factual caption starter, optional AI caption, final review, individual PNGs, campaign ZIP and native share when the device supports it.
 - **My Dishes:** reusable approved photos, source and version history, editable dish facts, individual/bulk exports, and one-step handoffs. Prior promotion campaigns, staff upload links and other pilot tools remain under More tools.
+
+The expanded photo collections and social designs are documented in [Creative collections](CREATIVE_COLLECTIONS.md).
 
 ## Usability refinement
 
@@ -31,7 +33,7 @@ New migrations `0003` and `0004` only add creation drafts, edit lineage and batc
 
 - `npm run typecheck`: passed.
 - `npm test`: 231 API/timezone checks (80 original, 89 expansion, 62 creation), 18 post-flow assertions, plus assertions for one-result default, duplicate submissions, allowance, cache, private approvals, draft conflicts, photo lineage, no-model quick edits, sample failure retry, approved continuation, immutable batch settings, analysis cache/usage and tenant isolation.
-- `npm run test:exports`: 17 export checks, including all three menu layouts at A4 and US Letter, embedded-text prices, all three post designs, feed/story dimensions, carousel ZIP contents, and clean delivery JPEG.
+- `npm run test:exports`: 57 export checks, including all three menu layouts at A4 and US Letter, embedded-text prices, all ten new post designs and legacy mappings, feed/story dimensions, carousel ZIP contents, and clean delivery JPEG.
 - Browser review in an isolated local restaurant: opening saved drafts, original/quick-edit history, visual look and crop steps, keyboard adjustment, photo-to-menu reuse, menu content review/layouts/optional photos, actual PDF canvas preview, publication, factual special caption, channel crop independence, sharing approval and ZIP creation. Phone-width DOM checks found no horizontal overflow. Desktop screenshots and rendered export artifacts were inspected.
 - Export fixtures and QA restaurant records are isolated from production. New style images are explicitly labeled reference examples, never presented as generated customer results. Asset prompts are in `STUDIO_IMAGE_PROMPTS.json`.
 
@@ -41,7 +43,7 @@ At this release, OpenAI Developers was offered for installation but was still no
 
 Live provider image fidelity, model access, latency and actual billing are not verified by fixture tests. Follow the Sites OpenAI Developers key-setup workflow before live testing. The existing protected job runner also needs its secret and an external persistent scheduler for reliable dispatch and archival while all browsers are closed. Browser polling and persisted response IDs support reopening work; hosting does not automatically provision the external runner.
 
-The initial look references cover a compact food example set; broad food-family-specific reference sets can grow after pilot testing. HEIC conversion and native save/share still require physical phone checks across supported devices. The bundled print font covers its supported scripts; unsupported characters produce a clear print warning rather than silently losing original text. PDFs use safe home-print margins; professional full-bleed printer profiles are not supplied. Social accounts are not connected for automatic publishing. Private Sites access still applies to hosted menu links and QR destinations until the site audience is intentionally changed.
+HEIC conversion and native save/share still require physical phone checks across supported devices. The bundled print font covers its supported scripts; unsupported characters produce a clear print warning rather than silently losing original text. PDFs use safe home-print margins; professional full-bleed printer profiles are not supplied. Social accounts are not connected for automatic publishing. Private Sites access still applies to hosted menu links and QR destinations until the site audience is intentionally changed.
 
 ## Delivery profiles
 

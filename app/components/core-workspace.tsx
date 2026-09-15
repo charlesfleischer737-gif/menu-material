@@ -263,7 +263,7 @@ export default function CoreWorkspace({
               >
                 <div className="cx-launch-visual">
                   <img
-                    src="/studio/daylight-cafe.webp"
+                    src="/studio/styles/delivery-white.webp"
                     alt="Food photography style example"
                   />
                   <span>Style example</span>
@@ -279,7 +279,9 @@ export default function CoreWorkspace({
                     <br />
                     <em>as good as it tastes.</em>
                   </h2>
-                  <p>Give your photo a new look, or make a quick touch-up.</p>
+                  <p>
+                    Explore 28 looks for delivery, fine dining, drinks and more.
+                  </p>
                   <span className="cx-launch-cta">
                     Open Photo Studio <ArrowRight size={19} />
                   </span>
@@ -291,7 +293,7 @@ export default function CoreWorkspace({
               >
                 <div className="cx-launch-small-visual">
                   <img
-                    src="/studio/clean-white.webp"
+                    src="/studio/styles/menu-stone.webp"
                     alt="Food photo style example"
                   />
                   <span>Style example</span>
@@ -318,7 +320,7 @@ export default function CoreWorkspace({
               >
                 <div className="cx-launch-small-visual">
                   <img
-                    src="/studio/bold-color.webp"
+                    src="/studio/styles/bar-velvet.webp"
                     alt="Food photo style example"
                   />
                   <span>Style example</span>
@@ -331,7 +333,9 @@ export default function CoreWorkspace({
                     <br />
                     <em>A great next post.</em>
                   </h2>
-                  <p>Turn an approved photo into a ready-to-share design.</p>
+                  <p>
+                    Ten Instagram designs, made for your food and your story.
+                  </p>
                   <span className="cx-launch-cta">
                     Make a post <ArrowRight size={18} />
                   </span>

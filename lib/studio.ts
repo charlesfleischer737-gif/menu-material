@@ -1,11 +1,13 @@
-export const PIPELINE_VERSION = "studio-2026-09-15-v1";
-export const looks = [
+import { photoStyles, type PhotoStyle } from "./photo-styles";
+export { photoStyles, styleCategories } from "./photo-styles";
+export const PIPELINE_VERSION = "studio-2026-09-15-v2";
+const legacyLooks = [
   {
     id: "keep",
     name: "Keep my setting",
     cue: "Your scene, beautifully lit",
     group: "Recommended",
-    image: "/homepage/burger-enhanced.webp",
+    image: "/studio/styles/delivery-white.webp",
     prompt:
       "Retain the original setting and all surroundings. Improve natural lighting, neutral color and clarity.",
   },
@@ -14,7 +16,7 @@ export const looks = [
     name: "Clean white studio",
     cue: "Soft shadows · fresh & simple",
     group: "Studio",
-    image: "/studio/clean-white.webp",
+    image: "/studio/styles/studio-ivory.webp",
     prompt:
       "Natural white seamless studio setting, soft shadows, neutral softbox lighting.",
   },
@@ -23,7 +25,7 @@ export const looks = [
     name: "Daylight café",
     cue: "Window light · warm oak",
     group: "Restaurant",
-    image: "/studio/daylight-cafe.webp",
+    image: "/studio/styles/menu-wood.webp",
     prompt:
       "Warm oak café table, soft natural window light, gentle restaurant background blur.",
   },
@@ -32,7 +34,7 @@ export const looks = [
     name: "Dark & dramatic",
     cue: "Deep charcoal · rich contrast",
     group: "Studio",
-    image: "/studio/dark-dramatic.webp",
+    image: "/studio/styles/studio-dark.webp",
     prompt:
       "Charcoal surface, restrained dramatic directional studio light, rich natural contrast.",
   },
@@ -41,7 +43,7 @@ export const looks = [
     name: "Rustic table",
     cue: "Warm wood · a cozy glow",
     group: "Restaurant",
-    image: "/studio/rustic-table.webp",
+    image: "/studio/styles/bakery-rustic.webp",
     prompt:
       "Warm dark wood table with cozy soft light, restrained linen in background, no additional food.",
   },
@@ -50,7 +52,7 @@ export const looks = [
     name: "Resort terrace",
     cue: "Pale stone · open-air light",
     group: "Outdoor",
-    image: "/studio/resort-terrace.webp",
+    image: "/studio/styles/fine-counter.webp",
     prompt:
       "Airy terrace, pale limestone table, gentle outdoor light and soft distant coastal atmosphere.",
   },
@@ -59,7 +61,7 @@ export const looks = [
     name: "Bold brand color",
     cue: "A clean setting in your colors",
     group: "Studio",
-    image: "/studio/bold-color.webp",
+    image: "/studio/styles/studio-color.webp",
     prompt:
       "Simple matte seamless studio setting using the restaurant primary brand color, clean natural soft shadows.",
   },
@@ -68,7 +70,7 @@ export const looks = [
     name: "My restaurant look",
     cue: "Your familiar signature style",
     group: "My looks",
-    image: "/studio/daylight-cafe.webp",
+    image: "/studio/styles/menu-wood.webp",
     prompt: "",
   },
   {
@@ -76,12 +78,19 @@ export const looks = [
     name: "Match this photo",
     cue: "Bring a look you love",
     group: "My looks",
-    image: "/studio/rustic-table.webp",
+    image: "/studio/styles/bakery-rustic.webp",
     prompt:
       "Match the lighting, surface and mood of the style reference. The original dish alone supplies the food.",
   },
 ] as const;
-export type LookId = (typeof looks)[number]["id"];
+export const looks: PhotoStyle[] = [
+  ...photoStyles,
+  ...legacyLooks.map((l) => ({
+    ...l,
+    legacy: !["keep", "restaurant", "reference"].includes(l.id),
+  })),
+];
+export type LookId = string;
 export const formats = {
   menu: {
     label: "Menu & website",
@@ -187,7 +196,8 @@ export function photoBrief(destination = "menu") {
           : destination === "print"
             ? "print"
             : "menu",
-    look: "cafe",
+    look: destination === "delivery" ? "delivery-white" : "menu-stone",
+    lookCategory: destination === "delivery" ? "delivery" : "menu",
     surface: "As shown",
     lighting: "As shown",
     plate: "keep",
@@ -205,13 +215,22 @@ export function styleFor(
   restaurant: Record<string, any>,
 ) {
   const base = restaurant.style || {};
-  const look = looks.find((l) => l.id === brief.look) || looks[2];
+  const look =
+    looks.find((l) => l.id === brief.look) ||
+    photoStyles.find((l) => l.id === "menu-stone")!;
+  const prompt =
+    brief.angle === "keep" && look.angle === "overhead"
+      ? look.prompt.replace(
+          "Straight overhead",
+          "Preserve the original angle in this",
+        )
+      : look.prompt;
   return {
     ...base,
     photoStyle:
       look.id === "restaurant"
         ? base.photoStyle
-        : look.prompt +
+        : prompt +
           (look.id === "color"
             ? ` Background color: ${base.primary || "#235b48"}.`
             : ""),

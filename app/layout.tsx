@@ -4,6 +4,7 @@ import "./globals.css";
 import "./workspace.css";
 import "./plateworthy.css";
 import "./creation.css";
+import "./creative-collections.css";
 export async function generateMetadata(): Promise<Metadata> {
   const origin = config("APP_ORIGIN");
   const images = origin

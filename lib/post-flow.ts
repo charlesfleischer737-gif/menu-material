@@ -10,7 +10,7 @@ export function postCaption(draft: Row, restaurant: Row, short = false) {
     .join(" + ");
   return [
     draft.title || names,
-    draft.occasion === "combo" && draft.title !== names ? names : "",
+    draft.title && draft.title !== names ? names : "",
     !short ? draft.description : "",
     draft.showPrice && draft.price !== "" && draft.price != null
       ? money(Math.round(Number(draft.price) * 100), restaurant.currency)

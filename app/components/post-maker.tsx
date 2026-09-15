@@ -25,6 +25,13 @@ import {
 } from "@/lib/post-flow";
 import { emptyAdjustments } from "@/lib/studio";
 import {
+  postTemplates,
+  postTemplateGroups,
+  getPostTemplate,
+  applyPostTemplate,
+  postTemplateExample,
+} from "@/lib/post-templates";
+import {
   CropControls,
   Feedback,
   Field,
@@ -46,7 +53,10 @@ function initial(restaurant: Row) {
     price: "",
     showPrice: false,
     validity: "",
-    template: "photo",
+    template: "editorial",
+    kicker: "YOUR NEXT FAVORITE",
+    cta: "Discover the menu",
+    accent: "#f5eee0",
     color: restaurant.style?.primary || "#235b48",
     textY: 0,
     channels: ["feed", "story"],
@@ -65,11 +75,13 @@ export function PostCanvas({
   restaurant,
   channel = "feed",
   slide = 0,
+  example = false,
 }: {
   draft: Row;
   restaurant: Row;
   channel?: string;
   slide?: number;
+  example?: boolean;
 }) {
   const ref = useRef<HTMLCanvasElement>(null),
     [error, setError] = useState(""),
@@ -86,6 +98,9 @@ export function PostCanvas({
       price: draft.price,
       validity: draft.validity,
       textY: draft.textY,
+      accent: draft.accent,
+      kicker: draft.kicker,
+      cta: draft.cta,
     },
     restaurant: {
       name: restaurant.name,
@@ -138,7 +153,11 @@ export function PostCanvas({
       <canvas
         ref={ref}
         role="img"
-        aria-label={`${channel} design preview using your approved photo`}
+        aria-label={
+          example
+            ? `Example Instagram ${channel} design`
+            : `${channel} design preview using your approved photo`
+        }
       />
       {loading && <span className="cx-canvas-status">Preparing preview…</span>}
       {error && (
@@ -167,6 +186,9 @@ export default function PostMaker({
   const page = postPage(b.step);
   const root = useStepFocus(page, ready);
   const [showPicker, setShowPicker] = useState(false);
+  const [useExamples, setUseExamples] = useState(true);
+  const [templateGroup, setTemplateGroup] = useState("All designs"),
+    [designChannel, setDesignChannel] = useState("story");
   const [channel, setChannel] = useState("feed"),
     [slide, setSlide] = useState(0),
     [saved, setSaved] = useState<Row[]>([]),
@@ -185,6 +207,21 @@ export default function PostMaker({
   function update(p: Row) {
     change(updatePost(b, p, state.restaurant));
   }
+  function selectTemplate(id: string) {
+    update(applyPostTemplate(b, id));
+    if (window.matchMedia("(max-width: 760px)").matches)
+      requestAnimationFrame(() =>
+        document
+          .querySelector(".cx-selected-design")
+          ?.scrollIntoView({
+            block: "start",
+            behavior: window.matchMedia("(prefers-reduced-motion: reduce)")
+              .matches
+              ? "instant"
+              : "smooth",
+          }),
+      );
+  }
   useEffect(() => {
     if (
       !b.channels.includes(channel) ||
@@ -198,6 +235,16 @@ export default function PostMaker({
     } else if (slide >= items.length) setSlide(0);
   }, [b.channels, items.length, channel, slide]);
   function choose(d: Row, photoId?: string) {
+    if (
+      b.occasion === "combo" &&
+      items.length >= 4 &&
+      !items.some((i) => i.dishId === d.id)
+    ) {
+      action.setError(
+        "Choose up to four dishes for one design. Remove a dish to add another.",
+      );
+      return;
+    }
     const item = {
       dishId: d.id,
       photoId: photoId || d.photo.id,
@@ -272,7 +319,7 @@ export default function PostMaker({
     );
   const titles = [
     "A great dish. A little inspiration.",
-    "Make it unmistakably yours.",
+    "Something worth stopping for.",
     "The finishing touches.",
     "Ready to make people hungry.",
   ];
@@ -336,7 +383,7 @@ export default function PostMaker({
         {page === 1
           ? "Choose your photo and add the details. We’ll take care of the design."
           : page === 2
-            ? "Your real food, instantly styled. Try a design to see it come to life."
+            ? "Choose a finished Instagram design, then make the words and colors your own."
             : page === 3
               ? "Frame your photo for each format, then make the caption sound like you."
               : "Your images and caption are ready. Check the details, then save or share."}
@@ -446,8 +493,16 @@ export default function PostMaker({
                         ? { description: "", validity: "" }
                         : {}),
                       showPrice: id === "special" || id === "combo",
-                      template:
-                        id === "special" || id === "combo" ? "price" : "photo",
+                      ...applyPostTemplate(
+                        b,
+                        id === "special"
+                          ? "special"
+                          : id === "combo"
+                            ? "combo"
+                            : id === "event"
+                              ? "event"
+                              : "editorial",
+                      ),
                       items: id === "combo" ? items : items.slice(0, 1),
                       channels:
                         id === "combo"
@@ -599,54 +654,182 @@ export default function PostMaker({
       )}
       {page === 2 && (
         <>
-          <div className="cx-post-templates">
-            {[
-              ["photo", "Photo first", "Let your food shine."],
-              ["price", "Price spotlight", "Make the offer easy to see."],
-              ["story", "Restaurant story", "Room for a little more detail."],
-            ].map(([id, title, desc]) => (
-              <button
-                className="cx-template-card"
-                key={id}
-                aria-pressed={b.template === id}
-                onClick={() => update({ template: id })}
-              >
-                <PostCanvas
-                  draft={{ ...b, template: id }}
-                  restaurant={state.restaurant}
-                />
-                <div>
-                  <b>{title}</b>
-                  <small>{desc}</small>
-                  {b.template === id && <Check size={18} />}
-                </div>
-              </button>
-            ))}
+          <div className="cx-template-toolbar">
+            <div
+              className="cx-template-filters"
+              role="group"
+              aria-label="Instagram design categories"
+            >
+              {postTemplateGroups.map((group) => (
+                <button
+                  key={group}
+                  aria-pressed={templateGroup === group}
+                  onClick={() => setTemplateGroup(group)}
+                >
+                  {group}
+                </button>
+              ))}
+            </div>
+            <div className="cx-preview-switches">
+              <div className="cx-segment" aria-label="Design preview format">
+                {[
+                  ["story", "Story 9:16"],
+                  ["feed", "Post 4:5"],
+                ].map(([id, label]) => (
+                  <button
+                    key={id}
+                    aria-pressed={designChannel === id}
+                    onClick={() => setDesignChannel(id)}
+                  >
+                    {label}
+                  </button>
+                ))}
+              </div>
+              <div className="cx-segment" aria-label="Preview photos">
+                <button
+                  aria-pressed={useExamples}
+                  onClick={() => setUseExamples(true)}
+                >
+                  Examples
+                </button>
+                <button
+                  aria-pressed={!useExamples}
+                  onClick={() => setUseExamples(false)}
+                >
+                  My photo
+                </button>
+              </div>
+            </div>
           </div>
-          <div className="cx-panel cx-design-settings">
-            <Field label="Background color">
-              <input
-                type="color"
-                value={b.color}
-                onChange={(e) => update({ color: e.target.value })}
+          <div className="cx-gallery-mode">
+            <span>
+              {useExamples
+                ? "Example designs · each uses a different dish"
+                : "See every design with your approved photo"}
+            </span>
+          </div>
+          <div className="cx-template-workbench">
+            <div className="cx-instagram-gallery">
+              {postTemplates
+                .filter(
+                  (t) =>
+                    templateGroup === "All designs" ||
+                    t.group === templateGroup,
+                )
+                .map((t) => (
+                  <button
+                    className="cx-instagram-template"
+                    key={t.id}
+                    aria-pressed={getPostTemplate(b.template).id === t.id}
+                    onClick={() => selectTemplate(t.id)}
+                  >
+                    <PostCanvas
+                      draft={
+                        useExamples
+                          ? postTemplateExample(t.id)
+                          : { ...b, ...applyPostTemplate(b, t.id) }
+                      }
+                      restaurant={
+                        useExamples
+                          ? { name: "THE GOOD TABLE", currency: "USD" }
+                          : state.restaurant
+                      }
+                      channel={designChannel}
+                      example={useExamples}
+                    />
+                    <div>
+                      <span>
+                        <b>{t.name}</b>
+                        <small>{t.group}</small>
+                      </span>
+                      {getPostTemplate(b.template).id === t.id && (
+                        <Check size={18} />
+                      )}
+                    </div>
+                  </button>
+                ))}
+            </div>
+            <aside className="cx-selected-design">
+              <div className="cx-section-line">
+                <span className="cx-eyebrow">YOUR DESIGN</span>
+                <button
+                  className="cx-link cx-back-to-designs"
+                  onClick={() =>
+                    document
+                      .querySelector(".cx-template-toolbar")
+                      ?.scrollIntoView({ block: "start", behavior: "instant" })
+                  }
+                >
+                  Back to designs
+                </button>
+                <span className="cx-pill">
+                  {designChannel === "story"
+                    ? "Instagram Story"
+                    : "Instagram post"}
+                </span>
+              </div>
+              <PostCanvas
+                draft={b}
+                restaurant={state.restaurant}
+                channel={designChannel}
               />
-            </Field>
-            <Field label="Headline">
-              <input
-                value={b.title}
-                maxLength={90}
-                onChange={(e) => update({ title: e.target.value })}
-              />
-            </Field>
-            <Field label="Text position">
-              <input
-                type="range"
-                min="-10"
-                max="10"
-                value={b.textY}
-                onChange={(e) => update({ textY: Number(e.target.value) })}
-              />
-            </Field>
+              <h2>{getPostTemplate(b.template).name}</h2>
+              <p>{getPostTemplate(b.template).description}</p>
+              <div className="cx-design-copy">
+                <Field label="Small heading">
+                  <input
+                    value={b.kicker ?? getPostTemplate(b.template).kicker}
+                    maxLength={50}
+                    onChange={(e) => update({ kicker: e.target.value })}
+                  />
+                </Field>
+                <Field label="Headline">
+                  <input
+                    value={b.title}
+                    maxLength={90}
+                    onChange={(e) => update({ title: e.target.value })}
+                  />
+                </Field>
+                <Field label="Call to action">
+                  <input
+                    value={b.cta ?? getPostTemplate(b.template).cta}
+                    maxLength={60}
+                    onChange={(e) => update({ cta: e.target.value })}
+                  />
+                </Field>
+                <div className="cx-design-colors">
+                  <Field label="Primary color">
+                    <input
+                      type="color"
+                      value={b.color}
+                      onChange={(e) => update({ color: e.target.value })}
+                    />
+                  </Field>
+                  <Field label="Accent color">
+                    <input
+                      type="color"
+                      value={b.accent || getPostTemplate(b.template).accent}
+                      onChange={(e) => update({ accent: e.target.value })}
+                    />
+                  </Field>
+                </div>
+                <button
+                  className="cx-link"
+                  onClick={() =>
+                    update({
+                      color: state.restaurant.style?.primary || b.color,
+                      accent: state.restaurant.style?.accent || b.accent,
+                    })
+                  }
+                >
+                  Use my restaurant colors
+                </button>
+              </div>
+              <p className="cx-hint">
+                Every design adapts to posts and stories. Next, adjust the photo
+                and finish your caption.
+              </p>
+            </aside>
           </div>
           <Footer
             back={() => change({ step: 1 })}
@@ -752,8 +935,8 @@ export default function PostMaker({
                 framing
               </h2>
               <p>
-                Fit the whole dish on your brand color, or fill the photo area
-                and adjust its position.
+                Move the photo within your design. Use Fit whole dish to keep
+                the entire serving visible, or Fill frame for a full-bleed look.
               </p>
               <CropControls
                 value={b.layouts[channel] || emptyAdjustments}
@@ -762,8 +945,8 @@ export default function PostMaker({
                 }
               />
               <p className="cx-hint">
-                Each channel remembers its own framing. Fit whole dish keeps
-                food from being cropped away.
+                Each format keeps its own framing. Story text stays clear of the
+                top and bottom areas used by Instagram’s controls.
               </p>
             </aside>
           </div>

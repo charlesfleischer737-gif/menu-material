@@ -934,10 +934,14 @@ export default function MenuBuilder({
                       onChange={(e) => change({ batchLook: e.target.value })}
                     >
                       {looks
-                        .filter((l) => l.id !== "reference")
+                        .filter(
+                          (l) =>
+                            l.id !== "reference" &&
+                            (!l.legacy || l.id === b.batchLook),
+                        )
                         .map((l) => (
                           <option key={l.id} value={l.id}>
-                            {l.name}
+                            {l.group} · {l.name}
                           </option>
                         ))}
                     </select>
