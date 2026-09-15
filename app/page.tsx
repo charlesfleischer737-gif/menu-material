@@ -32,6 +32,10 @@ import {
   DialogDescription,
 } from "@/components/ui/dialog";
 import { Pick, ConfirmDelete } from "./components/controls";
+import MenuTools from "./components/menu-tools";
+import { clearExportImages } from "@/lib/offer-export";
+import PromotionWorkspace from "./components/promotion-workspace";
+import RestaurantStyle from "./components/restaurant-style";
 import Auth from "./components/auth";
 import Landing from "./components/plateworthy-landing";
 import Brand from "./components/brand";
@@ -47,6 +51,8 @@ import {
 const emptyDish = {
   name: "",
   description: "",
+  category: "Dishes",
+  preserve: "",
   portion: "",
   plating: "",
   setting: "Natural daylight",
@@ -64,7 +70,8 @@ export default function Home() {
       captions: [],
     }),
     [loaded, setLoaded] = useState(false),
-    [view, setView] = useState("studio"),
+    [view, setView] = useState("promote"),
+    [promotionSeed, setPromotionSeed] = useState<Row | null>(null),
     [overview, setOverview] = useState(false),
     [auth, setAuth] = useState(false),
     [authMode, setAuthMode] = useState<"login" | "signup">("login"),
@@ -110,6 +117,7 @@ export default function Home() {
       tickBusy.current = true;
       try {
         if (
+          state.batchItems?.some((b: Row) => b.status === "queued") ||
           state.jobs?.some((j: Row) =>
             ["queued", "processing"].includes(j.status),
           )
@@ -123,7 +131,7 @@ export default function Home() {
       }
     }, 5000);
     return () => clearInterval(interval);
-  }, [state.user, state.jobs, refresh]);
+  }, [state.user, state.jobs, state.batchItems, refresh]);
   useEffect(() => {
     if (!file) {
       setFilePreview("");
@@ -157,6 +165,8 @@ export default function Home() {
     setDish({
       name: d.name,
       description: d.description,
+      category: d.category || "Dishes",
+      preserve: d.preserve || "",
       portion: d.portion,
       plating: d.plating,
       setting: d.setting,
@@ -179,7 +189,10 @@ export default function Home() {
     setView("studio");
   }
   function newDish() {
-    setDish({ ...emptyDish });
+    setDish({
+      ...emptyDish,
+      setting: state.restaurant?.style?.photoStyle || emptyDish.setting,
+    });
     setDishId("");
     setSourceId("");
     setParentId("");
@@ -352,6 +365,13 @@ export default function Home() {
             </button>
             <nav aria-label="Workspace">
               <button
+                className={view === "promote" ? "active" : ""}
+                onClick={() => setView("promote")}
+              >
+                <Sparkles size={17} />
+                Promote
+              </button>
+              <button
                 className={view === "studio" ? "active" : ""}
                 onClick={() => setView("studio")}
               >
@@ -366,6 +386,13 @@ export default function Home() {
               >
                 <Images size={17} />
                 Your dishes
+              </button>
+              <button
+                className={view === "tools" ? "active" : ""}
+                onClick={() => setView("tools")}
+              >
+                <ImagePlus size={17} />
+                Menu tools
               </button>
               <button
                 className={view === "menu" ? "active" : ""}
@@ -391,6 +418,7 @@ export default function Home() {
                     onClick={() =>
                       act("Signing out", async () => {
                         await api("auth/logout", {});
+                        clearExportImages();
                         setView("studio");
                         newDish();
                         await refresh();
@@ -412,24 +440,32 @@ export default function Home() {
               <div>
                 <p className="eyebrow">{state.restaurant?.name}</p>
                 <h1>
-                  {view === "studio"
-                    ? dishId
-                      ? dish.name
-                      : "Your next great food photo."
-                    : view === "library"
-                      ? "Your dishes, all together."
-                      : view === "admin"
-                        ? "Your pilot restaurants."
-                        : "A menu that’s up to date."}
+                  {view === "tools"
+                    ? "A complete menu. A simpler week."
+                    : view === "promote"
+                      ? "Your next special, ready to share."
+                      : view === "studio"
+                        ? dishId
+                          ? dish.name
+                          : "Your next great food photo."
+                        : view === "library"
+                          ? "Your dishes, all together."
+                          : view === "admin"
+                            ? "Your pilot restaurants."
+                            : "A menu that’s up to date."}
                 </h1>
                 <p>
-                  {view === "studio"
-                    ? "Upload your dish, choose a look, and create two image options."
-                    : view === "library"
-                      ? "Photos, captions, and details. Pick a dish to keep going."
-                      : view === "admin"
-                        ? "Manage invitations, allowances, and pilot activity."
-                        : "Make your changes here. Publish when you’re ready."}
+                  {view === "tools"
+                    ? "Import dishes, collect photos and put your menu to work."
+                    : view === "promote"
+                      ? "Create, review and share. Publish to your menu when you’re ready."
+                      : view === "studio"
+                        ? "Upload your dish, choose a look, and create two image options."
+                        : view === "library"
+                          ? "Photos, captions, and details. Pick a dish to keep going."
+                          : view === "admin"
+                            ? "Manage invitations, allowances, and pilot activity."
+                            : "Make your changes here. Publish when you’re ready."}
                 </p>
               </div>
               <div className="allowance">
@@ -468,6 +504,30 @@ export default function Home() {
                   Image creation and AI captions are being connected. You can
                   save dishes, write captions and publish your menu now.
                 </p>
+              </div>
+            )}
+            {state.user && (
+              <div hidden={view !== "promote"}>
+                <PromotionWorkspace
+                  state={state}
+                  refresh={refresh}
+                  active={view === "promote"}
+                  seed={promotionSeed}
+                  onSeedUsed={() => setPromotionSeed(null)}
+                />
+              </div>
+            )}
+            {state.user && (
+              <div hidden={view !== "tools"}>
+                <MenuTools
+                  state={state}
+                  refresh={refresh}
+                  selectDish={selectDish}
+                  onSuggestion={(s) => {
+                    setPromotionSeed(s);
+                    setView("promote");
+                  }}
+                />
               </div>
             )}
             {view === "studio" && (
@@ -627,10 +687,32 @@ export default function Home() {
                         ].map((v) => ({ value: v, label: v }))}
                       />
                     </label>
+                    <label className="field">
+                      Details that must stay the same
+                      <textarea
+                        value={dish.preserve}
+                        onChange={(e) => update("preserve", e.target.value)}
+                        placeholder="e.g. Exactly 3 tacos, paper tray, no added garnish"
+                        maxLength={600}
+                        rows={2}
+                      />
+                    </label>
+                    <p className="fine">
+                      Preserve my dish: lighting, color and surroundings.
+                      Compare each result with your original before approving.
+                    </p>
                     <details className="dish-options">
                       <summary>
                         Presentation & menu details <Plus size={16} />
                       </summary>
+                      <label className="field">
+                        Category
+                        <input
+                          value={dish.category}
+                          onChange={(e) => update("category", e.target.value)}
+                          maxLength={100}
+                        />
+                      </label>
                       <div className="two-fields">
                         <label className="field">
                           Portion
@@ -985,7 +1067,7 @@ export default function Home() {
                   <div className="library-grid">
                     {state.dishes.map((d: Row) => {
                       const a = state.assets.find(
-                        (a: Row) => a.dish_id === d.id,
+                        (a: Row) => a.dish_id === d.id && a.approved_at,
                       );
                       return (
                         <button
@@ -1002,6 +1084,12 @@ export default function Home() {
                           )}
                           <div>
                             <h2>{d.name}</h2>
+                            <span>
+                              {d.category || "Dishes"} ·{" "}
+                              {money(d.price, state.restaurant.currency)}
+                              {!d.available ? " · Unavailable" : ""}
+                              {!a ? " · Needs approved photo" : ""}
+                            </span>
                             <p>{d.description}</p>
                             <span>
                               {
@@ -1328,6 +1416,10 @@ function MenuEditor({
         name: state.restaurant.name,
         cuisine: state.restaurant.cuisine,
         currency: state.restaurant.currency,
+        style: state.restaurant.style,
+        timezone: state.restaurant.timezone,
+        orderingUrl: state.restaurant.ordering_url,
+        hours: state.restaurant.hours,
         logoId: state.restaurant.logo_id,
       },
       sections: draft.sections.map((s: Row) => ({
@@ -1696,11 +1788,15 @@ function SettingsPanel({ open, close, state, act, refresh, busy }: any) {
         cuisine: state.restaurant.cuisine,
         brand: state.restaurant.brand,
         currency: state.restaurant.currency,
+        style: state.restaurant.style,
+        timezone: state.restaurant.timezone,
+        orderingUrl: state.restaurant.ordering_url,
+        hours: state.restaurant.hours,
       });
-  }, [state.restaurant]);
+  }, [open]);
   return (
     <Dialog open={open} onOpenChange={(v) => !v && close()}>
-      <DialogContent>
+      <DialogContent className="restaurant-dialog">
         <DialogHeader>
           <DialogTitle>Your restaurant</DialogTitle>
           <DialogDescription>
@@ -1751,6 +1847,9 @@ function SettingsPanel({ open, close, state, act, refresh, busy }: any) {
             }}
           />
         </label>
+        <RestaurantStyle
+          {...{ profile, setProfile, state, act, refresh, busy }}
+        />
         <Button
           disabled={!!busy}
           onClick={() =>

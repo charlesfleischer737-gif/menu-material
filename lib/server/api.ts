@@ -27,6 +27,19 @@ import {
   viewer,
 } from "./core";
 import { enqueue, generateCaption, tick } from "./generation";
+import {
+  advanceBatches,
+  menuTools,
+  publicEvent,
+  staffAccess,
+} from "./menu-tools";
+import {
+  offerRow,
+  promotionRoute,
+  publicMenu,
+  styleSchema,
+  validateStyle,
+} from "./promotions";
 const emailSchema = z
   .string()
   .trim()
@@ -40,6 +53,8 @@ const passwordSchema = z
 const dishSchema = z.object({
   name: z.string().trim().min(1).max(100),
   description: z.string().trim().min(1).max(2000),
+  category: z.string().trim().max(100).default("Dishes"),
+  preserve: z.string().max(600).default(""),
   portion: z.string().max(300).default(""),
   plating: z.string().max(300).default(""),
   setting: z.string().max(300).default("Natural daylight"),
@@ -165,14 +180,23 @@ async function signup(req: Request, b: Row) {
 }
 async function issueInvite(email: string, allowance: number, role = "owner") {
   const raw = token();
-  await run(
-    "INSERT INTO invites (hash,email,role,allowance,expires_at,created_at) VALUES (?,?,?,?,?,?)",
+  const issued = await run(
+    "INSERT INTO invites (hash,email,role,allowance,expires_at,created_at) SELECT ?,?,?,?,?,? WHERE ?!='owner' OR (SELECT count(*) FROM restaurants)+(SELECT count(DISTINCT email) FROM invites WHERE role='owner' AND used_by IS NULL AND expires_at>? AND email NOT IN (SELECT email FROM users))<10 OR EXISTS(SELECT 1 FROM invites WHERE email=? AND role='owner' AND used_by IS NULL AND expires_at>?)",
     digest(raw),
     email,
     role,
     allowance,
     now() + 7 * 86400000,
     now(),
+    role,
+    now(),
+    email,
+    now(),
+  );
+  assert(
+    issued.meta.changes,
+    409,
+    "This free pilot is limited to 10 restaurant workspaces, including pending invitations.",
   );
   return {
     invite: raw,
@@ -241,6 +265,9 @@ async function snapshot(r: Row, draft: Row) {
       cuisine: r.cuisine,
       currency: r.currency,
       brand: r.brand,
+      orderingUrl: r.ordering_url,
+      timezone: r.timezone,
+      hours: JSON.parse(r.hours),
       logoId,
     },
     sections,
@@ -249,6 +276,11 @@ async function snapshot(r: Row, draft: Row) {
 function assetIsPublished(menu: Row, assetId: string) {
   return (
     menu.restaurant?.logoId === assetId ||
+    menu.specials?.some(
+      (p: Row) =>
+        p.items.some((i: Row) => i.photoId === assetId) ||
+        p.restaurant?.logoId === assetId,
+    ) ||
     menu.sections?.some((s: Row) =>
       s.items.some((i: Row) => i.photoId === assetId),
     )
@@ -270,7 +302,7 @@ function imageMime(bytes: Uint8Array) {
     return "image/heic";
   return null;
 }
-async function upload(req: Request, r: Row) {
+async function upload(req: Request, r: Row, forcedKind?: string) {
   assert(
     Number(req.headers.get("content-length") || 0) <= 30 * 1024 * 1024,
     413,
@@ -279,7 +311,13 @@ async function upload(req: Request, r: Row) {
   const f = await req.formData(),
     file = f.get("file"),
     normalized = f.get("normalized"),
-    kind = f.get("kind") === "logo" ? "logo" : "source";
+    kind =
+      forcedKind ||
+      (f.get("kind") === "logo"
+        ? "logo"
+        : f.get("kind") === "reference"
+          ? "reference"
+          : "source");
   assert(
     file instanceof File && file.size > 0 && file.size <= 20 * 1024 * 1024,
     400,
@@ -300,7 +338,10 @@ async function upload(req: Request, r: Row) {
     400,
     "This file is not a supported photo.",
   );
-  const dishId = kind === "source" ? String(f.get("dishId") || "") : null;
+  const dishId =
+    kind === "source" || kind === "staff"
+      ? String(f.get("dishId") || "")
+      : null;
   if (dishId)
     assert(
       await one(
@@ -311,7 +352,11 @@ async function upload(req: Request, r: Row) {
       404,
       "Dish not found.",
     );
-  assert(kind === "logo" || dishId, 400, "Save your dish first.");
+  assert(
+    !["source", "staff"].includes(kind) || dishId,
+    400,
+    "Save your dish first.",
+  );
   await limit("uploads:" + r.id, 100, 3600);
   const aid = id(),
     key = `private/${r.id}/source/${aid}`,
@@ -333,8 +378,13 @@ async function upload(req: Request, r: Row) {
       file.name.slice(0, 150),
       now(),
     );
-    if (kind === "logo")
+    if (kind === "logo") {
       await run("UPDATE restaurants SET logo_id=? WHERE id=?", aid, r.id);
+      await run(
+        "UPDATE promotions SET approved_hash=NULL,approved_at=NULL WHERE restaurant_id=?",
+        r.id,
+      );
+    }
   } catch (e) {
     await bucket().delete([key, workingKey]);
     throw e;
@@ -373,6 +423,8 @@ export async function handle(req: Request) {
         .filter(Boolean);
     const method = req.method;
     if (method !== "GET") sameOrigin(req);
+    const staffResponse = await staffAccess(req, p, upload);
+    if (staffResponse) return staffResponse;
     if (p[0] === "health") return response({ ok: true });
     if (p[0] === "public" && p[1]) {
       const r = await one(
@@ -380,7 +432,10 @@ export async function handle(req: Request) {
         p[1],
       );
       assert(r, 404, "This menu is not currently available.");
-      const menu = JSON.parse(r.published);
+      const menu = (await publicMenu(r))!;
+      const tracked = await publicEvent(req, p, r, menu);
+      if (tracked) return tracked;
+      assert(method === "GET", 405, "Method not allowed.");
       if (p[2] === "assets" && p[3]) {
         assert(assetIsPublished(menu, p[3]), 404, "Image not found.");
         const a = await one(
@@ -392,7 +447,7 @@ export async function handle(req: Request) {
         assert(a, 404, "Image not found.");
         return await downloadAsset(req, a, `public/${r.id}/${a.id}`, true);
       }
-      return response({ menu, publishedAt: r.published_at });
+      return response({ menu, publishedAt: r.published_at, serverNow: now() });
     }
     if (p[0] === "internal" && p[1] === "tick" && method === "POST") {
       assert(
@@ -402,6 +457,7 @@ export async function handle(req: Request) {
         403,
         "Access denied.",
       );
+      await advanceBatches();
       await tick();
       return response({ ok: true });
     }
@@ -518,6 +574,8 @@ export async function handle(req: Request) {
         user: u,
         restaurant: {
           ...r,
+          style: styleSchema.parse(JSON.parse(r.style)),
+          hours: JSON.parse(r.hours),
           menuDraft: JSON.parse(r.menu_draft),
           published: r.published ? JSON.parse(r.published) : null,
         },
@@ -538,6 +596,20 @@ export async function handle(req: Request) {
         ),
         outputs: await all(
           "SELECT id,job_id,slot,status,asset_id,error,attempts FROM outputs WHERE restaurant_id=? ORDER BY created_at DESC LIMIT 200",
+          r.id,
+        ),
+        promotions: (
+          await all(
+            "SELECT * FROM promotions WHERE restaurant_id=? ORDER BY updated_at DESC",
+            r.id,
+          )
+        ).map(offerRow),
+        imports: await all(
+          "SELECT id,name,mime,draft,status,error,created_at FROM menu_imports WHERE restaurant_id=? ORDER BY created_at DESC",
+          r.id,
+        ),
+        batchItems: await all(
+          "SELECT b.*,j.status AS job_status FROM batch_items b LEFT JOIN jobs j ON j.id=b.job_id WHERE b.restaurant_id=? ORDER BY b.created_at DESC LIMIT 100",
           r.id,
         ),
         captions: await all(
@@ -609,6 +681,10 @@ export async function handle(req: Request) {
       throw new AppError(404, "Not found.");
     }
     const { r } = await owner(req);
+    const toolsResponse = await menuTools(req, p, r);
+    if (toolsResponse) return toolsResponse;
+    const promotionResponse = await promotionRoute(req, p, r);
+    if (promotionResponse) return promotionResponse;
     if (p[0] === "restaurant" && method === "POST") {
       const b = z
         .object({
@@ -616,16 +692,73 @@ export async function handle(req: Request) {
           cuisine: z.string().max(100),
           brand: z.string().max(500),
           currency: z.enum(["USD", "GBP", "EUR", "JPY", "CAD", "AUD"]),
+          style: styleSchema.optional(),
+          timezone: z
+            .string()
+            .max(80)
+            .refine((v) => {
+              try {
+                new Intl.DateTimeFormat("en", { timeZone: v });
+                return true;
+              } catch {
+                return false;
+              }
+            }, "Choose a valid timezone.")
+            .optional(),
+          orderingUrl: z
+            .union([
+              z.literal(""),
+              z
+                .string()
+                .url()
+                .max(1500)
+                .refine(
+                  (v) => /^https?:\/\//.test(v),
+                  "Use an http or https ordering link.",
+                ),
+            ])
+            .optional(),
+          hours: z
+            .array(
+              z.object({
+                day: z.number().int().min(0).max(6),
+                open: z.string().regex(/^([01]\d|2[0-3]):[0-5]\d$/),
+                close: z.string().regex(/^([01]\d|2[0-3]):[0-5]\d$/),
+                closed: z.boolean(),
+              }),
+            )
+            .length(7)
+            .optional(),
         })
         .parse(await body(req));
+      if (b.style) await validateStyle(r, b.style);
+      if (b.hours)
+        assert(
+          new Set(b.hours.map((h) => h.day)).size === 7,
+          400,
+          "Set each day once.",
+        );
       await run(
-        "UPDATE restaurants SET name=?,cuisine=?,brand=?,currency=? WHERE id=?",
+        "UPDATE restaurants SET name=?,cuisine=?,brand=?,currency=?,style=?,timezone=?,ordering_url=?,hours=? WHERE id=?",
         b.name,
         b.cuisine,
         b.brand,
         b.currency,
+        b.style ? JSON.stringify(b.style) : r.style,
+        b.timezone ?? r.timezone,
+        b.orderingUrl ?? r.ordering_url,
+        b.hours ? JSON.stringify(b.hours) : r.hours,
         r.id,
       );
+      if (
+        b.name !== r.name ||
+        b.currency !== r.currency ||
+        (b.timezone && b.timezone !== r.timezone)
+      )
+        await run(
+          "UPDATE promotions SET approved_hash=NULL,approved_at=NULL WHERE restaurant_id=?",
+          r.id,
+        );
       return response({ ok: true });
     }
     if (p[0] === "dishes" && method === "POST") {
@@ -642,7 +775,7 @@ export async function handle(req: Request) {
           "Dish not found.",
         );
         await run(
-          "UPDATE dishes SET name=?,description=?,portion=?,plating=?,setting=?,price=?,available=?,confirmed_at=? WHERE id=? AND restaurant_id=?",
+          "UPDATE dishes SET name=?,description=?,portion=?,plating=?,setting=?,price=?,available=?,confirmed_at=?,category=?,preserve=? WHERE id=? AND restaurant_id=?",
           b.name,
           b.description,
           b.portion,
@@ -651,12 +784,14 @@ export async function handle(req: Request) {
           Math.round(b.price * 100),
           b.available ? 1 : 0,
           b.confirmed ? now() : null,
+          b.category,
+          b.preserve,
           did,
           r.id,
         );
       } else
         await run(
-          "INSERT INTO dishes (id,restaurant_id,name,description,portion,plating,setting,price,available,confirmed_at,created_at) VALUES (?,?,?,?,?,?,?,?,?,?,?)",
+          "INSERT INTO dishes (id,restaurant_id,name,description,portion,plating,setting,price,available,confirmed_at,created_at,category,preserve) VALUES (?,?,?,?,?,?,?,?,?,?,?,?,?)",
           did,
           r.id,
           b.name,
@@ -668,6 +803,8 @@ export async function handle(req: Request) {
           b.available ? 1 : 0,
           b.confirmed ? now() : null,
           now(),
+          b.category,
+          b.preserve,
         );
       return response({ id: did });
     }
@@ -746,8 +883,41 @@ export async function handle(req: Request) {
           400,
           "Please confirm this image represents the dish you serve.",
         );
-        await run("UPDATE assets SET approved_at=? WHERE id=?", now(), a.id);
-        await event(r.id, "image_approved", a.id);
+        assert(
+          ["source", "generated", "staff"].includes(a.kind),
+          400,
+          "Only dish photos can be approved.",
+        );
+        await run(
+          "UPDATE assets SET approved_at=?,kind=CASE WHEN kind='staff' THEN 'source' ELSE kind END WHERE id=?",
+          now(),
+          a.id,
+        );
+        const outputJob = await one(
+          "SELECT j.* FROM jobs j JOIN outputs o ON o.job_id=j.id WHERE o.asset_id=? AND j.restaurant_id=?",
+          a.id,
+          r.id,
+        );
+        const hasRevision =
+          outputJob &&
+          (await one(
+            "SELECT id FROM jobs WHERE dish_id=? AND restaurant_id=? AND parent_id IS NOT NULL AND created_at<=?",
+            a.dish_id,
+            r.id,
+            now(),
+          ));
+        if (!a.approved_at)
+          await event(
+            r.id,
+            "image_approved",
+            a.id,
+            outputJob
+              ? {
+                  firstResult: !hasRevision && outputJob.parent_id === null,
+                  jobId: outputJob.id,
+                }
+              : {},
+          );
         return response({ ok: true });
       }
       if (method === "POST" && p[2] === "reject") {
@@ -762,6 +932,7 @@ export async function handle(req: Request) {
     }
     if (p[0] === "jobs" && method === "POST") {
       if (p[1] === "tick") {
+        await advanceBatches(r.id);
         await tick(r.id);
         return response({ ok: true });
       }
@@ -777,7 +948,7 @@ export async function handle(req: Request) {
       );
       assert(d, 404, "Dish not found.");
       if (p[1] === "generate")
-        return response(await generateCaption(r, b.dishId));
+        return response(await generateCaption(r, b.dishId, b.promotionId));
       const cid = id();
       await run(
         "INSERT INTO captions (id,restaurant_id,dish_id,body,created_at) VALUES (?,?,?,?,?)",

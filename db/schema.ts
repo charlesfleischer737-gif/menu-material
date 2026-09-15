@@ -38,6 +38,10 @@ export const restaurants = sqliteTable("restaurants", {
   name: text().notNull(),
   cuisine: text().notNull().default(""),
   brand: text().notNull().default(""),
+  style: text().notNull().default("{}"),
+  timezone: text().notNull().default("America/New_York"),
+  orderingUrl: text("ordering_url").notNull().default(""),
+  hours: text().notNull().default("[]"),
   logoId: text("logo_id"),
   slug: text().notNull().unique(),
   currency: text().notNull().default("USD"),
@@ -57,6 +61,8 @@ export const dishes = sqliteTable(
       .references(() => restaurants.id),
     name: text().notNull(),
     description: text().notNull(),
+    category: text().notNull().default("Dishes"),
+    preserve: text().notNull().default(""),
     portion: text().notNull().default(""),
     plating: text().notNull().default(""),
     setting: text().notNull().default("Natural daylight"),
@@ -167,3 +173,77 @@ export const rateLimits = sqliteTable("rate_limits", {
   count: integer().notNull(),
   expiresAt: integer("expires_at").notNull(),
 });
+export const promotions = sqliteTable(
+  "promotions",
+  {
+    id: text().primaryKey(),
+    restaurantId: text("restaurant_id")
+      .notNull()
+      .references(() => restaurants.id),
+    draft: text().notNull(),
+    revision: integer().notNull().default(1),
+    approvedHash: text("approved_hash"),
+    approvedAt: integer("approved_at"),
+    published: text(),
+    startsAt: integer("starts_at"),
+    endsAt: integer("ends_at"),
+    soldOut: integer("sold_out").notNull().default(0),
+    createdAt: integer("created_at").notNull(),
+    updatedAt: integer("updated_at").notNull(),
+  },
+  (t) => [index("idx_promotions_restaurant").on(t.restaurantId)],
+);
+export const menuImports = sqliteTable(
+  "menu_imports",
+  {
+    id: text().primaryKey(),
+    restaurantId: text("restaurant_id")
+      .notNull()
+      .references(() => restaurants.id),
+    name: text().notNull(),
+    key: text(),
+    mime: text(),
+    draft: text().notNull().default("[]"),
+    status: text().notNull().default("draft"),
+    error: text(),
+    usage: text(),
+    readStartedAt: integer("read_started_at"),
+    createdAt: integer("created_at").notNull(),
+  },
+  (t) => [index("idx_imports_restaurant").on(t.restaurantId)],
+);
+export const staffLinks = sqliteTable(
+  "staff_links",
+  {
+    hash: text().primaryKey(),
+    restaurantId: text("restaurant_id")
+      .notNull()
+      .references(() => restaurants.id),
+    expiresAt: integer("expires_at").notNull(),
+    revokedAt: integer("revoked_at"),
+    createdAt: integer("created_at").notNull(),
+  },
+  (t) => [index("idx_staff_restaurant").on(t.restaurantId)],
+);
+export const batchItems = sqliteTable(
+  "batch_items",
+  {
+    id: text().primaryKey(),
+    restaurantId: text("restaurant_id")
+      .notNull()
+      .references(() => restaurants.id),
+    batchId: text("batch_id").notNull(),
+    dishId: text("dish_id")
+      .notNull()
+      .references(() => dishes.id),
+    sourceId: text("source_id"),
+    jobId: text("job_id"),
+    status: text().notNull().default("queued"),
+    error: text(),
+    createdAt: integer("created_at").notNull(),
+  },
+  (t) => [
+    index("idx_batch_restaurant").on(t.restaurantId),
+    uniqueIndex("idx_batch_dish").on(t.batchId, t.dishId),
+  ],
+);

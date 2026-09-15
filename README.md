@@ -1,6 +1,8 @@
-# Plateworthy food photography MVP
+# Plateworthy restaurant promotion pilot
 
-Plateworthy is a mobile-friendly, invitation-only food photography workspace based on PRD v0.2. It includes persistent restaurant and dish records, private photo uploads, two-option image jobs, revision history, owner approval, image exports, captions, and versioned menu publishing.
+Plateworthy is the existing branding in this codebase (the expansion brief calls the product Plated). It is a free, invitation-only restaurant promotion workspace, capped at 10 restaurant workspaces including outstanding invitations. It includes saved restaurant styles, a dish library, coordinated special and offer packages, private uploads, image versions, approvals, captions, menu imports, batch recovery, staff photo links, weekly suggestions, and engagement measurement.
+
+Start in **Promote** for a special, **Your dishes** for saved food and photo versions, **Menu tools** for imports/batches/staff/weekly activity, and **Your menu** for menu publication and its stable link and QR code. See [the expansion guide](docs/PROMOTION_EXPANSION.md) for behavior, verification and remaining setup.
 
 ## Run locally
 
@@ -75,15 +77,15 @@ npm test
 npm run build
 ```
 
-The integration suite passes 80 API assertions and creates and removes its own temporary database and object store. It checks invitation reuse and email matching, password reset/session revocation, tenant isolation, upload privacy, photo approval, atomic allowance reservations, concurrent idempotency, partial-success refunds, revisions, editable captions, immutable published menus, republishing, unpublishing, deletion from menus, and cross-origin write rejection.
+The integration suites pass 169 API/timezone checks, plus explicit persistence and flow assertions. The original suite contains 80 API assertions and creates and removes its own temporary database and object store. It checks invitation reuse and email matching, password reset/session revocation, tenant isolation, upload privacy, photo approval, atomic allowance reservations, concurrent idempotency, partial-success refunds, revisions, editable captions, immutable published menus, republishing, unpublishing, deletion from menus, and cross-origin write rejection.
 
-Provider HTTP calls are deterministic test fixtures in the test process only. Live API calls, real image quality, HEIC conversion across iPhone variants, phone download behavior, background job latency, and actual provider billing require connected-device pilot testing. Browser-level testing and the WebMCP helper have not been fully verified. See `docs/PILOT_VALIDATION.md` for the launch checks.
+Provider HTTP calls are deterministic test fixtures in the test process only. Live API calls, real image quality, HEIC conversion across iPhone variants, phone download behavior, background job latency, and actual provider billing require connected-device pilot testing. The expansion’s core browser flow and representative phone/desktop/export views are verified in isolated local tests. The older WebMCP helper has not been fully verified. See `docs/PILOT_VALIDATION.md` for the launch checks.
 
 ## Deployment
 
 `npm run build` creates a Cloudflare-compatible Worker and client assets. The retained Sites manifest declares the `DB` and `BUCKET` bindings; Sites provisions them and applies the checked-in Drizzle migrations. The Node SQLite adapter is excluded from the production build. Do not copy `.local-data/`, `.env`, or local test sessions into production.
 
-Configure secrets through the hosting provider, deploy the saved build, bootstrap the admin, and run the background worker against the hosted origin. There is no billing, ordering, POS integration, automatic social publishing, team roles, or native app in this MVP.
+Configure secrets through the hosting provider, deploy the saved build, bootstrap the admin, and run the background worker against the hosted origin. There is no billing, order processing, POS integration, automatic social publishing, inventory management, full staff accounts, or native app. Staff use expiring upload-only links; ordering links point to the restaurant’s existing ordering service.
 
 ## Project map
 

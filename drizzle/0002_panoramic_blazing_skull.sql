@@ -1,0 +1,1 @@
+ALTER TABLE `menu_imports` ADD `read_started_at` integer;

@@ -1,3 +1,4 @@
+import { publicMenu } from "@/lib/server/promotions";
 import { one } from "@/lib/server/core";
 import MenuView from "@/app/components/menu-view";
 export const dynamic = "force-dynamic";
@@ -8,7 +9,7 @@ export async function generateMetadata({
 }) {
   const { slug } = await params;
   const r = await one(
-    "SELECT published FROM restaurants WHERE slug=? AND published IS NOT NULL",
+    "SELECT * FROM restaurants WHERE slug=? AND published IS NOT NULL",
     slug,
   );
   const name = r ? JSON.parse(r.published).restaurant.name : "Menu unavailable";
@@ -35,7 +36,7 @@ export default async function PublicMenu({
   const { slug } = await params;
   try {
     const r = await one(
-      "SELECT published FROM restaurants WHERE slug=? AND published IS NOT NULL",
+      "SELECT * FROM restaurants WHERE slug=? AND published IS NOT NULL",
       slug,
     );
     if (!r)
@@ -45,7 +46,8 @@ export default async function PublicMenu({
           <p>Please check with the restaurant for their latest menu.</p>
         </main>
       );
-    return <MenuView menu={JSON.parse(r.published)} slug={slug} />;
+    const menu = (await publicMenu(r))!;
+    return <MenuView menu={menu} slug={slug} serverNow={menu.serverNow} />;
   } catch {
     return (
       <main className="unavailable">
