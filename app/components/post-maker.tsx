@@ -17,6 +17,12 @@ import {
 } from "lucide-react";
 import { api, downloadBlob, money, type Row } from "@/lib/client";
 import { campaignZip, canvasBlob, renderPost } from "@/lib/creation-export";
+import {
+  postPage,
+  postCaption,
+  updatePost,
+  postDetailError,
+} from "@/lib/post-flow";
 import { emptyAdjustments } from "@/lib/studio";
 import {
   CropControls,
@@ -50,6 +56,7 @@ function initial(restaurant: Row) {
       carousel: { ...emptyAdjustments },
     },
     caption: "",
+    captionMode: "",
     reviewed: false,
   };
 }
@@ -67,12 +74,44 @@ export function PostCanvas({
   const ref = useRef<HTMLCanvasElement>(null),
     [error, setError] = useState(""),
     [loading, setLoading] = useState(true);
+  const renderKey = JSON.stringify({
+    draft: {
+      items: draft.items,
+      color: draft.color,
+      template: draft.template,
+      layouts: { [channel]: draft.layouts?.[channel] },
+      title: draft.title,
+      description: draft.description,
+      showPrice: draft.showPrice,
+      price: draft.price,
+      validity: draft.validity,
+      textY: draft.textY,
+    },
+    restaurant: {
+      name: restaurant.name,
+      currency: restaurant.currency,
+      logo_id: restaurant.logo_id,
+      style: {
+        primary: restaurant.style?.primary,
+        accent: restaurant.style?.accent,
+      },
+    },
+    channel,
+    slide,
+  });
   useEffect(() => {
     let live = true;
     setError("");
     setLoading(true);
     const temp = document.createElement("canvas");
-    renderPost(temp, draft, restaurant, channel, slide)
+    const preview = JSON.parse(renderKey);
+    renderPost(
+      temp,
+      preview.draft,
+      preview.restaurant,
+      preview.channel,
+      preview.slide,
+    )
       .then(() => {
         if (live && ref.current) {
           ref.current.width = temp.width;
@@ -90,7 +129,7 @@ export function PostCanvas({
     return () => {
       live = false;
     };
-  }, [draft, restaurant, channel, slide]);
+  }, [renderKey]);
   return (
     <div
       className="cx-post-canvas"
@@ -125,7 +164,9 @@ export default function PostMaker({
     { draft: b, change, save, start, ready, status } = store,
     action = useAction(),
     { act, busy, setNotice } = action;
-  const root = useStepFocus(b.step, ready);
+  const page = postPage(b.step);
+  const root = useStepFocus(page, ready);
+  const [showPicker, setShowPicker] = useState(false);
   const [channel, setChannel] = useState("feed"),
     [slide, setSlide] = useState(0),
     [saved, setSaved] = useState<Row[]>([]),
@@ -142,8 +183,20 @@ export default function PostMaker({
       .filter((d: Row) => d.photo),
     items: Row[] = b.items || [];
   function update(p: Row) {
-    change({ ...p, reviewed: false });
+    change(updatePost(b, p, state.restaurant));
   }
+  useEffect(() => {
+    if (
+      !b.channels.includes(channel) ||
+      (channel === "carousel" && items.length < 2)
+    ) {
+      setChannel(
+        b.channels.find((c: string) => c !== "carousel" || items.length > 1) ||
+          "feed",
+      );
+      setSlide(0);
+    } else if (slide >= items.length) setSlide(0);
+  }, [b.channels, items.length, channel, slide]);
   function choose(d: Row, photoId?: string) {
     const item = {
       dishId: d.id,
@@ -156,8 +209,9 @@ export default function PostMaker({
         b.occasion === "combo"
           ? [...items.filter((i) => i.dishId !== d.id), item]
           : [item],
-      title: items.length ? b.title : d.name,
+      title: !b.title || b.title === items[0]?.name ? d.name : b.title,
     });
+    setShowPicker(false);
   }
   useEffect(() => {
     setCanShare(typeof navigator.share === "function");
@@ -166,6 +220,12 @@ export default function PostMaker({
     if (!ready || !seed || seedHandled.current === seed.token) return;
     seedHandled.current = seed.token;
     void act("Opening your post", async () => {
+      if (seed.draftId) {
+        await store.resume(seed.draftId);
+        setShowPicker(false);
+        onSeedUsed();
+        return;
+      }
       const d = state.dishes.find((d: Row) => d.id === seed.dishId),
         a = state.assets.find(
           (a: Row) => a.id === seed.photoId && a.approved_at,
@@ -175,28 +235,13 @@ export default function PostMaker({
           ...initial(state.restaurant),
           items: [{ dishId: d.id, photoId: a.id, name: d.name, quantity: 1 }],
           title: d.name,
-          step: 2,
+          step: 1,
         });
       onSeedUsed();
     });
   }, [ready, seed]);
   function captionStarter(short = false) {
-    const names = items
-      .map((i) =>
-        b.occasion === "combo" ? `${i.quantity} × ${i.name}` : i.name,
-      )
-      .join(" + ");
-    return [
-      b.title || names,
-      !short ? b.description : "",
-      b.showPrice && b.price !== ""
-        ? money(Math.round(Number(b.price) * 100), state.restaurant.currency)
-        : "",
-      b.validity,
-      state.restaurant.name,
-    ]
-      .filter(Boolean)
-      .join("\n");
+    return postCaption(b, state.restaurant, short);
   }
   async function exportOne(format: string, index = 0) {
     const c = document.createElement("canvas");
@@ -209,27 +254,14 @@ export default function PostMaker({
     return { blob, filename };
   }
   async function continueStep() {
-    if (b.step === 2) {
-      if (
-        items.some(
-          (i) =>
-            !Number.isInteger(i.quantity) || i.quantity < 1 || i.quantity > 100,
-        )
-      )
-        throw Error("Choose a whole quantity from 1 to 100 for each dish.");
-      if (!b.title.trim()) throw Error("Add a headline for this post.");
-      if (
-        b.showPrice &&
-        (b.price === "" ||
-          !Number.isFinite(Number(b.price)) ||
-          Number(b.price) < 0)
-      )
-        throw Error("Enter the price, or turn off Show price.");
-      if (b.occasion === "event" && !b.validity.trim())
-        throw Error("Add the event date and time.");
-    }
-    if (b.step === 4 && !b.caption) change({ caption: captionStarter() });
-    change({ step: b.step + 1 });
+    const error = postDetailError(b, state.assets);
+    if (error) throw Error(error);
+    if (page === 3 && !b.channels.length)
+      throw Error("Choose at least one format for your post.");
+    change({
+      step: page === 1 ? 3 : page === 2 ? 4 : 6,
+      ...(!b.caption ? { caption: captionStarter(), captionMode: "auto" } : {}),
+    });
     await save();
   }
   if (!ready)
@@ -239,11 +271,9 @@ export default function PostMaker({
       </p>
     );
   const titles = [
-    "What’s looking good today?",
-    "Give your post a purpose.",
+    "A great dish. A little inspiration.",
     "Make it unmistakably yours.",
-    "A good fit for every feed.",
-    "Find the words to match.",
+    "The finishing touches.",
     "Ready to make people hungry.",
   ];
   return (
@@ -282,7 +312,7 @@ export default function PostMaker({
               key={d.id}
               onClick={() =>
                 act("Opening your saved post", async () => {
-                  await start({ ...initial(state.restaurant), ...d.draft }, d);
+                  await store.resume(d.id);
                   setShowSaved(false);
                 })
               }
@@ -294,71 +324,88 @@ export default function PostMaker({
       )}
       <Steps
         labels={[
-          "Choose dish",
-          "Occasion",
+          "Dish & details",
           "Design",
-          "Channels",
-          "Caption",
-          "Share",
+          "Formats & caption",
+          "Save & share",
         ]}
-        step={b.step}
-        onBack={(n) => change({ step: n })}
+        step={page}
+        onBack={(n) => change({ step: [1, 3, 4, 6][n - 1] })}
       />
-      <Heading eyebrow="POST MAKER" title={titles[b.step - 1]}>
-        {b.step === 1
-          ? "Start with an approved photo from My Dishes, or improve a new one."
-          : b.step === 2
-            ? "A beautiful dish needs no special offer. Add just the details your guests need."
-            : b.step === 3
-              ? "Real food, your colors, editable words. Design changes are instant."
-              : b.step === 4
-                ? "Each channel gets its own layout and crop. Keep your dish fully in view."
-                : b.step === 5
-                  ? "Start with your confirmed details. Make the caption sound like you."
-                  : "Save your images, copy your caption, and share through your own social accounts."}
+      <Heading eyebrow="POST MAKER" title={titles[page - 1]}>
+        {page === 1
+          ? "Choose your photo and add the details. We’ll take care of the design."
+          : page === 2
+            ? "Your real food, instantly styled. Try a design to see it come to life."
+            : page === 3
+              ? "Frame your photo for each format, then make the caption sound like you."
+              : "Your images and caption are ready. Check the details, then save or share."}
       </Heading>
       <Feedback {...action} />
-      {b.step === 1 && (
+      {page === 1 && (
         <>
-          <div className="cx-dish-grid">
-            {approved.map((d: Row) => (
+          <div className="cx-section-line cx-post-picker-title">
+            <h2>{items.length ? "Your selected photo" : "Choose a dish"}</h2>
+            {items.length > 0 && (
               <button
-                key={d.id}
-                className="cx-dish-card"
-                aria-pressed={items.some((i) => i.dishId === d.id)}
-                onClick={() => choose(d)}
+                className="cx-link"
+                onClick={() => setShowPicker((v) => !v)}
               >
-                <img src={`/api/assets/${d.photo.id}`} alt={d.name} />
-                <div>
-                  <b>{d.name}</b>
-                  <small>
-                    <Check size={13} />
-                    Approved photo
-                  </small>
-                </div>
-                {items.some((i) => i.dishId === d.id) && (
-                  <i>
-                    <Check size={16} />
-                  </i>
-                )}
+                {showPicker ? "Done choosing" : "Change photo"}
               </button>
-            ))}
-            <button className="cx-add-dish" onClick={onPhoto}>
-              <ImagePlus size={30} />
-              <b>Start with a new photo</b>
-              <span>We’ll guide you through Photo Studio.</span>
-              <ArrowRight size={18} />
-            </button>
+            )}
           </div>
-          <Footer
-            label="Choose the occasion"
-            next={() => act("Saving your dish", continueStep)}
-            disabled={!items.length}
-            busy={!!busy}
-          />
+          {items.length > 0 && !showPicker && (
+            <div className="cx-selected-photos">
+              {items.map((i) => (
+                <div key={i.dishId}>
+                  <img src={`/api/assets/${i.photoId}`} alt={i.name} />
+                  <span>
+                    <b>{i.name}</b>
+                    <small>
+                      <Check size={13} />
+                      Approved photo
+                    </small>
+                  </span>
+                </div>
+              ))}
+            </div>
+          )}
+          {(!items.length || showPicker) && (
+            <div className="cx-dish-grid cx-post-picker">
+              {approved.map((d: Row) => (
+                <button
+                  key={d.id}
+                  className="cx-dish-card"
+                  aria-pressed={items.some((i) => i.dishId === d.id)}
+                  onClick={() => choose(d)}
+                >
+                  <img src={`/api/assets/${d.photo.id}`} alt={d.name} />
+                  <div>
+                    <b>{d.name}</b>
+                    <small>
+                      <Check size={13} />
+                      Approved photo
+                    </small>
+                  </div>
+                  {items.some((i) => i.dishId === d.id) && (
+                    <i>
+                      <Check size={16} />
+                    </i>
+                  )}
+                </button>
+              ))}
+              <button className="cx-add-dish" onClick={onPhoto}>
+                <ImagePlus size={30} />
+                <b>Start with a new photo</b>
+                <span>We’ll guide you through Photo Studio.</span>
+                <ArrowRight size={18} />
+              </button>
+            </div>
+          )}
         </>
       )}
-      {b.step === 2 && (
+      {page === 1 && items.length > 0 && (
         <>
           <div className="cx-occasion-grid">
             {[
@@ -395,6 +442,9 @@ export default function PostMaker({
                   onClick={() =>
                     update({
                       occasion: id,
+                      ...(id === "showcase"
+                        ? { description: "", validity: "" }
+                        : {}),
                       showPrice: id === "special" || id === "combo",
                       template:
                         id === "special" || id === "combo" ? "price" : "photo",
@@ -540,15 +590,14 @@ export default function PostMaker({
             </div>
           </div>
           <Footer
-            back={() => change({ step: 1 })}
-            label="Pick a design"
+            label="Choose a design"
             next={() => act("Saving your post details", continueStep)}
             disabled={!items.length || !b.title.trim()}
             busy={!!busy}
           />
         </>
       )}
-      {b.step === 3 && (
+      {page === 2 && (
         <>
           <div className="cx-post-templates">
             {[
@@ -600,15 +649,15 @@ export default function PostMaker({
             </Field>
           </div>
           <Footer
-            back={() => change({ step: 2 })}
-            label="Choose channels"
+            back={() => change({ step: 1 })}
+            label="Finish your post"
             next={() => act("Saving your design", continueStep)}
             busy={!!busy}
             note="Your original photo stays unchanged"
           />
         </>
       )}
-      {b.step === 4 && (
+      {page === 3 && (
         <>
           <div className="cx-channel-options">
             {[
@@ -718,84 +767,77 @@ export default function PostMaker({
               </p>
             </aside>
           </div>
+          <div className="cx-panel cx-caption-editor">
+            <span className="cx-pill">A starting point from your details</span>
+            <h2>The words to match.</h2>
+            {b.captionNeedsReview && (
+              <p className="cx-hint" role="status">
+                Your details changed. Check prices and dates in your caption, or
+                use a fresh starter.
+              </p>
+            )}
+            <Field label="Your caption">
+              <textarea
+                className="cx-caption"
+                value={b.caption}
+                maxLength={2200}
+                onChange={(e) => update({ caption: e.target.value })}
+              />
+            </Field>
+            <span className="cx-counter">
+              {b.caption.length} / 2,200 characters
+            </span>
+            <div className="cx-button-row">
+              <button
+                className="cx-link"
+                onClick={() =>
+                  update({ caption: captionStarter(), captionMode: "auto" })
+                }
+              >
+                Use current details
+              </button>
+              <button
+                className="cx-btn cx-secondary"
+                onClick={() => update({ caption: captionStarter(true) })}
+              >
+                Use a shorter version
+              </button>
+              <button
+                className="cx-link"
+                disabled={!!busy || !state.aiConnected}
+                onClick={() =>
+                  act("Writing from your confirmed details", async () => {
+                    const result = await api("post-caption", {
+                      dishIds: items.map((i) => i.dishId),
+                      title: b.title,
+                      description: b.description,
+                      price: b.showPrice ? b.price : null,
+                      validity: b.validity,
+                      occasion: b.occasion,
+                    });
+                    update({ caption: result.body });
+                  })
+                }
+              >
+                <Sparkles size={16} />
+                Try an AI caption
+              </button>
+            </div>
+            <p className="cx-hint">
+              Only confirmed facts belong in your post. Check prices, dates and
+              any claims before sharing.
+            </p>
+          </div>
           <Footer
             back={() => change({ step: 3 })}
-            label="Finish the caption"
+            label="Review & share"
             next={() => act("Saving your channels", continueStep)}
             disabled={!b.channels.length}
             busy={!!busy}
           />
         </>
       )}
-      {b.step === 5 && (
-        <>
-          <div className="cx-studio-grid">
-            <div className="cx-post-side">
-              <PostCanvas
-                draft={b}
-                restaurant={state.restaurant}
-                channel={b.channels[0]}
-              />
-            </div>
-            <div className="cx-panel">
-              <span className="cx-pill">
-                A starting point from your details
-              </span>
-              <h2>Say it your way.</h2>
-              <Field label="Your caption">
-                <textarea
-                  className="cx-caption"
-                  value={b.caption}
-                  maxLength={2200}
-                  onChange={(e) => update({ caption: e.target.value })}
-                />
-              </Field>
-              <span className="cx-counter">
-                {b.caption.length} / 2,200 characters
-              </span>
-              <div className="cx-button-row">
-                <button
-                  className="cx-btn cx-secondary"
-                  onClick={() => update({ caption: captionStarter(true) })}
-                >
-                  Use a shorter version
-                </button>
-                <button
-                  className="cx-link"
-                  disabled={!!busy || !state.aiConnected}
-                  onClick={() =>
-                    act("Writing from your confirmed details", async () => {
-                      const result = await api("post-caption", {
-                        dishIds: items.map((i) => i.dishId),
-                        title: b.title,
-                        description: b.description,
-                        price: b.showPrice ? b.price : null,
-                        validity: b.validity,
-                        occasion: b.occasion,
-                      });
-                      update({ caption: result.body });
-                    })
-                  }
-                >
-                  <Sparkles size={16} />
-                  Try an AI caption
-                </button>
-              </div>
-              <p className="cx-hint">
-                Only confirmed facts belong in your post. Check prices, dates
-                and any claims before sharing.
-              </p>
-            </div>
-          </div>
-          <Footer
-            back={() => change({ step: 4 })}
-            label="Review & share"
-            next={() => act("Saving your caption", continueStep)}
-            busy={!!busy}
-          />
-        </>
-      )}
-      {b.step === 6 && (
+      {page === 4 && (
         <>
           <div className="cx-share-layout">
             <div>
@@ -820,7 +862,7 @@ export default function PostMaker({
               <div className="cx-caption-preview">
                 <h3>Your caption</h3>
                 <p>{b.caption}</p>
-                <button className="cx-link" onClick={() => change({ step: 5 })}>
+                <button className="cx-link" onClick={() => change({ step: 4 })}>
                   Edit caption
                 </button>
               </div>
@@ -832,7 +874,12 @@ export default function PostMaker({
                 <input
                   type="checkbox"
                   checked={b.reviewed}
-                  onChange={(e) => change({ reviewed: e.target.checked })}
+                  onChange={(e) =>
+                    change({
+                      reviewed: e.target.checked,
+                      captionNeedsReview: false,
+                    })
+                  }
                 />
                 I’ve checked the images, text, prices and dates.
               </label>
@@ -940,7 +987,7 @@ export default function PostMaker({
             </aside>
           </div>
           <Footer
-            back={() => change({ step: 5 })}
+            back={() => change({ step: 4 })}
             label="Save this post"
             next={() =>
               act("Saving your post", async () => {

@@ -94,6 +94,7 @@ export function useCreationDraft(kind: string, initial: Row) {
         });
         meta.current.revision = data.revision;
         saved.current = content;
+        window.dispatchEvent(new Event("plateworthy:draft-saved"));
       }
       setStatus("All changes saved");
     };
@@ -141,7 +142,23 @@ export function useCreationDraft(kind: string, initial: Row) {
     setStatus("Saving…");
     await save();
   }
-  return { draft, change, save, start, ready, status, id: meta.current.id };
+  async function resume(id: string) {
+    await save();
+    const data = await api("creation-drafts");
+    const row = data.drafts.find((d: Row) => d.id === id && d.kind === kind);
+    if (!row) throw Error("That saved work is no longer available.");
+    await start({ ...initialRef.current, ...row.draft }, row);
+  }
+  return {
+    draft,
+    change,
+    save,
+    start,
+    resume,
+    ready,
+    status,
+    id: meta.current.id,
+  };
 }
 export function Steps({
   labels,
@@ -153,23 +170,36 @@ export function Steps({
   onBack?: (n: number) => void;
 }) {
   return (
-    <ol className="cx-steps" aria-label="Your progress">
-      {labels.map((label, i) => (
-        <li
-          key={label}
-          className={step === i + 1 ? "current" : step > i + 1 ? "done" : ""}
-        >
-          <button
-            disabled={!onBack || i + 1 >= step}
-            onClick={() => onBack?.(i + 1)}
-            aria-current={step === i + 1 ? "step" : undefined}
+    <div className="cx-progress">
+      <div className="cx-progress-compact">
+        <span>
+          Step {Math.min(step, labels.length)} of {labels.length}
+        </span>
+        <b>{labels[Math.min(step, labels.length) - 1]}</b>
+        <progress
+          value={Math.min(step, labels.length)}
+          max={labels.length}
+          aria-label="Your progress"
+        />
+      </div>
+      <ol className="cx-steps" aria-label="Your progress">
+        {labels.map((label, i) => (
+          <li
+            key={label}
+            className={step === i + 1 ? "current" : step > i + 1 ? "done" : ""}
           >
-            <span>{step > i + 1 ? <Check size={15} /> : i + 1}</span>
-            {label}
-          </button>
-        </li>
-      ))}
-    </ol>
+            <button
+              disabled={!onBack || i + 1 >= step}
+              onClick={() => onBack?.(i + 1)}
+              aria-current={step === i + 1 ? "step" : undefined}
+            >
+              <span>{step > i + 1 ? <Check size={15} /> : i + 1}</span>
+              {label}
+            </button>
+          </li>
+        ))}
+      </ol>
+    </div>
   );
 }
 export function Heading({

@@ -9,6 +9,14 @@ The existing Plateworthy brand and stack are preserved. The Plated requirements 
 - **Post Maker:** approved dish, showcase/special/combo/event, three actual-photo designs, independent feed/story framing and simple carousel, editable factual caption starter, optional AI caption, final review, individual PNGs, campaign ZIP and native share when the device supports it.
 - **My Dishes:** reusable approved photos, source and version history, editable dish facts, individual/bulk exports, and one-step handoffs. Prior promotion campaigns, staff upload links and other pilot tools remain under More tools.
 
+## Usability refinement
+
+The overview now presents three visual starting points and direct links to the latest useful saved work. Tool navigation survives refresh and browser history. Resuming a specific draft flushes pending edits before loading its current revision.
+
+Post Maker uses four visible stages: **Dish & details → Design → Formats & caption → Save & share**. Existing drafts retain their place. Automatic captions follow confirmed price, date and dish changes; custom wording is preserved and marked for review when facts change. Combo quantities are included, and removing the second dish removes the unavailable carousel format. Caption typing and background state refreshes no longer repaint unchanged image previews.
+
+Photo Studio offers quick edits directly after upload and shows all five stages through review and reuse. Phone layouts have larger inputs and tap targets, a compact progress bar, and a fixed bottom action row.
+
 ## Persistence and generation
 
 Creation drafts are stored per restaurant with revision checks. Originals and successful outputs remain private and immutable. Quick edits create new asset records and preserve original identity through an asset lineage table. Browsing looks, adjusting crops, editing layouts/text and exporting do not invoke the image model.
@@ -22,7 +30,7 @@ New migrations `0003` and `0004` only add creation drafts, edit lineage and batc
 ## Validation
 
 - `npm run typecheck`: passed.
-- `npm test`: 231 API/timezone checks (80 original, 89 expansion, 62 creation), plus assertions for one-result default, duplicate submissions, allowance, cache, private approvals, draft conflicts, photo lineage, no-model quick edits, sample failure retry, approved continuation, immutable batch settings, analysis cache/usage and tenant isolation.
+- `npm test`: 231 API/timezone checks (80 original, 89 expansion, 62 creation), 18 post-flow assertions, plus assertions for one-result default, duplicate submissions, allowance, cache, private approvals, draft conflicts, photo lineage, no-model quick edits, sample failure retry, approved continuation, immutable batch settings, analysis cache/usage and tenant isolation.
 - `npm run test:exports`: 17 export checks, including all three menu layouts at A4 and US Letter, embedded-text prices, all three post designs, feed/story dimensions, carousel ZIP contents, and clean delivery JPEG.
 - Browser review in an isolated local restaurant: opening saved drafts, original/quick-edit history, visual look and crop steps, keyboard adjustment, photo-to-menu reuse, menu content review/layouts/optional photos, actual PDF canvas preview, publication, factual special caption, channel crop independence, sharing approval and ZIP creation. Phone-width DOM checks found no horizontal overflow. Desktop screenshots and rendered export artifacts were inspected.
 - Export fixtures and QA restaurant records are isolated from production. New style images are explicitly labeled reference examples, never presented as generated customer results. Asset prompts are in `STUDIO_IMAGE_PROMPTS.json`.

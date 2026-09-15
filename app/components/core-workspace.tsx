@@ -16,6 +16,7 @@ import {
   ShieldCheck,
   UtensilsCrossed,
   Sparkles,
+  Clock3,
 } from "lucide-react";
 import { api, downloadBlob, money, type Row } from "@/lib/client";
 import { photoExport } from "@/lib/creation-export";
@@ -47,8 +48,53 @@ export default function CoreWorkspace({
     [menuSeed, setMenuSeed] = useState<Row | null>(null),
     [postSeed, setPostSeed] = useState<Row | null>(null),
     [legacySeed, setLegacySeed] = useState<Row | null>(null),
-    [visited, setVisited] = useState<string[]>(["home"]);
+    [visited, setVisited] = useState<string[]>(["home"]),
+    [drafts, setDrafts] = useState<Row[]>([]);
+  const validViews = [
+    "home",
+    "studio",
+    "menu",
+    "post",
+    "library",
+    "tools",
+    "admin",
+  ];
+  useEffect(() => {
+    const read = () => {
+      const next = location.hash.slice(1);
+      if (validViews.includes(next)) {
+        setView(next);
+        setVisited((v) => (v.includes(next) ? v : [...v, next]));
+      } else {
+        setView("home");
+      }
+    };
+    read();
+    window.addEventListener("popstate", read);
+    window.addEventListener("hashchange", read);
+    return () => {
+      window.removeEventListener("popstate", read);
+      window.removeEventListener("hashchange", read);
+    };
+  }, []);
+  useEffect(() => {
+    if (view !== "home") return;
+    let live = true;
+    const refreshDrafts = () =>
+      void api("creation-drafts")
+        .then((data) => {
+          if (live) setDrafts(data.drafts);
+        })
+        .catch(() => {});
+    refreshDrafts();
+    window.addEventListener("plateworthy:draft-saved", refreshDrafts);
+    return () => {
+      live = false;
+      window.removeEventListener("plateworthy:draft-saved", refreshDrafts);
+    };
+  }, [view, state.restaurant.id]);
   function navigate(next: string) {
+    if (location.hash !== "#" + next) history.pushState(null, "", "#" + next);
     setView(next);
     setVisited((v) => (v.includes(next) ? v : [...v, next]));
   }
@@ -87,6 +133,24 @@ export default function CoreWorkspace({
     active = state.jobs.filter((j: Row) =>
       ["queued", "processing"].includes(j.status),
     );
+  const resumeDrafts = ["studio", "menu", "post"]
+    .map((kind) => drafts.find((d) => d.kind === kind))
+    .filter((row): row is Row => {
+      if (!row) return false;
+      const d = row.draft;
+      return !!(row.kind === "studio"
+        ? (d.sourceId || d.description) && d.step < 5
+        : row.kind === "menu"
+          ? d.rows?.length
+          : d.items?.length && (!d.reviewed || d.step < 6));
+    });
+  function resume(row: Row) {
+    const seed = { token: crypto.randomUUID(), draftId: row.id };
+    if (row.kind === "studio") setPhotoSeed(seed);
+    else if (row.kind === "menu") setMenuSeed(seed);
+    else setPostSeed(seed);
+    navigate(row.kind);
+  }
   const nav = [
     ["home", "Overview", Home],
     ["studio", "Photo Studio", Camera],
@@ -179,75 +243,153 @@ export default function CoreWorkspace({
         </header>
         <main id="creation-main" className="cx-main">
           <div hidden={view !== "home"} aria-hidden={view !== "home"}>
-            <div className="cx-welcome">
+            <div className="cx-overview-intro">
               <div>
-                <p className="cx-eyebrow">
-                  A LITTLE STUDIO. A LOT OF POSSIBILITY.
-                </p>
+                <p className="cx-eyebrow">YOUR CREATIVE KITCHEN</p>
                 <h1 tabIndex={-1}>
-                  Good food deserves
-                  <br />
-                  <em>a great first impression.</em>
+                  What are we <em>creating today?</em>
                 </h1>
-                <p>
-                  Make your food look its best.
-                  <br />
-                  Then put it to work everywhere.
-                </p>
-                <button className="cx-btn" onClick={() => photo()}>
-                  <Camera size={18} />
-                  Improve a photo <ArrowRight size={18} />
-                </button>
-                <span className="cx-welcome-note">
-                  Your dish. Three simple steps.
-                </span>
+                <p>A better photo. A beautiful menu. Your next great post.</p>
               </div>
-              <div className="cx-welcome-visual">
-                <img
-                  className="cx-welcome-food"
-                  src="/studio/daylight-cafe.webp"
-                  alt="Studio-quality pasta photography example"
-                />
-                <span className="cx-welcome-tag">
-                  <Sparkles size={14} />
-                  Good enough to taste.
-                </span>
-                <div className="cx-welcome-inset">
-                  <img
-                    src="/studio/dark-dramatic.webp"
-                    alt="Dark and dramatic pasta style example"
-                  />
-                  <span>Same idea. A different mood.</span>
-                </div>
-                <small>Style examples</small>
-              </div>
+              <span className="cx-workspace-count">
+                <Images size={17} />
+                {approved.length} ready-to-use photos
+              </span>
             </div>
-            <div className="cx-home-actions">
+            <div className="cx-launch-grid">
               <button
-                onClick={() => {
-                  navigate("menu");
-                }}
+                className="cx-launch-card cx-launch-photo"
+                onClick={() => photo()}
               >
-                <span>
-                  <BookOpen size={23} />
-                </span>
-                <div>
-                  <h2>Create a menu</h2>
-                  <p>From your best dishes to a beautiful menu.</p>
+                <div className="cx-launch-visual">
+                  <img
+                    src="/studio/daylight-cafe.webp"
+                    alt="Food photography style example"
+                  />
+                  <span>Style example</span>
+                  <span className="cx-launch-number">01</span>
                 </div>
-                <ArrowRight size={20} />
+                <div className="cx-launch-copy">
+                  <span className="cx-pill">
+                    <Sparkles size={14} />
+                    START WITH YOUR FOOD
+                  </span>
+                  <h2>
+                    Make it look
+                    <br />
+                    <em>as good as it tastes.</em>
+                  </h2>
+                  <p>Give your photo a new look, or make a quick touch-up.</p>
+                  <span className="cx-launch-cta">
+                    Open Photo Studio <ArrowRight size={19} />
+                  </span>
+                </div>
               </button>
-              <button onClick={() => navigate("post")}>
-                <span>
-                  <Megaphone size={23} />
-                </span>
-                <div>
-                  <h2>Make a post</h2>
-                  <p>Turn a good-looking dish into your next post.</p>
+              <button
+                className="cx-launch-card cx-launch-menu"
+                onClick={() => navigate("menu")}
+              >
+                <div className="cx-launch-small-visual">
+                  <img
+                    src="/studio/clean-white.webp"
+                    alt="Food photo style example"
+                  />
+                  <span>Style example</span>
+                  <BookOpen size={25} />
                 </div>
-                <ArrowRight size={20} />
+                <div className="cx-launch-copy">
+                  <span className="cx-eyebrow">02 / MENU BUILDER</span>
+                  <h2>
+                    Your menu,
+                    <br />
+                    <em>beautifully served.</em>
+                  </h2>
+                  <p>
+                    Start with a menu, saved dishes, or a few simple details.
+                  </p>
+                  <span className="cx-launch-cta">
+                    Create a menu <ArrowRight size={18} />
+                  </span>
+                </div>
+              </button>
+              <button
+                className="cx-launch-card cx-launch-post"
+                onClick={() => navigate("post")}
+              >
+                <div className="cx-launch-small-visual">
+                  <img
+                    src="/studio/bold-color.webp"
+                    alt="Food photo style example"
+                  />
+                  <span>Style example</span>
+                  <Megaphone size={25} />
+                </div>
+                <div className="cx-launch-copy">
+                  <span className="cx-eyebrow">03 / POST MAKER</span>
+                  <h2>
+                    A little inspiration.
+                    <br />
+                    <em>A great next post.</em>
+                  </h2>
+                  <p>Turn an approved photo into a ready-to-share design.</p>
+                  <span className="cx-launch-cta">
+                    Make a post <ArrowRight size={18} />
+                  </span>
+                </div>
               </button>
             </div>
+            {resumeDrafts.length > 0 && (
+              <section className="cx-resume">
+                <div className="cx-section-line">
+                  <h2>Pick up where you left off</h2>
+                  <span>Saved automatically</span>
+                </div>
+                <div className="cx-resume-grid">
+                  {resumeDrafts.map((row) => {
+                    const kind = row.kind,
+                      d = row.draft;
+                    const label =
+                        kind === "studio"
+                          ? "Photo Studio"
+                          : kind === "menu"
+                            ? "Menu Builder"
+                            : "Post Maker",
+                      title =
+                        kind === "studio"
+                          ? d.name || "Your photo"
+                          : kind === "menu"
+                            ? `${d.rows.length} dishes · ${d.layout === "grid" ? "Photo grid" : d.layout === "featured" ? "Featured dish" : "Classic text"}`
+                            : d.title || "Your next post";
+                    const imageId =
+                      kind === "studio"
+                        ? d.resultId || d.sourceId
+                        : kind === "post"
+                          ? d.items[0]?.photoId
+                          : d.rows.find((r: Row) => r.photoId)?.photoId;
+                    return (
+                      <button key={row.id} onClick={() => resume(row)}>
+                        {imageId ? (
+                          <img src={`/api/assets/${imageId}`} alt="" />
+                        ) : (
+                          <span className="cx-resume-icon">
+                            <BookOpen size={24} />
+                          </span>
+                        )}
+                        <span>
+                          <small>{label}</small>
+                          <b>{title}</b>
+                          <small>
+                            <Clock3 size={12} />
+                            Continue your saved work
+                          </small>
+                        </span>
+                        <ArrowRight size={18} />
+                      </button>
+                    );
+                  })}
+                </div>
+              </section>
+            )}
             <section className="cx-recent">
               <div className="cx-section-line">
                 <h2>Fresh from your kitchen</h2>

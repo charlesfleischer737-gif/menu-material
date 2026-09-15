@@ -123,6 +123,13 @@ export default function PhotoStudio({
     seedHandled.current = seed.token;
     analysisSource.current = "";
     void act("Opening your photo", async () => {
+      if (seed.draftId) {
+        await draftStore.resume(seed.draftId);
+        setAccurate(false);
+        setAdjust("");
+        onSeedUsed();
+        return;
+      }
       const d = state.dishes.find((d: Row) => d.id === seed.dishId);
       const original = state.assets.find(
         (a: Row) => a.dish_id === seed.dishId && a.kind === "source",
@@ -400,8 +407,14 @@ export default function PhotoStudio({
         </button>
       </div>
       <Steps
-        labels={["Add a photo", "Choose a look", "Frame & create"]}
-        step={Math.min(b.step, 4)}
+        labels={[
+          "Your photo",
+          "Choose a look",
+          "Create",
+          "Review",
+          "Use your photo",
+        ]}
+        step={b.step}
         onBack={running ? undefined : (n) => update({ step: n })}
       />
       <Feedback {...action} />
@@ -641,6 +654,32 @@ export default function PhotoStudio({
               </button>
             </aside>
           </div>
+          {b.mode === "photo" && b.sourceId && (
+            <div className="cx-quick-start">
+              <div>
+                <b>Just need a small touch-up?</b>
+                <p>
+                  Crop, rotate, brighten or warm your photo. No image allowance
+                  needed.
+                </p>
+              </div>
+              <button
+                className="cx-btn cx-secondary"
+                disabled={!!busy}
+                onClick={() =>
+                  act("Opening quick edits", async () => {
+                    update({ resultId: b.sourceId, jobId: "", step: 4 });
+                    setAdjust("quick");
+                    setAccurate(false);
+                    await save();
+                  })
+                }
+              >
+                <SlidersHorizontal size={17} />
+                Quick edits
+              </button>
+            </div>
+          )}
           <Footer
             label="Choose a look"
             next={() =>
@@ -657,7 +696,7 @@ export default function PhotoStudio({
                 : !b.name.trim() || !b.description.trim()
             }
             busy={!!busy}
-            note="Just 3 simple steps"
+            note="Choose a look, then make it yours"
           />
         </>
       )}

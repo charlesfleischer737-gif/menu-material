@@ -203,6 +203,11 @@ export default function MenuBuilder({
     if (!ready || !seed || seedHandled.current === seed.token) return;
     seedHandled.current = seed.token;
     void act("Adding your dish", async () => {
+      if (seed.draftId) {
+        await store.resume(seed.draftId);
+        onSeedUsed();
+        return;
+      }
       if (seed.importId) {
         change({ importId: seed.importId, rows: [], step: 2, reviewed: false });
         await save();
