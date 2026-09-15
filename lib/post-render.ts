@@ -2,6 +2,7 @@ import { drawPhoto, imageBitmap } from "./creation-export";
 import { money, type Row } from "./client";
 import { getPostTemplate } from "./post-templates";
 import { emptyAdjustments } from "./studio";
+import { loadPostFonts } from "./post-fonts";
 
 export async function renderPost(
   canvas: HTMLCanvasElement,
@@ -10,6 +11,7 @@ export async function renderPost(
   channel = "feed",
   slide = 0,
 ) {
+  await loadPostFonts();
   const W = 1080,
     H = channel === "story" ? 1920 : 1350,
     story = channel === "story";
@@ -36,7 +38,9 @@ export async function renderPost(
     width: number;
     height: number;
   }[] = [];
-  const title = draft.title || items[0].name || "";
+  const title = draft.title ?? items[0].name ?? "";
+  const textMode = draft.textMode || template.textMode;
+  const showBrand = draft.showBrand ?? template.showBrand;
   const kicker = draft.kicker ?? template.kicker,
     cta = draft.cta ?? template.cta;
   const price =
@@ -47,7 +51,7 @@ export async function renderPost(
   const itemNames = items
     .map(
       (i) =>
-        (items.length > 1 || channel === "carousel"
+        (items.length > 1 || (i.quantity || 1) > 1 || channel === "carousel"
           ? (i.quantity || 1) + " × "
           : "") + i.name,
     )
@@ -55,13 +59,6 @@ export async function renderPost(
   const detailCopy = [title !== itemNames ? itemNames : "", draft.description]
     .filter(Boolean)
     .join("\n");
-  const contrast = (hex: string) => {
-    const c = hex.replace("#", "");
-    const n = [0, 2, 4].map((i) => parseInt(c.slice(i, i + 2), 16));
-    return 0.2126 * n[0] + 0.7152 * n[1] + 0.0722 * n[2] > 150
-      ? "#182b23"
-      : "#ffffff";
-  };
   function fill(c: string, x = 0, y = 0, w = W, h = H) {
     ctx.fillStyle = c;
     ctx.fillRect(x, y, w, h);
@@ -89,13 +86,26 @@ export async function renderPost(
     c: string,
     options: {
       serif?: boolean;
+      family?: "sans" | "serif" | "italic" | "condensed" | "hand";
       italic?: boolean;
       align?: "left" | "center" | "right";
       weight?: number;
     } = {},
   ) {
     if (!value?.trim()) return;
-    const font = options.serif ? "Georgia" : "Arial";
+    const family =
+      options.family ||
+      (options.italic ? "italic" : options.serif ? "serif" : "sans");
+    const font =
+      '"' +
+      {
+        sans: "Post Sans",
+        serif: "Post Serif",
+        italic: "Post Italic",
+        condensed: "Post Condensed",
+        hand: "Post Hand",
+      }[family] +
+      '"';
     let lines: string[] = [],
       fs = size;
     const wrap = () => {
@@ -123,7 +133,7 @@ export async function renderPost(
     };
     for (; fs >= 18; fs--) {
       ctx.font =
-        (options.italic ? "italic " : "") +
+        "" +
         (options.weight || (options.serif ? 400 : 700)) +
         " " +
         fs +
@@ -189,7 +199,7 @@ export async function renderPost(
     r: number | number[] = 0,
   ) {
     const temp = document.createElement("canvas"),
-      edits = { ...emptyAdjustments, ...draft.layouts?.[channel] };
+      edits = { ...emptyAdjustments, fit: false, ...draft.layouts?.[channel] };
     drawPhoto(temp, images[index], Math.round(w), Math.round(h), edits, color);
     ctx.save();
     ctx.beginPath();
@@ -267,248 +277,216 @@ export async function renderPost(
       photo(i, px, py, cw, ch, r);
     });
   }
-  function gradient() {
-    const g = ctx.createLinearGradient(0, 0, 0, H);
-    g.addColorStop(0, "rgba(0,0,0,.62)");
-    g.addColorStop(0.38, "rgba(0,0,0,.05)");
-    g.addColorStop(0.66, "rgba(0,0,0,.24)");
-    g.addColorStop(1, "rgba(0,0,0,.90)");
-    ctx.fillStyle = g;
-    ctx.fillRect(0, 0, W, H);
-  }
-  function brand(c: string, y = top) {
-    text(restaurant.name || "", 72, y, 820, 55, 29, c, { weight: 600 });
-  }
-  function details(c: string, y: number, h: number, w = 936, x = 72) {
-    text(detailCopy, x, y, w, h, 38, c, { weight: 400 });
-  }
-  function footer(c: string, y = bottom - 48) {
-    text(
-      [draft.validity, cta].filter(Boolean).join("  /  "),
-      72,
-      y,
-      936,
-      64,
-      33,
-      c,
-      { weight: 500 },
+  // Overlays are local to the text; food stays bright through the middle of the frame.
+  function shade(edge: "top" | "bottom", depth: number, opacity = 0.72) {
+    const y = edge === "top" ? 0 : H - depth;
+    const g = ctx.createLinearGradient(0, y, 0, y + depth);
+    g.addColorStop(
+      0,
+      edge === "top" ? `rgba(0,0,0,${opacity})` : "rgba(0,0,0,0)",
     );
+    g.addColorStop(
+      1,
+      edge === "top" ? "rgba(0,0,0,0)" : `rgba(0,0,0,${opacity})`,
+    );
+    ctx.fillStyle = g;
+    ctx.fillRect(0, y, W, depth);
+  }
+  function signature(
+    c: string,
+    y = top,
+    align: "left" | "center" | "right" = "left",
+  ) {
+    if (!showBrand) return;
+    text(
+      restaurant.name || "",
+      76,
+      y,
+      restaurant.logo_id ? 800 : 928,
+      48,
+      26,
+      c,
+      { align, weight: 500 },
+    );
+  }
+  function information(
+    y: number,
+    c: string,
+    align: "left" | "center" | "right" = "left",
+  ) {
+    // Supporting facts appear only when supplied; no invented slogans, badges or filler.
+    const facts = [price, draft.validity, cta].filter(Boolean).join("  ·  ");
+    const detail = textMode === "full" || items.length > 1 ? detailCopy : "";
+    if (detail) text(detail, 76, y, 928, 106, 34, c, { align, weight: 400 });
+    text(facts, 76, detail ? y + 120 : y, 928, 85, 30, c, {
+      align,
+      weight: 500,
+    });
   }
   try {
     for (const item of items)
       images.push(
         await imageBitmap(item.photoUrl || "/api/assets/" + item.photoId),
       );
-    const ink = contrast(accent),
-      onColor = contrast(color);
-    if (layout === "afterdark") {
-      fill(color);
+    fill(color);
+    // Full-frame photography is the starting point for every composition.
+    // Fit whole dish remains available as an explicit framing choice.
+    if (layout === "bakery") {
+      fill(accent);
+      photoGroup(24, 24, W - 48, H - 48);
+    } else if (layout === "combo" && images.length > 1) {
       photoGroup(0, 0, W, H);
-      gradient();
-      ctx.strokeStyle = accent;
-      ctx.lineWidth = 2;
-      ctx.strokeRect(48, top - 30, 984, usable + 70);
-      text(restaurant.name || "", 100, top + 10, 880, 60, 30, "#ffffff", {
-        align: "center",
-      });
-      text(kicker, 100, top + 112, 880, 60, 40, accent, { align: "center" });
-      rule(440, top + 207, 200, accent);
-      const y = top + usable * 0.52 + offset;
-      text(title, 100, y, 880, 206, 112, "#ffffff", {
-        serif: true,
-        italic: true,
-        align: "center",
-      });
-      text(price, 100, y + 220, 880, 90, 70, accent, { align: "center" });
-      details("#ffffff", y + (price ? 330 : 230), 95);
-      footer("#ffffff");
-    } else if (layout === "editorial") {
-      fill(color);
-      photoGroup(0, 0, W, H);
-      gradient();
-      brand("#ffffff");
-      rule(72, top + 74, 936, "#ffffff80");
-      text(kicker, 72, top + 102, 936, 46, 28, accent);
-      const titleY = top + usable * 0.53 + offset;
-      text(title, 72, titleY, 900, 190, 104, "#ffffff", { serif: true });
-      if (price) text(price, 72, titleY + 196, 320, 78, 64, accent);
-      details("#ffffff", titleY + (price ? 278 : 206), 112);
-      footer("#ffffff");
-    } else if (layout === "special") {
-      fill(accent);
-      fill(color, 0, 0, 30, H);
-      brand(color);
-      text(kicker, 72, top + 74, 690, 45, 29, color);
-      photoGroup(440, top + 150, 568, usable * 0.53, 44);
-      text(title, 72, top + 175 + offset, 540, 340, 114, color);
-      const py = top + usable * 0.58;
-      if (price) {
-        ctx.save();
-        ctx.translate(836, py);
-        ctx.rotate(0.1);
-        round(-160, -80, 320, 160, 80, color);
-        text(price, -140, -43, 280, 96, 67, onColor, { align: "center" });
-        ctx.restore();
-      }
-      rule(72, top + usable * 0.76, 936, color);
-      details(color, top + usable * 0.8, 120);
-      footer(color);
-    } else if (layout === "launch") {
-      fill(color);
-      brand(onColor);
-      text(kicker, 72, top + 78, 936, 90, 50, accent);
-      photoGroup(210, top + 185, 660, usable * 0.49, [330, 330, 30, 30]);
-      round(46, top + usable * 0.62 + offset, 988, 250, 20, accent);
-      text(title, 82, top + usable * 0.62 + 34 + offset, 916, 176, 94, ink, {
-        align: "center",
-      });
-      const dy = top + usable * 0.62 + 280;
-      text(
-        [price, detailCopy].filter(Boolean).join(" · "),
-        72,
-        dy,
-        936,
-        95,
-        33,
-        onColor,
-        { weight: 400, align: "center" },
+    } else photoGroup(0, 0, W, H);
+
+    if (textMode !== "photo") {
+      const white = "#fffdf7";
+      const hasInfo = !!(
+        price ||
+        draft.validity ||
+        cta ||
+        (textMode === "full" && detailCopy) ||
+        items.length > 1
       );
-      footer(onColor);
-    } else if (layout === "brunch") {
-      fill(accent);
-      brand(color);
-      text(kicker, 72, top + 90, 936, 78, 49, color, { align: "center" });
-      photoGroup(225, top + 205, 630, usable * 0.48, [315, 315, 18, 18]);
-      text(title, 72, top + usable * 0.61 + offset, 936, 220, 108, color, {
-        serif: true,
-        italic: true,
-        align: "center",
-      });
-      text(price, 72, top + usable * 0.81, 936, 74, 58, color, {
-        align: "center",
-      });
-      details(color, top + usable * 0.88, 65);
-      footer(color);
-    } else if (layout === "bakery") {
-      fill(accent);
-      brand(color);
-      text(kicker, 72, top + 85, 936, 80, 39, color, { align: "center" });
-      const center = top + usable * 0.4;
-      ctx.save();
-      ctx.translate(W / 2, center);
-      ctx.rotate(-0.045);
-      fill("#fffaf0", -390, -usable * 0.24, 780, usable * 0.52);
-      photoGroup(-360, -usable * 0.24 + 30, 720, usable * 0.43);
-      ctx.restore();
-      round(742, top + usable * 0.57, 262, 110, 55, color);
-      text(
-        price || "Made with care",
-        755,
-        top + usable * 0.57 + 26,
-        236,
-        66,
-        price ? 43 : 26,
-        onColor,
-        { align: "center" },
-      );
-      text(title, 72, top + usable * 0.65 + offset, 936, 165, 87, color, {
-        serif: true,
-        italic: true,
-      });
-      details(color, top + usable * 0.83, 95);
-      footer(color);
-    } else if (layout === "event") {
-      fill(color);
-      round(48, top - 30, 984, usable + 78, 20, accent);
-      brand(color, top + 20);
-      text(kicker, 88, top + 98, 904, 60, 34, color);
-      rule(88, top + 178, 904, color);
-      text(title, 88, top + 210 + offset, 460, 340, 88, color, { serif: true });
-      photoGroup(580, top + 215, 390, usable * 0.44, [195, 195, 12, 12]);
-      rule(88, top + usable * 0.68, 904, color);
-      text(draft.validity || "", 88, top + usable * 0.72, 904, 100, 48, color);
-      text(
-        [price, detailCopy].filter(Boolean).join(" · "),
-        88,
-        top + usable * 0.84,
-        904,
-        90,
-        29,
-        color,
-        { weight: 400 },
-      );
-      text(cta, 88, bottom - 35, 904, 50, 29, color);
-    } else if (layout === "fresh") {
-      fill(accent);
-      photoGroup(390, 0, 690, H);
-      fill(color, 0, 0, 430, H);
-      brand(onColor);
-      text(kicker, 65, top + 110, 320, 80, 31, accent);
-      text(
-        title,
-        65,
-        top + usable * 0.26 + offset,
-        460,
-        usable * 0.28,
-        99,
-        onColor,
-        {
-          serif: true,
-        },
-      );
-      text(price, 65, top + usable * 0.61, 335, 90, 64, accent);
-      text(detailCopy, 65, top + usable * 0.79, 310, 105, 28, onColor, {
-        weight: 400,
-      });
-      round(45, bottom - 64, 980, 90, 18, accent);
-      footer(ink, bottom - 43);
-    } else if (layout === "combo") {
-      fill(accent);
-      brand(color);
-      text(kicker, 72, top + 76, 936, 60, 39, color);
-      text(title, 72, top + 155 + offset, price ? 595 : 936, 170, 94, color);
-      const photoY = top + usable * 0.34,
-        photoH = usable * 0.37;
-      photoGroup(72, photoY, 936, photoH, 22);
-      const names = items
-        .map((i) => (i.quantity || 1) + " × " + i.name)
-        .join("  +  ");
-      text(names, 72, photoY + photoH + 24, 936, 95, 34, color);
-      if (price) {
-        round(715, top + usable * 0.16, 290, 124, 62, color);
-        text(price, 735, top + usable * 0.16 + 26, 250, 80, 58, onColor, {
+      const infoY =
+        bottom - (textMode === "full" || items.length > 1 ? 198 : 80);
+      if (layout === "special") {
+        shade("top", H * 0.47, 0.5);
+        shade("bottom", H * 0.37, 0.88);
+        signature(white);
+        text(kicker, 76, top + 62, 928, 45, 27, accent);
+        text(
+          title.toUpperCase(),
+          70,
+          top + 126 + offset,
+          880,
+          370,
+          190,
+          accent,
+          { family: "condensed", weight: 700 },
+        );
+        if (hasInfo) information(infoY, white);
+      } else if (layout === "launch") {
+        // A bold typographic launch, with the photo visible behind the type.
+        shade("top", H * 0.44, 0.58);
+        shade("bottom", H * 0.25, 0.56);
+        text(kicker, 76, top, 928, 48, 29, accent, { weight: 500 });
+        text(
+          title.toUpperCase(),
+          70,
+          top + 82 + offset,
+          936,
+          370,
+          208,
+          accent,
+          { family: "condensed", weight: 700 },
+        );
+        if (hasInfo) information(infoY, white);
+        else signature(white, bottom - 42);
+      } else if (layout === "afterdark") {
+        shade("top", H * 0.48, 0.66);
+        shade("bottom", H * 0.34, 0.72);
+        signature(accent, top, "center");
+        text(kicker, 76, top + 67, 928, 45, 26, accent, {
           align: "center",
+          weight: 400,
         });
+        text(
+          title,
+          76,
+          top + (kicker ? 155 : 86) + offset,
+          928,
+          245,
+          142,
+          accent,
+          { family: "italic", align: "center", weight: 500 },
+        );
+        if (hasInfo) information(infoY, white, "center");
+      } else if (layout === "brunch") {
+        shade("top", H * 0.34, 0.35);
+        shade("bottom", H * 0.4, 0.78);
+        signature(white);
+        text(kicker, 76, top + 64, 928, 42, 25, white);
+        const ty = hasInfo ? infoY - 225 : bottom - 250;
+        text(title, 76, ty + offset, 928, 200, 155, accent, {
+          family: "hand",
+          weight: 500,
+        });
+        if (hasInfo) information(infoY, white);
+      } else if (layout === "bakery") {
+        shade("top", H * 0.3, 0.42);
+        shade("bottom", H * 0.45, 0.78);
+        signature(white, top, "center");
+        const ty = hasInfo ? infoY - 258 : bottom - 300;
+        text(kicker, 76, ty - 60, 928, 44, 27, accent, { align: "center" });
+        text(title, 76, ty + offset, 928, 240, 155, accent, {
+          family: "hand",
+          align: "center",
+          weight: 500,
+        });
+        if (hasInfo) information(infoY, white, "center");
+      } else if (layout === "event") {
+        shade("top", H * 0.69, 0.88);
+        shade("bottom", H * 0.39, 0.88);
+        signature(accent, top, "center");
+        text(kicker, 76, top + 76, 928, 45, 27, accent, {
+          align: "center",
+          weight: 400,
+        });
+        text(title, 76, top + 164 + offset, 928, 345, 142, accent, {
+          family: "serif",
+          align: "center",
+          weight: 400,
+        });
+        if (hasInfo) information(infoY, white, "center");
+      } else if (layout === "fresh") {
+        shade("bottom", H * 0.37, 0.74);
+        const ty = hasInfo ? infoY - 198 : bottom - 215;
+        text(kicker, 76, ty - 58, 928, 44, 26, white);
+        text(title, 76, ty + offset, 780, 170, 101, accent, {
+          family: "sans",
+          weight: 500,
+        });
+        if (hasInfo) information(infoY, white);
+        if (showBrand) {
+          shade("top", H * 0.2, 0.4);
+          signature(white);
+        }
+      } else if (layout === "combo") {
+        shade("top", H * 0.45, 0.7);
+        shade("bottom", H * 0.38, 0.88);
+        signature(white);
+        text(kicker, 76, top + 65, 928, 45, 26, accent);
+        text(
+          title.toUpperCase(),
+          70,
+          top + 140 + offset,
+          936,
+          355,
+          165,
+          accent,
+          { family: "condensed", weight: 700 },
+        );
+        if (hasInfo) information(infoY, white);
+      } else {
+        // A restrained editorial signature, also used if text is added to Just the dish.
+        shade("bottom", H * 0.39, 0.78);
+        const ty = hasInfo ? infoY - 210 : bottom - 230;
+        text(kicker, 76, ty - 60, 928, 45, 26, accent);
+        text(title, 76, ty + offset, 928, 190, 112, accent, {
+          family: "serif",
+          weight: 500,
+        });
+        if (hasInfo) information(infoY, white);
+        if (showBrand) {
+          shade("top", H * 0.2, 0.4);
+          signature(white);
+        }
       }
-      text(
-        draft.description || "",
-        72,
-        top + usable * 0.84,
-        936,
-        82,
-        30,
-        color,
-        { weight: 400 },
-      );
-      footer(color);
-    } else {
-      fill(accent);
-      brand(color);
-      rule(72, top + 78, 936, color);
-      text(kicker, 72, top + 105, 800, 50, 28, color);
-      photoGroup(72, top + 196, 570, usable * 0.54, 4);
-      text("01", 715, top + 195, 293, 185, 150, color, {
-        serif: true,
-        italic: true,
-      });
-      text(price, 696, top + usable * 0.46, 312, 80, 54, color);
-      text(title, 72, top + usable * 0.74 + offset, 936, 154, 88, color, {
-        serif: true,
-      });
-      details(color, top + usable * 0.89, 55);
-      footer(color);
+    } else if (showBrand) {
+      shade("bottom", H * 0.17, 0.45);
+      signature("#ffffff", bottom - 40);
     }
-    if (restaurant.logo_id) {
+    if (restaurant.logo_id && showBrand) {
       const logo = await imageBitmap("/api/assets/" + restaurant.logo_id);
       try {
         const s = Math.min(56 / logo.width, 56 / logo.height);

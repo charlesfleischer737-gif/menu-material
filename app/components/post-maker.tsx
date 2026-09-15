@@ -54,16 +54,16 @@ function initial(restaurant: Row) {
     showPrice: false,
     validity: "",
     template: "editorial",
-    kicker: "YOUR NEXT FAVORITE",
-    cta: "Discover the menu",
+    kicker: "",
+    cta: "",
     accent: "#f5eee0",
     color: restaurant.style?.primary || "#235b48",
     textY: 0,
     channels: ["feed", "story"],
     layouts: {
-      feed: { ...emptyAdjustments },
-      story: { ...emptyAdjustments },
-      carousel: { ...emptyAdjustments },
+      feed: { ...emptyAdjustments, fit: false },
+      story: { ...emptyAdjustments, fit: false },
+      carousel: { ...emptyAdjustments, fit: false },
     },
     caption: "",
     captionMode: "",
@@ -98,6 +98,8 @@ export function PostCanvas({
       price: draft.price,
       validity: draft.validity,
       textY: draft.textY,
+      textMode: draft.textMode,
+      showBrand: draft.showBrand,
       accent: draft.accent,
       kicker: draft.kicker,
       cta: draft.cta,
@@ -188,7 +190,7 @@ export default function PostMaker({
   const [showPicker, setShowPicker] = useState(false);
   const [useExamples, setUseExamples] = useState(true);
   const [templateGroup, setTemplateGroup] = useState("All designs"),
-    [designChannel, setDesignChannel] = useState("story");
+    [designChannel, setDesignChannel] = useState("feed");
   const [channel, setChannel] = useState("feed"),
     [slide, setSlide] = useState(0),
     [saved, setSaved] = useState<Row[]>([]),
@@ -211,15 +213,10 @@ export default function PostMaker({
     update(applyPostTemplate(b, id));
     if (window.matchMedia("(max-width: 760px)").matches)
       requestAnimationFrame(() =>
-        document
-          .querySelector(".cx-selected-design")
-          ?.scrollIntoView({
-            block: "start",
-            behavior: window.matchMedia("(prefers-reduced-motion: reduce)")
-              .matches
-              ? "instant"
-              : "smooth",
-          }),
+        document.querySelector(".cx-selected-design")?.scrollIntoView({
+          block: "start",
+          behavior: "instant",
+        }),
       );
   }
   useEffect(() => {
@@ -319,7 +316,7 @@ export default function PostMaker({
     );
   const titles = [
     "A great dish. A little inspiration.",
-    "Something worth stopping for.",
+    "Choose your look.",
     "The finishing touches.",
     "Ready to make people hungry.",
   ];
@@ -383,7 +380,7 @@ export default function PostMaker({
         {page === 1
           ? "Choose your photo and add the details. We’ll take care of the design."
           : page === 2
-            ? "Choose a finished Instagram design, then make the words and colors your own."
+            ? "Start with a look. Keep it photographic, or add a few words."
             : page === 3
               ? "Frame your photo for each format, then make the caption sound like you."
               : "Your images and caption are ready. Check the details, then save or share."}
@@ -731,7 +728,10 @@ export default function PostMaker({
                       }
                       restaurant={
                         useExamples
-                          ? { name: "THE GOOD TABLE", currency: "USD" }
+                          ? {
+                              name: postTemplateExample(t.id).restaurantName,
+                              currency: "USD",
+                            }
                           : state.restaurant
                       }
                       channel={designChannel}
@@ -775,56 +775,91 @@ export default function PostMaker({
               />
               <h2>{getPostTemplate(b.template).name}</h2>
               <p>{getPostTemplate(b.template).description}</p>
-              <div className="cx-design-copy">
-                <Field label="Small heading">
-                  <input
-                    value={b.kicker ?? getPostTemplate(b.template).kicker}
-                    maxLength={50}
-                    onChange={(e) => update({ kicker: e.target.value })}
-                  />
-                </Field>
-                <Field label="Headline">
-                  <input
-                    value={b.title}
-                    maxLength={90}
-                    onChange={(e) => update({ title: e.target.value })}
-                  />
-                </Field>
-                <Field label="Call to action">
-                  <input
-                    value={b.cta ?? getPostTemplate(b.template).cta}
-                    maxLength={60}
-                    onChange={(e) => update({ cta: e.target.value })}
-                  />
-                </Field>
-                <div className="cx-design-colors">
-                  <Field label="Primary color">
-                    <input
-                      type="color"
-                      value={b.color}
-                      onChange={(e) => update({ color: e.target.value })}
-                    />
-                  </Field>
-                  <Field label="Accent color">
-                    <input
-                      type="color"
-                      value={b.accent || getPostTemplate(b.template).accent}
-                      onChange={(e) => update({ accent: e.target.value })}
-                    />
-                  </Field>
+              <div className="cx-post-treatment">
+                <span className="cx-control-label">Text on your photo</span>
+                <div className="cx-segment" aria-label="Amount of text">
+                  {[
+                    ["photo", "Photo only"],
+                    ["minimal", "A few words"],
+                    ["full", "All details"],
+                  ].map(([id, label]) => (
+                    <button
+                      key={id}
+                      aria-pressed={
+                        (b.textMode || getPostTemplate(b.template).textMode) ===
+                        id
+                      }
+                      onClick={() => update({ textMode: id })}
+                    >
+                      {label}
+                    </button>
+                  ))}
                 </div>
-                <button
-                  className="cx-link"
-                  onClick={() =>
-                    update({
-                      color: state.restaurant.style?.primary || b.color,
-                      accent: state.restaurant.style?.accent || b.accent,
-                    })
-                  }
-                >
-                  Use my restaurant colors
-                </button>
+                <label className="cx-brand-toggle">
+                  <input
+                    type="checkbox"
+                    checked={
+                      b.showBrand ?? getPostTemplate(b.template).showBrand
+                    }
+                    onChange={(e) => update({ showBrand: e.target.checked })}
+                  />{" "}
+                  Add my restaurant name & logo
+                </label>
+                {(b.textMode || getPostTemplate(b.template).textMode) ===
+                  "photo" && (
+                  <p className="cx-hint">
+                    Your headline, price, and details stay in the caption. The
+                    image stays clear.
+                  </p>
+                )}
               </div>
+              {(b.textMode || getPostTemplate(b.template).textMode) !==
+                "photo" && (
+                <div className="cx-design-copy">
+                  <Field label="Small heading (optional)">
+                    <input
+                      value={b.kicker ?? getPostTemplate(b.template).kicker}
+                      maxLength={50}
+                      onChange={(e) => update({ kicker: e.target.value })}
+                    />
+                  </Field>
+                  <Field label="Headline">
+                    <textarea
+                      value={b.title}
+                      rows={2}
+                      maxLength={90}
+                      onChange={(e) => update({ title: e.target.value })}
+                    />
+                  </Field>
+                  <Field label="Call to action (optional)">
+                    <input
+                      value={b.cta ?? getPostTemplate(b.template).cta}
+                      maxLength={60}
+                      onChange={(e) => update({ cta: e.target.value })}
+                    />
+                  </Field>
+                  <div className="cx-design-colors">
+                    <Field label="Lettering color">
+                      <input
+                        type="color"
+                        value={b.accent || getPostTemplate(b.template).accent}
+                        onChange={(e) => update({ accent: e.target.value })}
+                      />
+                    </Field>
+                  </div>
+                  <button
+                    className="cx-link"
+                    onClick={() =>
+                      update({
+                        color: state.restaurant.style?.primary || b.color,
+                        accent: state.restaurant.style?.accent || b.accent,
+                      })
+                    }
+                  >
+                    Use my restaurant colors
+                  </button>
+                </div>
+              )}
               <p className="cx-hint">
                 Every design adapts to posts and stories. Next, adjust the photo
                 and finish your caption.

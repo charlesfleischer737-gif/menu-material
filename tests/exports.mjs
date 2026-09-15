@@ -2,12 +2,18 @@ import assert from "node:assert/strict";
 import { readFileSync, writeFileSync, mkdirSync } from "node:fs";
 import {
   createCanvas,
+  GlobalFonts,
   loadImage,
   DOMMatrix,
   Path2D,
   ImageData,
 } from "@napi-rs/canvas";
 import { unzipSync, strFromU8 } from "fflate";
+const { postFonts } = await import("../lib/post-fonts.ts");
+for (const f of postFonts)
+  assert(
+    GlobalFonts.registerFromPath("public/fonts/social/" + f.file, f.family),
+  );
 const root = "/private/tmp/plated-export-qa";
 mkdirSync(root, { recursive: true });
 const jpg = readFileSync("public/burger.jpg"),
@@ -42,6 +48,8 @@ globalThis.createImageBitmap = async (blob) => {
 };
 globalThis.fetch = async (url) => {
   const path = String(url);
+  if (path.startsWith("/studio/styles/"))
+    return new Response(readFileSync("public" + path));
   if (path.startsWith("/fonts/"))
     return new Response(readFileSync("public" + path));
   if (path.startsWith("/api/assets/"))
@@ -133,7 +141,7 @@ const draft = {
   caption: "The house burger\n$14.50\nTonight · 5–9 pm",
   channels: ["feed", "story"],
 };
-const { postTemplates, applyPostTemplate } =
+const { postTemplates, applyPostTemplate, postTemplateExample } =
   await import("../lib/post-templates.ts");
 for (const template of [
   "photo",
@@ -143,9 +151,17 @@ for (const template of [
 ])
   for (const channel of ["feed", "story"]) {
     const c = canvas();
-    const design = { ...draft, ...applyPostTemplate(draft, template) };
+    const design = {
+      ...draft,
+      ...applyPostTemplate(draft, template),
+      textMode: "full",
+    };
     const result = await renderPost(c, design, restaurant, channel);
-    assert(result.renderedText.some((t) => t.includes(design.title)));
+    assert(
+      result.renderedText.some((t) =>
+        t.toLowerCase().includes(design.title.toLowerCase()),
+      ),
+    );
     assert(result.renderedText.some((t) => t.includes("14.50")));
     assert(result.renderedText.some((t) => t.includes(draft.validity)));
     for (const box of result.textBoxes) {
@@ -184,7 +200,11 @@ const combined = {
 };
 for (const template of postTemplates)
   for (const channel of ["feed", "story"]) {
-    const design = { ...combined, ...applyPostTemplate(combined, template.id) };
+    const design = {
+      ...combined,
+      ...applyPostTemplate(combined, template.id),
+      textMode: "full",
+    };
     const c = canvas(),
       result = await renderPost(c, design, restaurant, channel);
     assert(
@@ -232,3 +252,46 @@ checks++;
 console.log(
   `PASS: ${checks} exported PDF/image checks, embedded-text prices, US Letter/A4, all ten new post templates and legacy draft mappings, independent feed/story dimensions, carousel ZIP and clean delivery JPEG. Artifacts: ${root}`,
 );
+
+// Render the actual default gallery, including the photo-only design, with shipped fonts and images.
+for (const channel of ["feed", "story"]) {
+  const sheet = createCanvas(1500, channel === "feed" ? 850 : 1150),
+    sc = sheet.getContext("2d");
+  sc.fillStyle = "#f4f4f0";
+  sc.fillRect(0, 0, sheet.width, sheet.height);
+  for (let i = 0; i < postTemplates.length; i++) {
+    const t = postTemplates[i],
+      example = postTemplateExample(t.id),
+      c = canvas();
+    const result = await renderPost(
+      c,
+      example,
+      { name: example.restaurantName, currency: "USD" },
+      channel,
+    );
+    if (t.id === "combo")
+      assert(
+        result.renderedText.some((v) => v.includes("3 × Carnitas taco")),
+        "Single-dish offers must retain the quantity",
+      );
+    if (t.textMode === "photo")
+      assert.equal(
+        result.renderedText.length,
+        0,
+        "Photo-only design must have no overlays",
+      );
+    const w = 280,
+      h = channel === "feed" ? 350 : 498,
+      x = 10 + (i % 5) * 300,
+      y = 15 + Math.floor(i / 5) * (h + 60);
+    sc.drawImage(c, x, y, w, h);
+    sc.fillStyle = "#24362a";
+    sc.font = '16px "Post Sans"';
+    sc.fillText(t.name, x, y + h + 24);
+    writeFileSync(
+      `${root}/gallery-${t.id}-${channel}.png`,
+      c.toBuffer("image/png"),
+    );
+  }
+  writeFileSync(`${root}/gallery-${channel}.jpg`, sheet.toBuffer("image/jpeg"));
+}

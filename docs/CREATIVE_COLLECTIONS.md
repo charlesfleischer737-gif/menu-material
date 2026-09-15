@@ -87,31 +87,31 @@ Overhead presets explicitly change the angle and show a review note. The owner c
 
 ## Post Maker
 
-Ten compositions adapt to 1080 × 1350 feed posts and 1080 × 1920 stories. They use real editable text over/around the approved photo: large editorial headings, arch crops, full-frame designs, offer seals, event invitations and multi-dish collages. Framing stays independent per output format. Fit whole dish uses a blurred extension of the same photo, keeping the complete original inside its frame.
+Ten original photographic compositions adapt to 1080 × 1350 feed posts and 1080 × 1920 stories. The September 15 revision replaces the earlier blocks, arches, offer seals and generic slogans with full-frame food photography, restrained copy and properly licensed display fonts. See [the social art direction](SOCIAL_DESIGN_DIRECTION.md) for observed restaurant references and implementation choices.
 
-| Design | Use | Composition |
-|---|---|---|
-| Signature cover | Everyday | A full-bleed photograph with magazine typography and a quiet brand signature. |
-| Special spotlight | Offers | A bold offer poster with a hero photo, oversized headline and a price seal. |
-| New on the menu | Launches | A graphic launch announcement with a shaped photo and confident headline. |
-| After hours | After dark | Cinematic full-frame photography, gold details and elegant evening typography. |
-| Weekend table | Everyday | A bright café poster with an arched photograph and playful oversized type. |
-| From the kitchen | Launches | A framed editorial photo with a warm paper background and handwritten-style accent. |
-| The invitation | Events | An elegant event invitation with a ticket layout, clear date and a featured photo. |
-| Fresh perspective | Everyday | A crisp split composition with fresh color and generous, readable typography. |
-| Better together | Offers | A coordinated photo collage for a real meal deal or pairing, with quantities included. |
-| Chef’s edit | Everyday | A refined restaurant editorial with a tall image, restrained copy and a numbered accent. |
+| Design | Composition |
+|---|---|
+| Just the dish | An uninterrupted photo, with the wording in the caption. |
+| The daily special | Large condensed type over a close food photograph, with supplied price and time. |
+| Menu drop | Oversized announcement type directly over the photo. |
+| The nightcap | A drink portrait with expressive italic typography and quiet branding. |
+| Slow mornings | Sunlit photography and a casual handwritten line. |
+| The morning bake | A close crop, fine border and handwritten headline on the photograph. |
+| Supper club | A photographic invitation with elegant serif type and supplied date. |
+| In season | Restrained corner typography over a generous ingredient photo. |
+| A table for two | Full-frame food pairing with the actual quantities and price. |
+| From the pass | A fine-dining photograph with delicate editorial type. |
 
-The gallery starts with clearly labeled examples using ten different foods/drinks. My photo switches the entire gallery to the owner’s approved photo; the selected design panel always shows actual customer content. Selecting a preset applies its design, suggested headline and generic copy only. It never transfers example prices, dates, photos or restaurant identity. Custom headlines are retained. Prices and dates remain explicit owner-controlled fields. Captions include the dish name when the suggested headline is promotional copy.
+Owners choose Photo only, A few words, or All details and can turn the restaurant signature on or off. Optional fields stay optional. Blank space is not filled with invented badges or slogans. Custom headlines and confirmed customer facts survive template changes. Photo-only posts retain the factual caption. The preview offers ten distinct food/drink examples or the customer's own approved photo; example photos, brands, dates and prices never enter the customer's draft.
 
-Phone selection moves directly to the selected design’s editable controls, with a route back to the gallery. Exported text is measured and fitted without truncation. Excessively long text produces a request to shorten it instead of silently clipping. Existing photo/price/story template IDs map to the new compositions. Individual PNGs, campaign ZIPs, captions and supported native sharing use the same renderer as the preview.
+Fill frame is the new default. Fit whole dish remains available with a blurred extension of the same image. Feed and story framing stay independent. Fonts load before canvas rendering and export, and ship with their licenses. Headlines support line breaks. All details exports preserve supplied dish names, quantities, prices and dates. Text is measured and fitted, and excessive copy produces an actionable error rather than clipping. Existing photo/price/story template IDs still resolve. Preview, PNG and ZIP exports use the same renderer, including the homepage promotion examples.
 
 ## Assets and validation
 
 - 28 new images generated with the built-in image generator; optimized 1000 × 1000 WebP files in `public/studio/styles/`. Prompts and provenance: `STUDIO_V2_IMAGE_PROMPTS.json`. Each file and each preset prompt is unique.
 - Existing API and persistence suites, 18 caption/flow assertions, and a catalog suite checking all preset prompts, images, category coverage, example isolation and old-draft mappings.
 - 57 export checks: original PDF/delivery checks, all ten templates plus legacy mappings in feed/story, safe text bounds, combo quantities/prices and non-overlapping text, and campaign ZIP contents.
-- Desktop/phone browser review of category selection, selected-style creation summary, example/customer image switching, design application, text/color editing, framing and saving.
+- Prior collection release: desktop/phone review of Photo Studio. Social redesign: actual feed/story export contact sheets and browser checks of font loading, example/customer switching, text controls and saving. The browser viewport override did not change its available 694px viewport in this run; no new 1440px/390px browser claim is made.
 
 ## Service boundary
 

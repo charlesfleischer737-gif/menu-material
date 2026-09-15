@@ -11,6 +11,7 @@ import {
   Play,
 } from "lucide-react";
 import { Button } from "@/components/ui/button";
+import { PostCanvas } from "./post-maker";
 
 const useCases = [
   {
@@ -54,33 +55,42 @@ const useCases = [
 function PromotionGraphic({
   price,
   story = false,
+  palette,
 }: {
   price: string;
   story?: boolean;
+  palette: string;
 }) {
   return (
-    <div className={`pw-demo-graphic ${story ? "is-story" : "is-feed"}`}>
-      <div className="pw-demo-brand">THE NEIGHBORHOOD TABLE</div>
-      <img
-        src="/homepage/menus.webp"
-        alt="Tomato rigatoni featured in the example promotion"
-        width="960"
-        height="960"
-        loading="lazy"
+    <div
+      className={`pw-demo-graphic pw-live-design ${story ? "is-story" : "is-feed"}`}
+    >
+      <PostCanvas
+        channel={story ? "story" : "feed"}
+        example
+        restaurant={{ name: "THE NEIGHBORHOOD TABLE", currency: "USD" }}
+        draft={{
+          template: "special",
+          title: "Pasta\nplans.",
+          kicker: "",
+          cta: "",
+          textMode: "full",
+          showBrand: true,
+          color: palette === "wine" ? "#531f34" : "#214a36",
+          accent: palette === "wine" ? "#ffe9e4" : "#e8f5cf",
+          items: [
+            {
+              name: "Rigatoni al pomodoro",
+              quantity: 1,
+              photoUrl: "/homepage/menus.webp",
+            },
+          ],
+          price: price.replace(/[^0-9.]/g, ""),
+          showPrice: true,
+          validity: "Tonight · 5–9 pm",
+          layouts: {},
+        }}
       />
-      <div className="pw-demo-graphic-copy">
-        <span>TONIGHT’S SPECIAL</span>
-        <strong>
-          A little taste
-          <br />
-          of the good life.
-        </strong>
-        <div className="pw-demo-offer">
-          <span>Rigatoni al pomodoro</span>
-          <b data-demo-price>{price}</b>
-        </div>
-        <small>Tonight · 5–9 pm</small>
-      </div>
     </div>
   );
 }
@@ -276,11 +286,11 @@ export default function HomepageSections({
           >
             <div className="pw-demo-output pw-demo-feed">
               <span className="pw-output-label">Instagram post</span>
-              <PromotionGraphic price={displayPrice} />
+              <PromotionGraphic price={displayPrice} palette={palette} />
             </div>
             <div className="pw-demo-output pw-demo-story">
               <span className="pw-output-label">Story</span>
-              <PromotionGraphic price={displayPrice} story />
+              <PromotionGraphic price={displayPrice} palette={palette} story />
             </div>
             <div className="pw-demo-caption">
               <span className="pw-output-label">
