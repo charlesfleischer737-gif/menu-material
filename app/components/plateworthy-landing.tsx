@@ -6,6 +6,10 @@ import HomepageSections from "./homepage-sections";
 
 const beforePhoto = "/burger-phone-original.jpg";
 const afterPhoto = "/burger-studio-transformation.png";
+const heroFoodBubbles = [
+  ["menus", "social", "cafes"],
+  ["delivery", "restaurants", "food-trucks"],
+];
 
 export default function Landing({
   onStart,
@@ -42,6 +46,27 @@ export default function Landing({
       <main id="main">
         <section className="pw-hero" aria-labelledby="hero-title">
           <div className="pw-hero-intro">
+            <div className="pw-hero-bubbles" aria-hidden="true">
+              {heroFoodBubbles.map((foods, side) => (
+                <div
+                  className={`pw-bubble-cluster ${side === 0 ? "is-left" : "is-right"}`}
+                  key={side}
+                >
+                  {foods.map((food) => (
+                    <span className="pw-food-bubble" key={food}>
+                      <img
+                        src={`/homepage/bubble-${food}.webp`}
+                        alt=""
+                        width="256"
+                        height="256"
+                        decoding="async"
+                        fetchPriority="low"
+                      />
+                    </span>
+                  ))}
+                </div>
+              ))}
+            </div>
             <h1 id="hero-title">
               Make your food look
               <br />
