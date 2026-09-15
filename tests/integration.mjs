@@ -66,7 +66,7 @@ globalThis.fetch = async (url, init = {}) => {
 };
 async function call(path, b, expected = 200, opts = {}) {
   // Keep the original two-candidate regression cases explicit; the studio default is now one.
-  if (path === "jobs" && b) b = {candidateCount: 2, ...b};
+  if (path === "jobs" && b) b = { candidateCount: 2, ...b };
   const headers = { cookie, ...opts.headers };
   if (b !== undefined && !(b instanceof FormData))
     headers["Content-Type"] = "application/json";
@@ -214,6 +214,14 @@ try {
     409,
   );
   await call("jobs", { ...request, requestKey: crypto.randomUUID() }, 402);
+  const legacyDetails = JSON.parse(duplicates[0].details);
+  delete legacyDetails.rendering;
+  legacyDetails.model = "gpt-image-2";
+  await run(
+    "UPDATE jobs SET details=? WHERE id=?",
+    JSON.stringify(legacyDetails),
+    duplicates[0].id,
+  );
   await call("jobs/tick", {});
   assert.equal(providerCalls, 2);
   await Promise.all([call("jobs/tick", {}), call("jobs/tick", {})]);
@@ -225,6 +233,11 @@ try {
   await call("jobs/tick", {});
   assert.equal(providerCalls, 2);
   const generated = state.assets.find((a) => a.kind === "generated");
+  assert.equal(
+    generated.mime,
+    "image/png",
+    "legacy PNG output remains supported",
+  );
   await call(`assets/${generated.id}?download=1`, undefined, 403);
   await call(`assets/${generated.id}/approve`, { accurate: false }, 400);
   await call(`assets/${generated.id}/approve`, { accurate: true });

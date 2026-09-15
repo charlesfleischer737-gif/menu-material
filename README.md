@@ -22,11 +22,12 @@ Local records and uploads live in `.local-data/`, which is excluded from Git. Re
 
 Set `OPENAI_API_KEY` in `.env`, then restart. Keep this key on the server. The default adapter uses OpenAI Responses with background image generation and a text-only caption request. Models are configurable:
 
-- `OPENAI_IMAGE_MODEL`: `gpt-image-2`
+- `OPENAI_IMAGE_MODEL`: `gpt-image-2.5-flare`
+- `OPENAI_IMAGE_QUALITY`: `high` (Flare also supports `low`, `medium`, `xhigh`, `max`, and `auto`)
 - `OPENAI_ORCHESTRATOR_MODEL`: `gpt-6-astra`
 - `OPENAI_TEXT_MODEL`: `gpt-4.1-mini`
 
-These are initial integration candidates, not a quality benchmark winner. Your API account must have access to the configured models. Calls can incur provider charges even though the pilot is free to restaurants. See [OpenAI image generation](https://developers.openai.com/api/docs/guides/image-generation) and [background mode](https://developers.openai.com/api/docs/guides/background).
+Flare is the selected image provider; its food fidelity, latency, and cost still require a live pilot. New jobs request JPEG at 95% quality for faster delivery, retaining the existing delivery, social, and menu dimensions. Model, rendering quality, format, and dimensions are saved with each job so configuration changes cannot alter a queued request. Previously submitted PNG jobs still recover normally. Your API account must have access to the configured models. Calls can incur provider charges even though the pilot is free to restaurants. See [OpenAI image generation](https://developers.openai.com/api/docs/guides/image-generation) and [background mode](https://developers.openai.com/api/docs/guides/background).
 
 Without a key, AI buttons explain that the service is disconnected. Saving dishes, uploading photos, writing captions manually, approving source photos, and building menus still work. No mock generation is presented as a live result.
 
@@ -40,7 +41,7 @@ Set a strong `JOB_RUNNER_SECRET` in both the app and a trusted worker process:
 npm run worker
 ```
 
-The worker polls the protected `/api/internal/tick` endpoint every five seconds. Set `APP_ORIGIN` to the application origin. A scheduler can instead run `node --env-file=.env scripts/job-runner.mjs --once` once per minute. Run this in a persistent process manager or server scheduler; an ordinary terminal must stay open.
+The worker polls the protected `/api/internal/tick` endpoint every two seconds. Set `APP_ORIGIN` to the application origin. A scheduler can instead run `node --env-file=.env scripts/job-runner.mjs --once` once per minute. Run this in a persistent process manager or server scheduler; an ordinary terminal must stay open.
 
 The browser also advances jobs while the workspace is open. Once submitted, OpenAI's background job continues if the browser closes. Durable response IDs allow later retrieval. **A continuously running worker is required for reliable dispatch and result archival while all browsers are closed.** The hosting platform does not provision that separate scheduler automatically.
 

@@ -17,6 +17,29 @@ import {
   remaining,
   run,
 } from "./core";
+function imageSettings(
+  format: string,
+  model = config("OPENAI_IMAGE_MODEL", "gpt-image-2.5-flare"),
+) {
+  const modern = model.startsWith("gpt-image-2");
+  return {
+    model,
+    size: ["doordash", "uber"].includes(format)
+      ? modern
+        ? "2048x1152"
+        : "1536x1024"
+      : ["feed", "story"].includes(format)
+        ? "1024x1536"
+        : modern
+          ? "1536x1536"
+          : "1024x1024",
+    quality: z
+      .enum(["low", "medium", "high", "xhigh", "max", "auto"])
+      .parse(config("OPENAI_IMAGE_QUALITY", "high")),
+    output_format: "jpeg",
+    output_compression: 95,
+  };
+}
 export function imagePrompt(d: Row, revision = "", slot = 0) {
   const c = d.controls || {};
   const framing = `Compose for ${c.format || "menu"} with the full dish inside a generous safe margin. Crop position preference: ${c.cropX ?? 50}% horizontal, ${c.cropY ?? 50}% vertical. Composition: ${c.composition || "Full dish"}. Surface: ${c.surface || "As shown"}. Lighting: ${c.lighting || "As shown"}. ${c.plate === "white" ? "Owner explicitly requests a plain white plate; keep the food and portion identical." : "Keep the original plate."} ${c.angle && c.angle !== "keep" ? "Owner explicitly requests " + c.angle + " camera angle; reconstruct only what is necessary and preserve food identity." : "Keep the original camera angle."}`;
@@ -106,10 +129,12 @@ export async function enqueue(r: Row, input: Row) {
     400,
     "Describe the ingredients, portion and presentation to create an illustration without a photo.",
   );
+  const rendering = imageSettings(controls.format);
   const details = {
     controls,
     pipelineVersion: PIPELINE_VERSION,
-    model: config("OPENAI_IMAGE_MODEL", "gpt-image-2"),
+    model: rendering.model,
+    rendering,
     candidateCount: count,
     name: d.name,
     description: d.description,
@@ -127,7 +152,7 @@ export async function enqueue(r: Row, input: Row) {
       parent: parent?.id,
       revision,
       pipeline: PIPELINE_VERSION,
-      model: config("OPENAI_IMAGE_MODEL", "gpt-image-2"),
+      model: details.model,
     }),
   );
   const existing = await one(
@@ -308,15 +333,18 @@ async function settle(o: Row, res: Row) {
     (x: Row) => x.type === "image_generation_call" && x.result,
   );
   if (res.status === "completed" && generated) {
-    const aId = o.id,
-      key = `private/${o.restaurant_id}/generated/${aId}.png`;
+    const aId = o.id;
     const bytes = Buffer.from(generated.result, "base64");
-    if (
-      !bytes
-        .subarray(0, 8)
-        .equals(Buffer.from([137, 80, 78, 71, 13, 10, 26, 10])) ||
-      bytes.length > 20 * 1024 * 1024
-    ) {
+    // Recognize older PNG results as well as new JPEG results during recovery.
+    const png = bytes
+      .subarray(0, 8)
+      .equals(Buffer.from([137, 80, 78, 71, 13, 10, 26, 10]));
+    const jpeg =
+      bytes.length >= 4 &&
+      bytes[0] === 255 &&
+      bytes[1] === 216 &&
+      bytes[2] === 255;
+    if ((!png && !jpeg) || bytes.length > 20 * 1024 * 1024) {
       await run(
         "UPDATE outputs SET status='failed',error=?,usage=?,lease_until=0 WHERE id=? AND status NOT IN ('completed','failed')",
         "The service returned an invalid image. Your allowance has been restored.",
@@ -325,21 +353,24 @@ async function settle(o: Row, res: Row) {
       );
       return;
     }
+    const mime = png ? "image/png" : "image/jpeg";
+    const key = `private/${o.restaurant_id}/generated/${aId}.${png ? "png" : "jpg"}`;
     await bucket().put(key, bytes, {
-      httpMetadata: { contentType: "image/png" },
+      httpMetadata: { contentType: mime },
     });
     const job = await one("SELECT * FROM jobs WHERE id=?", o.job_id);
     assert(job, 404, "Generation not found.");
     await db().batch([
       db()
         .prepare(
-          "INSERT OR IGNORE INTO assets (id,restaurant_id,dish_id,kind,key,mime,name,created_at) SELECT ?,?,?,'generated',?,'image/png',?,? WHERE EXISTS(SELECT 1 FROM outputs WHERE id=? AND status!='completed' AND status!='failed')",
+          "INSERT OR IGNORE INTO assets (id,restaurant_id,dish_id,kind,key,mime,name,created_at) SELECT ?,?,?,'generated',?,?,?,? WHERE EXISTS(SELECT 1 FROM outputs WHERE id=? AND status!='completed' AND status!='failed')",
         )
         .bind(
           aId,
           o.restaurant_id,
           job.dish_id,
           key,
+          mime,
           "Studio photo",
           now(),
           o.id,
@@ -422,6 +453,18 @@ export async function tick(restaurantId?: string) {
         } else {
           const job = await one("SELECT * FROM jobs WHERE id=?", o.job_id);
           assert(job, 404, "Generation not found.");
+          const details = JSON.parse(job.details);
+          // Freeze rendering settings when reserving a job, including across deployments.
+          // Legacy jobs predate snapshots and used high-quality PNG output.
+          const rendering = details.rendering ?? {
+            ...imageSettings(
+              details.controls?.format,
+              details.model || "gpt-image-2",
+            ),
+            quality: "high",
+            output_format: "png",
+            output_compression: undefined,
+          };
           const images = await inputImages(job);
           await run(
             "UPDATE outputs SET status='submitting',attempts=attempts+1 WHERE id=? AND lease_token=?",
@@ -438,11 +481,7 @@ export async function tick(restaurantId?: string) {
                 content: [
                   {
                     type: "input_text",
-                    text: imagePrompt(
-                      JSON.parse(job.details),
-                      job.prompt,
-                      o.slot,
-                    ),
+                    text: imagePrompt(details, job.prompt, o.slot),
                   },
                   ...images,
                 ],
@@ -451,30 +490,8 @@ export async function tick(restaurantId?: string) {
             tools: [
               {
                 type: "image_generation",
-                model: config("OPENAI_IMAGE_MODEL", "gpt-image-2"),
+                ...rendering,
                 action: images.length ? "edit" : "generate",
-                size:
-                  config("OPENAI_IMAGE_MODEL", "gpt-image-2") === "gpt-image-2"
-                    ? ["doordash", "uber"].includes(
-                        JSON.parse(job.details).controls?.format,
-                      )
-                      ? "2048x1152"
-                      : ["feed", "story"].includes(
-                            JSON.parse(job.details).controls?.format,
-                          )
-                        ? "1024x1536"
-                        : "1536x1536"
-                    : ["doordash", "uber"].includes(
-                          JSON.parse(job.details).controls?.format,
-                        )
-                      ? "1536x1024"
-                      : ["feed", "story"].includes(
-                            JSON.parse(job.details).controls?.format,
-                          )
-                        ? "1024x1536"
-                        : "1024x1024",
-                quality: "high",
-                output_format: "png",
               },
             ],
             tool_choice: { type: "image_generation" },

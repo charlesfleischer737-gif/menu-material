@@ -15,5 +15,5 @@ do {
     console.error(new Date().toISOString(), e.message);
     if (once) process.exitCode = 1;
   }
-  if (!once) await new Promise((r) => setTimeout(r, 5000));
+  if (!once) await new Promise((r) => setTimeout(r, 2000));
 } while (!once);

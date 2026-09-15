@@ -6,6 +6,8 @@ const root = mkdtempSync(join(tmpdir(), "plateworthy-core-"));
 process.env.DISHLIGHT_DATA_DIR = root;
 process.env.LOCAL_DEVELOPMENT = "true";
 process.env.OPENAI_API_KEY = "fixture-only";
+delete process.env.OPENAI_IMAGE_MODEL;
+delete process.env.OPENAI_IMAGE_QUALITY;
 const { handle } = await import("../lib/server/api.ts");
 const { all, one, run } = await import("../lib/server/core.ts");
 const jpeg = readFileSync("public/pasta.jpg"),
@@ -49,7 +51,7 @@ globalThis.fetch = async (url, init = {}) => {
       : {
           status: "completed",
           output: [
-            { type: "image_generation_call", result: png.toString("base64") },
+            { type: "image_generation_call", result: jpeg.toString("base64") },
           ],
           usage: { input_tokens: 15, output_tokens: 22 },
         },
@@ -151,16 +153,39 @@ try {
   );
   assert.equal((await call("state")).remaining, 19);
   await call("jobs", { ...input, controls: { format: "menu" } }, 409);
+  process.env.OPENAI_IMAGE_MODEL = "gpt-image-2";
+  process.env.OPENAI_IMAGE_QUALITY = "low";
   await call("jobs/tick", {});
   await call("jobs/tick", {});
+  delete process.env.OPENAI_IMAGE_MODEL;
+  delete process.env.OPENAI_IMAGE_QUALITY;
   assert.equal(calls, 1);
   const job = await one("SELECT * FROM jobs WHERE id=?", a.id);
   assert.equal(job.status, "completed", "a single result completes a job");
   assert.equal(requests[0].tools[0].size, "2048x1152");
+  assert.equal(
+    requests[0].tools[0].model,
+    "gpt-image-2.5-flare",
+    "queued jobs retain their model",
+  );
+  assert.equal(
+    requests[0].tools[0].quality,
+    "high",
+    "queued jobs retain their quality",
+  );
+  assert.equal(requests[0].tools[0].output_format, "jpeg");
+  assert.equal(requests[0].tools[0].output_compression, 95);
+  assert.equal(requests[0].tools[0].action, "edit");
   assert(
     requests[0].input[0].content[0].text.includes("Keep the original plate"),
   );
   const result = await one("SELECT * FROM outputs WHERE job_id=?", a.id);
+  const storedImage = await one(
+    "SELECT * FROM assets WHERE id=?",
+    result.asset_id,
+  );
+  assert.equal(storedImage.mime, "image/jpeg");
+  assert(storedImage.key.endsWith(".jpg"));
   const cached = await call(
     "jobs",
     { ...input, requestKey: crypto.randomUUID() },
@@ -175,6 +200,15 @@ try {
   await call("assets/" + result.asset_id + "?download=1", undefined, 403);
   await call("assets/" + result.asset_id + "/approve", { accurate: true });
   await call("assets/" + result.asset_id + "?download=1");
+  const download = await handle(
+    new Request(
+      "http://localhost/api/assets/" + result.asset_id + "?download=1",
+      { headers: { cookie } },
+    ),
+  );
+  assert.equal(download.headers.get("content-type"), "image/jpeg");
+  assert(download.headers.get("content-disposition").includes(".jpg"));
+  assert.deepEqual(Buffer.from(await download.arrayBuffer()), jpeg);
   const editId = crypto.randomUUID(),
     editForm = () => {
       const f = new FormData();
@@ -209,6 +243,11 @@ try {
     202,
   );
   await call("jobs/tick", {});
+  assert.equal(
+    requests.at(-1).tools[0].size,
+    "1536x1536",
+    "Flare retains full menu dimensions",
+  );
   assert.equal(
     requests.at(-1).input[0].content.length,
     3,

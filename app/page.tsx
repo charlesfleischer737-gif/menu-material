@@ -100,7 +100,7 @@ export default function Home() {
       } finally {
         tickBusy.current = false;
       }
-    }, 5000);
+    }, 2000);
     return () => clearInterval(timer);
   }, [state.user, state.jobs, state.batchItems, refresh]);
   async function act(label: string, fn: () => Promise<void>) {
