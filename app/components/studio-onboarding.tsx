@@ -1,26 +1,97 @@
 "use client";
-import { Camera, Check, SlidersHorizontal } from "lucide-react";
+import { useId, useState } from "react";
+import { Check, ChevronsLeftRight, Sparkles } from "lucide-react";
 import type { PhotoStyle } from "@/lib/photo-styles";
+
+export function PhotoComparison({
+  original,
+  result,
+  ratio = 1.35,
+  example = false,
+}: {
+  original: string;
+  result: string;
+  ratio?: number;
+  example?: boolean;
+}) {
+  const [position, setPosition] = useState(50);
+  const [failed, setFailed] = useState(false);
+  const labelId = useId();
+  return (
+    <figure className="cx-photo-comparison">
+      <div className="cx-comparison-stage" style={{ aspectRatio: ratio }}>
+        <img
+          src={result}
+          alt={
+            example ? "Example studio edit of a burger" : "Your edited photo"
+          }
+          onError={() => setFailed(true)}
+        />
+        <div
+          className="cx-comparison-original"
+          style={{ clipPath: `inset(0 ${100 - position}% 0 0)` }}
+        >
+          <img
+            src={original}
+            alt={
+              example
+                ? "Original phone photo of the burger"
+                : "Your original photo"
+            }
+            onError={() => setFailed(true)}
+          />
+        </div>
+        <span className="cx-comparison-tag is-before">Before</span>
+        <span className="cx-comparison-tag is-after">After</span>
+        {!failed && (
+          <>
+            <div
+              className="cx-comparison-divider"
+              style={{ left: `${position}%` }}
+              aria-hidden="true"
+            >
+              <span>
+                <ChevronsLeftRight size={21} />
+              </span>
+            </div>
+            <input
+              type="range"
+              min={0}
+              max={100}
+              value={position}
+              onChange={(e) => setPosition(Number(e.target.value))}
+              aria-labelledby={labelId}
+              aria-valuetext={`${position}% original photo, ${100 - position}% edited photo`}
+            />
+          </>
+        )}
+        {failed && (
+          <p className="cx-comparison-error" role="status">
+            {example
+              ? "The example couldn’t load. You can still upload your photo to get started."
+              : "The comparison couldn’t load. Open Your result to view the photo."}
+          </p>
+        )}
+      </div>
+      <figcaption>
+        <span id={labelId}>
+          <ChevronsLeftRight size={16} /> Slide to compare
+        </span>
+        <span>{example ? "Example edit" : "Original → your result"}</span>
+      </figcaption>
+    </figure>
+  );
+}
 
 export function StudioIntroduction() {
   return (
     <aside className="cx-first-guide">
       <div className="cx-first-example">
-        <img
-          className="cx-first-after"
-          src="/homepage/burger-enhanced.webp"
-          alt="Example burger photo with a clean setting and studio lighting"
+        <PhotoComparison
+          original="/homepage/burger-original.webp"
+          result="/homepage/burger-enhanced.webp"
+          example
         />
-        <span className="cx-first-example-label">
-          A little inspiration · example edit
-        </span>
-        <figure className="cx-first-before">
-          <img
-            src="/homepage/burger-original.webp"
-            alt="The original burger photo before editing"
-          />
-          <figcaption>Started with a phone photo</figcaption>
-        </figure>
       </div>
       <div className="cx-first-guidance">
         <span className="cx-eyebrow">
@@ -48,48 +119,18 @@ export function StudioIntroduction() {
 }
 
 export function RecommendedPhotoStyles({
-  source,
   recommendations,
   selected,
   onSelect,
-  onReplace,
-  onQuickEdit,
   busy,
-  advice,
 }: {
-  source: string;
   recommendations: PhotoStyle[];
   selected: PhotoStyle;
   onSelect: (id: string) => void;
-  onReplace: () => void;
-  onQuickEdit: () => void;
   busy: boolean;
-  advice: string;
 }) {
   return (
     <>
-      {source && (
-        <div className="cx-source-receipt">
-          <img src={source} alt="Your uploaded original photo" />
-          <div>
-            <span className="cx-upload-saved">
-              <Check size={15} /> Your photo is ready
-            </span>
-            <p>
-              {advice ||
-                "We’ll use your food as the reference. Your original stays safe."}
-            </p>
-          </div>
-          <div className="cx-source-actions">
-            <button className="cx-link" disabled={busy} onClick={onReplace}>
-              <Camera size={15} /> Replace
-            </button>
-            <button className="cx-link" disabled={busy} onClick={onQuickEdit}>
-              <SlidersHorizontal size={15} /> Just a touch-up
-            </button>
-          </div>
-        </div>
-      )}
       <div
         className="cx-recommended-styles"
         role="group"
@@ -109,9 +150,7 @@ export function RecommendedPhotoStyles({
                 {selected.id === style.id && <Check size={17} />}
               </span>
               {index === 0 && (
-                <span className="cx-recommendation-badge">
-                  A great place to start
-                </span>
+                <span className="cx-recommendation-badge">Recommended</span>
               )}
             </div>
             <div className="cx-recommendation-copy">
@@ -123,8 +162,68 @@ export function RecommendedPhotoStyles({
         ))}
       </div>
       <p className="cx-recommendation-note">
-        These photos show the style. Your result will feature your own dish.
+        Style inspiration. We’ll create this look with your food.
       </p>
     </>
+  );
+}
+
+export function StudioCreating({
+  source,
+  style,
+  queued,
+}: {
+  source: string;
+  style: PhotoStyle;
+  queued: boolean;
+}) {
+  return (
+    <div className="cx-creating-scene" role="status">
+      <div className="cx-creating-photo">
+        <img
+          src={source || style.image}
+          alt={
+            source
+              ? "Your original photo, safely saved"
+              : "Your chosen style example"
+          }
+        />
+        <span className="cx-comparison-tag is-before">
+          {source ? "Your original" : "Style inspiration"}
+        </span>
+        <div className="cx-creating-style">
+          <img src={style.image} alt="Chosen style example" />
+          <span>
+            Your chosen look<strong>{style.name}</strong>
+          </span>
+        </div>
+      </div>
+      <div className="cx-creating-copy">
+        <span className="cx-creating-icon">
+          <Sparkles size={28} />
+        </span>
+        <span className="cx-eyebrow">
+          {queued ? "IN THE QUEUE" : "IN YOUR PHOTO STUDIO"}
+        </span>
+        <h2>
+          {queued ? "Ready for its close-up." : "A fresh light on your food."}
+        </h2>
+        <p>
+          {queued
+            ? "Your photo and style are saved. We’re waiting to start your image."
+            : "We’re creating your chosen look, using your original food as the reference."}
+        </p>
+        <div className="cx-creating-activity" aria-hidden="true">
+          <span />
+        </div>
+        <p className="cx-creating-note">
+          Keep this tab open. Your result will appear here, ready to compare and
+          download.
+        </p>
+        <span className="cx-original-safe">
+          <Check size={16} /> Your original stays saved
+        </span>
+      </div>
+    </div>
   );
 }

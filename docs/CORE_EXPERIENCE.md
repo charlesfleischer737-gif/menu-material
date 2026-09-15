@@ -19,7 +19,9 @@ Post Maker uses four visible stages: **Dish & details → Design → Formats & c
 
 New accounts without food photos land directly in Photo Studio. Its three visible stages are **Upload a photo → Choose a style → Create & review**. Upload advances automatically to three existing style presets, chosen by food family and intended use. The optional photo analysis can improve the suggestions without delaying the flow; it cannot override a chosen style, manual fine-tuning, or a submitted request. Browsing the full 28-style catalog and adjusting framing remain optional. Existing saved drafts keep their original internal step numbers and resume normally.
 
-The upload screen includes a labeled before/after example and simple photo tips. Review explains comparison, naming and approval. Approval leads directly to a download action, with the existing delivery crop and accuracy checks preserved. Phone layouts use stacked photo cards, readable text, large tap targets, a compact progress bar and the existing bottom action row.
+The upload screen includes a labeled, interactive before/after example and simple photo tips. The three style photographs sit beside a persistent original-photo summary and Create action on desktop. The full catalog remains one click away; format and fine-tuning are grouped inside “Make it your own.” Phone layouts use stacked photo cards, readable text, large tap targets, a compact progress bar and a bottom Create action with its image allowance visible.
+
+Creation shows the actual queue or processing state with the original and chosen style, without a simulated countdown. Result review opens with a draggable, keyboard-accessible comparison of the full original and edited images. Individual original/result views and zoom remain available. After naming and fidelity approval, “Save & download” saves the image and starts its download in one action; delivery exports still require the full-dish crop check. Quick adjustments must be saved as a new version first. If a download fails after approval, the approved photo remains in My Dishes and the download can be retried.
 
 ## Persistence and generation
 
