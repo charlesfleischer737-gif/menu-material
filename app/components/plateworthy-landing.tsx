@@ -7,8 +7,8 @@ import HomepageSections from "./homepage-sections";
 const beforePhoto = "/burger-phone-original.jpg";
 const afterPhoto = "/burger-studio-transformation.png";
 const heroFoodBubbles = [
-  ["menus", "social", "cafes"],
-  ["delivery", "restaurants", "food-trucks"],
+  ["sushi", "pizza", "cheesecake"],
+  ["burrata", "gelato", "gyoza"],
 ];
 
 export default function Landing({
@@ -55,10 +55,10 @@ export default function Landing({
                   {foods.map((food) => (
                     <span className="pw-food-bubble" key={food}>
                       <img
-                        src={`/homepage/bubble-${food}.webp`}
+                        src={`/homepage/hero-${food}.webp`}
                         alt=""
-                        width="256"
-                        height="256"
+                        width="512"
+                        height="512"
                         decoding="async"
                         fetchPriority="low"
                       />
