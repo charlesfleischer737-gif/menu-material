@@ -39,6 +39,15 @@ import {
 } from "@/lib/creation-export";
 import { photoAdvice } from "@/lib/photo-advice";
 import {
+  recommendedPhotoStyles,
+  photoAnalysisRecommendation,
+  studioProgress,
+} from "@/lib/studio-onboarding";
+import {
+  RecommendedPhotoStyles,
+  StudioIntroduction,
+} from "./studio-onboarding";
+import {
   CropControls,
   Feedback,
   Field,
@@ -75,11 +84,13 @@ export default function PhotoStudio({
         ? "restaurant"
         : "menu-stone",
     }),
-    { draft: b, change, save, start, ready, status } = draftStore;
+    { draft: b, change, save, start, ready, status, read } = draftStore;
   const root = useStepFocus(b.step, ready);
   const action = useAction(),
     { act, busy, setNotice, setError } = action;
   const [advice, setAdvice] = useState(""),
+    [dragging, setDragging] = useState(false),
+    [catalog, setCatalog] = useState(false),
     [fine, setFine] = useState(false),
     [before, setBefore] = useState(false),
     [adjust, setAdjust] = useState(""),
@@ -110,10 +121,19 @@ export default function PhotoStudio({
     styleCategories.find(
       (c) => c.id === (b.lookCategory || selected.category),
     ) || styleCategories[2];
+  const recommendations = recommendedPhotoStyles(
+    b.recommendationFamily || b.family,
+    b.destination,
+  );
+  const firstImage = !state.assets.some(
+    (a: Row) => a.kind === "generated" && a.approved_at,
+  );
   function chooseLook(id: string) {
+    if (busy) return;
     const preset = looks.find((l) => l.id === id)!;
     update({
       look: id,
+      styleChosen: true,
       ...(preset.category ? { lookCategory: preset.category } : {}),
       surface: "As shown",
       lighting: "As shown",
@@ -198,7 +218,50 @@ export default function PhotoStudio({
     }
   }, [output?.asset_id, b.jobId]);
   function update(patch: Row) {
-    change({ ...patch, requestKey: "" });
+    const adjusted = [
+      "surface",
+      "lighting",
+      "plate",
+      "angle",
+      "composition",
+      "note",
+      "adjustments",
+    ].some((key) => key in patch);
+    change({
+      ...(adjusted ? { styleChosen: true } : {}),
+      ...patch,
+      requestKey: "",
+    });
+  }
+  function chooseDestination(destination: string) {
+    const fresh = photoBrief(destination);
+    const preset = recommendedPhotoStyles(b.family, destination)[0];
+    update({
+      destination,
+      format: fresh.format,
+      look: preset.id,
+      lookCategory: preset.category,
+      recommendationFamily: b.family,
+      styleChosen: false,
+      angle: "keep",
+      surface: "As shown",
+      lighting: "As shown",
+    });
+  }
+  async function openQuickEdits() {
+    update({ resultId: b.sourceId, jobId: "", step: 4 });
+    setAdjust("quick");
+    setAccurate(false);
+    await save();
+  }
+  async function openPhotoAsMenu() {
+    const photo = await fetch(source);
+    if (!photo.ok) throw Error("Your saved photo is unavailable.");
+    const form = new FormData();
+    form.set("file", await photo.blob(), "menu.jpg");
+    const imported = await api("imports", form);
+    await refresh();
+    onDestination("menu", "", "", { importId: imported.id });
   }
   async function ensureDish() {
     const prior = state.dishes.find((d: Row) => d.id === b.dishId);
@@ -238,6 +301,10 @@ export default function PhotoStudio({
       fd.set("normalized", normalized, "working.jpg");
       fd.set("dishId", did);
       const a = await api("assets", fd);
+      const recommended = recommendedPhotoStyles(
+        "Plated mains",
+        b.destination,
+      )[0];
       update({
         sourceId: a.id,
         menuDocument: false,
@@ -245,8 +312,17 @@ export default function PhotoStudio({
         resultId: "",
         jobId: "",
         mode: "photo",
-        step: 1,
+        step: 2,
+        family: "Plated mains",
+        recommendationFamily: "Plated mains",
+        styleChosen: false,
+        look: recommended.id,
+        lookCategory: recommended.category,
+        angle: "keep",
       });
+      setCatalog(false);
+      setFine(false);
+      setBefore(false);
       setAdvice(
         await photoAdvice(
           new File([normalized], "photo.jpg", { type: "image/jpeg" }),
@@ -260,10 +336,12 @@ export default function PhotoStudio({
         void api("photo-analysis", { sourceId: a.id })
           .then((result) => {
             if (analysisSource.current !== a.id) return;
+            const current = read();
             change({
               family: result.family,
               menuDocument: result.menuDocument,
               analysisAdvice: result.advice,
+              ...photoAnalysisRecommendation(current, result.family),
             });
           })
           .catch(() => {});
@@ -280,6 +358,8 @@ export default function PhotoStudio({
       throw Error("Add a dish name and a short description first.");
     if (b.look === "reference" && !b.referenceId)
       throw Error("Add a style reference, or choose one of our looks.");
+    // Once Create is pressed, late photo analysis must not change the chosen look.
+    change({ styleChosen: true });
     const did = await ensureDish();
     const key = b.requestKey || crypto.randomUUID();
     change({ requestKey: key });
@@ -315,6 +395,7 @@ export default function PhotoStudio({
     });
     setAdjust("");
     setAccurate(false);
+    setBefore(false);
     await save();
     await refresh();
     void api("jobs/tick", {})
@@ -394,7 +475,18 @@ export default function PhotoStudio({
       </p>
     );
   return (
-    <section className="cx-tool" ref={root}>
+    <section className="cx-tool cx-guided-studio" ref={root}>
+      <input
+        ref={input}
+        type="file"
+        accept="image/jpeg,image/png,image/heic,image/heif,application/pdf"
+        hidden
+        disabled={!!busy}
+        onChange={(e) => {
+          if (e.target.files?.[0]) void uploadPhoto(e.target.files[0]);
+          e.target.value = "";
+        }}
+      />
       <div className="cx-tool-top">
         <span className="cx-save">{status}</span>
         <button
@@ -412,6 +504,9 @@ export default function PhotoStudio({
               setAdjust("");
               setAccurate(false);
               setAdvice("");
+              setCatalog(false);
+              setFine(false);
+              setBefore(false);
             })
           }
         >
@@ -420,30 +515,39 @@ export default function PhotoStudio({
         </button>
       </div>
       <Steps
-        labels={[
-          "Your photo",
-          "Choose a look",
-          "Create",
-          "Review",
-          "Use your photo",
-        ]}
-        step={b.step}
-        onBack={running ? undefined : (n) => update({ step: n })}
+        labels={["Upload a photo", "Choose a style", "Create & review"]}
+        step={studioProgress(b.step)}
+        onBack={running || busy ? undefined : (n) => update({ step: n })}
       />
       <Feedback {...action} />
       {b.step === 1 && (
         <>
-          <Heading eyebrow="PHOTO STUDIO" title="Let’s make your dish shine.">
-            Start with a photo of the food you actually serve. We’ll take it
-            from here.
+          <Heading
+            eyebrow="YOUR PHOTO STUDIO"
+            title="Start with something delicious."
+          >
+            Upload your dish. Pick a style. We’ll take care of the light.
           </Heading>
-          <div className="cx-studio-grid">
+          <div className="cx-studio-grid cx-first-upload">
             <div>
               <div
-                className={"cx-upload " + (source ? "has-photo" : "")}
-                onDragOver={(e) => e.preventDefault()}
+                className={
+                  "cx-upload " +
+                  (source ? "has-photo " : "") +
+                  (dragging ? "is-dragging" : "")
+                }
+                onDragOver={(e) => {
+                  e.preventDefault();
+                  if (!busy) setDragging(true);
+                }}
+                onDragLeave={(e) => {
+                  if (!e.currentTarget.contains(e.relatedTarget as Node))
+                    setDragging(false);
+                }}
                 onDrop={(e) => {
                   e.preventDefault();
+                  setDragging(false);
+                  if (busy) return;
                   const f = e.dataTransfer.files[0];
                   if (f) void uploadPhoto(f);
                 }}
@@ -467,15 +571,22 @@ export default function PhotoStudio({
                     <div className="cx-upload-icon">
                       <Camera size={30} />
                     </div>
-                    <h2>A great photo starts with your food.</h2>
-                    <p>Drop your photo here, or choose one from your phone.</p>
+                    <h2>
+                      {firstImage
+                        ? "Add your first photo."
+                        : "Add your dish photo."}
+                    </h2>
+                    <p>
+                      Drag a photo here, or pick one from your device. We’ll
+                      suggest three looks next.
+                    </p>
                     <button
                       className="cx-btn"
                       disabled={!!busy}
                       onClick={() => input.current?.click()}
                     >
                       <Upload size={18} />
-                      Choose a photo
+                      Upload a photo
                     </button>
                     <small>JPG, PNG or HEIC · up to 20 MB</small>
                     <label className="cx-link cx-camera">
@@ -495,17 +606,6 @@ export default function PhotoStudio({
                     </label>
                   </>
                 )}
-                <input
-                  ref={input}
-                  type="file"
-                  accept="image/jpeg,image/png,image/heic,image/heif,application/pdf"
-                  hidden
-                  onChange={(e) => {
-                    if (e.target.files?.[0])
-                      void uploadPhoto(e.target.files[0]);
-                    e.target.value = "";
-                  }}
-                />
               </div>
               {source && (
                 <>
@@ -539,19 +639,6 @@ export default function PhotoStudio({
                       </button>
                     </div>
                   )}
-                  <Field label="Food family (change if needed)">
-                    <select
-                      value={b.family}
-                      onChange={(e) => {
-                        analysisSource.current = "";
-                        update({ family: e.target.value });
-                      }}
-                    >
-                      {foodFamilies.map((f) => (
-                        <option key={f}>{f}</option>
-                      ))}
-                    </select>
-                  </Field>
                 </>
               )}
               <button
@@ -592,80 +679,7 @@ export default function PhotoStudio({
                 </div>
               )}
             </div>
-            <aside className="cx-panel cx-purpose">
-              <p className="cx-eyebrow">MADE FOR YOUR NEXT MOVE</p>
-              <h2>Where will you use it?</h2>
-              <p>We’ll get the shape and setting ready for you.</p>
-              <div className="cx-purpose-list">
-                {[
-                  [
-                    "menu",
-                    "Menu & website",
-                    "Fresh photos for your bestsellers",
-                    BookOpen,
-                  ],
-                  [
-                    "social",
-                    "Social post",
-                    "Give people a reason to stop scrolling",
-                    Megaphone,
-                  ],
-                  [
-                    "delivery",
-                    "Delivery app",
-                    "A clear view of the dish they’ll order",
-                    Truck,
-                  ],
-                  [
-                    "print",
-                    "Print",
-                    "Make your menu or flyer stand out",
-                    Printer,
-                  ],
-                ].map(([id, title, desc, Icon]) => {
-                  const I = Icon as typeof Camera;
-                  return (
-                    <button
-                      key={String(id)}
-                      aria-pressed={b.destination === id}
-                      onClick={() =>
-                        update({
-                          destination: id,
-                          format:
-                            id === "social"
-                              ? "feed"
-                              : id === "delivery"
-                                ? "doordash"
-                                : id === "print"
-                                  ? "print"
-                                  : "menu",
-                          look: id === "delivery" ? "keep" : b.look,
-                        })
-                      }
-                    >
-                      <I size={20} />
-                      <span>
-                        <b>{String(title)}</b>
-                        <small>{String(desc)}</small>
-                      </span>
-                      <span className="cx-radio">
-                        {b.destination === id && <Check size={12} />}
-                      </span>
-                    </button>
-                  );
-                })}
-              </div>
-              <p className="cx-trust">
-                <Check size={15} />
-                Your original always stays safe.
-              </p>
-              <button
-                className="cx-link"
-                onClick={() => onDestination("menu", "", "")}
-              >
-                Uploading a menu instead? <ArrowRight size={15} />
-              </button>
-            </aside>
+            <StudioIntroduction />
           </div>
           {b.mode === "photo" && b.sourceId && (
             <div className="cx-quick-start">
@@ -693,338 +707,483 @@ export default function PhotoStudio({
               </button>
             </div>
           )}
-          <Footer
-            label="Choose a look"
-            next={() =>
-              act("Saving your photo", async () => {
-                await ensureDish();
-                update({ step: 2 });
-                await save();
-                await refresh();
-              })
-            }
-            disabled={
-              b.mode === "photo"
-                ? !b.sourceId
-                : !b.name.trim() || !b.description.trim()
-            }
-            busy={!!busy}
-            note="Choose a look, then make it yours"
-          />
+          {(b.mode === "description" || !!source) && (
+            <Footer
+              label="Choose a look"
+              next={() =>
+                act("Saving your photo", async () => {
+                  await ensureDish();
+                  update({ step: 2 });
+                  await save();
+                  await refresh();
+                })
+              }
+              disabled={
+                b.mode === "photo"
+                  ? !b.sourceId
+                  : !b.name.trim() || !b.description.trim()
+              }
+              busy={!!busy}
+              note="Choose a look, then make it yours"
+            />
+          )}
         </>
       )}
       {b.step === 2 && (
         <>
           <Heading
-            eyebrow="PHOTO STUDIO / STYLE COLLECTIONS"
-            title="A setting for every kind of delicious."
+            eyebrow={firstImage ? "YOUR FIRST STUDIO PHOTO" : "PHOTO STUDIO"}
+            title={
+              catalog
+                ? "Find your signature look."
+                : "Three looks. Your kind of delicious."
+            }
           >
-            Explore 28 distinct looks. Choose a category, then a style for your
-            own food.
+            {catalog
+              ? "Explore every collection. Your photo and choices stay saved."
+              : "Choose a style you love, then create. No prompts or editing experience needed."}
           </Heading>
           <div
-            className="cx-style-categories"
+            className="cx-style-switch"
             role="group"
-            aria-label="Photo style categories"
+            aria-label="Browse styles"
           >
-            {styleCategories.map((c) => (
-              <button
-                key={c.id}
-                aria-pressed={category.id === c.id}
-                onClick={() =>
-                  chooseLook(photoStyles.find((l) => l.category === c.id)!.id)
-                }
-              >
-                <span style={{ background: c.color }} />
-                {c.name}
-                <small>4 styles</small>
-              </button>
-            ))}
+            <button
+              disabled={!!busy}
+              aria-pressed={!catalog}
+              onClick={() => setCatalog(false)}
+            >
+              Suggested for you
+            </button>
+            <button
+              disabled={!!busy}
+              aria-pressed={catalog}
+              onClick={() => setCatalog(true)}
+            >
+              Explore all 28 styles <ArrowRight size={15} />
+            </button>
           </div>
-          <div className="cx-collection-heading">
-            <div>
-              <span className="cx-eyebrow">
-                THE {category.name.toUpperCase()} COLLECTION
-              </span>
-              <h2>{category.description}</h2>
-              <p>{category.use}</p>
-            </div>
-            <span className="cx-collection-count">
-              0{styleCategories.indexOf(category) + 1} <span>/ 07</span>
-            </span>
-          </div>
-          <div className="cx-looks-layout cx-style-workbench">
-            <div>
-              <div className="cx-look-grid cx-category-looks">
-                {photoStyles
-                  .filter((l) => l.category === category.id)
-                  .map((l) => (
-                    <button
-                      key={l.id}
-                      aria-pressed={b.look === l.id}
-                      className="cx-look"
-                      onClick={() => chooseLook(l.id)}
-                    >
-                      <div className="cx-style-image">
-                        <img
-                          src={l.image}
-                          alt={`${l.name}: ${l.bestFor}`}
-                          loading="lazy"
-                        />
-                        <span className="cx-style-example">Style example</span>
-                      </div>
-                      <span>
-                        <b>{l.name}</b>
-                        <small>{l.cue}</small>
-                      </span>
-                      {b.look === l.id && (
-                        <i>
-                          <Check size={16} />
-                        </i>
-                      )}
-                    </button>
-                  ))}
-              </div>
-              <div className="cx-collection-tip">
-                <Sparkles size={18} />
-                <p>{category.tip}</p>
-              </div>
-              <div className="cx-personal-looks">
-                <span>Or start with something familiar</span>
-                <div>
-                  {["keep", "restaurant", "reference"].map((id) => {
-                    const l = looks.find((l) => l.id === id)!;
-                    return (
-                      <button
-                        key={id}
-                        aria-pressed={b.look === id}
-                        onClick={() => chooseLook(id)}
-                      >
-                        {l.name}
-                        {b.look === id && <Check size={14} />}
-                      </button>
-                    );
-                  })}
-                </div>
-              </div>
-              <div className="cx-section-line">
-                <span>
-                  Your photo supplies the food. These examples show the lighting
-                  and setting.
-                </span>
-                <button className="cx-link" onClick={() => setFine((v) => !v)}>
-                  <SlidersHorizontal size={16} />
-                  {fine ? "Hide adjustments" : "Fine-tune this look"}
+          {!catalog && (
+            <RecommendedPhotoStyles
+              source={source}
+              recommendations={recommendations}
+              selected={selected}
+              onSelect={chooseLook}
+              onReplace={() => input.current?.click()}
+              onQuickEdit={() =>
+                void act("Opening quick edits", openQuickEdits)
+              }
+              busy={!!busy}
+              advice={b.analysisAdvice || advice}
+            />
+          )}
+          {b.menuDocument && (
+            <div className="cx-feedback">
+              <BookOpen size={18} />
+              <div>
+                This looks like a menu page. You can bring its dishes and prices
+                into Menu Builder.
+                <button
+                  className="cx-link"
+                  disabled={!!busy}
+                  onClick={() => act("Opening your menu", openPhotoAsMenu)}
+                >
+                  Open Menu Builder <ArrowRight size={15} />
                 </button>
               </div>
-              {fine && (
-                <div className="cx-panel cx-fine">
-                  <Field label="Food family">
-                    <select
-                      value={b.family}
-                      onChange={(e) => update({ family: e.target.value })}
-                    >
-                      {foodFamilies.map((f) => (
-                        <option key={f}>{f}</option>
-                      ))}
-                    </select>
-                  </Field>
-                  <Field label="Surface">
-                    <select
-                      value={b.surface}
-                      onChange={(e) => update({ surface: e.target.value })}
-                    >
-                      {[
-                        "As shown",
-                        "Warm wood",
-                        "Pale stone",
-                        "White seamless",
-                      ].map((f) => (
-                        <option key={f}>{f}</option>
-                      ))}
-                    </select>
-                  </Field>
-                  <fieldset>
-                    <legend>Lighting</legend>
-                    <div className="cx-lighting">
-                      {[
-                        ["As shown", "daylight-cafe"],
-                        ["Soft daylight", "clean-white"],
-                        ["Warm & cozy", "rustic-table"],
-                      ].map(([l]) => (
-                        <button
-                          key={l}
-                          aria-pressed={b.lighting === l}
-                          onClick={() => update({ lighting: l })}
-                        >
-                          <span className="cx-light-swatch" data-light={l} />
-                          {l}
-                        </button>
-                      ))}
-                    </div>
-                  </fieldset>
-                  <Field label="Plate">
-                    <select
-                      value={b.plate}
-                      onChange={(e) => update({ plate: e.target.value })}
-                    >
-                      <option value="keep">Keep my plate</option>
-                      <option value="white">
-                        Change to a simple white plate
-                      </option>
-                    </select>
-                  </Field>
-                  <Field
-                    label="Camera angle"
-                    hint={
-                      b.angle !== "keep"
-                        ? "Changing angle asks AI to reconstruct unseen parts of the food. Review the result carefully."
-                        : undefined
+            </div>
+          )}
+          {catalog && (
+            <>
+              <div
+                className="cx-style-categories"
+                role="group"
+                aria-label="Photo style categories"
+              >
+                {styleCategories.map((c) => (
+                  <button
+                    key={c.id}
+                    aria-pressed={category.id === c.id}
+                    onClick={() =>
+                      chooseLook(
+                        photoStyles.find((l) => l.category === c.id)!.id,
+                      )
                     }
                   >
-                    <select
-                      value={b.angle}
-                      onChange={(e) => update({ angle: e.target.value })}
-                    >
-                      <option value="keep">Keep my angle</option>
-                      <option value="overhead">Look straight down</option>
-                      <option value="three-quarter">View from the side</option>
-                    </select>
-                  </Field>
-                  <Field label="Composition">
-                    <select
-                      value={b.composition}
-                      onChange={(e) => update({ composition: e.target.value })}
-                    >
-                      <option>Full dish</option>
-                      <option>Room around the plate</option>
-                      <option>Space above for a headline</option>
-                    </select>
-                  </Field>
-                  <Field label="Anything else? (optional)">
-                    <textarea
-                      value={b.note}
-                      maxLength={1000}
-                      onChange={(e) => update({ note: e.target.value })}
-                      placeholder="Remove the distracting napkin in the background."
-                    />
-                  </Field>
+                    <span style={{ background: c.color }} />
+                    {c.name}
+                    <small>4 styles</small>
+                  </button>
+                ))}
+              </div>
+              <div className="cx-collection-heading">
+                <div>
+                  <span className="cx-eyebrow">
+                    THE {category.name.toUpperCase()} COLLECTION
+                  </span>
+                  <h2>{category.description}</h2>
+                  <p>{category.use}</p>
                 </div>
-              )}
-            </div>
-            <aside className="cx-look-preview">
-              <img
-                src={styleImage}
-                alt={`${selected.name} reference example`}
-              />
-              <div>
-                <span className="cx-pill">
-                  {b.look === "keep"
-                    ? "Your setting · reference"
-                    : "Style example"}
+                <span className="cx-collection-count">
+                  0{styleCategories.indexOf(category) + 1} <span>/ 07</span>
                 </span>
-                <h2>{selected.name}</h2>
-                <p>{selected.description || selected.cue}</p>
-                {selected.traits && (
-                  <div className="cx-style-traits">
-                    {selected.traits.map((t) => (
-                      <span key={t}>{t}</span>
+              </div>
+              <div className="cx-looks-layout cx-style-workbench">
+                <div>
+                  <div className="cx-look-grid cx-category-looks">
+                    {photoStyles
+                      .filter((l) => l.category === category.id)
+                      .map((l) => (
+                        <button
+                          key={l.id}
+                          aria-pressed={b.look === l.id}
+                          className="cx-look"
+                          onClick={() => chooseLook(l.id)}
+                        >
+                          <div className="cx-style-image">
+                            <img
+                              src={l.image}
+                              alt={`${l.name}: ${l.bestFor}`}
+                              loading="lazy"
+                            />
+                            <span className="cx-style-example">
+                              Style example
+                            </span>
+                          </div>
+                          <span>
+                            <b>{l.name}</b>
+                            <small>{l.cue}</small>
+                          </span>
+                          {b.look === l.id && (
+                            <i>
+                              <Check size={16} />
+                            </i>
+                          )}
+                        </button>
+                      ))}
+                  </div>
+                  <div className="cx-collection-tip">
+                    <Sparkles size={18} />
+                    <p>{category.tip}</p>
+                  </div>
+                  <div className="cx-personal-looks">
+                    <span>Or start with something familiar</span>
+                    <div>
+                      {["keep", "restaurant", "reference"].map((id) => {
+                        const l = looks.find((l) => l.id === id)!;
+                        return (
+                          <button
+                            key={id}
+                            aria-pressed={b.look === id}
+                            onClick={() => chooseLook(id)}
+                          >
+                            {l.name}
+                            {b.look === id && <Check size={14} />}
+                          </button>
+                        );
+                      })}
+                    </div>
+                  </div>
+                  <p className="cx-hint">
+                    Your photo supplies the food. These examples show the
+                    lighting and setting.
+                  </p>
+                </div>
+                <aside className="cx-look-preview">
+                  <img
+                    src={styleImage}
+                    alt={`${selected.name} reference example`}
+                  />
+                  <div>
+                    <span className="cx-pill">
+                      {b.look === "keep"
+                        ? "Your setting · reference"
+                        : "Style example"}
+                    </span>
+                    <h2>{selected.name}</h2>
+                    <p>{selected.description || selected.cue}</p>
+                    {selected.traits && (
+                      <div className="cx-style-traits">
+                        {selected.traits.map((t) => (
+                          <span key={t}>{t}</span>
+                        ))}
+                      </div>
+                    )}
+                    {selected.bestFor && (
+                      <p className="cx-style-best">
+                        <b>Beautiful for</b>
+                        {selected.bestFor}
+                      </p>
+                    )}
+                    {b.angle !== "keep" && (
+                      <p className="cx-hint">
+                        This look changes the camera angle. Check any newly
+                        visible food details before using the result.
+                      </p>
+                    )}
+                    <small>
+                      This is a reference for the look. Your result is created
+                      after you choose Create.
+                    </small>
+                  </div>
+                  {b.look === "reference" && (
+                    <label className="cx-btn cx-secondary">
+                      <Upload size={16} />
+                      {b.referenceId
+                        ? "Replace reference"
+                        : "Add reference photo"}
+                      <input
+                        type="file"
+                        accept="image/*"
+                        hidden
+                        disabled={!!busy}
+                        onChange={(e) => {
+                          const f = e.target.files?.[0];
+                          if (f)
+                            void act("Saving your reference", async () => {
+                              const form = new FormData();
+                              form.set("file", f);
+                              form.set(
+                                "normalized",
+                                await normalizePhoto(f),
+                                "reference.jpg",
+                              );
+                              form.set("kind", "reference");
+                              const a = await api("assets", form);
+                              update({ referenceId: a.id });
+                              await save();
+                              await refresh();
+                            });
+                        }}
+                      />
+                    </label>
+                  )}
+                  <div className="cx-preserve">
+                    <Check size={17} />
+                    <p>
+                      <b>Keep what makes it your dish.</b>
+                      <br />
+                      Ingredients, portion and identity stay the same. Check the
+                      result before using it.
+                    </p>
+                  </div>
+                  {delivery &&
+                    selected.category &&
+                    selected.category !== "delivery" &&
+                    selected.category !== "menu" && (
+                      <div className="cx-hint">
+                        This scene may work better for social. A simple natural
+                        setting is a safer choice for delivery.
+                        <button
+                          className="cx-link"
+                          onClick={() => chooseLook("delivery-white")}
+                        >
+                          Use a delivery style
+                        </button>
+                      </div>
+                    )}
+                </aside>
+              </div>
+            </>
+          )}
+          <div className="cx-guided-options">
+            <Field label="Where will you use it?">
+              <select
+                value={b.destination}
+                disabled={!!busy}
+                onChange={(e) => chooseDestination(e.target.value)}
+              >
+                <option value="menu">Menu & website</option>
+                <option value="delivery">Delivery apps</option>
+                <option value="social">Instagram & social</option>
+                <option value="print">Print</option>
+              </select>
+            </Field>
+            <button
+              className="cx-link"
+              aria-expanded={fine}
+              aria-controls="studio-fine-controls"
+              disabled={!!busy}
+              onClick={() => setFine((v) => !v)}
+            >
+              <SlidersHorizontal size={16} />{" "}
+              {fine ? "Hide fine-tuning" : "Fine-tune (optional)"}
+            </button>
+            <button
+              className="cx-link"
+              disabled={!!busy}
+              onClick={() => update({ step: 3 })}
+            >
+              Adjust framing & format <ArrowRight size={15} />
+            </button>
+          </div>
+          <div id="studio-fine-controls">
+            {fine && (
+              <div className="cx-panel cx-fine">
+                <Field label="Food family">
+                  <select
+                    value={b.family}
+                    onChange={(e) => {
+                      analysisSource.current = "";
+                      const preset = recommendedPhotoStyles(
+                        e.target.value,
+                        b.destination,
+                      )[0];
+                      update({
+                        family: e.target.value,
+                        recommendationFamily: e.target.value,
+                        look: preset.id,
+                        lookCategory: preset.category,
+                        styleChosen: false,
+                        angle: "keep",
+                      });
+                    }}
+                  >
+                    {foodFamilies.map((f) => (
+                      <option key={f}>{f}</option>
+                    ))}
+                  </select>
+                </Field>
+                <Field label="Surface">
+                  <select
+                    value={b.surface}
+                    onChange={(e) => update({ surface: e.target.value })}
+                  >
+                    {[
+                      "As shown",
+                      "Warm wood",
+                      "Pale stone",
+                      "White seamless",
+                    ].map((f) => (
+                      <option key={f}>{f}</option>
+                    ))}
+                  </select>
+                </Field>
+                <fieldset>
+                  <legend>Lighting</legend>
+                  <div className="cx-lighting">
+                    {[
+                      ["As shown", "daylight-cafe"],
+                      ["Soft daylight", "clean-white"],
+                      ["Warm & cozy", "rustic-table"],
+                    ].map(([l]) => (
+                      <button
+                        key={l}
+                        aria-pressed={b.lighting === l}
+                        onClick={() => update({ lighting: l })}
+                      >
+                        <span className="cx-light-swatch" data-light={l} />
+                        {l}
+                      </button>
                     ))}
                   </div>
-                )}
-                {selected.bestFor && (
-                  <p className="cx-style-best">
-                    <b>Beautiful for</b>
-                    {selected.bestFor}
-                  </p>
-                )}
-                {b.angle !== "keep" && (
-                  <p className="cx-hint">
-                    This look changes the camera angle. Check any newly visible
-                    food details before using the result.
-                  </p>
-                )}
-                <small>
-                  This is a reference for the look. Your result is created after
-                  you choose Create.
-                </small>
-              </div>
-              {b.look === "reference" && (
-                <label className="cx-btn cx-secondary">
-                  <Upload size={16} />
-                  {b.referenceId ? "Replace reference" : "Add reference photo"}
-                  <input
-                    type="file"
-                    accept="image/*"
-                    hidden
-                    disabled={!!busy}
-                    onChange={(e) => {
-                      const f = e.target.files?.[0];
-                      if (f)
-                        void act("Saving your reference", async () => {
-                          const form = new FormData();
-                          form.set("file", f);
-                          form.set(
-                            "normalized",
-                            await normalizePhoto(f),
-                            "reference.jpg",
-                          );
-                          form.set("kind", "reference");
-                          const a = await api("assets", form);
-                          update({ referenceId: a.id });
-                          await save();
-                          await refresh();
-                        });
-                    }}
+                </fieldset>
+                <Field label="Plate">
+                  <select
+                    value={b.plate}
+                    onChange={(e) => update({ plate: e.target.value })}
+                  >
+                    <option value="keep">Keep my plate</option>
+                    <option value="white">
+                      Change to a simple white plate
+                    </option>
+                  </select>
+                </Field>
+                <Field
+                  label="Camera angle"
+                  hint={
+                    b.angle !== "keep"
+                      ? "Changing angle asks AI to reconstruct unseen parts of the food. Review the result carefully."
+                      : undefined
+                  }
+                >
+                  <select
+                    value={b.angle}
+                    onChange={(e) => update({ angle: e.target.value })}
+                  >
+                    <option value="keep">Keep my angle</option>
+                    <option value="overhead">Look straight down</option>
+                    <option value="three-quarter">View from the side</option>
+                  </select>
+                </Field>
+                <Field label="Composition">
+                  <select
+                    value={b.composition}
+                    onChange={(e) => update({ composition: e.target.value })}
+                  >
+                    <option>Full dish</option>
+                    <option>Room around the plate</option>
+                    <option>Space above for a headline</option>
+                  </select>
+                </Field>
+                <Field label="Anything else? (optional)">
+                  <textarea
+                    value={b.note}
+                    maxLength={1000}
+                    onChange={(e) => update({ note: e.target.value })}
+                    placeholder="Remove the distracting napkin in the background."
                   />
-                </label>
-              )}
-              <div className="cx-preserve">
-                <Check size={17} />
-                <p>
-                  <b>Keep what makes it your dish.</b>
-                  <br />
-                  Ingredients, portion and identity stay the same. Check the
-                  result before using it.
-                </p>
+                </Field>
               </div>
-              {delivery &&
-                selected.category &&
-                selected.category !== "delivery" &&
-                selected.category !== "menu" && (
-                  <div className="cx-hint">
-                    This scene may work better for social. A simple natural
-                    setting is a safer choice for delivery.
-                    <button
-                      className="cx-link"
-                      onClick={() => chooseLook("delivery-white")}
-                    >
-                      Use a delivery style
-                    </button>
-                  </div>
-                )}
-            </aside>
+            )}
           </div>
+          <div className="cx-create-summary">
+            <img src={styleImage} alt="Selected style example" />
+            <div>
+              <span>YOUR CHOSEN LOOK</span>
+              <b>{selected.name}</b>
+              <p>
+                {format.short} ·{" "}
+                {b.angle === "keep" ? "Original angle" : "New camera angle"}
+              </p>
+            </div>
+            <span className="cx-original-safe">
+              <Check size={16} /> Original safely saved
+            </span>
+          </div>
+          {!state.aiConnected && (
+            <p className="cx-feedback">
+              Image creation isn’t connected yet. Your photo and choices are
+              saved.
+            </p>
+          )}
+          {b.look === "reference" && !b.referenceId && (
+            <p className="cx-feedback">
+              Add your reference photo before creating.{" "}
+              <button className="cx-link" onClick={() => setCatalog(true)}>
+                Open reference upload
+              </button>
+            </p>
+          )}
+          {state.remaining < 1 && (
+            <p className="cx-feedback">
+              You’ve used your image allowance. Ask your pilot coordinator for
+              more, or use the free touch-up tools above.
+            </p>
+          )}
           <Footer
             back={() => update({ step: 1 })}
-            label="Preview & create"
-            next={() =>
-              act("Saving your look", async () => {
-                update({ step: 3 });
-                await save();
-              })
-            }
+            label="Create my photo"
+            next={() => act("Creating your photo", () => generate())}
             busy={!!busy}
-            disabled={b.look === "reference" && !b.referenceId}
-            note="Browsing looks uses no images"
+            disabled={
+              state.remaining < 1 ||
+              !state.aiConnected ||
+              (b.mode === "photo" && !b.sourceId) ||
+              (b.look === "reference" && !b.referenceId)
+            }
+            note={`Creates 1 image · ${state.remaining} remaining`}
           />
         </>
       )}
       {b.step === 3 && (
         <>
-          <Heading eyebrow="ONE LAST LOOK" title="Ready to create?">
-            Check the framing. We’ll make one beautiful photo using your
-            choices.
+          <Heading
+            eyebrow="OPTIONAL ADJUSTMENTS"
+            title="Make a little room for your food."
+          >
+            Adjust the crop or format if you need to. Your chosen style is
+            ready.
           </Heading>
           <div className="cx-studio-grid">
             <div>
@@ -1128,17 +1287,19 @@ export default function PhotoStudio({
             eyebrow={resultId ? "MADE FOR YOUR DISH" : "PHOTO STUDIO"}
             title={
               resultId
-                ? "Your photo is ready."
+                ? firstImage && asset?.kind === "generated"
+                  ? "Your first studio photo is ready."
+                  : "Your photo is ready."
                 : running
-                  ? "A little studio magic, coming up."
+                  ? "Your dish is getting its moment."
                   : "Your photo is saved."
             }
           >
             {resultId
               ? "Does this look like the dish you serve? Compare the food, then make it yours."
               : running
-                ? "You can leave this screen. Your photo will be waiting here when it’s ready."
-                : "You can retry a failed request or return to your choices."}
+                ? "We’re refining the light and setting. Keep this tab open and we’ll show your result as soon as it’s ready."
+                : "Your original is safe. Return to your choices to try again."}
           </Heading>
           {!resultId ? (
             <div className="cx-generating">
@@ -1156,14 +1317,15 @@ export default function PhotoStudio({
                 </h2>
                 <p>
                   {state.outputs.find((o: Row) => o.job_id === b.jobId)
-                    ?.error || "Your original and selections are safe."}
+                    ?.error ||
+                    "You don’t need to do anything else. Your original and choices are saved."}
                 </p>
                 {!running && (
                   <button
                     className="cx-btn"
-                    onClick={() => update({ step: 3, requestKey: "" })}
+                    onClick={() => update({ step: 2, requestKey: "" })}
                   >
-                    Review & try again
+                    Back to my styles
                   </button>
                 )}
               </div>
@@ -1264,9 +1426,14 @@ export default function PhotoStudio({
                   <span className="cx-pill">
                     {asset?.approved_at ? "Approved photo" : "A quick check"}
                   </span>
-                  <h2>Still your delicious dish?</h2>
+                  <h2>
+                    {firstImage
+                      ? "A quick check, then it’s yours."
+                      : "Still your delicious dish?"}
+                  </h2>
                   <p>
-                    Check the ingredients, portion, plate and any packaging.
+                    Compare with Before. Check the ingredients and portion, then
+                    give your dish a name.
                   </p>
                   <Field label="Save this dish as">
                     <input
@@ -1433,9 +1600,12 @@ export default function PhotoStudio({
       )}
       {b.step === 5 && resultId && (
         <>
-          <Heading eyebrow="LOOKING GOOD" title="Where should it go?">
-            Your approved photo is saved in My Dishes. Put it to work without
-            starting over.
+          <Heading
+            eyebrow="SAVED TO MY DISHES"
+            title="Your photo, ready to share."
+          >
+            Your photo is saved in My Dishes. Download it now, or turn it into a
+            menu or post.
           </Heading>
           <div className="cx-success">
             <img src={`/api/assets/${resultId}`} alt={b.name} />
@@ -1446,6 +1616,43 @@ export default function PhotoStudio({
               </span>
               <h2>{b.name}</h2>
               <p>A keeper, ready for your next menu or post.</p>
+              <button
+                className="cx-btn cx-success-download"
+                disabled={!!busy}
+                onClick={() =>
+                  act("Preparing your photo", async () => {
+                    if (delivery) {
+                      setDownload(true);
+                      setFullDish(false);
+                      change({
+                        adjustments: { ...emptyAdjustments, fit: false },
+                      });
+                      return;
+                    }
+                    const file = await photoExport(
+                      resultId,
+                      b.format,
+                      emptyAdjustments,
+                    );
+                    downloadBlob(
+                      file.blob,
+                      `${b.name.toLowerCase().replace(/[^a-z0-9]+/g, "-")}-${b.format}.jpg`,
+                    );
+                    track("export_complete", resultId, {
+                      format: b.format,
+                      width: file.width,
+                      height: file.height,
+                    });
+                    setNotice(
+                      "Downloaded. Your photo is also saved in My Dishes.",
+                    );
+                  })
+                }
+              >
+                <Download size={18} />{" "}
+                {delivery ? "Prepare delivery download" : "Download my photo"}
+              </button>
+
               {!b.savedLook && (
                 <button
                   className="cx-link"

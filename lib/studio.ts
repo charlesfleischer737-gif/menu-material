@@ -186,6 +186,8 @@ export function photoBrief(destination = "menu") {
     name: "",
     description: "",
     family: "Plated mains",
+    recommendationFamily: "",
+    styleChosen: false,
     mode: "photo",
     destination,
     format:

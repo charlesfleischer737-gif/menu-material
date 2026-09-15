@@ -158,6 +158,7 @@ export function useCreationDraft(kind: string, initial: Row) {
     ready,
     status,
     id: meta.current.id,
+    read: () => latest.current,
   };
 }
 export function Steps({

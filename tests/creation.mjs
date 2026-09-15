@@ -10,6 +10,57 @@ delete process.env.OPENAI_IMAGE_MODEL;
 delete process.env.OPENAI_IMAGE_QUALITY;
 const { handle } = await import("../lib/server/api.ts");
 const { all, one, run } = await import("../lib/server/core.ts");
+const { recommendedPhotoStyles, photoAnalysisRecommendation } =
+  await import("../lib/studio-onboarding.ts");
+const { foodFamilies, photoBrief } = await import("../lib/studio.ts");
+for (const family of foodFamilies) {
+  for (const destination of ["menu", "delivery", "social", "print"]) {
+    const recommended = recommendedPhotoStyles(family, destination);
+    assert.equal(recommended.length, 3, "first-use always offers three styles");
+    assert.equal(new Set(recommended.map((look) => look.id)).size, 3);
+    assert.equal(
+      new Set(recommended.map((look) => look.image)).size,
+      3,
+      "each recommendation has a different example",
+    );
+    for (const look of recommended) {
+      assert.equal(
+        look.angle,
+        "keep",
+        "onboarding does not reconstruct the food from another angle",
+      );
+      assert(readFileSync("public" + look.image).length > 0);
+      if (destination === "delivery") assert.equal(look.category, "delivery");
+    }
+  }
+}
+const drinkChoices = recommendedPhotoStyles("Drinks");
+assert(
+  drinkChoices.every((style) => ["beverage", "bar"].includes(style.category)),
+);
+assert.deepEqual(
+  photoAnalysisRecommendation(
+    { step: 2, styleChosen: true, look: "menu-stone" },
+    "Drinks",
+  ),
+  {},
+  "late analysis preserves a user's selected style or fine-tuning",
+);
+assert.deepEqual(
+  photoAnalysisRecommendation({ step: 4, styleChosen: false }, "Drinks"),
+  {},
+  "analysis cannot relabel a submitted image",
+);
+const suggested = photoAnalysisRecommendation(
+  { ...photoBrief(), step: 2 },
+  "Drinks",
+);
+assert.equal(
+  suggested.look,
+  drinkChoices[0].id,
+  "a new upload gets relevant suggestions without an extra step",
+);
+
 const jpeg = readFileSync("public/pasta.jpg"),
   png = readFileSync("public/og.png");
 let cookie = "",

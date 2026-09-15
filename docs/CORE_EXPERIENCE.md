@@ -4,7 +4,7 @@ The existing Plateworthy brand and stack are preserved. The Plated requirements 
 
 ## What changed
 
-- **Photo Studio:** upload/camera/drop zone, original retention and normalized working image, optional name, no-photo illustration path, destination-first framing, 28 visual presets in seven collections, optional lighting/surface/plate/angle/reference controls, one explicit result, before/after/history, fidelity approval, quick local adjustments saved as separate versions, restaurant look saving, and reuse into menus, posts and clean delivery exports.
+- **Photo Studio:** a guided upload → three recommended styles → create flow, with camera/drop zone, original retention and normalized working image, optional name, no-photo illustration path, 28 visual presets in seven optional collections, optional framing/lighting/surface/plate/angle/reference controls, one explicit result, before/after/history, fidelity approval, quick local adjustments saved as separate versions, restaurant look saving, and reuse into menus, posts and clean delivery exports.
 - **Menu Builder:** photo/PDF import or manual/saved dishes, explicit content review, Classic text/Photo grid/Featured dish previews, optional sample-first batches, phone and actual PDF previews, A4/Letter PDFs with embedded text/fonts, effective PPI warnings, stable publication and QR. Newer shared dish details are flagged before an older menu draft can overwrite them.
 - **Post Maker:** approved dish, showcase/special/combo/event, ten photographic Instagram designs with licensed display fonts, photo-only/minimal/full text controls, optional branding and example/customer previews, independent feed/story framing and simple carousel, editable factual caption starter, optional AI caption, final review, individual PNGs, campaign ZIP and native share when the device supports it.
 - **My Dishes:** reusable approved photos, source and version history, editable dish facts, individual/bulk exports, and one-step handoffs. Prior promotion campaigns, staff upload links and other pilot tools remain under More tools.
@@ -17,7 +17,9 @@ The overview now presents three visual starting points and direct links to the l
 
 Post Maker uses four visible stages: **Dish & details → Design → Formats & caption → Save & share**. Existing drafts retain their place. Automatic captions follow confirmed price, date and dish changes; custom wording is preserved and marked for review when facts change. Combo quantities are included, and removing the second dish removes the unavailable carousel format. Caption typing and background state refreshes no longer repaint unchanged image previews.
 
-Photo Studio offers quick edits directly after upload and shows all five stages through review and reuse. Phone layouts have larger inputs and tap targets, a compact progress bar, and a fixed bottom action row.
+New accounts without food photos land directly in Photo Studio. Its three visible stages are **Upload a photo → Choose a style → Create & review**. Upload advances automatically to three existing style presets, chosen by food family and intended use. The optional photo analysis can improve the suggestions without delaying the flow; it cannot override a chosen style, manual fine-tuning, or a submitted request. Browsing the full 28-style catalog and adjusting framing remain optional. Existing saved drafts keep their original internal step numbers and resume normally.
+
+The upload screen includes a labeled before/after example and simple photo tips. Review explains comparison, naming and approval. Approval leads directly to a download action, with the existing delivery crop and accuracy checks preserved. Phone layouts use stacked photo cards, readable text, large tap targets, a compact progress bar and the existing bottom action row.
 
 ## Persistence and generation
 
@@ -39,9 +41,9 @@ New migrations `0003` and `0004` only add creation drafts, edit lineage and batc
 
 ## Service connection and practical limits
 
-At this release, OpenAI Developers was offered for installation but was still not installed at the final connection check. The hosted `OPENAI_API_KEY` remains unconfigured. Real image creation, automatic menu transcription, automatic photo analysis and AI-written captions therefore show their disconnected state. Original-photo adjustments, manual menus, factual caption starters and exports work without that connection.
+OpenAI Developers is installed, and the owner's existing API key is stored as a hosted secret. The live site's state endpoint confirmed the connection. GPT Image 2.5 Flare at high quality completed one real burger edit through the app's generation code in 31 seconds; JPEG storage, review approval and download were verified in an isolated local restaurant. That single result is not a latency or fidelity guarantee across dishes.
 
-Live provider image fidelity, model access, latency and actual billing are not verified by fixture tests. Follow the Sites OpenAI Developers key-setup workflow before live testing. The existing protected job runner also needs its secret and an external persistent scheduler for reliable dispatch and archival while all browsers are closed. Browser polling and persisted response IDs support reopening work; hosting does not automatically provision the external runner.
+Fixture tests do not measure live image quality or billing. Wider food-fidelity, latency and cost testing remains a pilot task. The existing protected job runner also needs its secret and an external persistent scheduler for reliable dispatch and archival while all browsers are closed. The creation screen asks users to keep the tab open; persisted response IDs support reopening work. Hosting does not automatically provision the external runner.
 
 HEIC conversion and native save/share still require physical phone checks across supported devices. The bundled print font covers its supported scripts; unsupported characters produce a clear print warning rather than silently losing original text. PDFs use safe home-print margins; professional full-bleed printer profiles are not supplied. Social accounts are not connected for automatic publishing. Private Sites access still applies to hosted menu links and QR destinations until the site audience is intentionally changed.
 

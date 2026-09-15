@@ -43,12 +43,18 @@ export default function CoreWorkspace({
   onLogout: () => void;
   adminContent: ReactNode;
 }) {
-  const [view, setView] = useState("home"),
+  const initialView =
+    state.assets.some((asset: Row) =>
+      ["source", "generated", "edited"].includes(asset.kind),
+    ) || state.jobs.length
+      ? "home"
+      : "studio";
+  const [view, setView] = useState(initialView),
     [photoSeed, setPhotoSeed] = useState<Row | null>(null),
     [menuSeed, setMenuSeed] = useState<Row | null>(null),
     [postSeed, setPostSeed] = useState<Row | null>(null),
     [legacySeed, setLegacySeed] = useState<Row | null>(null),
-    [visited, setVisited] = useState<string[]>(["home"]),
+    [visited, setVisited] = useState<string[]>([initialView]),
     [drafts, setDrafts] = useState<Row[]>([]);
   const validViews = [
     "home",
@@ -66,7 +72,7 @@ export default function CoreWorkspace({
         setView(next);
         setVisited((v) => (v.includes(next) ? v : [...v, next]));
       } else {
-        setView("home");
+        setView(initialView);
       }
     };
     read();
