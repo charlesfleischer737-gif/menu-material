@@ -15,7 +15,7 @@
   flex-direction: column;
   min-height: 0;
 }
-.ps-library > :not(.ps-gallery) {
+.ps-library > :not(.ps-gallery-viewport) {
   flex-shrink: 0;
 }
 .ps-library-heading,
@@ -161,20 +161,24 @@
 .ps-category-next {
   right: 2px;
 }
-.ps-gallery {
-  display: grid;
-  grid-template-columns: repeat(3, minmax(0, 1fr));
-  gap: 20px 16px;
+.ps-gallery-viewport {
   flex: 1 1 0px;
   height: 0;
   min-height: 360px;
-  align-content: start;
   overflow-y: auto;
   scrollbar-width: thin;
   scrollbar-color: #b4c3b4 transparent;
-  padding: 5px 8px 8px 4px;
   margin-left: -4px;
   overscroll-behavior: contain;
+}
+.ps-gallery {
+  display: grid;
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+  /* Size cards from their photos and captions, independently of the scroll viewport. */
+  grid-auto-rows: max-content;
+  gap: 20px 16px;
+  align-content: start;
+  padding: 5px 8px 8px 4px;
 }
 .ps-style-card {
   appearance: none;
@@ -872,11 +876,13 @@
     min-height: 0;
     padding-bottom: 85px;
   }
-  .ps-gallery {
+  .ps-gallery-viewport {
     flex: none;
     height: auto;
     min-height: 0;
     max-height: 600px;
+  }
+  .ps-gallery {
     grid-template-columns: repeat(3, minmax(0, 1fr));
   }
   .ps-session {
@@ -932,6 +938,8 @@
   .ps-gallery {
     grid-template-columns: repeat(2, minmax(0, 1fr));
     gap: 14px 11px;
+  }
+  .ps-gallery-viewport {
     max-height: 565px;
   }
   .ps-style-copy {

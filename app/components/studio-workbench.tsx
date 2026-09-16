@@ -345,46 +345,47 @@ export function StudioWorkbench({
           hasRecommendations={suggested.length > 0}
           onChange={changeCollection}
         />
-        <div
-          ref={gallery}
-          id="studio-style-results"
-          className="ps-gallery"
-          role="group"
-          aria-label={`Choose a photo style: ${activeCollection === "recommended" ? "For your photo" : category?.name || "All styles"}`}
-        >
-          {cards.map((style) => (
-            <button
-              key={style.id}
-              className="ps-style-card"
-              aria-pressed={hasStyle && b.look === style.id}
-              disabled={!!busy}
-              onClick={() => select(style.id)}
-            >
-              <div className="ps-style-photo">
-                <img
-                  src={style.image}
-                  alt={`${style.name} — ${style.cue}`}
-                  loading="lazy"
-                  width={512}
-                  height={512}
-                />
-                <span className="ps-style-select">
-                  {hasStyle && b.look === style.id ? (
-                    <Check size={17} />
-                  ) : (
-                    <span />
+        <div ref={gallery} className="ps-gallery-viewport">
+          <div
+            id="studio-style-results"
+            className="ps-gallery"
+            role="group"
+            aria-label={`Choose a photo style: ${activeCollection === "recommended" ? "For your photo" : category?.name || "All styles"}`}
+          >
+            {cards.map((style) => (
+              <button
+                key={style.id}
+                className="ps-style-card"
+                aria-pressed={hasStyle && b.look === style.id}
+                disabled={!!busy}
+                onClick={() => select(style.id)}
+              >
+                <div className="ps-style-photo">
+                  <img
+                    src={style.image}
+                    alt={`${style.name} — ${style.cue}`}
+                    loading="lazy"
+                    width={512}
+                    height={512}
+                  />
+                  <span className="ps-style-select">
+                    {hasStyle && b.look === style.id ? (
+                      <Check size={17} />
+                    ) : (
+                      <span />
+                    )}
+                  </span>
+                  {activeCollection === "all" && (
+                    <span className="ps-style-category">{style.group}</span>
                   )}
-                </span>
-                {activeCollection === "all" && (
-                  <span className="ps-style-category">{style.group}</span>
-                )}
-              </div>
-              <div className="ps-style-copy">
-                <b>{style.name}</b>
-                <span>{style.cue}</span>
-              </div>
-            </button>
-          ))}
+                </div>
+                <div className="ps-style-copy">
+                  <b>{style.name}</b>
+                  <span>{style.cue}</span>
+                </div>
+              </button>
+            ))}
+          </div>
         </div>
       </div>
       <aside
