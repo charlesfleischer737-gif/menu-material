@@ -24,7 +24,7 @@ export const postTemplates = [
     group: "Announcements",
     headline: "",
     description:
-      "A ruled paper masthead, oversized condensed type, and a clear price tab on your photograph.",
+      "Cinematic light, an elegant headline, and a discreet metallic price detail over your food photograph.",
     layout: "special",
     color: "#c42d23",
     accent: "#fff3d8",
@@ -72,7 +72,7 @@ export const postTemplates = [
     group: "Photo first",
     headline: "",
     description:
-      "An offset photograph, expressive italic type, and a quiet paper border. Made for unhurried mornings.",
+      "Botanical paper, soft morning light, and an offset photograph with expressive italic type.",
     layout: "brunch",
     color: "#43352c",
     accent: "#fff6de",
@@ -88,7 +88,7 @@ export const postTemplates = [
     group: "Photo first",
     headline: "",
     description:
-      "A generous photographic print with warm paper, a fine edge, and an elegant italic signature.",
+      "Sunlit photography blends into textured paper, with an elegant italic signature.",
     layout: "bakery",
     color: "#704126",
     accent: "#fff9e9",
@@ -104,11 +104,11 @@ export const postTemplates = [
     group: "Announcements",
     headline: "",
     description:
-      "A photographic invitation with expressive serif type and a clear reservation date.",
+      "A copper-lit invitation with an arched photograph, expressive serif type, and a clear reservation date.",
     layout: "event",
     color: "#291b1d",
     accent: "#fff0d1",
-    kicker: "AT OUR TABLE",
+    kicker: "",
     cta: "",
     textMode: "full",
     showBrand: true,

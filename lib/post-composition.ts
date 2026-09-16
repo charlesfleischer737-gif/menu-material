@@ -5,6 +5,13 @@ import { emptyAdjustments } from "./studio";
 import { brandTypeface, readableBrandInk } from "./restaurant-look";
 import { getPostTemplate } from "./post-templates";
 import { loadPostFonts } from "./post-fonts";
+import {
+  paintMaterial,
+  mixColor,
+  gradient,
+  glow,
+  foil,
+} from "./template-materials";
 
 export function carouselSlides(draft: Row): Row[] {
   const items: Row[] = draft.items || [];
@@ -150,8 +157,7 @@ export async function renderComposedPost(
     readableBrandInk(paper) === "#000000"
       ? primary
       : readableBrandInk(paper);
-  const reverse = readableBrandInk(primary),
-    headline = String(card?.title ?? draft.title ?? items[0].name);
+  const headline = String(card?.title ?? draft.title ?? items[0].name);
   const mode = draft.textMode || t.textMode,
     photoOnly = mode === "photo" && card?.kind !== "closing",
     showBrand = draft.showBrand ?? t.showBrand;
@@ -237,7 +243,7 @@ export async function renderComposedPost(
     w: number,
     maxH: number,
     size: number,
-    c: string,
+    c: string | CanvasGradient,
     font = "Post Sans",
     align: CanvasTextAlign = "left",
     min = 42,
@@ -273,7 +279,7 @@ export async function renderComposedPost(
     w: number,
     h: number,
     size: number,
-    c: string,
+    c: string | CanvasGradient,
     font = "Post Serif",
     align: CanvasTextAlign = "left",
   ) {
@@ -352,6 +358,7 @@ export async function renderComposedPost(
     h: number,
     indices = images.map((_, i) => i),
     radius: number | number[] = 0,
+    effect: "clean" | "float" | "blend" = "clean",
   ) {
     const cols = indices.length > 1 ? 2 : 1,
       rows = Math.ceil(indices.length / cols),
@@ -387,9 +394,31 @@ export async function renderComposedPost(
         );
       const pc = document.createElement("canvas");
       drawPhoto(pc, im, Math.round(cw), Math.round(ch), edits, paper);
+      if (effect === "blend") {
+        const pcx = pc.getContext("2d")!;
+        pcx.globalCompositeOperation = "destination-in";
+        pcx.fillStyle = gradient(pcx, 0, 0, 0, ch, [
+          [0, "#ffffff00"],
+          [0.14, "#ffffff"],
+          [0.83, "#ffffff"],
+          [1, "#ffffff00"],
+        ]);
+        pcx.fillRect(0, 0, cw, ch);
+        pcx.globalCompositeOperation = "source-over";
+      }
       const px = x + (n % cols) * (cw + gap),
         py = y + Math.floor(n / cols) * (ch + gap);
       ctx.save();
+      if (effect === "float") {
+        ctx.shadowColor = "#1c120c50";
+        ctx.shadowBlur = 50;
+        ctx.shadowOffsetY = 22;
+        ctx.fillStyle = paper;
+        ctx.beginPath();
+        ctx.roundRect(px, py, cw, ch, radius);
+        ctx.fill();
+        ctx.shadowColor = "transparent";
+      }
       ctx.beginPath();
       ctx.roundRect(px, py, cw, ch, radius);
       ctx.clip();
@@ -403,175 +432,199 @@ export async function renderComposedPost(
       images.push(
         await imageBitmap(item.photoUrl || `/api/assets/${item.photoId}`),
       );
-    fill(paper);
+    const light = "#fff7e8",
+      mutedGold = "#ddc79e";
     const footerH = copyHeight(936),
       kickerH = kicker ? 64 : 0;
+    const gold = (y: number, h = 150) => foil(ctx, 80, y, 920, h);
+    const rim = (
+      x: number,
+      y: number,
+      w: number,
+      h: number,
+      r: number | number[] = 0,
+    ) => {
+      ctx.save();
+      ctx.strokeStyle = foil(ctx, x, y, w, h);
+      ctx.lineWidth = 2;
+      ctx.beginPath();
+      ctx.roundRect(x, y, w, h, r);
+      ctx.stroke();
+      ctx.restore();
+    };
     if (t.id === "editorial" || t.id === "afterdark") {
-      // Cinematic, full-frame photography; type floats on a controlled, quiet gradient.
       photo(0, 0, W, H);
-      const dark = t.id === "afterdark",
-        c = "#fffaf0";
+      const night = t.id === "afterdark",
+        atTop = draft.textPlacement === "top";
+      const th = photoOnly
+        ? 0
+        : measure(
+            headline,
+            920,
+            night ? 154 : 140,
+            66,
+            family(night ? "Post Italic" : "Post Serif"),
+            360,
+          ).height;
+      const stack = th + footerH + kickerH + (footerH ? 30 : 0);
+      const start = atTop ? top + 115 : bottom - stack;
       if (!photoOnly || showBrand) {
-        const titleH = photoOnly
-          ? 0
-          : measure(
-              headline,
-              900,
-              dark ? 146 : 120,
-              66,
-              family(dark ? "Post Italic" : "Post Sans"),
-              350,
-            ).height;
-        const stack = titleH + footerH + kickerH + (footerH ? 28 : 0),
-          atTop = draft.textPlacement === "top";
-        const start = atTop ? top + 100 : bottom - stack;
-        const g = ctx.createLinearGradient(
+        const shade = gradient(
+          ctx,
           0,
           atTop ? 0 : H,
           0,
-          atTop ? Math.min(H, stack + top + 420) : Math.max(0, start - 120),
+          atTop ? start + stack + 160 : -(H - start + 160),
+          [
+            [0, night ? "#100e18fa" : "#0c1712ef"],
+            [0.62, night ? "#201523ac" : "#172c2590"],
+            [1, "#10221a00"],
+          ],
         );
-        g.addColorStop(0, "#080b09ee");
-        g.addColorStop(0.55, "#080b09bd");
-        g.addColorStop(1, "#080b0900");
-        ctx.fillStyle = g;
+        ctx.fillStyle = shade;
         ctx.fillRect(0, 0, W, H);
+        if (night) {
+          glow(
+            ctx,
+            W + 100,
+            H * 0.82,
+            650,
+            mixColor(primary, "#d59651", 0.55),
+            0.18,
+          );
+          glow(ctx, -200, H * 0.3, 550, "#9f6453", 0.16);
+        }
         if (showBrand) {
-          const light = photoCharacter(images[0]).topLight > 175;
-          if (!light) {
-            const bg = ctx.createLinearGradient(0, 0, 0, top + 160);
-            bg.addColorStop(0, "#080b0966");
-            bg.addColorStop(1, "#080b0900");
-            ctx.fillStyle = bg;
-            ctx.fillRect(0, 0, W, top + 160);
-          }
-          await brand(72, top, 936, light ? "#18241c" : c);
+          const isLight = photoCharacter(images[0]).topLight > 175;
+          await brand(72, top, 936, isLight ? "#18241c" : light);
         }
         let y = start;
-        if (kicker) {
-          text(kicker.toUpperCase(), 72, y, 936, 65, 42, c);
-          y += 64;
-        }
+        if (kicker)
+          y += text(kicker.toUpperCase(), 72, y, 936, 64, 42, mutedGold) + 20;
         y += title(
-          72,
+          68,
           y,
-          900,
-          titleH + 2,
-          dark ? 146 : 120,
-          c,
-          dark ? "Post Italic" : "Post Sans",
+          920,
+          th + 2,
+          night ? 154 : 140,
+          night ? gold(y, th) : light,
+          night ? "Post Italic" : "Post Serif",
         );
-        if (footerH) smallCopy(72, y + 28, 936, c);
+        if (footerH) {
+          rule(72, y + 15, 80, mutedGold, 2);
+          smallCopy(72, y + 30, 936, light);
+        }
       }
     } else if (t.id === "special") {
-      // An editorial offer poster: paper masthead, ruled signature, inset photo, and price tab.
-      let y = top;
-      y += await brand(72, y, 936, ink);
-      if (showBrand) y += 20;
-      rule(72, y, 936, ink, 2);
-      y += 26;
-      if (kicker) {
-        y += text(kicker.toUpperCase(), 72, y, 936, 65, 42, ink) + 18;
-      }
-      const th = title(
-        68,
-        y,
-        944,
-        Math.min(365, usable * 0.28),
-        166,
-        ink,
-        "Post Condensed",
+      await paintMaterial(ctx, W, H, "dark", primary);
+      glow(
+        ctx,
+        W * 0.6,
+        H * 0.46,
+        700,
+        mixColor(primary, "#d98245", 0.45),
+        0.24,
       );
-      y += th + 28;
-      const ph = bottom - y - footerH - (footerH ? 28 : 0);
-      photo(72, y, 936, ph);
+      let y = top;
+      if (showBrand) y += (await brand(72, y, 936, mutedGold)) + 30;
+      if (kicker)
+        y += text(kicker.toUpperCase(), 72, y, 936, 64, 42, mutedGold) + 20;
+      y +=
+        title(
+          68,
+          y,
+          944,
+          Math.min(355, usable * 0.3),
+          156,
+          light,
+          "Post Serif",
+        ) + 12;
+      const ph = bottom - y - footerH - (footerH ? 20 : 0);
+      photo(0, y, W, ph, undefined, 0, "blend");
       if (price && !photoOnly) {
-        measure(price, 420, 80, 48, "Post Condensed", 120);
-        const pw = Math.max(170, ctx.measureText(price).width + 48);
-        fill(primary, 1008 - pw, y + ph - 116, pw, 116);
+        measure(price, 380, 86, 48, "Post Serif", 120);
+        const pw = Math.max(184, ctx.measureText(price).width + 48),
+          py = y + ph - 125;
+        ctx.fillStyle = gradient(ctx, 0, py, pw, 118, [
+          [0, "#352218"],
+          [1, "#090e0cf5"],
+        ]);
+        ctx.fillRect(W - 72 - pw, py, pw, 118);
+        rim(W - 72 - pw, py, pw, 118, 8);
         text(
           price,
-          1008 - pw + 24,
-          y + ph - 100,
+          W - 48 - pw,
+          py + 18,
           pw - 48,
-          95,
-          80,
-          reverse,
-          "Post Condensed",
+          90,
+          86,
+          gold(py),
+          "Post Serif",
           "center",
           48,
         );
       }
-      if (footerH) smallCopy(72, bottom - footerH, 936, ink);
+      if (footerH) smallCopy(72, bottom - footerH, 936, light);
     } else if (t.id === "launch") {
-      // An edge-to-edge horizontal split: oversized display type above a full-width crop.
-      fill(primary);
+      await paintMaterial(ctx, W, H, "dark", primary);
+      ctx.fillStyle = gradient(ctx, 0, 0, W, H, [
+        [0, mixColor(primary, "#211a24", 0.4)],
+        [0.55, primary + "bd"],
+        [1, "#151b20ef"],
+      ]);
+      ctx.fillRect(0, 0, W, H);
+      glow(
+        ctx,
+        W * 0.85,
+        H * 0.52,
+        W * 0.82,
+        mixColor(primary, "#ffbd8c", 0.62),
+        0.9,
+      );
       let y = top;
-      if (showBrand) y += (await brand(64, y, 952, reverse)) + 24;
+      if (showBrand) y += (await brand(72, y, 936, light)) + 25;
       if (kicker)
-        y += text(kicker.toUpperCase(), 64, y, 952, 65, 42, reverse) + 22;
+        y += text(kicker.toUpperCase(), 72, y, 936, 64, 42, light) + 24;
       y +=
         title(
-          59,
+          65,
           y,
-          962,
-          Math.min(370, usable * 0.28),
-          182,
-          reverse,
+          950,
+          Math.min(380, usable * 0.31),
+          184,
+          light,
           "Post Condensed",
-        ) + 34;
-      const photoBottom = footerH ? bottom - footerH - 32 : H;
-      photo(0, y, W, photoBottom - y);
-      if (footerH) {
-        fill(paper, 0, photoBottom, W, H - photoBottom);
-        smallCopy(64, bottom - footerH, 952, ink);
-      }
-    } else if (t.id === "brunch") {
-      // Offset magazine composition with an oversized italic headline and a contrasting side rail.
-      fill(paper);
-      fill(primary, 0, 0, 26, H);
-      let y = top;
-      if (showBrand) y += (await brand(72, y, 936, ink)) + 28;
-      if (kicker) y += text(kicker.toUpperCase(), 72, y, 936, 65, 42, ink) + 18;
-      y += title(68, y, 930, 350, 155, ink, "Post Italic") + 32;
+        ) + 24;
       const ph = bottom - y - footerH - (footerH ? 28 : 0);
-      photo(164, y, 852, ph);
-      rule(72, y, 44, ink, 3);
-      rule(72, y + ph - 3, 44, ink, 3);
-      if (footerH) smallCopy(164, bottom - footerH, 852, ink);
-    } else if (t.id === "bakery") {
-      // A bakery paper sleeve: double keyline, portrait photograph, handwritten signature beneath.
-      ctx.strokeStyle = ink;
-      ctx.lineWidth = 1;
-      ctx.strokeRect(30, 30, W - 60, H - 60);
+      photo(88, y, 992, ph, undefined, [140, 0, 0, 0], "float");
+      if (footerH) smallCopy(72, bottom - footerH, 936, light);
+    } else if (t.id === "brunch") {
+      await paintMaterial(ctx, W, H, "paper", primary);
       let y = top;
-      if (showBrand) y += (await brand(80, y, 920, ink, "center")) + 28;
-      if (kicker)
-        y +=
-          text(
-            kicker.toUpperCase(),
-            80,
-            y,
-            920,
-            65,
-            42,
-            ink,
-            "Post Sans",
-            "center",
-          ) + 18;
+      if (showBrand) y += (await brand(72, y, 936, ink)) + 25;
+      if (kicker) y += text(kicker.toUpperCase(), 72, y, 936, 64, 42, ink) + 18;
+      y += title(68, y, 930, 340, 154, ink, "Post Italic") + 28;
+      const ph = bottom - y - footerH - (footerH ? 32 : 0);
+      photo(170, y, 838, ph, undefined, [180, 180, 12, 12], "float");
+      rim(151, y - 16, 838, ph, [180, 180, 12, 12]);
+      if (footerH) smallCopy(72, bottom - footerH, 936, ink);
+    } else if (t.id === "bakery") {
+      await paintMaterial(ctx, W, H, "paper", primary);
       const th = photoOnly
         ? 0
-        : measure(headline, 920, 120, 66, family("Post Italic"), 310).height;
-      const ph = bottom - y - th - footerH - (th ? 30 : 0) - (footerH ? 20 : 0);
-      photo(80, y, 920, ph);
-      y += ph + 30;
-      y += title(80, y, 920, th + 2, 120, ink, "Post Italic", "left");
-      if (footerH) smallCopy(80, bottom - footerH, 920, ink);
-    } else if (t.id === "event") {
-      // A formal invitation with a photographic arch and centered, expressive serif typography.
-      fill(primary);
+        : measure(headline, 920, 150, 66, family("Post Italic"), 330).height;
       let y = top;
-      if (showBrand) y += (await brand(90, y, 900, reverse, "center")) + 28;
+      if (showBrand) y += (await brand(80, y, 920, ink)) + 14;
+      if (kicker) y += text(kicker.toUpperCase(), 80, y, 920, 64, 42, ink) + 18;
+      const ph = bottom - y - th - footerH - 22 - (footerH ? 20 : 0);
+      photo(0, y, W, ph, undefined, 0, "blend");
+      y += ph + 22;
+      y += title(72, y, 936, th + 2, 150, ink, "Post Italic");
+      if (footerH) smallCopy(72, bottom - footerH, 936, ink);
+    } else if (t.id === "event") {
+      await paintMaterial(ctx, W, H, "dark", primary);
+      let y = top;
+      if (showBrand) y += (await brand(90, y, 900, mutedGold, "center")) + 28;
       if (kicker)
         y +=
           text(
@@ -579,78 +632,81 @@ export async function renderComposedPost(
             90,
             y,
             900,
-            65,
+            64,
             42,
-            reverse,
+            mutedGold,
             "Post Sans",
             "center",
-          ) + 18;
-      y += title(86, y, 908, 310, 140, reverse, "Post Serif", "center") + 32;
-      const ph = bottom - y - footerH - (footerH ? 30 : 0);
-      photo(170, y, 740, ph, [0], [370, 370, 0, 0]);
-      if (footerH) smallCopy(90, bottom - footerH, 900, reverse, "center");
+          ) + 20;
+      y += title(80, y, 920, 310, 148, light, "Post Serif", "center") + 34;
+      const ph = bottom - y - footerH - (footerH ? 32 : 0);
+      photo(154, y, 772, ph, [0], [386, 386, 16, 16], "float");
+      rim(138, y - 14, 804, ph + 28, [402, 402, 20, 20]);
+      if (footerH) smallCopy(72, bottom - footerH, 936, light, "center");
     } else if (t.id === "fresh") {
-      // A broad photographic field intersected by a paper label, aligned to a single vertical axis.
-      photo(0, 0, W, H);
+      await paintMaterial(ctx, W, H, "silk", primary);
+      glow(
+        ctx,
+        W * 0.93,
+        H * 0.43,
+        W * 0.9,
+        mixColor(primary, "#b5c995", 0.8),
+        0.7,
+      );
       const th = photoOnly
         ? 0
-        : measure(headline, 810, 120, 66, family("Post Sans"), 325).height;
-      const bh = showBrand ? measure(restaurant.name, 810, 42).height + 26 : 0;
-      const fh = copyHeight(810),
-        stack = th + fh + bh + kickerH + (th && fh ? 24 : 0),
-        y = draft.textPlacement === "top" ? top : bottom - stack;
-      if (stack) {
-        fill(paper, 0, y - 34, 972, stack + 68);
-        fill(primary, 0, y - 34, 14, stack + 68);
-        let ty = y;
-        if (showBrand) ty += (await brand(64, ty, 810, ink)) + 26;
-        if (kicker)
-          ty += text(kicker.toUpperCase(), 64, ty, 810, 64, 42, ink) + 18;
-        ty += title(62, ty, 810, th + 2, 120, ink, "Post Sans");
-        if (fh) smallCopy(64, ty + (th ? 24 : 0), 810, ink);
-      }
+        : measure(headline, 920, 128, 66, family("Post Serif"), 310).height;
+      const bh = showBrand ? 70 : 0,
+        fh = copyHeight(936),
+        stack = th + fh + kickerH + (th && fh ? 24 : 0);
+      const py = top + bh,
+        ph = bottom - py - stack + 135;
+      photo(78, py, 1002, ph, undefined, [400, 0, 0, 0], "blend");
+      if (showBrand) await brand(72, top, 936, ink);
+      let y = bottom - stack;
+      if (kicker) y += text(kicker.toUpperCase(), 72, y, 936, 64, 42, ink) + 20;
+      y += title(68, y, 936, th + 2, 128, ink, "Post Serif");
+      if (fh) smallCopy(72, y + 24, 936, ink);
     } else if (t.id === "combo") {
-      // A real diptych/mosaic over a compact offer band, never a repeated photo masquerading as two dishes.
-      fill(primary);
+      await paintMaterial(ctx, W, H, "dark", primary);
+      glow(ctx, W * 0.8, H * 0.3, 800, mixColor(primary, "#ba602e", 0.5), 0.45);
       let y = top;
-      if (showBrand) y += (await brand(64, y, 952, reverse)) + 28;
+      if (showBrand) y += (await brand(64, y, 952, mutedGold)) + 24;
       if (kicker)
-        y += text(kicker.toUpperCase(), 64, y, 952, 65, 42, reverse) + 18;
+        y += text(kicker.toUpperCase(), 64, y, 952, 64, 42, mutedGold) + 18;
       const th = photoOnly
         ? 0
-        : measure(headline, 952, 150, 66, family("Post Condensed"), 300).height;
+        : measure(headline, 936, 142, 66, family("Post Italic"), 310).height;
       const ph = bottom - y - th - footerH - 36 - (footerH ? 22 : 0);
-      photo(0, y, W, ph);
+      photo(54, y, 972, ph, undefined, [18, 120, 18, 18], "float");
       y += ph + 36;
-      y += title(64, y, 952, th + 2, 150, reverse, "Post Condensed");
-      if (footerH) smallCopy(64, bottom - footerH, 952, reverse);
+      y += title(64, y, 952, th + 2, 142, light, "Post Italic");
+      if (footerH) smallCopy(72, bottom - footerH, 936, light);
     } else {
-      // Fine-dining editorial: restrained masthead, large inset image, serif caption and a hairline.
+      await paintMaterial(ctx, W, H, "silk", primary);
       let y = top;
-      if (showBrand) y += (await brand(86, y, 908, ink, "center")) + 28;
-      rule(86, y, 908, ink, 1);
-      y += 30;
+      if (showBrand) y += (await brand(80, y, 920, ink, "center")) + 26;
       const th = photoOnly
         ? 0
-        : measure(headline, 908, 118, 66, family("Post Serif"), 310).height;
-      const ph = bottom - y - th - footerH - kickerH - 32 - (footerH ? 22 : 0);
-      photo(86, y, 908, ph);
-      y += ph + 32;
+        : measure(headline, 920, 135, 66, family("Post Serif"), 310).height;
+      const ph = bottom - y - th - footerH - kickerH - 34 - (footerH ? 22 : 0);
+      photo(72, y, 936, ph, undefined, [280, 280, 16, 16], "float");
+      y += ph + 34;
       if (kicker)
         y +=
           text(
             kicker.toUpperCase(),
-            86,
+            80,
             y,
-            908,
-            65,
+            920,
+            64,
             42,
             ink,
             "Post Sans",
             "center",
-          ) + 18;
-      y += title(86, y, 908, th + 2, 118, ink, "Post Serif", "center");
-      if (footerH) smallCopy(86, bottom - footerH, 908, ink, "center");
+          ) + 20;
+      y += title(80, y, 920, th + 2, 135, ink, "Post Serif", "center");
+      if (footerH) smallCopy(72, bottom - footerH, 936, ink, "center");
     }
     if (photoBoxes.some((b) => b.height < (items.length > 1 ? 120 : 220)))
       throw Error(

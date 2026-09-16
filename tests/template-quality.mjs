@@ -223,3 +223,100 @@ writeFileSync(`${root}/menu-collection.jpg`, overview.toBuffer("image/jpeg"));
 console.log(
   `PASS: 20 representative post proofs and ${checks} menu proofs, text collision checks, all four pagination strategies. Artifacts: ${root}`,
 );
+
+// Photograph-led versions use the same real, approved dish in all four architectures.
+const photoSections = sections.map((s) => ({
+  ...s,
+  items: s.items.map((i) => ({
+    ...i,
+    ...(i.name === "Burrata"
+      ? {
+          photoId: "hero-burrata",
+          featured: true,
+          crop: { fit: false, x: 50, y: 50, zoom: 1 },
+        }
+      : {}),
+  })),
+}));
+const photographic = createCanvas(1800, 660),
+  pc = photographic.getContext("2d");
+pc.fillStyle = "#e5e2d9";
+pc.fillRect(0, 0, 1800, 660);
+for (const [index, d] of menuDesigns.entries()) {
+  const result = await menuPdf({
+    restaurant,
+    sections: photoSections,
+    title: "Dinner",
+    design: d.id,
+    appearance: d.appearance,
+    layout: "featured",
+    paper: "letter",
+    density: "comfortable",
+  });
+  const bytes = new Uint8Array(await result.blob.arrayBuffer());
+  writeFileSync(`${root}/menu-${d.id}-photographic.pdf`, bytes);
+  const task = pdfjs.getDocument({ data: bytes, useSystemFonts: true }),
+    pdf = await task.promise,
+    page = await pdf.getPage(1),
+    v = page.getViewport({ scale: 1.5 }),
+    c = createCanvas(Math.ceil(v.width), Math.ceil(v.height));
+  assert(
+    pdf.numPages <= (d.id === "fine" ? 2 : 1),
+    `${d.name}: a short photographic dinner menu should not create a sparse extra page`,
+  );
+  await page.render({
+    canvas: c,
+    canvasContext: c.getContext("2d"),
+    viewport: v,
+  }).promise;
+  writeFileSync(
+    `${root}/menu-${d.id}-photographic.png`,
+    c.toBuffer("image/png"),
+  );
+  pc.drawImage(c, index * 450 + 10, 10, 430, 557);
+  pc.font = '19px "Post Sans"';
+  pc.fillStyle = "#26382d";
+  pc.fillText(
+    `${d.name} · ${pdf.numPages} ${pdf.numPages === 1 ? "page" : "pages"}`,
+    index * 450 + 10,
+    602,
+  );
+  await task.destroy();
+}
+writeFileSync(
+  `${root}/menu-photographic-collection.jpg`,
+  photographic.toBuffer("image/jpeg"),
+);
+console.log(
+  "PASS: four photograph-led menu proofs and real template default appearances",
+);
+
+const ordinaryTitle = "Wood-roasted chicken with preserved lemon";
+for (const id of ["special", "brunch", "event"]) {
+  for (const channel of ["feed", "story"]) {
+    const draft = {
+      ...postTemplateExample(id),
+      title: ordinaryTitle,
+      compositionVersion: 2,
+    };
+    const c = createCanvas(1, 1),
+      result = await renderPost(
+        c,
+        draft,
+        { name: "The Neighborhood Kitchen", currency: "USD" },
+        channel,
+      );
+    assert(result.renderedText.includes(ordinaryTitle));
+    assert(
+      result.photoBoxes[0].height >= 400,
+      "Ordinary names must leave a substantial photograph",
+    );
+    writeFileSync(
+      `${root}/ordinary-${id}-${channel}.png`,
+      c.toBuffer("image/png"),
+    );
+  }
+}
+console.log(
+  "PASS: ordinary 40-character customer headlines retain generous photography in Post and Story formats",
+);

@@ -1,6 +1,7 @@
 "use client";
 import { useCallback, useEffect, useRef, useState } from "react";
 import MenuPhoto from "./menu-photo";
+import { menuHero, menuAppearance } from "@/lib/menu-design";
 import { scheduleLabel } from "@/lib/promotions";
 import { money, Row } from "@/lib/client";
 import { brandTypeface, readableBrandInk } from "@/lib/restaurant-look";
@@ -25,6 +26,7 @@ export default function MenuView({
     article = useRef<HTMLElement>(null),
     session = useRef("");
   const menu = preview ? initialMenu : liveMenu;
+  const hero = menuHero(menu);
   const track = useCallback(
     (kind: string, entityId?: string) => {
       if (preview || !slug || !session.current) return;
@@ -110,7 +112,7 @@ export default function MenuView({
     <article
       role={preview ? undefined : "main"}
       aria-label={preview ? undefined : `${menu.restaurant.name} menu`}
-      className={`customer-menu menu-designed menu-art-directed menu-design-${menu.design || "bistro"} menu-density-${menu.density || "comfortable"} menu-layout-${menu.layout || "classic"} menu-appearance-${menu.appearance || "light"}`}
+      className={`customer-menu menu-designed menu-art-directed menu-design-${menu.design || "bistro"} menu-density-${menu.density || "comfortable"} menu-layout-${menu.layout || "classic"} menu-appearance-${menuAppearance(menu)}`}
       style={
         {
           "--menu-brand":
@@ -127,29 +129,70 @@ export default function MenuView({
       }
       ref={article}
     >
-      <header>
-        {menu.restaurant.logoId ? (
-          <img
-            className="menu-logo"
-            src={
-              preview
-                ? `/api/assets/${menu.restaurant.logoId}`
-                : `/api/public/${slug}/assets/${menu.restaurant.logoId}`
-            }
-            alt="Restaurant logo"
-          />
-        ) : null}
-        <h1>{menu.restaurant.name}</h1>
-        <p>{menu.title || menu.restaurant.cuisine}</p>
-        {menu.restaurant.orderingUrl && (
-          <a
-            className="order-button"
-            href={menu.restaurant.orderingUrl}
-            onClick={() => track("ordering_click")}
-            rel="noreferrer"
-          >
-            Order from {menu.restaurant.name}
-          </a>
+      <header className={hero ? "has-hero" : ""}>
+        {hero && (
+          <div className="menu-hero-photo">
+            <MenuPhoto
+              photoId={hero.photoId}
+              crop={hero.crop}
+              featured
+              priority
+              slug={preview ? undefined : slug}
+              alt={hero.name}
+            />
+            {onSelect && (
+              <button
+                className="mm-menu-edit-target"
+                aria-label={`Edit ${hero.name}`}
+                onClick={() => onSelect(hero.id)}
+              />
+            )}
+          </div>
+        )}
+        <div className="menu-identity">
+          {menu.restaurant.logoId ? (
+            <img
+              className="menu-logo"
+              src={
+                preview
+                  ? `/api/assets/${menu.restaurant.logoId}`
+                  : `/api/public/${slug}/assets/${menu.restaurant.logoId}`
+              }
+              alt="Restaurant logo"
+            />
+          ) : null}
+          {!menu.restaurant.logoId && (
+            <span className="menu-monogram" aria-hidden="true">
+              {String(menu.restaurant.name)
+                .split(/\s+/)
+                .filter((w: string) => /[a-z]/i.test(w))
+                .slice(0, 2)
+                .map((w: string) => w[0])
+                .join("")}
+            </span>
+          )}
+          <h1>{menu.restaurant.name}</h1>
+          <p>{menu.title || menu.restaurant.cuisine}</p>
+          {menu.restaurant.orderingUrl && (
+            <a
+              className="order-button"
+              href={menu.restaurant.orderingUrl}
+              onClick={() => track("ordering_click")}
+              rel="noreferrer"
+            >
+              Order from {menu.restaurant.name}
+            </a>
+          )}
+        </div>
+        {hero && (
+          <div className="menu-hero-caption">
+            <span>{hero.name}</span>
+            <span>
+              {Number.isFinite(hero.price)
+                ? money(hero.price, menu.restaurant.currency)
+                : ""}
+            </span>
+          </div>
         )}
       </header>
       {(menu.sections.length > 3 ||
@@ -262,6 +305,7 @@ export default function MenuView({
                           )}
                         </div>
                         {dish.photoId &&
+                          dish.photoId !== hero?.photoId &&
                           (menu.layout === "grid" || featured) && (
                             <MenuPhoto
                               photoId={dish.photoId}

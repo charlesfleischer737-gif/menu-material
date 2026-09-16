@@ -24,6 +24,7 @@ import { preferredPhoto } from "@/lib/dish-library";
 import {
   menuCrop,
   menuDesigns,
+  menuDesignPreset,
   menuChanges,
   duplicateMenuRows,
 } from "@/lib/menu-design";
@@ -1048,7 +1049,7 @@ export default function MenuBuilder({
                     <button
                       key={d.id}
                       aria-pressed={(b.design || "bistro") === d.id}
-                      onClick={() => patch({ design: d.id })}
+                      onClick={() => patch(menuDesignPreset(menu, d.id))}
                     >
                       <MenuTemplatePreview menu={menu} design={d.id} />
                       <strong>{d.name}</strong>
@@ -1088,8 +1089,8 @@ export default function MenuBuilder({
                 </Field>
                 {b.layout === "featured" && !rows.some((r) => r.featured) && (
                   <p className="mm-muted">
-                    Select a dish, then choose “Feature this photo” to place a
-                    section’s hero image.
+                    Your first photo leads the menu. Choose “Feature this photo”
+                    on a dish to change it.
                   </p>
                 )}
                 <Field label="Spacing">

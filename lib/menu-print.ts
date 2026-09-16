@@ -1,7 +1,8 @@
 import type { Row } from "./client";
 import { money } from "./client";
 import { imageBitmap, drawPhoto, canvasBlob } from "./creation-export";
-import { menuCrop } from "./menu-design";
+import { menuCrop, menuHero, menuAppearance } from "./menu-design";
+import { paintMaterial, gradient, glow, mixColor } from "./template-materials";
 import { readableBrandInk } from "./restaurant-look";
 
 /** Original print compositions. All sizes are PDF points; content stays searchable. */
@@ -40,12 +41,13 @@ export async function renderMenuPdf(menu: Row) {
       (menu.layout === "grid" ||
         menu.sections.filter((s: Row) => s.items.length).length > 1 ||
         menu.sections.flatMap((s: Row) => s.items).length >= 6);
-  const heading = fine || design === "bistro" ? serif : casual ? bold : sans;
-  const itemFont = casual ? sans : heading;
+  const heading =
+    fine || cafe || design === "bistro" ? serif : casual ? bold : sans;
+  const itemFont = casual || cafe ? sans : heading;
   const margin = fine ? 54 : 42,
     width = size[0] - margin * 2,
     gap = 30;
-  const dark = menu.appearance === "dark",
+  const dark = menuAppearance(menu) === "dark",
     background = dark
       ? "#1c2623"
       : fine
@@ -61,26 +63,31 @@ export async function renderMenuPdf(menu: Row) {
         number,
       ]),
     );
-  const primary = menu.restaurant.style?.primary || "#235b48",
-    accent = menu.restaurant.style?.accent || "#f0e3c3";
+  const primary = menu.restaurant.style?.primary || "#235b48";
   const brandHex =
     readableBrandInk(primary) === "#ffffff" ? primary : "#24372e";
-  const ink = color(dark ? "#fbf8ed" : "#252c26"),
-    muted = color(dark ? "#c7ccc5" : "#686b61"),
-    brand = color(dark ? "#f5f1e3" : brandHex),
-    faint = color(dark ? "#66736a" : "#cecbbf");
+  const readingDark = dark && !casual;
+  const ink = color(readingDark ? "#fbf8ed" : "#252c26"),
+    muted = color(readingDark ? "#cdc4b4" : "#686b61"),
+    brand = color(readingDark ? "#d6b97f" : brandHex),
+    faint = color(readingDark ? "#625644" : "#cecbbf");
   const spacing =
     menu.density === "compact"
       ? cafe
-        ? 6
-        : 9
+        ? 4
+        : fine
+          ? 5
+          : 9
       : menu.density === "spacious"
         ? cafe
           ? 18
           : 23
         : cafe
-          ? 8
-          : 15;
+          ? 6
+          : fine
+            ? 7
+            : 15;
+  const descriptionGap = fine || cafe ? 4 : 5;
   const warnings: string[] = [];
   const wrap = (value: string, max: number, font = regular, fs = 10) => {
     const lines: string[] = [];
@@ -200,121 +207,224 @@ export async function renderMenuPdf(menu: Row) {
     logo =
       bytes[0] === 137 ? await doc.embedPng(bytes) : await doc.embedJpg(bytes);
   }
-  const setup = () => {
-    page.drawRectangle({
-      x: 0,
-      y: 0,
-      width: size[0],
-      height: size[1],
-      color: color(background),
-    });
-    if (design === "bistro") {
-      page.drawRectangle({
-        x: 23,
-        y: 23,
-        width: size[0] - 46,
-        height: size[1] - 46,
-        borderColor: brand,
-        borderWidth: 0.6,
-      });
-      page.drawRectangle({
-        x: 27,
-        y: 27,
-        width: size[0] - 54,
-        height: size[1] - 54,
-        borderColor: faint,
-        borderWidth: 0.3,
-      });
+  const hero = menuHero(menu);
+  const surface = document.createElement("canvas");
+  surface.width = 1224;
+  surface.height = Math.round((size[1] / size[0]) * 1224);
+  await paintMaterial(
+    surface.getContext("2d")!,
+    surface.width,
+    surface.height,
+    dark ? "dark" : "paper",
+    primary,
+  );
+  const ground = await doc.embedJpg(
+    await (await canvasBlob(surface)).arrayBuffer(),
+  );
+  const topIsDark = dark || design === "bistro" || casual;
+  const headInk = color(topIsDark ? "#fff5df" : brandHex),
+    headMuted = color(topIsDark ? "#d5bd93" : "#69685b");
+  const nameSize = fine ? 34 : casual ? 44 : cafe ? 32 : 36;
+  const nameWidth = hero && !fine ? width * 0.52 : width;
+  const nameHeight =
+    wrap(menu.restaurant.name, nameWidth, heading, nameSize).length *
+    nameSize *
+    1.12;
+  const headerH = Math.max(
+    hero ? (fine ? 252 : cafe ? 154 : 225) : cafe ? 130 : 164,
+    nameHeight + 92 + (hero && fine ? 105 : 0),
+  );
+  const mast = document.createElement("canvas");
+  mast.width = 1224;
+  mast.height = Math.ceil((headerH / size[0]) * 1224);
+  const mc = mast.getContext("2d")!;
+  await paintMaterial(
+    mc,
+    mast.width,
+    mast.height,
+    topIsDark ? "dark" : "silk",
+    primary,
+  );
+  if (casual)
+    glow(
+      mc,
+      mast.width * 0.85,
+      mast.height * 0.1,
+      mast.width * 0.9,
+      mixColor(primary, "#d37b46", 0.6),
+      0.8,
+    );
+  if (hero) {
+    const im = await imageBitmap(`/api/assets/${hero.photoId}`);
+    try {
+      const factor = 1224 / size[0],
+        pw = (fine ? width * 0.62 : width * 0.48) * factor,
+        ph = (fine ? 105 : headerH - 24) * factor;
+      const frame = menuCrop(hero.crop);
+      const effectiveScale =
+        (frame.fit
+          ? Math.min(pw / factor / im.width, ph / factor / im.height)
+          : Math.max(pw / factor / im.width, ph / factor / im.height)) *
+        frame.zoom;
+      const ppi = 72 / effectiveScale,
+        minimum = menu.printProfile === "press" ? 300 : 200;
+      if (ppi < minimum)
+        warnings.push(
+          `${hero.name}: ${Math.round(ppi)} PPI in the feature photograph. ${minimum} PPI is preferred; choose a larger original.`,
+        );
+      const pc = document.createElement("canvas");
+      drawPhoto(
+        pc,
+        im,
+        Math.round(pw),
+        Math.round(ph),
+        menuCrop(hero.crop),
+        topIsDark ? "#17130f" : "#f5f0e6",
+      );
+      const px = fine ? (1224 - pw) / 2 : 1224 - pw - 15 * factor,
+        py = fine ? mast.height - ph - 8 * factor : 12 * factor;
+      const pcx = pc.getContext("2d")!;
+      pcx.globalCompositeOperation = "destination-in";
+      pcx.fillStyle = gradient(
+        pcx,
+        0,
+        0,
+        fine ? 0 : pw,
+        fine ? ph : 0,
+        fine
+          ? [
+              [0, "#ffffff00"],
+              [0.12, "#ffffff"],
+              [0.86, "#ffffff"],
+              [1, "#ffffff00"],
+            ]
+          : [
+              [0, "#ffffff00"],
+              [0.18, "#ffffff"],
+              [1, "#ffffff"],
+            ],
+      );
+      pcx.fillRect(0, 0, pw, ph);
+      mc.save();
+      mc.beginPath();
+      mc.roundRect(px, py, pw, ph, cafe ? [pw / 2, pw / 2, 0, 0] : 12);
+      mc.clip();
+      mc.drawImage(pc, px, py, pw, ph);
+      mc.restore();
+    } finally {
+      im.close();
     }
+  }
+  const masthead = await doc.embedJpg(
+    await (await canvasBlob(mast)).arrayBuffer(),
+  );
+  const setup = () => {
+    const first = doc.getPageCount() === 1;
+    page.drawImage(ground, { x: 0, y: 0, width: size[0], height: size[1] });
+    const height = first ? headerH : 86;
+    if (first)
+      page.drawImage(masthead, {
+        x: 0,
+        y: size[1] - height,
+        width: size[0],
+        height,
+      });
+    else if (topIsDark)
+      page.drawRectangle({
+        x: 0,
+        y: size[1] - height,
+        width: size[0],
+        height,
+        color: color(dark ? "#171713" : brandHex),
+      });
+    const centered = fine || (!hero && design === "bistro");
+    const x = margin,
+      w = first ? nameWidth : width,
+      align = centered ? "center" : "left";
+    y = size[1] - (first ? 27 : 22);
+    if (first) {
+      if (logo) {
+        const sc = Math.min(25 / logo.width, 25 / logo.height);
+        page.drawImage(logo, {
+          x: centered ? (size[0] - logo.width * sc) / 2 : x,
+          y: y - 25,
+          width: logo.width * sc,
+          height: logo.height * sc,
+        });
+        y -= 36;
+      } else if (!cafe && !casual) {
+        const mark = String(menu.restaurant.name)
+          .split(/\s+/)
+          .filter((v: string) => /[a-z]/i.test(v))
+          .slice(0, 2)
+          .map((v: string) => v[0])
+          .join("");
+        const mx = centered ? size[0] / 2 : x + 12;
+        page.drawCircle({
+          x: mx,
+          y: y - 13,
+          size: 14,
+          borderColor: headMuted,
+          borderWidth: 0.6,
+        });
+        put(mark, mx - 14, y - 4, 28, 12, serif, headMuted, "center");
+        y -= 40;
+      }
+    }
+    y -= put(
+      casual ? menu.restaurant.name.toUpperCase() : menu.restaurant.name,
+      x,
+      y,
+      w,
+      first ? nameSize : 19,
+      heading,
+      headInk,
+      align,
+      first ? nameSize * 1.12 : 23,
+    );
+    const sub = menu.title || menu.restaurant.cuisine || "";
+    if (sub) {
+      y -= first ? 10 : 5;
+      y -= put(
+        sub.toUpperCase(),
+        x,
+        y,
+        w,
+        first ? 9 : 8,
+        sans,
+        headMuted,
+        align,
+      );
+    }
+    contentTop = size[1] - height - 27;
+    y = contentTop;
     if (casual) {
       page.drawRectangle({
-        x: 0,
-        y: 0,
-        width: 13,
-        height: size[1],
-        color: color(brandHex),
+        x: margin - 17,
+        y: margin + 16,
+        width: width + 34,
+        height: contentTop - margin - 3,
+        color: color("#fbf5e8"),
       });
+    } else if (!readingDark) {
       page.drawRectangle({
-        x: 0,
-        y: size[1] - 12,
-        width: size[0],
-        height: 12,
-        color: color(accent),
+        x: margin - 14,
+        y: margin + 14,
+        width: width + 28,
+        height: contentTop - margin + 2,
+        color: color("#fffcf5"),
+        opacity: 0.77,
       });
-    }
-    y = size[1] - margin;
-    if (logo) {
-      const s = Math.min(36 / logo.width, 36 / logo.height);
-      page.drawImage(logo, {
-        x:
-          fine || design === "bistro" ? (size[0] - logo.width * s) / 2 : margin,
-        y: y - 36,
-        width: logo.width * s,
-        height: logo.height * s,
-      });
-      y -= 47;
-    }
-    const sub = menu.title || menu.restaurant.cuisine || "";
-    if (fine) {
-      y -= 15;
-      y -= put(
-        menu.restaurant.name,
-        margin,
-        y,
-        width,
-        30,
-        serif,
-        brand,
-        "center",
-      );
-      y -= 20;
-      if (sub) y -= put(sub, margin, y, width, 23, serif, ink, "center");
-      y -= 20;
-      line(size[0] / 2 - 28, y, 56, brand, 0.6);
-      y -= 33;
-    } else if (design === "bistro") {
-      y -= put(
-        menu.restaurant.name,
-        margin + 15,
-        y,
-        width - 30,
-        38,
-        serif,
-        brand,
-        "center",
-      );
-      if (sub) {
-        y -= 9;
-        y -= put(sub.toUpperCase(), margin, y, width, 9, sans, muted, "center");
-      }
-      y -= 19;
-      line(margin, y, width, brand, 0.8);
-      line(margin, y - 4, width, brand, 0.35);
-      y -= 25;
-    } else if (cafe) {
-      y -= put(menu.restaurant.name, margin, y, width * 0.8, 35, sans, brand);
-      y -= 12;
-      if (sub) y -= put(sub.toUpperCase(), margin, y, width, 9, sans, muted);
-      y -= 23;
-      line(margin, y, width, brand, 2);
-      y -= 25;
     } else {
-      y -= put(
-        menu.restaurant.name.toUpperCase(),
-        margin,
-        y,
-        width,
-        48,
-        bold,
-        brand,
-      );
-      y -= 10;
-      if (sub) y -= put(sub.toUpperCase(), margin, y, width, 10, sans, muted);
-      y -= 20;
-      line(margin, y, width, brand, 3);
-      y -= 22;
+      page.drawRectangle({
+        x: margin - 14,
+        y: margin + 14,
+        width: width + 28,
+        height: contentTop - margin + 2,
+        color: color("#101711"),
+        opacity: 0.56,
+      });
     }
-    contentTop = y;
     pageContent.set(page, {
       top: contentTop,
       bottom: contentTop,
@@ -326,18 +436,19 @@ export async function renderMenuPdf(menu: Row) {
   const itemMetrics = (item: Row, index: number, w: number) => {
     const hasPhoto =
       !!item.photoId &&
+      item.photoId !== hero?.photoId &&
       (menu.layout === "grid" ||
         (menu.layout === "featured" && (item.featured ?? index === 0)));
     const photoH = hasPhoto ? w * (menu.layout === "grid" ? 3 / 4 : 9 / 16) : 0;
-    const fs = fine ? 14 : design === "bistro" ? 13 : 12,
+    const fs = fine || design === "bistro" ? 13 : 12,
       price = money(item.price, menu.restaurant.currency),
       pw = regular.widthOfTextAtSize(price, 9.5);
     const names = wrap(item.name, w - (fine ? 0 : pw + 13), itemFont, fs),
       descs = wrap(item.description || "", w, regular, 9.5);
     const textH =
       names.length * fs * 1.2 +
-      (descs.length ? 5 + descs.length * 12.5 : 0) +
-      (fine ? 19 : 0) +
+      (descs.length ? descriptionGap + descs.length * 12.5 : 0) +
+      (fine ? 5 + 9.5 * 1.24 : 0) +
       (item.available === false ? 16 : 0);
     return {
       hasPhoto,
@@ -526,11 +637,11 @@ export async function renderMenuPdf(menu: Row) {
       if (!fine) put(m.price, x, y - m.fs + 9.5, w, 9.5, regular, ink, "right");
       y -= nameH;
       if (m.descs.length) {
-        y -= 5;
+        y -= descriptionGap;
         y -= put(item.description, x, y, w, 9.5, regular, muted, align, 12.5);
       }
       if (fine) {
-        y -= 7;
+        y -= 5;
         y -= put(m.price, x, y, w, 9.5, regular, muted, "center");
       }
       if (item.available === false) {

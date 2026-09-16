@@ -50,10 +50,17 @@ globalThis.fetch = async (url) => {
   const path = String(url);
   if (path.startsWith("data:image/png;base64,"))
     return new Response(Buffer.from(path.split(",")[1], "base64"));
-  if (path.startsWith("/studio/styles/"))
+  if (
+    path.startsWith("/studio/styles/") ||
+    path.startsWith("/design-materials/")
+  )
     return new Response(readFileSync("public" + path));
   if (path.startsWith("/fonts/"))
     return new Response(readFileSync("public" + path));
+  if (path === "/api/assets/hero-burrata")
+    return new Response(readFileSync("public/studio/styles/menu-stone.webp"), {
+      headers: { "Content-Type": "image/webp" },
+    });
   if (path.startsWith("/api/assets/"))
     return new Response(path.includes("pasta") ? pasta : jpg, {
       headers: { "Content-Type": "image/jpeg" },

@@ -1,6 +1,7 @@
 "use client";
 import { useEffect, useRef, useState } from "react";
 import { menuPdf } from "@/lib/creation-export";
+import { menuDesignPreset } from "@/lib/menu-design";
 import type { Row } from "@/lib/client";
 
 const cache = new Map<string, string>();
@@ -18,7 +19,7 @@ export default function MenuTemplatePreview({
   const [status, setStatus] = useState("Preparing preview…");
   const key = JSON.stringify({
     ...menu,
-    design,
+    ...menuDesignPreset(menu, design),
     printProfile: "home",
     qrUrl: undefined,
   });

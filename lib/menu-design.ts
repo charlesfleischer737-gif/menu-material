@@ -3,20 +3,53 @@ export const menuDesigns = [
   {
     id: "bistro",
     name: "Brasserie",
-    note: "Serif masthead · editorial columns",
+    note: "Cinematic masthead · warm ivory",
+    appearance: "light",
   },
   {
     id: "cafe",
     name: "Market Café",
-    note: "Category rails · warm, open space",
+    note: "Botanical light · editorial columns",
+    appearance: "light",
   },
-  { id: "fine", name: "Atelier", note: "Centered courses · quiet luxury" },
+  {
+    id: "fine",
+    name: "Atelier",
+    note: "Copper light · midnight velvet",
+    appearance: "dark",
+  },
   {
     id: "casual",
     name: "Counter Club",
-    note: "Oversized type · asymmetric columns",
+    note: "Amber glow · bold editorial type",
+    appearance: "dark",
   },
 ];
+export function menuDesignPreset(menu: Row, design: string) {
+  const spec = menuDesigns.find((d) => d.id === design) || menuDesigns[0];
+  const hasPhoto = menu.sections?.some((s: Row) =>
+    s.items.some((i: Row) => i.photoId),
+  );
+  return {
+    design: spec.id,
+    appearance: spec.appearance,
+    layout: hasPhoto ? "featured" : menu.layout || "classic",
+  };
+}
+export function menuHero(menu: Row): Row | undefined {
+  if (menu.layout !== "featured") return undefined;
+  const photos: Row[] = menu.sections
+    .flatMap((s: Row) => s.items)
+    .filter((i: Row) => i.photoId && i.available !== false);
+  return photos.find((i) => i.featured) || photos[0];
+}
+export function menuAppearance(menu: Row) {
+  return (
+    menu.appearance ||
+    menuDesigns.find((d) => d.id === menu.design)?.appearance ||
+    "light"
+  );
+}
 export const menuCrop = (crop: Row = {}) => ({
   fit: crop.fit !== false,
   x: crop.x ?? 50,

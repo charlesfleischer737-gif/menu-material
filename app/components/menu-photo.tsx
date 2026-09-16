@@ -7,12 +7,14 @@ export default function MenuPhoto({
   featured = false,
   slug,
   alt = "",
+  priority = false,
 }: {
   photoId: string;
   crop?: Row;
   featured?: boolean;
   slug?: string;
   alt?: string;
+  priority?: boolean;
 }) {
   const frame = menuCrop(crop);
   return (
@@ -24,7 +26,7 @@ export default function MenuPhoto({
             : `/api/assets/${photoId}`
         }
         alt={alt}
-        loading="lazy"
+        loading={priority ? "eager" : "lazy"}
         decoding="async"
         style={{
           objectFit: frame.fit ? "contain" : "cover",
