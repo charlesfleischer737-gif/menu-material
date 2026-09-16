@@ -24,10 +24,7 @@ function ComparisonPhoto({ after = false }: { after?: boolean }) {
   return (
     <figure className={after ? "pw-after" : "pw-before"}>
       <figcaption className="pw-photo-label">
-        <span>{after ? "After" : "Before"}</span>
-        <span>
-          {after ? "Styled with AI" : "A quick photo from your phone"}
-        </span>
+        {after ? "After" : "Before"}
       </figcaption>
       <div className="pw-photo-frame">
         <img
@@ -74,7 +71,6 @@ export default function Landing({
         </Link>
         <nav aria-label="Main navigation">
           <a href="#use-cases">Use cases</a>
-          <a href="#features">Features</a>
           <a href="/pricing">Pricing</a>
           {!signedIn && (
             <button className="pw-login" onClick={onSignIn}>
@@ -112,14 +108,6 @@ export default function Landing({
                 }}
               >
                 <a href="#use-cases">Use cases</a>
-              </DropdownMenuItem>
-              <DropdownMenuItem
-                asChild
-                onSelect={() => {
-                  navigationTarget.current = "features";
-                }}
-              >
-                <a href="#features">Features</a>
               </DropdownMenuItem>
               <DropdownMenuItem asChild>
                 <a href="/pricing">Pricing</a>
@@ -193,15 +181,8 @@ export default function Landing({
               <ComparisonPhoto after />
             </TabsContent>
           </Tabs>
-          <div className="pw-comparison-notes">
-            <p>Illustrative AI edit. Review every result before sharing.</p>
-            <p>
-              Keep your originals <span aria-hidden="true">·</span> Download for
-              the channels you use
-            </p>
-          </div>
         </section>
-        <HomepageSections onStart={onStart} signedIn={signedIn} />
+        <HomepageSections />
         <section className="pw-start">
           <div>
             <h2>Start with one dish. See the difference.</h2>
