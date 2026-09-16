@@ -8,16 +8,16 @@ import {
   useState,
   type CSSProperties,
 } from "react";
-import {
-  ArrowLeftRight,
-  ArrowRight,
-  Check,
-  Clock3,
-  Link2,
-  Pause,
-  Play,
-} from "lucide-react";
+import { ArrowRight, Check, Clock3, Link2 } from "lucide-react";
 import { Button } from "@/components/ui/button";
+import {
+  Carousel,
+  CarouselContent,
+  CarouselItem,
+  CarouselNext,
+  CarouselPrevious,
+} from "@/components/ui/carousel";
+import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 const PostCanvas = lazy(() =>
   import("./post-canvas").then((m) => ({ default: m.PostCanvas })),
 );
@@ -41,24 +41,6 @@ const useCases = [
     alt: "Tomato rigatoni with basil and Parmesan on a ceramic plate",
     text: "Let customers order with their eyes. Bring every dish to life on a menu you can share anywhere.",
   },
-  {
-    name: "Bars & restaurants",
-    image: "/homepage/restaurants.webp",
-    alt: "Seared steak with melting herb butter and golden fries in a warmly lit bistro",
-    text: "From lunch specials to date-night favorites, give people a reason to book a table or stop by.",
-  },
-  {
-    name: "Bakeries & cafés",
-    image: "/homepage/cafes.webp",
-    alt: "Flaky golden croissant, strawberry pastry and a latte in soft morning light",
-    text: "Make the morning irresistible. Show off fresh pastries, seasonal drinks, and your daily bake.",
-  },
-  {
-    name: "Food trucks",
-    image: "/homepage/food-trucks.webp",
-    alt: "Birria tacos with cilantro, onion, lime and consommé on a sunlit food truck counter",
-    text: "Turn the next scroll into your next stop. Put street-food favorites and daily specials in the spotlight.",
-  },
 ];
 
 function PromotionGraphic({
@@ -75,8 +57,8 @@ function PromotionGraphic({
   useEffect(() => {
     if (!ref.current) return;
     if (!("IntersectionObserver" in window)) {
-      setVisible(true);
-      return;
+      const frame = requestAnimationFrame(() => setVisible(true));
+      return () => cancelAnimationFrame(frame);
     }
     const observer = new IntersectionObserver(
       (entries) => {
@@ -101,7 +83,7 @@ function PromotionGraphic({
         alt="Rigatoni al pomodoro"
         loading="lazy"
       />
-      <span>Pasta plans.</span>
+      <span>Pasta night. {price}</span>
     </div>
   );
   return (
@@ -117,13 +99,13 @@ function PromotionGraphic({
             restaurant={{ name: "THE NEIGHBORHOOD TABLE", currency: "USD" }}
             draft={{
               template: "special",
-              title: "Pasta\nplans.",
+              title: `Pasta night.\n${price}`,
               kicker: "",
               cta: "",
               textMode: "full",
               showBrand: true,
               color: palette === "wine" ? "#531f34" : "#214a36",
-              accent: palette === "wine" ? "#ffe9e4" : "#e8f5cf",
+              accent: palette === "wine" ? "#ffd0dd" : "#cafa98",
               items: [
                 {
                   name: "Rigatoni al pomodoro",
@@ -132,7 +114,7 @@ function PromotionGraphic({
                 },
               ],
               price: price.replace(/[^0-9.]/g, ""),
-              showPrice: true,
+              showPrice: false,
               validity: "Tonight · 5–9 pm",
               layouts: {},
             }}
@@ -154,12 +136,10 @@ export default function HomepageSections({
 }) {
   const [price, setPrice] = useState("18");
   const [palette, setPalette] = useState("wine");
-  const [enhanced, setEnhanced] = useState(true);
   const [soldOut, setSoldOut] = useState(false);
-  const [galleryPaused, setGalleryPaused] = useState(false);
   const amount = Number(price);
   const displayPrice =
-    price !== "" && Number.isFinite(amount) && amount >= 0
+    price !== "" && Number.isFinite(amount) && amount >= 0 && amount <= 9999
       ? new Intl.NumberFormat("en-US", {
           style: "currency",
           currency: "USD",
@@ -176,73 +156,68 @@ export default function HomepageSections({
         className="pw-use-cases"
         id="use-cases"
         aria-labelledby="use-cases-title"
+        tabIndex={-1}
       >
         <div className="pw-section-heading pw-split-heading">
           <div>
-            <span className="pw-eyebrow">
-              MADE FOR YOUR KIND OF FOOD BUSINESS
-            </span>
-            <h2 id="use-cases-title">Good food. So many ways to show it.</h2>
+            <span className="pw-eyebrow">ONE DISH. THREE WAYS TO SHOW IT.</span>
+            <h2 id="use-cases-title">Good food, ready to go places.</h2>
           </div>
           <div className="pw-use-case-intro">
-            <p>
-              Wherever you serve it. Wherever they discover it.
-              <br className="pw-desktop-break" /> Make every first impression
-              look delicious.
-            </p>
-            <button
-              type="button"
-              className="pw-gallery-toggle"
-              aria-controls="use-case-gallery"
-              onClick={() => setGalleryPaused(!galleryPaused)}
-            >
-              {galleryPaused ? (
-                <Play size={15} aria-hidden="true" />
-              ) : (
-                <Pause size={15} aria-hidden="true" />
-              )}
-              {galleryPaused ? "Play gallery" : "Pause gallery"}
-            </button>
+            <p>For restaurants, bars, cafés, bakeries, and food trucks.</p>
           </div>
         </div>
-        <div
-          className="pw-use-case-marquee"
-          id="use-case-gallery"
-          data-paused={galleryPaused}
+        <Carousel
+          className="pw-use-case-carousel"
+          aria-label="Ways to use Plateworthy"
+          tabIndex={0}
+          opts={{
+            align: "start",
+            loop: false,
+            breakpoints: {
+              "(min-width: 701px)": { active: false },
+              "(prefers-reduced-motion: reduce)": { duration: 0 },
+            },
+          }}
         >
-          <div className="pw-use-case-track">
-            {[false, true].map((duplicate) => (
-              <div
-                className="pw-use-case-group"
-                key={String(duplicate)}
-                aria-hidden={duplicate || undefined}
+          <CarouselContent className="pw-use-case-slides">
+            {useCases.map((item, index) => (
+              <CarouselItem
+                className="pw-use-case-slide"
+                key={item.name}
+                aria-label={`${index + 1} of ${useCases.length}: ${item.name}`}
               >
-                {useCases.map((item) => (
-                  <article className="pw-use-case" key={item.name}>
-                    <div className="pw-use-case-photo">
-                      <img
-                        src={item.image}
-                        alt={duplicate ? "" : item.alt}
-                        width="960"
-                        height="640"
-                        loading="lazy"
-                        decoding="async"
-                      />
-                    </div>
-                    <h3>{item.name}</h3>
-                    <p>{item.text}</p>
-                  </article>
-                ))}
-              </div>
+                <article className="pw-use-case">
+                  <div className="pw-use-case-photo">
+                    <img
+                      src={item.image}
+                      alt={item.alt}
+                      width="960"
+                      height="640"
+                      loading="lazy"
+                      decoding="async"
+                    />
+                  </div>
+                  <h3>{item.name}</h3>
+                  <p>{item.text}</p>
+                </article>
+              </CarouselItem>
             ))}
+          </CarouselContent>
+          <div className="pw-gallery-controls">
+            <span>Swipe to explore</span>
+            <div>
+              <CarouselPrevious aria-label="Previous use case" />
+              <CarouselNext aria-label="Next use case" />
+            </div>
           </div>
-        </div>
+        </Carousel>
       </section>
-
       <section
         className="pw-features"
         id="features"
         aria-labelledby="features-title"
+        tabIndex={-1}
       >
         <div className="pw-section-heading">
           <span className="pw-eyebrow">
@@ -253,33 +228,39 @@ export default function HomepageSections({
             Your food, your look, and everything you need to put it out there.
           </p>
         </div>
-
         <article className="pw-feature-main" style={theme}>
           <div className="pw-feature-main-copy">
-            <span className="pw-feature-kicker">01 / THE WHOLE PROMOTION</span>
+            <span className="pw-feature-kicker">TRY IT FOR YOURSELF</span>
             <h3>
               One special.
               <br />
               Every way to share it.
             </h3>
             <p>
-              Turn one dish photo into a matching post, Story, counter sign, and
-              caption. Your colors carry through. Your food gets the spotlight.
+              Turn one dish photo into a matching post, Story, and menu. Your
+              colors carry through. Your food gets the spotlight.
             </p>
             <ul className="pw-feature-benefits">
               <li>
                 <Check size={17} aria-hidden="true" />
-                Change the price without remaking the photo
+                One photo, a consistent look
               </li>
               <li>
                 <Check size={17} aria-hidden="true" />
-                Keep your logo, colors, and tone consistent
-              </li>
-              <li>
-                <Check size={17} aria-hidden="true" />
-                Review, download, and share when you’re ready
+                Ready to review, download, and share
               </li>
             </ul>
+          </div>
+          <Tabs
+            defaultValue="post"
+            className="pw-promotion-demo"
+            aria-label="Interactive example promotion package"
+          >
+            <TabsList aria-label="Preview format">
+              <TabsTrigger value="post">Post</TabsTrigger>
+              <TabsTrigger value="story">Story</TabsTrigger>
+              <TabsTrigger value="menu">Menu</TabsTrigger>
+            </TabsList>
             <div className="pw-demo-controls">
               <label htmlFor="demo-offer-price">
                 Try your own price
@@ -291,10 +272,11 @@ export default function HomepageSections({
                     inputMode="decimal"
                     min="0"
                     max="9999"
-                    step="0.5"
+                    step="0.01"
                     value={price}
                     onChange={(event) => setPrice(event.target.value)}
                     aria-describedby="demo-price-hint"
+                    aria-invalid={price !== "" && displayPrice === "$—"}
                   />
                 </span>
               </label>
@@ -327,151 +309,99 @@ export default function HomepageSections({
               </fieldset>
             </div>
             <p id="demo-price-hint" className="pw-demo-hint">
-              Watch the examples update. The food photo stays the same.
+              {price !== "" && displayPrice === "$—"
+                ? "Enter a price from $0 to $9,999."
+                : "Change the price or color. See it in every format."}
             </p>
-          </div>
-          <div
-            className="pw-promotion-demo"
-            aria-label="Interactive example promotion package"
-          >
-            <div className="pw-demo-output pw-demo-feed">
-              <span className="pw-output-label">Instagram post</span>
-              <PromotionGraphic price={displayPrice} palette={palette} />
-            </div>
-            <div className="pw-demo-output pw-demo-story">
-              <span className="pw-output-label">Story</span>
-              <PromotionGraphic price={displayPrice} palette={palette} story />
-            </div>
-            <div className="pw-demo-caption">
-              <span className="pw-output-label">
-                Your caption, ready to edit
-              </span>
-              <p>
-                Tonight calls for a little comfort. Rigatoni, slow-cooked
-                tomato, fresh basil.{" "}
-                <strong data-demo-price>{displayPrice}</strong> tonight, 5–9 pm.
-                See you at the table.
+            <TabsContent value="post" className="pw-format-panel">
+              <div className="pw-preview-stage">
+                <PromotionGraphic price={displayPrice} palette={palette} />
+              </div>
+              <div className="pw-demo-caption">
+                <span className="pw-output-label">
+                  Your caption, ready to edit
+                </span>
+                <p>
+                  Tonight calls for a little comfort. Rigatoni, tomato, fresh
+                  basil. <strong data-demo-price>{displayPrice}</strong>{" "}
+                  tonight, 5–9 pm. See you at the table.
+                </p>
+              </div>
+            </TabsContent>
+            <TabsContent value="story" className="pw-format-panel">
+              <div className="pw-preview-stage">
+                <PromotionGraphic
+                  price={displayPrice}
+                  palette={palette}
+                  story
+                />
+              </div>
+              <p className="pw-format-note">
+                A matching vertical design, ready for your Story.
               </p>
-            </div>
-          </div>
-        </article>
-
-        <div className="pw-feature-pair">
-          <article className="pw-feature-card">
-            <div className="pw-fidelity-demo">
-              <img
-                src={
-                  enhanced
-                    ? "/homepage/burger-enhanced.webp"
-                    : "/homepage/burger-original.webp"
-                }
-                alt={
-                  enhanced
-                    ? "AI-enhanced burger with studio lighting and a clean background"
-                    : "Original phone-style photo of the burger on a plate"
-                }
-                width="960"
-                height="640"
-                loading="lazy"
-              />
-              <span className="pw-fidelity-label">
-                {enhanced
-                  ? "After · Studio lighting"
-                  : "Before · Original photo"}
-              </span>
-              <button
-                type="button"
-                onClick={() => setEnhanced(!enhanced)}
-                className="pw-photo-toggle"
-                aria-pressed={!enhanced}
-              >
-                <ArrowLeftRight size={16} aria-hidden="true" />
-                {enhanced ? "See the original" : "See the result"}
-              </button>
-            </div>
-            <div className="pw-feature-card-copy">
-              <span className="pw-feature-kicker">
-                02 / FOOD WORTH A SECOND LOOK
-              </span>
-              <h3>Better light. A more appetizing first impression.</h3>
-              <p>
-                Start with your actual dish. Refine the lighting and
-                surroundings, compare the original, and ask for a targeted
-                change. You choose the result that represents your food.
-              </p>
-              <span className="pw-feature-footnote">
-                AI-enhanced example. Always review your dish before sharing.
-              </span>
-            </div>
-          </article>
-          <article className="pw-feature-card">
-            <div className="pw-live-menu-demo">
-              <div className="pw-demo-menu-sheet">
-                <div className="pw-demo-menu-header">
-                  <span>THE NEIGHBORHOOD TABLE</span>
-                  <strong>
-                    Something good,
-                    <br />
-                    on the menu.
-                  </strong>
-                </div>
-                <div className="pw-demo-menu-item">
-                  <img
-                    src="/homepage/menus.webp"
-                    alt="Rigatoni in the example hosted menu"
-                    width="320"
-                    height="320"
-                    loading="lazy"
-                  />
-                  <div>
-                    <span className="pw-menu-special-label">
-                      TONIGHT’S SPECIAL
-                    </span>
-                    <h4>Rigatoni al pomodoro</h4>
-                    <p>Tomato, basil, Parmesan.</p>
-                    <strong data-demo-price>{displayPrice}</strong>
+            </TabsContent>
+            <TabsContent value="menu" className="pw-format-panel">
+              <div className="pw-preview-stage pw-menu-stage">
+                <div className="pw-demo-menu-sheet">
+                  <div className="pw-demo-menu-header">
+                    <span>THE NEIGHBORHOOD TABLE</span>
+                    <strong>
+                      Something good,
+                      <br />
+                      on the menu.
+                    </strong>
+                  </div>
+                  <div className="pw-demo-menu-item">
+                    <img
+                      src="/homepage/menus.webp"
+                      alt="Rigatoni in the example hosted menu"
+                      width="320"
+                      height="320"
+                      loading="lazy"
+                    />
+                    <div>
+                      <span className="pw-menu-special-label">
+                        TONIGHT’S SPECIAL
+                      </span>
+                      <h4>Rigatoni al pomodoro</h4>
+                      <p>Tomato, basil, Parmesan.</p>
+                      <strong data-demo-price>{displayPrice}</strong>
+                    </div>
+                  </div>
+                  <div
+                    className={`pw-demo-menu-status ${soldOut ? "is-sold-out" : ""}`}
+                    aria-live="polite"
+                  >
+                    <Clock3 size={15} aria-hidden="true" />
+                    {soldOut
+                      ? "Sold out for tonight"
+                      : "Available tonight · 5–9 pm"}
+                  </div>
+                  <div className="pw-demo-menu-link">
+                    <Link2 size={14} aria-hidden="true" />
+                    One menu link. Always up to date.
                   </div>
                 </div>
-                <div
-                  className={`pw-demo-menu-status ${soldOut ? "is-sold-out" : ""}`}
-                  aria-live="polite"
+                <button
+                  type="button"
+                  className="pw-menu-demo-toggle"
+                  onClick={() => setSoldOut(!soldOut)}
+                  aria-pressed={soldOut}
                 >
-                  <Clock3 size={15} aria-hidden="true" />
-                  {soldOut
-                    ? "Sold out for tonight"
-                    : "Available tonight · 5–9 pm"}
-                </div>
-                <div className="pw-demo-menu-link">
-                  <Link2 size={14} aria-hidden="true" />
-                  One menu link. Always up to date.
-                </div>
+                  {soldOut ? "Make available again" : "Try marking it sold out"}
+                  <ArrowRight size={15} aria-hidden="true" />
+                </button>
               </div>
-              <button
-                type="button"
-                className="pw-menu-demo-toggle"
-                onClick={() => setSoldOut(!soldOut)}
-                aria-pressed={soldOut}
-              >
-                {soldOut ? "Make available again" : "Try marking it sold out"}
-                <ArrowRight size={15} aria-hidden="true" />
-              </button>
-            </div>
-            <div className="pw-feature-card-copy">
-              <span className="pw-feature-kicker">
-                03 / A MENU THAT KEEPS UP
-              </span>
-              <h3>Tonight’s special. Live when you say so.</h3>
-              <p>
-                Approve and publish to your hosted menu. Specials expire on
-                time, and sold-out dishes stop taking the spotlight. Your
-                shareable link and QR code stay the same.
+              <p className="pw-format-note">
+                Review and publish when you’re ready. Your menu link and QR code
+                stay the same.
               </p>
-              <span className="pw-feature-footnote">
-                Interactive example. Changes here don’t publish a real menu.
-              </span>
-            </div>
-          </article>
-        </div>
+            </TabsContent>
+            <p className="pw-demo-disclosure">
+              Interactive example. Changes here don’t publish a real menu.
+            </p>
+          </Tabs>
+        </article>
         <div className="pw-features-end">
           <p>
             Start with a photo. Finish with something you’re proud to share.

@@ -1,6 +1,15 @@
 "use client";
-import { ArrowRight } from "lucide-react";
+import { useRef } from "react";
+import Link from "next/link";
+import { ArrowRight, Menu } from "lucide-react";
 import { Button } from "@/components/ui/button";
+import {
+  DropdownMenu,
+  DropdownMenuContent,
+  DropdownMenuItem,
+  DropdownMenuTrigger,
+} from "@/components/ui/dropdown-menu";
+import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import Brand from "./brand";
 import HomepageSections from "./homepage-sections";
 
@@ -11,6 +20,39 @@ const heroFoodBubbles = [
   ["burrata", "gelato", "gyoza"],
 ];
 
+function ComparisonPhoto({ after = false }: { after?: boolean }) {
+  return (
+    <figure className={after ? "pw-after" : "pw-before"}>
+      <figcaption className="pw-photo-label">
+        <span>{after ? "After" : "Before"}</span>
+        <span>
+          {after ? "Styled with AI" : "A quick photo from your phone"}
+        </span>
+      </figcaption>
+      <div className="pw-photo-frame">
+        <img
+          src={after ? afterPhoto : beforePhoto}
+          srcSet={
+            after
+              ? "/homepage/optimized/burger-after-640.webp 640w, /homepage/optimized/burger-after-960.webp 960w, /homepage/optimized/burger-after-1536.webp 1536w"
+              : "/homepage/optimized/burger-before-640.webp 640w, /burger-phone-original.jpg 2592w"
+          }
+          sizes="(max-width: 600px) 90vw, (max-width: 1200px) 46vw, 560px"
+          decoding="async"
+          alt={
+            after
+              ? "Illustrative AI edit of the burger with studio lighting and a clean background"
+              : "Original, unstyled burger photograph"
+          }
+          width={after ? 1536 : 2592}
+          height={after ? 1024 : 1944}
+          fetchPriority="high"
+        />
+      </div>
+    </figure>
+  );
+}
+
 export default function Landing({
   onStart,
   onSignIn,
@@ -20,15 +62,16 @@ export default function Landing({
   onSignIn: () => void;
   signedIn?: boolean;
 }) {
+  const navigationTarget = useRef<string | null>(null);
   return (
-    <div className="pw-site">
+    <div className="pw-site pw-homepage">
       <a className="skip-link" href="#main">
         Skip to content
       </a>
       <header className="pw-header">
-        <a href="/" aria-label="Plateworthy home">
+        <Link href="/" aria-label="Plateworthy home">
           <Brand />
-        </a>
+        </Link>
         <nav aria-label="Main navigation">
           <a href="#use-cases">Use cases</a>
           <a href="#features">Features</a>
@@ -41,6 +84,59 @@ export default function Landing({
           <Button className="pw-header-cta" onClick={onStart}>
             {signedIn ? "My studio" : "Try it free"}
           </Button>
+          <DropdownMenu>
+            <DropdownMenuTrigger asChild>
+              <button
+                className="pw-mobile-menu-trigger"
+                aria-label="Open navigation"
+              >
+                <Menu size={22} aria-hidden="true" />
+              </button>
+            </DropdownMenuTrigger>
+            <DropdownMenuContent
+              className="pw-mobile-menu"
+              align="end"
+              sideOffset={10}
+              onCloseAutoFocus={(event) => {
+                const id = navigationTarget.current;
+                if (!id) return;
+                event.preventDefault();
+                navigationTarget.current = null;
+                document.getElementById(id)?.focus({ preventScroll: true });
+              }}
+            >
+              <DropdownMenuItem
+                asChild
+                onSelect={() => {
+                  navigationTarget.current = "how-it-works";
+                }}
+              >
+                <a href="#how-it-works">How it works</a>
+              </DropdownMenuItem>
+              <DropdownMenuItem
+                asChild
+                onSelect={() => {
+                  navigationTarget.current = "use-cases";
+                }}
+              >
+                <a href="#use-cases">Use cases</a>
+              </DropdownMenuItem>
+              <DropdownMenuItem
+                asChild
+                onSelect={() => {
+                  navigationTarget.current = "features";
+                }}
+              >
+                <a href="#features">Features</a>
+              </DropdownMenuItem>
+              <DropdownMenuItem asChild>
+                <a href="/pricing">Pricing</a>
+              </DropdownMenuItem>
+              {!signedIn && (
+                <DropdownMenuItem onSelect={onSignIn}>Log in</DropdownMenuItem>
+              )}
+            </DropdownMenuContent>
+          </DropdownMenu>
         </nav>
       </header>
       <main id="main">
@@ -83,112 +179,87 @@ export default function Landing({
             </Button>
             <span className="pw-free-note">5 free images · No credit card</span>
           </div>
-          <div className="pw-comparison" id="the-difference">
-            <figure className="pw-before">
-              <div className="pw-photo-label">
-                <span>Before</span>
-                <span>A quick photo from your phone</span>
-              </div>
-              <div className="pw-photo-frame">
-                <img
-                  src={beforePhoto}
-                  srcSet="/homepage/optimized/burger-before-640.webp 640w, /burger-phone-original.jpg 2592w"
-                  sizes="(max-width: 700px) 90vw, (max-width: 1200px) 46vw, 560px"
-                  decoding="async"
-                  alt="Original, unstyled burger photograph"
-                  width="2592"
-                  height="1944"
-                  fetchPriority="high"
-                />
-              </div>
-            </figure>
-            <figure className="pw-after">
-              <div className="pw-photo-label">
-                <span>After</span>
-                <span>Ready to make mouths water</span>
-              </div>
-              <div className="pw-photo-frame">
-                <img
-                  src={afterPhoto}
-                  srcSet="/homepage/optimized/burger-after-640.webp 640w, /homepage/optimized/burger-after-960.webp 960w, /homepage/optimized/burger-after-1536.webp 1536w"
-                  sizes="(max-width: 700px) 90vw, (max-width: 1200px) 46vw, 560px"
-                  decoding="async"
-                  alt="The same burger restyled with professional lighting and a clean background"
-                  width="1536"
-                  height="1024"
-                  fetchPriority="high"
-                />
-              </div>
-            </figure>
+          <div
+            className="pw-comparison pw-desktop-comparison"
+            id="the-difference"
+          >
+            <ComparisonPhoto />
+            <ComparisonPhoto after />
             <span className="pw-transform-arrow" aria-hidden="true">
               <ArrowRight size={20} />
             </span>
           </div>
+          <Tabs defaultValue="after" className="pw-mobile-comparison">
+            <TabsList aria-label="Compare the original and AI edit">
+              <TabsTrigger value="before">Before</TabsTrigger>
+              <TabsTrigger value="after">After</TabsTrigger>
+            </TabsList>
+            <TabsContent value="before">
+              <ComparisonPhoto />
+            </TabsContent>
+            <TabsContent value="after">
+              <ComparisonPhoto after />
+            </TabsContent>
+          </Tabs>
+          <div className="pw-comparison-notes">
+            <p>Illustrative AI edit. Review every result before sharing.</p>
+            <p>
+              Keep your originals <span aria-hidden="true">·</span> Publish when
+              you’re ready
+            </p>
+          </div>
         </section>
-        <HomepageSections onStart={onStart} signedIn={signedIn} />
         <section
           className="pw-workflow"
           id="how-it-works"
           aria-labelledby="workflow-title"
+          tabIndex={-1}
         >
           <div className="pw-section-heading">
             <h2 id="workflow-title">Easy enough to do between orders.</h2>
-            <p>
-              Skip the hours of editing. Start with your phone and let AI handle
-              the lighting, background, and presentation.
-            </p>
           </div>
           <ol className="pw-steps">
             <li>
               <span className="pw-step-number">1</span>
               <div>
-                <h3>Start with your dish</h3>
-                <p>
-                  Choose a photo from your phone and tell us what’s on the
-                  plate. Your everyday photo is all you need to begin.
-                </p>
+                <h3>Choose your look</h3>
+                <p>Pick a style for your restaurant.</p>
               </div>
             </li>
             <li>
               <span className="pw-step-number">2</span>
               <div>
-                <h3>Pick your look</h3>
-                <p>
-                  Choose a look, check the framing, and create one beautiful
-                  photo. Review it or ask for a change.
-                </p>
+                <h3>Add your dish</h3>
+                <p>Upload your photo and generate.</p>
               </div>
             </li>
             <li>
               <span className="pw-step-number">3</span>
               <div>
-                <h3>Put your food out there</h3>
-                <p>
-                  Check your dish looks right, then add it to your menu or
-                  download the image and caption for your next post.
-                </p>
+                <h3>Review and share</h3>
+                <p>Check, download, or add to your menu.</p>
               </div>
             </li>
           </ol>
         </section>
+        <HomepageSections onStart={onStart} signedIn={signedIn} />
         <section className="pw-plan-facts" aria-labelledby="plan-facts-title">
           <div>
             <p className="pw-eyebrow">FREE TO START. MORE ROOM TO CREATE.</p>
-            <h2 id="plan-facts-title">5 free images. Then make it Pro.</h2>
+            <h2 id="plan-facts-title">Start with 5 free images.</h2>
             <p>
-              Start with 5 free image generations. Pro gives you 100 generations
-              a month for $9.99. The same full-quality photos and exports on
-              both plans.
+              No credit card. Full-quality photos and exports, from your very
+              first dish.
             </p>
           </div>
-          <div>
-            <p>
-              <strong>Keep your originals.</strong> AI versions are separate.
-              Review every result before approving it.
+          <div className="pw-pro-offer">
+            <span className="pw-eyebrow">WHEN YOU NEED MORE, GO PRO</span>
+            <p className="pw-pro-price">
+              <strong>$9.99</strong>
+              <span>/month</span>
             </p>
-            <p>
-              <strong>Publish when you’re ready.</strong> Your drafts are
-              private; you choose what appears on your public menu.
+            <p className="pw-pro-allowance">
+              100 image generations every month
             </p>
             <a href="/pricing">
               Compare Free and Pro <ArrowRight size={16} />
@@ -210,9 +281,9 @@ export default function Landing({
         </section>
       </main>
       <footer className="pw-footer">
-        <a href="/" aria-label="Plateworthy home">
+        <Link href="/" aria-label="Plateworthy home">
           <Brand />
-        </a>
+        </Link>
         <nav className="pw-footer-links" aria-label="Help and information">
           <a href="/pricing">Plans & pricing</a>
           <a href="/privacy">Photo privacy</a>

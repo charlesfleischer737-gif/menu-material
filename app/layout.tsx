@@ -9,6 +9,7 @@ import "./studio-onboarding.css";
 import "./studio-workbench.css";
 import "./restaurant-look.css";
 import "./launch.css";
+import "./homepage.css";
 export async function generateMetadata(): Promise<Metadata> {
   const origin = config("APP_ORIGIN");
   const images = origin
