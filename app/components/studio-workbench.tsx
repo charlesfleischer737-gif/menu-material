@@ -32,6 +32,29 @@ import type { PhotoStyle } from "@/lib/photo-styles";
 import type { Row } from "@/lib/client";
 import { CropControls, Field, PhotoFrame } from "./creation-shared";
 
+function mixAllStyles() {
+  function shuffle<T>(items: T[]) {
+    const mixed = [...items];
+    for (let i = mixed.length - 1; i > 0; i--) {
+      const j = Math.floor(Math.random() * (i + 1));
+      [mixed[i], mixed[j]] = [mixed[j], mixed[i]];
+    }
+    return mixed;
+  }
+  const groups = styleCategories.map((category) =>
+    shuffle(photoStyles.filter((style) => style.category === category.id)),
+  );
+  const mixed: PhotoStyle[] = [];
+  // Each round includes every category, so a random mix still gives variety.
+  while (groups.some((group) => group.length)) {
+    for (const group of shuffle(groups)) {
+      const style = group.pop();
+      if (style) mixed.push(style);
+    }
+  }
+  return mixed;
+}
+
 function CategoryRail({
   value,
   hasRecommendations,
@@ -183,6 +206,11 @@ export function StudioWorkbench({
 }) {
   const [collection, setCollection] = useState("all");
   const [dragging, setDragging] = useState(false);
+  const [allStyles, setAllStyles] = useState(photoStyles);
+  useEffect(() => {
+    // Shuffle only after hydration and keep the order while browsing and editing.
+    setAllStyles(mixAllStyles());
+  }, []);
   const panel = useRef<HTMLElement>(null);
   const gallery = useRef<HTMLDivElement>(null);
   const upload = useRef<HTMLInputElement>(null);
@@ -196,9 +224,9 @@ export function StudioWorkbench({
   const cards =
     activeCollection === "recommended"
       ? suggested
-      : photoStyles.filter(
-          (s) => activeCollection === "all" || s.category === activeCollection,
-        );
+      : activeCollection === "all"
+        ? allStyles
+        : photoStyles.filter((s) => s.category === activeCollection);
   const format = formats[b.format as PhotoFormat] || formats.menu;
   const photoReady =
     b.mode === "photo" ? !!source : !!b.name.trim() && !!b.description.trim();
