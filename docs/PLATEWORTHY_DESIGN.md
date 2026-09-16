@@ -1,5 +1,13 @@
 # Plateworthy positioning and design
 
+## Homepage audit follow-up — September 16, 2026
+
+The use-case section now shows a generic delivery listing, a finished social post with its caption, and an illustrative dinner menu. Sample dishes and prices are labeled together beside the section heading; these layouts do not imply direct publishing to delivery platforms.
+
+`public/homepage/social-post-example.webp` is a 640 × 800 capture of the actual Post Maker `special` template using `/homepage/social.webp`, a cobalt background (`#2346a3`), white accent, “Fish tacos” title, “TODAY’S SPECIAL” kicker, and “Your restaurant” sample name. It is served as a lazy-loaded static image with descriptive alternative text, avoiding the renderer and its fonts on the home page.
+
+The hero keeps its headline, uses a shorter benefit statement and two decorative food images on desktop, and omits decoration on tablet and phone layouts. The free-offer note is now 15px. The style-gallery heading follows the main content alignment, while the interactive workbench remains at a maximum of 800px. Gallery supporting text is at least 14px. The before/after interaction and studio entry flow are unchanged.
+
 The homepage now presents the complete output: ordinary food photos become professionally styled imagery, shareable menu pages, and crops/captions for delivery and social posts. The headline is “From phone photos to menus, listings, and posts.” The product's existing menu, caption, image, and invitation flows remain intact. It does not claim to publish to DoorDash or Instagram automatically.
 
 ## Current page

@@ -15,10 +15,7 @@ import HomepageSections from "./homepage-sections";
 
 const beforePhoto = "/burger-phone-original.jpg";
 const afterPhoto = "/burger-studio-transformation.png";
-const heroFoodBubbles = [
-  ["sushi", "pizza", "cheesecake"],
-  ["burrata", "gelato", "gyoza"],
-];
+const heroFoodAccents = ["sushi", "gelato"];
 
 function ComparisonPhoto({ after = false }: { after?: boolean }) {
   return (
@@ -122,25 +119,17 @@ export default function Landing({
       <main id="main">
         <section className="pw-hero" aria-labelledby="hero-title">
           <div className="pw-hero-intro">
-            <div className="pw-hero-bubbles" aria-hidden="true">
-              {heroFoodBubbles.map((foods, side) => (
-                <div
-                  className={`pw-bubble-cluster ${side === 0 ? "is-left" : "is-right"}`}
-                  key={side}
-                >
-                  {foods.map((food) => (
-                    <span className="pw-food-bubble" key={food}>
-                      <img
-                        src={`/homepage/hero-${food}.webp`}
-                        alt=""
-                        width="512"
-                        height="512"
-                        decoding="async"
-                        fetchPriority="low"
-                      />
-                    </span>
-                  ))}
-                </div>
+            <div className="pw-hero-accents" aria-hidden="true">
+              {heroFoodAccents.map((food) => (
+                <img
+                  key={food}
+                  src={`/homepage/hero-${food}.webp`}
+                  alt=""
+                  width="512"
+                  height="512"
+                  decoding="async"
+                  fetchPriority="low"
+                />
               ))}
             </div>
             <h1 id="hero-title">
@@ -149,9 +138,8 @@ export default function Landing({
               as good as it tastes.
             </h1>
             <p>
-              Turn a quick phone photo into studio-quality images and matching
-              posts. Ready to upload to Toast, delivery apps, your website, and
-              Instagram. Keep using the tools you know.
+              Turn a phone photo into studio-quality images for your menu,
+              delivery listings, and social posts.
             </p>
             <Button onClick={onStart}>
               {signedIn ? "Open my studio" : "Try it free"}
