@@ -16,45 +16,8 @@
   "notes": "Illustrative AI edits with exact pixel preservation in lossless WebP masters and responsive variants. Original downloaded JPEG is preserved unchanged; its 320, 640 and 960px responsive variants also use lossless WebP. Original and derivatives are CC BY-SA 3.0 with linked homepage credit.",
   "assets": [
     {
-      "style": "dark",
-      "name": "Dark & dramatic",
-      "prompt": "Use case: precise-object-edit.\nAsset type: Plateworthy website gallery, single square food photograph.\nInput image: the attached original photograph is the EDIT TARGET, not inspiration.\nPrimary request: edit this exact strawberry-cheesecake photograph into a professionally lit restaurant menu photograph. Change only the surrounding environment, lighting, color balance and presentation cleanup.\nSubject invariants: preserve the original tall wedge of pale ivory cheesecake with its thin golden crust, irregular cut face, glossy red strawberry sauce, exact strawberry count/shape/positions on top, and the single existing cut strawberry resting in front on the plate. Keep the dessert's exact portion, height, wedge silhouette, topping arrangement, food colors and natural edible textures. Preserve the original plain white round plate and dessert-to-plate arrangement. Preserve the same camera viewing angle and orientation, with wedge point facing left and wider back at right; do not rotate or redesign the food. Existing sauce belongs to the dish. Do not add mint, herbs, icing, berries, extra sauce, cutlery or any other food.\nComposition/framing: 1:1 square, one image only. Pull the framing back while preserving viewpoint so the entire round white plate and entire dessert fit comfortably inside the central 85% of the square, with clear margin on every side. Dessert and plate centered. Keep everything recognizable as the identical uploaded dish. Remove distracting background plates, sugar packets, containers and restaurant clutter.\nStyle: realistic food photography with convincing light physics, natural surface detail, appetizing clarity, no artificial plastic texture.\nAvoid: cropped plate or food, invented toppings or sides, changes to berry arrangement, altered cheesecake shape, new props, branding, lettering, watermark, collage, split panel.\nScene/backdrop: a clean charcoal-gray restaurant tabletop and deep charcoal background, no other objects. Lighting/mood: directional soft side lighting that makes the cheesecake creamy and the strawberries rich red, dramatic deep but detailed shadows, restrained cinematic contrast, visibly dark setting.",
-      "files": [
-        {
-          "path": "public/homepage/styles/cheesecake-dark-160.webp",
-          "width": 160,
-          "height": 160,
-          "bytes": 32496
-        },
-        {
-          "path": "public/homepage/styles/cheesecake-dark-320.webp",
-          "width": 320,
-          "height": 320,
-          "bytes": 118846
-        },
-        {
-          "path": "public/homepage/styles/cheesecake-dark-480.webp",
-          "width": 480,
-          "height": 480,
-          "bytes": 255338
-        },
-        {
-          "path": "public/homepage/styles/cheesecake-dark-640.webp",
-          "width": 640,
-          "height": 640,
-          "bytes": 438126
-        },
-        {
-          "path": "public/homepage/styles/cheesecake-dark.webp",
-          "width": 1254,
-          "height": 1254,
-          "bytes": 1512156
-        }
-      ]
-    },
-    {
       "style": "color",
-      "name": "Bold color",
+      "name": "New backdrop",
       "prompt": "Use case: precise-object-edit.\nAsset type: Plateworthy website gallery, single square food photograph.\nInput image: the attached original photograph is the EDIT TARGET, not inspiration.\nPrimary request: edit this exact strawberry-cheesecake photograph into a professionally lit restaurant menu photograph. Change only the surrounding environment, lighting, color balance and presentation cleanup.\nSubject invariants: preserve the original tall wedge of pale ivory cheesecake with its thin golden crust, irregular cut face, glossy red strawberry sauce, exact strawberry count/shape/positions on top, and the single existing cut strawberry resting in front on the plate. Keep the dessert's exact portion, height, wedge silhouette, topping arrangement, food colors and natural edible textures. Preserve the original plain white round plate and dessert-to-plate arrangement. Preserve the same camera viewing angle and orientation, with wedge point facing left and wider back at right; do not rotate or redesign the food. Existing sauce belongs to the dish. Do not add mint, herbs, icing, berries, extra sauce, cutlery or any other food.\nComposition/framing: 1:1 square, one image only. Pull the framing back while preserving viewpoint so the entire round white plate and entire dessert fit comfortably inside the central 85% of the square, with clear margin on every side. Dessert and plate centered. Keep everything recognizable as the identical uploaded dish. Remove distracting background plates, sugar packets, containers and restaurant clutter.\nStyle: realistic food photography with convincing light physics, natural surface detail, appetizing clarity, no artificial plastic texture.\nAvoid: cropped plate or food, invented toppings or sides, changes to berry arrangement, altered cheesecake shape, new props, branding, lettering, watermark, collage, split panel.\nScene/backdrop: a saturated cobalt-blue seamless studio tabletop and background, no other objects. Lighting/mood: crisp clean commercial studio light with a defined believable soft-edged cast shadow, vivid blue environment and bright natural red strawberries, controlled highlights on the original glossy sauce.",
       "files": [
         {
@@ -90,76 +53,113 @@
       ]
     },
     {
-      "style": "rustic",
-      "name": "Rustic & warm",
-      "prompt": "Use case: precise-object-edit.\nAsset type: Plateworthy website gallery, single square food photograph.\nInput image: the attached original photograph is the EDIT TARGET, not inspiration.\nPrimary request: edit this exact strawberry-cheesecake photograph into a professionally lit restaurant menu photograph. Change only the surrounding environment, lighting, color balance and presentation cleanup.\nSubject invariants: preserve the original tall wedge of pale ivory cheesecake with its thin golden crust, irregular cut face, glossy red strawberry sauce, exact strawberry count/shape/positions on top, and the single existing cut strawberry resting in front on the plate. Keep the dessert's exact portion, height, wedge silhouette, topping arrangement, food colors and natural edible textures. Preserve the original plain white round plate and dessert-to-plate arrangement. Preserve the same camera viewing angle and orientation, with wedge point facing left and wider back at right; do not rotate or redesign the food. Existing sauce belongs to the dish. Do not add mint, herbs, icing, berries, extra sauce, cutlery or any other food.\nComposition/framing: 1:1 square, one image only. Pull the framing back while preserving viewpoint so the entire round white plate and entire dessert fit comfortably inside the central 85% of the square, with clear margin on every side. Dessert and plate centered. Keep everything recognizable as the identical uploaded dish. Remove distracting background plates, sugar packets, containers and restaurant clutter.\nStyle: realistic food photography with convincing light physics, natural surface detail, appetizing clarity, no artificial plastic texture.\nAvoid: cropped plate or food, invented toppings or sides, changes to berry arrangement, altered cheesecake shape, new props, branding, lettering, watermark, collage, split panel.\nScene/backdrop: a warm honey-oak wooden café table with subtle real wood grain and softly blurred warm neutral background, no other objects. Lighting/mood: warm diffused late-afternoon side light, soft comfortable shadows, inviting rustic restaurant atmosphere, natural ivory cheesecake and red berries.",
+      "style": "angle",
+      "name": "From above",
+      "prompt": "Use case: style-transfer.\nAsset type: square editorial food photography for a restaurant gallery, high resolution approximately 1254 × 1254 pixels.\nInput image: the provided local photograph is the EDIT TARGET and source of truth for the food, not a loose inspiration.\nPreserve invariants: the same identifiable tall triangular strawberry-cheesecake wedge, ivory filling with its subtle horizontal seam, thin golden crumb base, thick glossy red strawberry glaze, original strawberry topping count and relative arrangement, one loose strawberry on the same plain round white ceramic plate. View-dependent occlusion is natural, but do not add or remove strawberries. Preserve the natural irregular cut surfaces and dense creamy texture. No new ingredients, toppings, garnish, sauces, cutlery, text, logos, watermark, graphics, or collage. Natural, delicious, believable photographic fidelity. Remove the source's background clutter, extra plates, sugar packets and wood table. This is a deliberate change of physical camera position and scene, not merely a recolor or crop of the source.\nPrimary request: Rephotograph the same cheesecake and white plate from a genuine 90-degree straight-down overhead camera, as a beautiful food editorial flat lay. The full round white plate is centered on a rich matte charcoal surface, with generous dark margins all around. The cheesecake is visibly triangular from directly above, its point oriented toward the lower-left. See the same glossy red berries in their original relative placement from overhead. The tall side face of the filling must not dominate because the camera is truly straight down. Use soft directional daylight, refined shadows and realistic texture. Output one square image with only the plate and original cheesecake/loose berry on the charcoal surface.",
       "files": [
         {
-          "path": "public/homepage/styles/cheesecake-rustic-160.webp",
+          "path": "public/homepage/styles/cheesecake-angle-160.webp",
           "width": 160,
           "height": 160,
-          "bytes": 36478
+          "bytes": 30880
         },
         {
-          "path": "public/homepage/styles/cheesecake-rustic-320.webp",
+          "path": "public/homepage/styles/cheesecake-angle-320.webp",
           "width": 320,
           "height": 320,
-          "bytes": 127786
+          "bytes": 115306
         },
         {
-          "path": "public/homepage/styles/cheesecake-rustic-480.webp",
+          "path": "public/homepage/styles/cheesecake-angle-480.webp",
           "width": 480,
           "height": 480,
-          "bytes": 266690
+          "bytes": 258884
         },
         {
-          "path": "public/homepage/styles/cheesecake-rustic-640.webp",
+          "path": "public/homepage/styles/cheesecake-angle-640.webp",
           "width": 640,
           "height": 640,
-          "bytes": 449206
+          "bytes": 462482
         },
         {
-          "path": "public/homepage/styles/cheesecake-rustic.webp",
+          "path": "public/homepage/styles/cheesecake-angle.webp",
           "width": 1254,
           "height": 1254,
-          "bytes": 1511084
+          "bytes": 1722218
         }
       ]
     },
     {
-      "style": "daylight",
-      "name": "Bright & airy",
-      "prompt": "Use case: precise-object-edit.\nAsset type: Plateworthy website gallery, single square food photograph.\nInput image: the attached original photograph is the EDIT TARGET, not inspiration.\nPrimary request: edit this exact strawberry-cheesecake photograph into a professionally lit restaurant menu photograph. Change only the surrounding environment, lighting, color balance and presentation cleanup.\nSubject invariants: preserve the original tall wedge of pale ivory cheesecake with its thin golden crust, irregular cut face, glossy red strawberry sauce, exact strawberry count/shape/positions on top, and the single existing cut strawberry resting in front on the plate. Keep the dessert's exact portion, height, wedge silhouette, topping arrangement, food colors and natural edible textures. Preserve the original plain white round plate and dessert-to-plate arrangement. Preserve the same camera viewing angle and orientation, with wedge point facing left and wider back at right; do not rotate or redesign the food. Existing sauce belongs to the dish. Do not add mint, herbs, icing, berries, extra sauce, cutlery or any other food.\nComposition/framing: 1:1 square, one image only. Pull the framing back while preserving viewpoint so the entire round white plate and entire dessert fit comfortably inside the central 85% of the square, with clear margin on every side. Dessert and plate centered. Keep everything recognizable as the identical uploaded dish. Remove distracting background plates, sugar packets, containers and restaurant clutter.\nStyle: realistic food photography with convincing light physics, natural surface detail, appetizing clarity, no artificial plastic texture.\nAvoid: cropped plate or food, invented toppings or sides, changes to berry arrangement, altered cheesecake shape, new props, branding, lettering, watermark, collage, split panel.\nScene/backdrop: pale cream café tabletop and softly luminous off-white café background, no other objects. Lighting/mood: bright diffused daylight from a nearby window with delicate soft shadows, airy high-key restaurant photography with clear detail and true food color, clean neutral white plate.",
+      "style": "served",
+      "name": "Served by hand",
+      "prompt": "Use case: style-transfer.\nAsset type: square editorial food photography for a restaurant gallery, high resolution approximately 1254 × 1254 pixels.\nInput image: the provided local photograph is the EDIT TARGET and source of truth for the food, not a loose inspiration.\nPreserve invariants: the same identifiable tall triangular strawberry-cheesecake wedge, ivory filling with its subtle horizontal seam, thin golden crumb base, thick glossy red strawberry glaze, original strawberry topping count and relative arrangement, one loose strawberry on the same plain round white ceramic plate. View-dependent occlusion is natural, but do not add or remove strawberries. Preserve the natural irregular cut surfaces and dense creamy texture. No new ingredients, toppings, garnish, sauces, cutlery, text, logos, watermark, graphics, or collage. Natural, delicious, believable photographic fidelity. Remove the source's background clutter, extra plates, sugar packets and wood table. This is a deliberate change of physical camera position and scene, not merely a recolor or crop of the source.\nPrimary request: Rephotograph the same cheesecake on its original white plate being offered toward the viewer by a cafe server. It must unmistakably show a person holding the plate. Show a cropped torso in a dark olive apron over a cream shirt, with exactly two realistic hands naturally supporting the left and right underside/rim of the plate. No face is needed. Clearly plausible wrists, fingers, hand anatomy and grip. The plate is held in front of the torso, food prominently centered, photographed slightly above plate level so the filling face and berries read clearly. The full plate must remain completely inside the square frame with comfortable margins, and both holding hands remain visible. The background is a softly blurred relaxed restaurant interior. Natural soft window light, delicious polished editorial food photo, realistic perspective, believable scale.",
       "files": [
         {
-          "path": "public/homepage/styles/cheesecake-daylight-160.webp",
+          "path": "public/homepage/styles/cheesecake-served-160.webp",
           "width": 160,
           "height": 160,
-          "bytes": 31344
+          "bytes": 34424
         },
         {
-          "path": "public/homepage/styles/cheesecake-daylight-320.webp",
+          "path": "public/homepage/styles/cheesecake-served-320.webp",
           "width": 320,
           "height": 320,
-          "bytes": 110610
+          "bytes": 112082
         },
         {
-          "path": "public/homepage/styles/cheesecake-daylight-480.webp",
+          "path": "public/homepage/styles/cheesecake-served-480.webp",
           "width": 480,
           "height": 480,
-          "bytes": 233598
+          "bytes": 234248
         },
         {
-          "path": "public/homepage/styles/cheesecake-daylight-640.webp",
+          "path": "public/homepage/styles/cheesecake-served-640.webp",
           "width": 640,
           "height": 640,
-          "bytes": 397302
+          "bytes": 396436
         },
         {
-          "path": "public/homepage/styles/cheesecake-daylight.webp",
+          "path": "public/homepage/styles/cheesecake-served.webp",
           "width": 1254,
           "height": 1254,
-          "bytes": 1368354
+          "bytes": 1369598
+        }
+      ]
+    },
+    {
+      "style": "closeup",
+      "name": "Close-up",
+      "prompt": "Use case: style-transfer.\nAsset type: square editorial food photography for a restaurant gallery, high resolution approximately 1254 × 1254 pixels.\nInput image: the provided local photograph is the EDIT TARGET and source of truth for the food, not a loose inspiration.\nPreserve invariants: the same identifiable tall triangular strawberry-cheesecake wedge, ivory filling with its subtle horizontal seam, thin golden crumb base, thick glossy red strawberry glaze, original strawberry topping count and relative arrangement, one loose strawberry on the same plain round white ceramic plate. View-dependent occlusion is natural, but do not add or remove strawberries. Preserve the natural irregular cut surfaces and dense creamy texture. No new ingredients, toppings, garnish, sauces, cutlery, text, logos, watermark, graphics, or collage. Natural, delicious, believable photographic fidelity. Remove the source's background clutter, extra plates, sugar packets and wood table. This is a deliberate change of physical camera position and scene, not merely a recolor or crop of the source.\nPrimary request: Rephotograph the same cheesecake at an almost table-level low three-quarter editorial macro camera angle. The camera lens is nearly at the middle height of the ivory filling, dramatically lower than the elevated source photograph. Emphasize the creamy side face, thin golden crumb base, subtle filling seam and glossy red strawberries rising above the wedge. The entire wedge including every berry on top remains inside the square frame with small breathing margins. The original white plate may be deliberately cropped at the bottom and sides for a real detail shot, and the loose strawberry is still visible naturally on the plate. Shallow depth of field with the filling and near berries sharply textured against a richly blurred charcoal restaurant setting. Soft side light with appetizing highlights, realistic natural photo fidelity. This must be a new low physical camera perspective, not a zoom/crop of the source.",
+      "files": [
+        {
+          "path": "public/homepage/styles/cheesecake-closeup-160.webp",
+          "width": 160,
+          "height": 160,
+          "bytes": 35810
+        },
+        {
+          "path": "public/homepage/styles/cheesecake-closeup-320.webp",
+          "width": 320,
+          "height": 320,
+          "bytes": 121502
+        },
+        {
+          "path": "public/homepage/styles/cheesecake-closeup-480.webp",
+          "width": 480,
+          "height": 480,
+          "bytes": 254832
+        },
+        {
+          "path": "public/homepage/styles/cheesecake-closeup-640.webp",
+          "width": 640,
+          "height": 640,
+          "bytes": 427400
+        },
+        {
+          "path": "public/homepage/styles/cheesecake-closeup.webp",
+          "width": 1254,
+          "height": 1254,
+          "bytes": 1410958
         }
       ]
     }

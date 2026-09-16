@@ -14,28 +14,32 @@ import {
 
 const styles = [
   {
-    id: "dark",
-    name: "Dark & dramatic",
-    short: "Dark",
-    detail: "Rich shadows. All the focus.",
-  },
-  {
     id: "color",
-    name: "Bold color",
-    short: "Bold",
-    detail: "A little more personality.",
+    name: "New backdrop",
+    short: "Backdrop",
+    detail: "Change the setting.",
+    alt: "The same strawberry cheesecake on a vivid cobalt-blue studio backdrop",
   },
   {
-    id: "rustic",
-    name: "Rustic table",
-    short: "Rustic",
-    detail: "Warm, welcoming, familiar.",
+    id: "angle",
+    name: "From above",
+    short: "Angle",
+    detail: "Find a new perspective.",
+    alt: "The same strawberry cheesecake photographed from a higher angle on a charcoal table",
   },
   {
-    id: "daylight",
-    name: "Daylight café",
-    short: "Daylight",
-    detail: "Fresh light. A softer mood.",
+    id: "served",
+    name: "Served by hand",
+    short: "In hand",
+    detail: "Add a human touch.",
+    alt: "A server in an olive apron holding the same strawberry cheesecake on its white plate with both hands",
+  },
+  {
+    id: "closeup",
+    name: "Close-up",
+    short: "Close-up",
+    detail: "Let the textures shine.",
+    alt: "A low-angle close-up of the same strawberry cheesecake showing its creamy filling and glossy berries",
   },
 ];
 
@@ -106,7 +110,7 @@ function OriginalPhoto({ enlarged = false }: { enlarged?: boolean }) {
       sizes={
         enlarged
           ? "(max-width: 560px) 88px, (max-width: 860px) 42vw, 394px"
-          : "(max-width: 700px) 80px, (max-width: 1000px) 21vw, 250px"
+          : "(max-width: 700px) 72px, (max-width: 1000px) 25vw, 290px"
       }
       alt="Original strawberry cheesecake photograph before styling"
       width={2592}
@@ -144,9 +148,9 @@ function StyledPhoto({
         sizes={
           enlarged
             ? "(max-width: 560px) 86vw, (max-width: 860px) 42vw, 394px"
-            : "(max-width: 700px) 80vw, (max-width: 1000px) 28vw, 320px"
+            : "(max-width: 360px) 80vw, (max-width: 700px) 280px, (max-width: 1000px) 28vw, 320px"
         }
-        alt={`Illustrative AI edit of the same strawberry cheesecake in the ${style.name.toLowerCase()} style`}
+        alt={`Illustrative AI edit: ${style.alt}`}
         width={1254}
         height={1254}
         loading="lazy"
@@ -158,19 +162,17 @@ function StyledPhoto({
 }
 
 export default function HomepageStyleGallery() {
-  const [selected, setSelected] = useState("color");
-  const active = styles.find((style) => style.id === selected) ?? styles[1];
+  const [selected, setSelected] = useState("served");
+  const active = styles.find((style) => style.id === selected) ?? styles[2];
 
   return (
     <section className="pw-style-gallery" aria-labelledby="style-gallery-title">
       <div className="pw-section-heading pw-style-heading">
         <div>
           <h2 id="style-gallery-title">One photo. Endless possibilities.</h2>
-          <p>The same dish. A whole different mood.</p>
+          <p>New angles, settings, and ways to show off your dish.</p>
         </div>
-        <span className="pw-style-heading-note">
-          Choose a look. See the transformation.
-        </span>
+        <span className="pw-style-heading-note">Pick a look to explore.</span>
       </div>
       <Dialog>
         <div className="pw-style-workbench">
@@ -181,7 +183,6 @@ export default function HomepageStyleGallery() {
               </div>
               <figcaption>
                 <strong>Your starting photo</strong>
-                <span>One upload is all it takes.</span>
               </figcaption>
             </figure>
             <span className="pw-style-direction" aria-hidden="true">
@@ -202,7 +203,6 @@ export default function HomepageStyleGallery() {
               </DialogTrigger>
               <figcaption aria-live="polite" aria-atomic="true">
                 <strong>{active.name}</strong>
-                <span>Styled with Plateworthy</span>
               </figcaption>
             </figure>
           </div>
