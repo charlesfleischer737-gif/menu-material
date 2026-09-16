@@ -95,7 +95,7 @@ export function photoPresetFields(id: string) {
     photoDefaults: {
       surface: "As shown",
       lighting: "As shown",
-      plate: "keep",
+      plate: "style",
       angle: "keep",
       composition: "Full dish",
     },
@@ -153,7 +153,7 @@ export function restaurantPhotoDefaults(restaurant: Record<string, any>) {
       photoStyles.find((p) => p.id === style.photoPreset)?.category || "menu",
     surface: style.photoDefaults?.surface || "As shown",
     lighting: style.photoDefaults?.lighting || "As shown",
-    plate: style.photoDefaults?.plate || "keep",
+    plate: style.photoDefaults?.plate || "style",
     angle: style.photoDefaults?.angle || "keep",
     composition: style.photoDefaults?.composition || "Full dish",
   };

@@ -1,6 +1,6 @@
 import { photoStyles, type PhotoStyle } from "./photo-styles";
 export { photoStyles, styleCategories } from "./photo-styles";
-export const PIPELINE_VERSION = "studio-2026-09-15-flare-v3";
+export const PIPELINE_VERSION = "studio-2026-09-15-flare-v4";
 const legacyLooks = [
   {
     id: "keep",
@@ -202,7 +202,7 @@ export function photoBrief(destination = "menu") {
     lookCategory: destination === "delivery" ? "delivery" : "menu",
     surface: "As shown",
     lighting: "As shown",
-    plate: "keep",
+    plate: "style",
     angle: "keep",
     composition: "Full dish",
     note: "",

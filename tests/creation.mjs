@@ -13,6 +13,7 @@ const { all, one, run } = await import("../lib/server/core.ts");
 const { recommendedPhotoStyles, photoAnalysisRecommendation } =
   await import("../lib/studio-onboarding.ts");
 const { foodFamilies, photoBrief } = await import("../lib/studio.ts");
+const { imagePrompt } = await import("../lib/server/generation.ts");
 const { restaurantPhotoDefaults, brandPostFields } =
   await import("../lib/restaurant-look.ts");
 const { applyPostTemplate } = await import("../lib/post-templates.ts");
@@ -27,6 +28,64 @@ const brand = {
 const automatic = restaurantPhotoDefaults({ style: brand });
 assert.equal(automatic.look, "restaurant");
 assert.equal(automatic.lighting, "Soft daylight");
+assert.equal(automatic.plate, "style");
+assert.equal(photoBrief().plate, "style");
+assert.equal(
+  restaurantPhotoDefaults({
+    style: { ...brand, photoDefaults: { plate: "keep" } },
+  }).plate,
+  "keep",
+  "An explicit saved plate choice is still respected",
+);
+const promptDetails = {
+  name: "Three dumplings",
+  description: "Three steamed dumplings with chili oil",
+  portion: "3 pieces",
+  plating: "On a red plate",
+  style: { photoStyle: "Dark slate, charcoal ceramics, directional sidelight" },
+  controls: { surface: "As shown", lighting: "As shown", plate: "style" },
+  pipelineVersion: "internal-pipeline",
+  rendering: { model: "internal-model" },
+};
+const stylePrompt = imagePrompt(promptDetails);
+assert.match(stylePrompt, /Replace the source surroundings/);
+assert.match(stylePrompt, /Match the serving ware to the selected style/);
+assert.match(
+  stylePrompt,
+  /Dark slate, charcoal ceramics, directional sidelight/,
+);
+assert.match(stylePrompt, /"portion":"3 pieces"/);
+assert.match(stylePrompt, /Never add or remove ingredients/);
+assert(
+  !stylePrompt.includes("As shown"),
+  "Default controls cannot anchor to the upload",
+);
+assert(
+  !stylePrompt.includes("internal-model"),
+  "Model metadata is not photo direction",
+);
+assert(!stylePrompt.includes("internal-pipeline"));
+const controlledPrompt = imagePrompt(
+  {
+    ...promptDetails,
+    controls: {
+      plate: "white",
+      angle: "overhead",
+      surface: "Warm wood",
+      lighting: "Soft daylight",
+    },
+  },
+  "Remove the napkin",
+);
+assert.match(
+  controlledPrompt,
+  /Replace the original plate with a simple white/,
+);
+assert.match(controlledPrompt, /requested overhead camera angle/);
+assert.match(controlledPrompt, /chosen "Warm wood" surface/);
+assert.match(controlledPrompt, /chosen "Soft daylight" lighting/);
+assert.match(controlledPrompt, /Requested adjustment: "Remove the napkin"/);
+assert(!controlledPrompt.includes("Keep the original plate"));
 assert.deepEqual(
   photoAnalysisRecommendation({ ...automatic, step: 2 }, "Drinks"),
   {},
@@ -326,6 +385,7 @@ try {
       parentId: editId,
       requestKey: crypto.randomUUID(),
       revision: "Remove napkin",
+      controls: { plate: "style" },
     },
     202,
   );
@@ -339,6 +399,11 @@ try {
     requests.at(-1).input[0].content.length,
     3,
     "Original identity plus edited parent are passed",
+  );
+  assert.match(
+    requests.at(-1).input[0].content[0].text,
+    /Match the serving ware to the selected style/,
+    "The style plate control reaches the provider on a revision",
   );
   await call("jobs/tick", {});
   assert(
@@ -587,6 +652,7 @@ for (const look of restaurantLooks) {
   const valid = styleSchema.parse(fields);
   assert.equal(valid.photoPreset, look.photoPreset);
   assert.equal(valid.autoApply, true);
+  assert.equal(valid.photoDefaults.plate, "style");
   assert(valid.photoStyle.length > 30);
 }
 assert.equal(normalizeBrandColor(" ABC "), "#aabbcc");

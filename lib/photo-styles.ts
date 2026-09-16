@@ -89,7 +89,7 @@ export const photoStyles: PhotoStyle[] = [
     bestFor: "Burgers, sandwiches and individual entrées",
     traits: ["Even softbox light", "White seamless", "Full serving"],
     prompt:
-      "Clean white seamless tabletop. Bright even neutral softbox light, soft natural contact shadow, accurate appetizing color. Center the complete original serving with generous margins. No extra food, props, text or packaging.",
+      "Clean white seamless tabletop and simple white serving ware suited to the dish. Bright even neutral softbox light, soft contact shadow and accurate appetizing color. Center the complete serving with generous margins. No extra food, props, text or packaging.",
     image: "/studio/styles/delivery-white.webp",
     angle: "keep",
   },
@@ -119,7 +119,7 @@ export const photoStyles: PhotoStyle[] = [
     bestFor: "Tacos, wraps and comfort food",
     traits: ["Diffused daylight", "Light oak", "Natural color"],
     prompt:
-      "Light neutral oak tabletop, diffused window daylight and gentle short shadows. Simple delivery catalog composition with complete original serving visible. Keep accurate colors and portions. No extra dishes or props.",
+      "Light neutral oak tabletop, simple neutral ceramic serving ware, diffused window daylight and gentle short shadows. Clear delivery catalog composition with the complete serving visible. Keep accurate colors and portions. No extra dishes or props.",
     image: "/studio/styles/delivery-daylight.webp",
     angle: "keep",
   },
@@ -134,7 +134,7 @@ export const photoStyles: PhotoStyle[] = [
     bestFor: "Pizza, flatbreads and shallow bowls",
     traits: ["Overhead angle", "Plain white surface", "Complete edges"],
     prompt:
-      "Straight overhead catalog composition on a plain white tabletop. Even neutral light, complete serving and container edges visible with breathing room. Preserve toppings and portion exactly. No props, text or added food.",
+      "Straight overhead catalog composition on a plain white tabletop with clean white serving ware. Even neutral light, complete serving and vessel edges visible with breathing room. Preserve toppings and portion exactly. No props, text or added food.",
     image: "/studio/styles/delivery-overhead.webp",
     angle: "overhead",
   },
@@ -149,7 +149,7 @@ export const photoStyles: PhotoStyle[] = [
     bestFor: "Seafood, delicate starters and tasting plates",
     traits: ["Refined window light", "White linen", "Soft dining-room blur"],
     prompt:
-      "Refined white-linen dining table, restrained soft window light, understated upscale restaurant background blur. Preserve original plate and exact food arrangement. No added garnish, cutlery or other servings.",
+      "Refined white-linen dining table, elegant white porcelain serving ware, soft window light and understated upscale dining-room blur. Preserve the exact food arrangement and portion. No added garnish, cutlery or other servings.",
     image: "/studio/styles/fine-linen.webp",
     angle: "keep",
   },
@@ -164,7 +164,7 @@ export const photoStyles: PhotoStyle[] = [
     bestFor: "Steak, duck and rich signature dishes",
     traits: ["Directional sidelight", "Dark slate", "Restrained contrast"],
     prompt:
-      "Dark slate table with charcoal surroundings. Precise directional side light, gentle food highlights, deep clean shadows with visible detail. Fine-dining editorial mood. Preserve original plating, ingredients and portions.",
+      "Dark slate table, matte charcoal ceramic serving ware and charcoal surroundings. Precise directional sidelight, gentle food highlights and deep shadows with visible detail. Fine-dining editorial mood. Preserve the food arrangement, ingredients and portion.",
     image: "/studio/styles/fine-slate.webp",
     angle: "keep",
   },
@@ -179,7 +179,7 @@ export const photoStyles: PhotoStyle[] = [
     bestFor: "Crudo, tartare and sculptural plating",
     traits: ["Clean sidelight", "Pale travertine", "Quiet negative space"],
     prompt:
-      "Minimal pale travertine chef counter, clean precise soft sidelight, subtle warm-grey background, luxurious quiet negative space. Keep original dish and plate untouched in arrangement. No new garnish or serving ware.",
+      "Minimal pale travertine chef counter, refined ivory ceramic serving ware, precise soft sidelight and subtle warm-grey background with luxurious quiet negative space. Preserve the food arrangement and portion. No new garnish or extra dishes.",
     image: "/studio/styles/fine-counter.webp",
     angle: "keep",
   },
@@ -194,7 +194,7 @@ export const photoStyles: PhotoStyle[] = [
     bestFor: "Dinner specials and reservation campaigns",
     traits: ["Warm low light", "Deep burgundy tones", "Distant candle bokeh"],
     prompt:
-      "Elegant evening restaurant in deep burgundy tones, warm low directional light with distant candle bokeh. Keep food well exposed and colors believable. Preserve original plate, ingredients and portion. No foreground props.",
+      "Elegant evening restaurant in deep burgundy tones, fine ivory porcelain serving ware, warm directional light and distant candle bokeh. Keep food well exposed and colors believable. Preserve ingredients, arrangement and portion. No foreground props.",
     image: "/studio/styles/fine-candle.webp",
     angle: "keep",
   },
@@ -213,7 +213,7 @@ export const photoStyles: PhotoStyle[] = [
       "Balanced natural color",
     ],
     prompt:
-      "Pale limestone tabletop with bright diffused daylight. Soft clean shadows and balanced natural color. Uncluttered restaurant menu photography, full original plate and serving visible. No added food, garnish or text.",
+      "Pale limestone tabletop, simple off-white ceramic serving ware and bright diffused daylight. Soft clean shadows and balanced natural color. Uncluttered restaurant menu photography, full plate and serving visible. No added food, garnish or text.",
     image: "/studio/styles/menu-stone.webp",
     angle: "keep",
   },
@@ -228,7 +228,7 @@ export const photoStyles: PhotoStyle[] = [
     bestFor: "Roasts, breakfast plates and comfort food",
     traits: ["Warm window light", "Natural oak", "Gentle background blur"],
     prompt:
-      "Warm natural oak restaurant tabletop with soft window light and gentle background blur. Inviting neighborhood dining mood, realistic food detail and full serving visible. Preserve food and plate exactly; no added sides.",
+      "Warm natural oak restaurant tabletop, warm cream stoneware, soft window light and gentle dining-room blur. Inviting neighborhood mood, realistic food detail and full serving visible. Preserve the food arrangement and portion; no added sides.",
     image: "/studio/styles/menu-wood.webp",
     angle: "keep",
   },
@@ -243,7 +243,7 @@ export const photoStyles: PhotoStyle[] = [
     bestFor: "Skillets, bowls and dishes with layered toppings",
     traits: ["Overhead angle", "Warm grey surface", "Even soft light"],
     prompt:
-      "Straight overhead restaurant menu photograph on matte warm grey. Even soft light, clear food detail, complete dish and vessel centered with room around the edges. Preserve original ingredients and arrangement; no props.",
+      "Straight overhead restaurant menu photograph on matte warm grey with simple ivory serving ware. Even soft light, clear food detail, complete dish and vessel centered with room around the edges. Preserve ingredients and arrangement; no props.",
     image: "/studio/styles/menu-overhead.webp",
     angle: "overhead",
   },
@@ -258,7 +258,7 @@ export const photoStyles: PhotoStyle[] = [
     bestFor: "Risotto, pasta and everyday entrées",
     traits: ["Balanced daylight", "Matte light grey", "Soft contact shadows"],
     prompt:
-      "Matte light-grey bistro tabletop, balanced neutral studio daylight, soft contact shadows and calm background. Modern uncluttered menu editorial. Preserve exact food and serving ware. No added ingredients, text or decoration.",
+      "Matte light-grey bistro tabletop, modern white ceramic serving ware, balanced neutral studio daylight, soft contact shadows and calm background. Uncluttered menu editorial. Preserve exact food and portion. No added ingredients, text or decoration.",
     image: "/studio/styles/menu-neutral.webp",
     angle: "keep",
   },
@@ -273,7 +273,7 @@ export const photoStyles: PhotoStyle[] = [
     bestFor: "Whiskey cocktails and dark spirits",
     traits: ["Amber rim light", "Polished walnut", "Charcoal shadows"],
     prompt:
-      "Polished dark walnut bar, amber side and rim light, smoky charcoal background. Luxurious intimate speakeasy mood. Keep original vessel, liquid level, ice, garnish or food exactly unchanged. No added drink or smoke.",
+      "Polished dark walnut bar, refined clear glassware appropriate to the drink, amber side and rim light, charcoal background. Luxurious intimate speakeasy mood. Preserve drink volume, ice, garnish and ingredients. No added drink or smoke.",
     image: "/studio/styles/bar-speakeasy.webp",
     angle: "keep",
   },
@@ -288,7 +288,7 @@ export const photoStyles: PhotoStyle[] = [
     bestFor: "Martinis, coupes and signature cocktails",
     traits: ["Cool rim light", "Dark stone", "Emerald velvet blur"],
     prompt:
-      "Dark stone bar with softly blurred deep emerald velvet lounge. Cool precise rim light on glassware and restrained warm ambient glow. Preserve original contents, vessel, garnish and proportions. No extra glasses or props.",
+      "Dark stone bar with softly blurred deep emerald velvet lounge. Elegant clear glassware suited to the drink, cool precise rim light and restrained warm ambient glow. Preserve contents, drink volume, ice and garnish. No extra glasses or props.",
     image: "/studio/styles/bar-velvet.webp",
     angle: "keep",
   },
@@ -303,7 +303,7 @@ export const photoStyles: PhotoStyle[] = [
     bestFor: "Colorful cocktails and evening announcements",
     traits: ["Cool ambient light", "Cobalt bar", "Warm highlights"],
     prompt:
-      "Midnight cobalt-blue bar setting, sophisticated cool ambient light and precise warm highlights, distant soft bokeh. Vivid realistic colors with visible drink detail. Keep original glass, contents and garnish. No neon text.",
+      "Midnight cobalt-blue bar, contemporary clear glassware suited to the drink, cool ambient light, precise warm highlights and distant soft bokeh. Vivid realistic color and visible drink detail. Preserve contents, drink volume, ice and garnish. No neon text.",
     image: "/studio/styles/bar-bluehour.webp",
     angle: "keep",
   },
@@ -322,7 +322,7 @@ export const photoStyles: PhotoStyle[] = [
       "Shallow background depth",
     ],
     prompt:
-      "Intimate wine-bar setting in burgundy and chocolate tones, warm candlelike sidelight and shallow background depth. Preserve original serving, food arrangement and vessel. Keep textures visible. No added pairings or props.",
+      "Intimate wine bar in burgundy and chocolate tones, warm neutral stoneware for food or fine glassware for drinks, candlelike sidelight and shallow background depth. Preserve the serving and food arrangement. Keep textures visible. No added pairings or props.",
     image: "/studio/styles/bar-candle.webp",
     angle: "keep",
   },
@@ -337,7 +337,7 @@ export const photoStyles: PhotoStyle[] = [
     bestFor: "Iced coffee, lattes and café drinks",
     traits: ["Morning window light", "Warm café table", "Clear glass detail"],
     prompt:
-      "Warm café tabletop, soft morning window light, restrained background blur. Show authentic liquid and glass texture, clear highlights without glare. Keep original drink, cup, layers, ice and garnish exactly unchanged.",
+      "Warm café tabletop, refined café serving ware appropriate to the drink, soft morning window light and restrained background blur. Authentic liquid texture and clear highlights without glare. Preserve drink volume, layers, foam, ice and garnish.",
     image: "/studio/styles/beverage-cafe.webp",
     angle: "keep",
   },
@@ -352,7 +352,7 @@ export const photoStyles: PhotoStyle[] = [
     bestFor: "Fresh juice, smoothies and summer drinks",
     traits: ["Clean sunshine", "Pale terracotta", "Fresh natural color"],
     prompt:
-      "Sunny pale terracotta tabletop, clean directional daylight and fresh natural color. Luminous beverage photography without artificial saturation. Preserve original glass, drink amount and garnish. Do not add fruit or ingredients.",
+      "Sunny pale terracotta tabletop, simple clear glassware suited to the drink, clean directional daylight and fresh natural color. Luminous beverage photography without artificial saturation. Preserve drink amount, ice and garnish. Do not add fruit or ingredients.",
     image: "/studio/styles/beverage-citrus.webp",
     angle: "keep",
   },
@@ -367,7 +367,7 @@ export const photoStyles: PhotoStyle[] = [
     bestFor: "Matcha, milk teas and specialty drinks",
     traits: ["Soft studio sidelight", "Pale green matte", "Delicate shadows"],
     prompt:
-      "Contemporary pale-green matte studio backdrop, soft clean sidelight, delicate grounded shadow and rich true drink color. Preserve original vessel, liquid layers, ice and garnish. No additional ingredients or lettering.",
+      "Contemporary pale-green matte studio backdrop, minimal serving ware suited to the drink, soft clean sidelight, delicate grounded shadow and rich true drink color. Preserve drink volume, liquid layers, ice and garnish. No additional ingredients or lettering.",
     image: "/studio/styles/beverage-matcha.webp",
     angle: "keep",
   },
@@ -382,7 +382,7 @@ export const photoStyles: PhotoStyle[] = [
     bestFor: "Iced teas, spritzes and clear cold drinks",
     traits: ["Luminous backlight", "Cool pale stone", "Controlled highlights"],
     prompt:
-      "Cool pale stone with luminous controlled backlighting through the drink. Show authentic translucency and ice with crisp glass edges, avoiding blown highlights. Preserve original liquid, vessel, ice and garnish. No new ingredients.",
+      "Cool pale stone, clean transparent glassware suited to the drink and luminous controlled backlighting. Authentic translucency and ice with crisp glass edges, avoiding blown highlights. Preserve liquid amount, layers, ice and garnish. No new ingredients.",
     image: "/studio/styles/beverage-backlit.webp",
     angle: "keep",
   },
@@ -397,7 +397,7 @@ export const photoStyles: PhotoStyle[] = [
     bestFor: "Desserts, delicate plates and premium products",
     traits: ["Large softbox", "Ivory seamless", "Sculptural soft shadow"],
     prompt:
-      "Warm ivory seamless studio sweep, large diffused softbox, sculptural soft grounded shadows. Luxurious minimal commercial food photograph. Preserve original plate, food texture and arrangement. No new serving ware or garnish.",
+      "Warm ivory seamless studio sweep, refined ivory ceramic serving ware, large diffused softbox and sculptural grounded shadows. Luxurious minimal commercial food photograph. Preserve food texture, arrangement and portion. No extra serving ware or garnish.",
     image: "/studio/styles/studio-ivory.webp",
     angle: "keep",
   },
@@ -416,7 +416,7 @@ export const photoStyles: PhotoStyle[] = [
       "Crisp commercial finish",
     ],
     prompt:
-      "Vibrant saturated cobalt-blue seamless studio backdrop, controlled commercial softbox lighting, crisp soft shadow. Bold graphic background with accurate natural food color. Keep original serving and plate unchanged.",
+      "Vibrant cobalt-blue seamless studio backdrop, clean white serving ware, controlled commercial softbox lighting and crisp soft shadow. Bold graphic background with accurate natural food color. Preserve the original food arrangement and serving size.",
     image: "/studio/styles/studio-color.webp",
     angle: "keep",
   },
@@ -435,7 +435,7 @@ export const photoStyles: PhotoStyle[] = [
       "Detailed highlights",
     ],
     prompt:
-      "Deep charcoal-black studio sweep, precise directional side light, rich contrast and controlled highlights on actual food texture. Full original serving visible. No invented steam, ingredients, extra bowls or decoration.",
+      "Deep charcoal-black studio sweep, matte dark ceramic serving ware, precise directional sidelight, rich contrast and controlled highlights on actual food texture. Full original serving visible. No invented steam, ingredients, extra bowls or decoration.",
     image: "/studio/styles/studio-dark.webp",
     angle: "keep",
   },
@@ -450,7 +450,7 @@ export const photoStyles: PhotoStyle[] = [
     bestFor: "Gelato, sweets and playful seasonal items",
     traits: ["Gentle diffused light", "Blush seamless", "Soft short shadows"],
     prompt:
-      "Soft blush-pink seamless studio background with gentle diffused light and delicate short shadows. Playful refined commercial photograph, accurate food color. Keep original food, container, portion and garnish unchanged.",
+      "Soft blush-pink seamless studio background, simple pale ceramic serving ware, gentle diffused light and delicate short shadows. Playful refined commercial photograph with accurate food color. Preserve food, portion and garnish.",
     image: "/studio/styles/studio-pastel.webp",
     angle: "keep",
   },
@@ -465,7 +465,7 @@ export const photoStyles: PhotoStyle[] = [
     bestFor: "Croissants, viennoiserie and breakfast pastries",
     traits: ["Warm morning light", "Pale oak", "Crisp pastry texture"],
     prompt:
-      "Pale oak bakery table in soft warm early-morning window light, inviting artisanal editorial. Reveal actual golden crust and flaky layers without adding shine. Preserve pastry shape, serving and toppings. No invented crumbs.",
+      "Pale oak bakery table, simple cream ceramic serving ware and soft warm early-morning window light. Inviting artisanal editorial. Reveal actual golden crust and flaky layers without adding shine. Preserve pastry shape, serving and toppings. No invented crumbs.",
     image: "/studio/styles/bakery-morning.webp",
     angle: "keep",
   },
@@ -480,7 +480,7 @@ export const photoStyles: PhotoStyle[] = [
     bestFor: "Fruit tarts, entremets and refined cakes",
     traits: ["Bright diffuse light", "Pale marble", "Natural highlights"],
     prompt:
-      "Elegant pale marble patisserie setting with cool bright diffused light and delicate natural highlights. Preserve exact fruit, cream, icing and pastry arrangement, original plate and portion. No additional decoration or toppings.",
+      "Elegant pale marble patisserie setting, delicate white porcelain serving ware, cool bright diffused light and natural highlights. Preserve exact fruit, cream, icing, pastry arrangement and portion. No additional decoration or toppings.",
     image: "/studio/styles/bakery-patisserie.webp",
     angle: "keep",
   },
@@ -499,7 +499,7 @@ export const photoStyles: PhotoStyle[] = [
       "Oatmeal linen backdrop",
     ],
     prompt:
-      "Rustic warm wood with restrained oatmeal linen in distant background. Directional window light reveals authentic bread crust and crumb. Keep original shape, slices, quantity and serving ware. No invented flour or crumbs.",
+      "Rustic warm wood, a simple natural wood bread board and restrained oatmeal linen in the distant background. Directional window light reveals authentic crust and crumb. Preserve bread shape, slices and quantity. No invented flour or crumbs.",
     image: "/studio/styles/bakery-rustic.webp",
     angle: "keep",
   },
@@ -514,7 +514,7 @@ export const photoStyles: PhotoStyle[] = [
     bestFor: "Macarons, petit fours and colorful confections",
     traits: ["Luminous softbox", "Lilac seamless", "Soft confectionery color"],
     prompt:
-      "Soft lilac seamless patisserie studio, luminous diffused softbox light and delicate shadows. Preserve exact number, colors and arrangement of confections and original plate. No added sweets, toppings or text.",
+      "Soft lilac seamless patisserie studio, refined white porcelain serving ware, luminous diffused softbox light and delicate shadows. Preserve the exact number, colors and arrangement of confections. No added sweets, toppings or text.",
     image: "/studio/styles/bakery-jewel.webp",
     angle: "keep",
   },

@@ -159,7 +159,7 @@ export default function PhotoStudio({
       ...(preset.category ? { lookCategory: preset.category } : {}),
       surface: "As shown",
       lighting: "As shown",
-      plate: "keep",
+      plate: id === "keep" ? "keep" : "style",
       angle: preset.angle || "keep",
       composition: "Full dish",
       ...(id === "restaurant"
@@ -275,6 +275,7 @@ export default function PhotoStudio({
       angle: "keep",
       surface: "As shown",
       lighting: "As shown",
+      plate: "style",
       ...restaurantPhotoDefaults(state.restaurant),
     });
   }
@@ -1120,7 +1121,9 @@ export default function PhotoStudio({
                             "Pale stone",
                             "White seamless",
                           ].map((f) => (
-                            <option key={f}>{f}</option>
+                            <option key={f} value={f}>
+                              {f === "As shown" ? "Match the style" : f}
+                            </option>
                           ))}
                         </select>
                       </Field>
@@ -1141,16 +1144,20 @@ export default function PhotoStudio({
                                 className="cx-light-swatch"
                                 data-light={l}
                               />
-                              {l}
+                              {l === "As shown" ? "Match the style" : l}
                             </button>
                           ))}
                         </div>
                       </fieldset>
-                      <Field label="Plate">
+                      <Field
+                        label="Plate"
+                        hint="Match the style lets us choose serving ware that suits the scene. Your food and portion stay the same."
+                      >
                         <select
                           value={b.plate}
                           onChange={(e) => update({ plate: e.target.value })}
                         >
+                          <option value="style">Match the style</option>
                           <option value="keep">Keep my plate</option>
                           <option value="white">
                             Change to a simple white plate

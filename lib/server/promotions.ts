@@ -47,7 +47,7 @@ export const styleSchema = z.object({
       lighting: z
         .enum(["As shown", "Soft daylight", "Warm & cozy"])
         .default("As shown"),
-      plate: z.enum(["keep", "white"]).default("keep"),
+      plate: z.enum(["style", "keep", "white"]).default("style"),
       angle: z.enum(["keep", "overhead", "three-quarter"]).default("keep"),
       composition: z
         .enum([
