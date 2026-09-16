@@ -2,37 +2,27 @@
 @import "tw-animate-css";
 @import "../vendor/shadcn-tailwind-4.13.0.css";
 :root {
-  --brand-accent: #b65336;
-  --brand-accent-hover: #9b442b;
-  --brand-accent-strong: #8f3e28;
-  --brand-ink: #292524;
-  --brand-muted: #716963;
-  --brand-line: #e6ded8;
-  --brand-line-strong: #c7b8ae;
-  --brand-tint: #f6eae4;
-  --brand-tint-strong: #ecd4c7;
-  --brand-surface: #fbf6f2;
   --background: #f8f8f5;
-  --foreground: var(--brand-ink);
+  --foreground: #20201e;
   --card: #fff;
-  --card-foreground: var(--brand-ink);
+  --card-foreground: #20201e;
   --popover: #fff;
-  --popover-foreground: var(--brand-ink);
-  --primary: var(--brand-accent);
+  --popover-foreground: #20201e;
+  --primary: #202820;
   --primary-foreground: #fff;
   --secondary: #f0f0eb;
-  --secondary-foreground: var(--brand-ink);
+  --secondary-foreground: #20201e;
   --muted: #f0f0eb;
-  --muted-foreground: var(--brand-muted);
-  --accent: var(--brand-tint);
-  --accent-foreground: var(--brand-ink);
+  --muted-foreground: #717168;
+  --accent: #edede6;
+  --accent-foreground: #20201e;
   --destructive: #bd4039;
-  --border: var(--brand-line);
-  --input: var(--brand-line-strong);
-  --ring: var(--brand-accent);
+  --border: #e1e1d9;
+  --input: #d8d8cf;
+  --ring: #59715b;
   --radius: 0.7rem;
   --sidebar: #fff;
-  --sidebar-foreground: var(--brand-ink);
+  --sidebar-foreground: #20201e;
 }
 @theme inline {
   --color-background: var(--background);
@@ -409,7 +399,7 @@ h2 {
   justify-content: flex-end;
   align-items: flex-start;
   padding: 32px;
-  background: linear-gradient(0deg, #292524b5, transparent 60%);
+  background: linear-gradient(0deg, #132017b5, transparent 60%);
 }
 .image-overlay .chip {
   background: #ffffffed;

@@ -69,11 +69,11 @@ function trace([left, top, right, bottom], color) {
 }
 
 if (info.width !== 1536 || info.height !== 1024) throw new Error("Unexpected approved logo dimensions");
-const mark = trace([130, 160, 425, 420], "#b65336");
-const lettering = trace([440, 220, 1410, 365], "#292524");
+const mark = trace([130, 160, 425, 420], "#79923f");
+const lettering = trace([440, 220, 1410, 365], "#202820");
 const logo = `<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 1264 240"><title>Menu Material</title>${mark}${lettering}</svg>\n`;
 const emblem = `<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 280 240"><title>Menu Material — a dish framed for its close-up</title>${mark}</svg>\n`;
-const favicon = `<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 320 320"><rect width="320" height="320" rx="64" fill="#292524"/><g transform="translate(20 40)">${mark.replaceAll("#b65336", "#ffffff")}</g></svg>\n`;
+const favicon = `<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 320 320"><rect width="320" height="320" rx="64" fill="#202820"/><g transform="translate(20 40)">${mark.replaceAll("#79923f", "#ffffff")}</g></svg>\n`;
 await Promise.all([
   writeFile("public/brand/menu-material-logo.svg", logo),
   writeFile("public/brand/menu-material-mark.svg", emblem),

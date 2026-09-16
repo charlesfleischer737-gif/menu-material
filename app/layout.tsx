@@ -28,8 +28,8 @@ export async function generateMetadata(): Promise<Metadata> {
     description:
       "Turn real dish photos into professional images and matching posts for Toast, delivery apps, your website, and Instagram. Start with 5 free image generations. Pro is $9.99/month for 100 images.",
     icons: {
-      icon: "/favicon.svg?v=terracotta",
-      shortcut: "/favicon.svg?v=terracotta",
+      icon: "/favicon.svg?v=menu-material",
+      shortcut: "/favicon.svg?v=menu-material",
     },
     openGraph: {
       title: "Menu Material — Food photos worth ordering from.",

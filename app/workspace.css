@@ -53,7 +53,7 @@
   font-size: 0.875rem;
 }
 .topbar nav button.active {
-  color: var(--brand-ink);
+  color: #20201e;
 }
 .topbar nav button.active:after {
   height: 2px;
@@ -93,7 +93,7 @@
 }
 .allowance b {
   font-size: 1.75rem;
-  color: var(--brand-ink);
+  color: #20201e;
   font-weight: 500;
   letter-spacing: -0.05em;
 }
@@ -156,7 +156,7 @@
   font-family: inherit;
   font-size: 1rem;
   padding: 12px 14px;
-  color: var(--brand-ink);
+  color: #20201e;
   border-radius: 4px;
 }
 .field input::placeholder,
@@ -166,7 +166,7 @@
 .field input:focus,
 .field textarea:focus,
 .field select:focus {
-  outline-color: var(--brand-accent);
+  outline-color: #59715b;
 }
 .mode-tabs {
   border-radius: 5px !important;
@@ -961,7 +961,7 @@
   gap: 12px;
   margin: 0 0 18px;
   font-size: 14px;
-  color: var(--brand-muted);
+  color: #5f665b;
 }
 .offer-canvas {
   width: 100%;
@@ -1252,8 +1252,8 @@
 }
 .customer-special {
   padding: 22px;
-  border: 1px solid var(--brand-line-strong);
-  background: var(--brand-surface);
+  border: 1px solid #cbd0c3;
+  background: #f8faf5;
   border-radius: 5px;
   margin-bottom: 30px;
 }

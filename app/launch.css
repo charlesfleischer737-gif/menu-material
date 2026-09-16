@@ -34,11 +34,11 @@
 .pw-information-intro {
   font-size: 1.15rem;
   line-height: 1.7;
-  color: var(--brand-muted);
+  color: #4f6052;
 }
 .pw-information section {
   margin-top: 36px;
-  border-top: 1px solid var(--brand-line);
+  border-top: 1px solid #d6decf;
   padding-top: 25px;
 }
 .pw-information h2 {
@@ -67,7 +67,7 @@
 .pw-demo-placeholder {
   position: relative;
   width: 100%;
-  background: var(--brand-ink);
+  background: #214a36;
   overflow: hidden;
   color: white;
 }
@@ -117,18 +117,18 @@
 .cx-draft-recovery button {
   min-height: 44px;
   padding: 10px 14px;
-  border: 1px solid var(--brand-accent);
+  border: 1px solid #416549;
   border-radius: 10px;
-  color: var(--brand-ink);
+  color: #244b35;
   background: white;
   font-weight: 600;
 }
 .cx-draft-recovery .cx-button {
-  background: var(--brand-accent);
+  background: #24533c;
   color: white;
 }
 .cx-saved-card {
-  border: 1px solid var(--brand-line);
+  border: 1px solid #d9e0d3;
   border-radius: 12px;
   overflow: hidden;
   background: white;
@@ -153,7 +153,7 @@
   font-size: 0.8125rem;
   text-decoration: underline;
   text-underline-offset: 3px;
-  color: var(--brand-ink);
+  color: #285239;
 }
 .cx-draft-rename {
   display: flex;
@@ -192,7 +192,7 @@
   align-items: center;
   flex-wrap: wrap;
   gap: 16px;
-  border-top: 1px solid var(--brand-line);
+  border-top: 1px solid #d7dfcf;
   padding: 18px 0;
   overflow-wrap: anywhere;
 }
@@ -282,9 +282,9 @@
   gap: 6px;
   align-items: center;
   border-radius: 100px;
-  background: var(--brand-tint);
+  background: #e9eee1;
   padding: 9px 13px;
-  color: var(--brand-ink);
+  color: #384830;
   font-size: 13px;
   font-weight: 600;
 }
@@ -302,7 +302,7 @@
   margin: 8px 0;
 }
 .cx-guest-heading p {
-  color: var(--brand-muted);
+  color: #616259;
   max-width: 650px;
 }
 .pw-plan-grid {
@@ -320,8 +320,8 @@
   background: #fffdf8;
 }
 .pw-plan-card.is-pro {
-  border: 2px solid var(--brand-accent);
-  background: var(--brand-tint);
+  border: 2px solid #71835c;
+  background: #f1f4e9;
 }
 .pw-plan-card h2 {
   font:
@@ -331,7 +331,7 @@
 }
 .pw-plan-card .pw-plan-price {
   font-size: 42px;
-  color: var(--brand-ink);
+  color: #263624;
   font-weight: 650;
   margin: 10px 0;
   letter-spacing: -1.4px;
