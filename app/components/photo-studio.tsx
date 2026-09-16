@@ -1,4 +1,5 @@
 "use client";
+import { workspacePreferenceKey } from "@/lib/workspace-navigation";
 import { useEffect, useRef, useState } from "react";
 import {
   Camera,
@@ -47,6 +48,7 @@ import {
   Feedback,
   Field,
   ToolHeader,
+  SavedDrafts,
   PhotoFrame,
   track,
   useAction,
@@ -71,10 +73,14 @@ export default function PhotoStudio({
     extra?: Row,
   ) => void;
 }) {
-  const draftStore = useCreationDraft("studio", {
-      ...photoBrief(),
-      ...restaurantPhotoDefaults(state.restaurant),
-    }),
+  const draftStore = useCreationDraft(
+      "studio",
+      {
+        ...photoBrief(),
+        ...restaurantPhotoDefaults(state.restaurant),
+      },
+      workspacePreferenceKey(state.user.id, state.restaurant.id),
+    ),
     { draft: b, change, save, start, ready, status, read } = draftStore;
   const root = useStepFocus(b.step <= 3 ? 1 : b.step, ready);
   const action = useAction(),
@@ -537,6 +543,17 @@ export default function PhotoStudio({
     <section className="cx-tool cx-feature-page cx-guided-studio" ref={root}>
       <ToolHeader title="Photo Studio" status={status}>
         <div className="cx-button-row">
+          <SavedDrafts
+            kind="studio"
+            store={draftStore}
+            disabled={!!busy || creating}
+            onResume={() => {
+              setAccurate(false);
+              setAdjust("");
+              setAdvice("");
+              setBefore(false);
+            }}
+          />
           {(b.step >= 4 || resultId) && (
             <button
               className="cx-link"

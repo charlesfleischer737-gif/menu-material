@@ -1,4 +1,5 @@
 "use client";
+import { workspacePreferenceKey } from "@/lib/workspace-navigation";
 import { useEffect, useRef, useState } from "react";
 import {
   Camera,
@@ -38,6 +39,7 @@ import {
   Field,
   Footer,
   ToolHeader,
+  SavedDrafts,
   Steps,
   track,
   useAction,
@@ -156,7 +158,11 @@ export default function PostMaker({
   onSeedUsed: () => void;
   onPhoto: () => void;
 }) {
-  const store = useCreationDraft("post", initial(state.restaurant)),
+  const store = useCreationDraft(
+      "post",
+      initial(state.restaurant),
+      workspacePreferenceKey(state.user.id, state.restaurant.id),
+    ),
     { draft: b, change, save, start, ready, status } = store,
     action = useAction(),
     { act, busy, setNotice } = action;
@@ -168,8 +174,6 @@ export default function PostMaker({
     [designChannel, setDesignChannel] = useState("feed");
   const [channel, setChannel] = useState("feed"),
     [slide, setSlide] = useState(0),
-    [saved, setSaved] = useState<Row[]>([]),
-    [showSaved, setShowSaved] = useState(false),
     seedHandled = useRef("");
   const approved = state.dishes
       .map((d: Row) => ({
@@ -287,18 +291,7 @@ export default function PostMaker({
     <section className="cx-tool cx-feature-page" ref={root}>
       <ToolHeader title="Post Maker" status={status}>
         <div className="cx-button-row">
-          <button
-            className="cx-link"
-            onClick={() =>
-              act("Opening saved posts", async () => {
-                const data = await api("creation-drafts");
-                setSaved(data.drafts.filter((d: Row) => d.kind === "post"));
-                setShowSaved((v) => !v);
-              })
-            }
-          >
-            Saved posts
-          </button>
+          <SavedDrafts kind="post" store={store} disabled={!!busy} />
           <button
             className="cx-link"
             onClick={() =>
@@ -310,24 +303,6 @@ export default function PostMaker({
           </button>
         </div>
       </ToolHeader>
-      {showSaved && (
-        <div className="cx-panel cx-saved-posts">
-          {saved.map((d) => (
-            <button
-              className="cx-btn cx-secondary"
-              key={d.id}
-              onClick={() =>
-                act("Opening your saved post", async () => {
-                  await store.resume(d.id);
-                  setShowSaved(false);
-                })
-              }
-            >
-              {d.draft.title || "Untitled post"}
-            </button>
-          ))}
-        </div>
-      )}
       <Steps
         labels={[
           "Dish & details",

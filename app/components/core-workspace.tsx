@@ -5,7 +5,6 @@ import {
   BookOpen,
   Camera,
   Check,
-  Home,
   Images,
   Megaphone,
   Settings,
@@ -16,11 +15,17 @@ import {
   ShieldCheck,
   UtensilsCrossed,
   Sparkles,
-  Clock3,
 } from "lucide-react";
 import { api, downloadBlob, money, type Row } from "@/lib/client";
 import { photoExport } from "@/lib/creation-export";
-import { formats, photoStyles, type PhotoFormat } from "@/lib/studio";
+import { formats, type PhotoFormat } from "@/lib/studio";
+import {
+  hasSavedContent,
+  readPreference,
+  rememberPreference,
+  resolveWorkspace,
+  workspacePreferenceKey,
+} from "@/lib/workspace-navigation";
 import Brand from "./brand";
 import PhotoStudio from "./photo-studio";
 import MenuBuilder from "./menu-builder";
@@ -31,76 +36,67 @@ import { Feedback, Field, Heading, track, useAction } from "./creation-shared";
 export default function CoreWorkspace({
   state,
   refresh,
-  onOverview,
   onSettings,
   onLogout,
   adminContent,
 }: {
   state: Row;
   refresh: () => Promise<void>;
-  onOverview: () => void;
   onSettings: () => void;
   onLogout: () => void;
   adminContent: ReactNode;
 }) {
-  const initialView =
-    state.assets.some((asset: Row) =>
-      ["source", "generated", "edited"].includes(asset.kind),
-    ) || state.jobs.length
-      ? "home"
-      : "studio";
-  const [view, setView] = useState(initialView),
+  const preferenceKey = workspacePreferenceKey(
+    state.user.id,
+    state.restaurant.id,
+  );
+  const [view, setView] = useState("loading"),
     [photoSeed, setPhotoSeed] = useState<Row | null>(null),
     [menuSeed, setMenuSeed] = useState<Row | null>(null),
     [postSeed, setPostSeed] = useState<Row | null>(null),
     [legacySeed, setLegacySeed] = useState<Row | null>(null),
-    [visited, setVisited] = useState<string[]>([initialView]),
-    [drafts, setDrafts] = useState<Row[]>([]);
-  const validViews = [
-    "home",
-    "studio",
-    "menu",
-    "post",
-    "library",
-    "tools",
-    "admin",
-  ];
+    [visited, setVisited] = useState<string[]>([]);
   useEffect(() => {
-    const read = () => {
-      const next = location.hash.slice(1);
-      if (validViews.includes(next)) {
-        setView(next);
-        setVisited((v) => (v.includes(next) ? v : [...v, next]));
-      } else {
-        setView(initialView);
-      }
+    let live = true;
+    let request = 0;
+    const show = (next: string) => {
+      setView(next);
+      setVisited((v) => (v.includes(next) ? v : [...v, next]));
+      if (next !== "admin") rememberPreference(preferenceKey, next);
+      if (location.hash !== "#" + next)
+        history.replaceState(null, "", "#" + next);
     };
-    read();
+    const read = async () => {
+      const current = ++request;
+      const hash = location.hash;
+      const next = resolveWorkspace(
+        hash,
+        readPreference(preferenceKey),
+        state.user.role === "admin",
+      );
+      if (next) return show(next);
+      // On another device, open the most recently saved useful draft.
+      let fallback = "studio";
+      try {
+        const data = await api("creation-drafts");
+        fallback = data.drafts.find(hasSavedContent)?.kind || "studio";
+      } catch {
+        // The studio still provides its own saved-work loading and error state.
+      }
+      if (live && current === request && location.hash === hash) show(fallback);
+    };
+    void read();
     window.addEventListener("popstate", read);
     window.addEventListener("hashchange", read);
     return () => {
+      live = false;
       window.removeEventListener("popstate", read);
       window.removeEventListener("hashchange", read);
     };
-  }, []);
-  useEffect(() => {
-    if (view !== "home") return;
-    let live = true;
-    const refreshDrafts = () =>
-      void api("creation-drafts")
-        .then((data) => {
-          if (live) setDrafts(data.drafts);
-        })
-        .catch(() => {});
-    refreshDrafts();
-    window.addEventListener("plateworthy:draft-saved", refreshDrafts);
-    return () => {
-      live = false;
-      window.removeEventListener("plateworthy:draft-saved", refreshDrafts);
-    };
-  }, [view, state.restaurant.id]);
+  }, [preferenceKey, state.user.role]);
   function navigate(next: string) {
     if (location.hash !== "#" + next) history.pushState(null, "", "#" + next);
+    if (next !== "admin") rememberPreference(preferenceKey, next);
     setView(next);
     setVisited((v) => (v.includes(next) ? v : [...v, next]));
   }
@@ -134,31 +130,10 @@ export default function CoreWorkspace({
       navigate("menu");
     }
   }
-  const recent = state.dishes.slice(0, 4),
-    approved = state.assets.filter((a: Row) => a.approved_at),
-    active = state.jobs.filter((j: Row) =>
-      ["queued", "processing"].includes(j.status),
-    );
-  const resumeDrafts = ["studio", "menu", "post"]
-    .map((kind) => drafts.find((d) => d.kind === kind))
-    .filter((row): row is Row => {
-      if (!row) return false;
-      const d = row.draft;
-      return !!(row.kind === "studio"
-        ? (d.sourceId || d.description) && d.step < 5
-        : row.kind === "menu"
-          ? d.rows?.length
-          : d.items?.length && (!d.reviewed || d.step < 6));
-    });
-  function resume(row: Row) {
-    const seed = { token: crypto.randomUUID(), draftId: row.id };
-    if (row.kind === "studio") setPhotoSeed(seed);
-    else if (row.kind === "menu") setMenuSeed(seed);
-    else setPostSeed(seed);
-    navigate(row.kind);
-  }
+  const active = state.jobs.filter((j: Row) =>
+    ["queued", "processing"].includes(j.status),
+  );
   const nav = [
-    ["home", "Overview", Home],
     ["studio", "Photo Studio", Camera],
     ["menu", "Menu Builder", BookOpen],
     ["post", "Post Maker", Megaphone],
@@ -173,8 +148,8 @@ export default function CoreWorkspace({
         <div className="cx-sidebar-heading">
           <button
             className="cx-brand"
-            onClick={onOverview}
-            aria-label="Plateworthy home"
+            onClick={() => navigate("studio")}
+            aria-label="Plateworthy Photo Studio"
           >
             <Brand />
           </button>
@@ -241,239 +216,11 @@ export default function CoreWorkspace({
           id="creation-main"
           className={`cx-main${["studio", "menu", "post"].includes(view) ? " cx-feature-main" : ""}`}
         >
-          <div hidden={view !== "home"} aria-hidden={view !== "home"}>
-            <div className="cx-overview-intro">
-              <div>
-                <p className="cx-eyebrow">YOUR CREATIVE KITCHEN</p>
-                <h1 tabIndex={-1}>
-                  What are we <em>creating today?</em>
-                </h1>
-                <p>A better photo. A beautiful menu. Your next great post.</p>
-              </div>
-              <span className="cx-workspace-count">
-                <Images size={17} />
-                {approved.length} ready-to-use photos
-              </span>
-            </div>
-            <div className="cx-launch-grid">
-              <button
-                className="cx-launch-card cx-launch-photo"
-                onClick={() => photo()}
-              >
-                <div className="cx-launch-visual">
-                  <img
-                    src="/studio/styles/delivery-white.webp"
-                    alt="Food photography style example"
-                  />
-                  <span>Style example</span>
-                  <span className="cx-launch-number">01</span>
-                </div>
-                <div className="cx-launch-copy">
-                  <span className="cx-pill">
-                    <Sparkles size={14} />
-                    START WITH YOUR FOOD
-                  </span>
-                  <h2>
-                    Make it look
-                    <br />
-                    <em>as good as it tastes.</em>
-                  </h2>
-                  <p>
-                    Explore {photoStyles.length} looks for delivery, fine
-                    dining, drinks and more.
-                  </p>
-                  <span className="cx-launch-cta">
-                    Open Photo Studio <ArrowRight size={19} />
-                  </span>
-                </div>
-              </button>
-              <button
-                className="cx-launch-card cx-launch-menu"
-                onClick={() => navigate("menu")}
-              >
-                <div className="cx-launch-small-visual">
-                  <img
-                    src="/studio/styles/menu-stone.webp"
-                    alt="Food photo style example"
-                  />
-                  <span>Style example</span>
-                  <BookOpen size={25} />
-                </div>
-                <div className="cx-launch-copy">
-                  <span className="cx-eyebrow">02 / MENU BUILDER</span>
-                  <h2>
-                    Your menu,
-                    <br />
-                    <em>beautifully served.</em>
-                  </h2>
-                  <p>
-                    Start with a menu, saved dishes, or a few simple details.
-                  </p>
-                  <span className="cx-launch-cta">
-                    Create a menu <ArrowRight size={18} />
-                  </span>
-                </div>
-              </button>
-              <button
-                className="cx-launch-card cx-launch-post"
-                onClick={() => navigate("post")}
-              >
-                <div className="cx-launch-small-visual">
-                  <img
-                    src="/studio/styles/bar-velvet.webp"
-                    alt="Food photo style example"
-                  />
-                  <span>Style example</span>
-                  <Megaphone size={25} />
-                </div>
-                <div className="cx-launch-copy">
-                  <span className="cx-eyebrow">03 / POST MAKER</span>
-                  <h2>
-                    A little inspiration.
-                    <br />
-                    <em>A great next post.</em>
-                  </h2>
-                  <p>
-                    Ten Instagram designs, made for your food and your story.
-                  </p>
-                  <span className="cx-launch-cta">
-                    Make a post <ArrowRight size={18} />
-                  </span>
-                </div>
-              </button>
-            </div>
-            {resumeDrafts.length > 0 && (
-              <section className="cx-resume">
-                <div className="cx-section-line">
-                  <h2>Pick up where you left off</h2>
-                  <span>Saved automatically</span>
-                </div>
-                <div className="cx-resume-grid">
-                  {resumeDrafts.map((row) => {
-                    const kind = row.kind,
-                      d = row.draft;
-                    const label =
-                        kind === "studio"
-                          ? "Photo Studio"
-                          : kind === "menu"
-                            ? "Menu Builder"
-                            : "Post Maker",
-                      title =
-                        kind === "studio"
-                          ? d.name || "Your photo"
-                          : kind === "menu"
-                            ? `${d.rows.length} dishes · ${d.layout === "grid" ? "Photo grid" : d.layout === "featured" ? "Featured dish" : "Classic text"}`
-                            : d.title || "Your next post";
-                    const imageId =
-                      kind === "studio"
-                        ? d.resultId || d.sourceId
-                        : kind === "post"
-                          ? d.items[0]?.photoId
-                          : d.rows.find((r: Row) => r.photoId)?.photoId;
-                    return (
-                      <button key={row.id} onClick={() => resume(row)}>
-                        {imageId ? (
-                          <img src={`/api/assets/${imageId}`} alt="" />
-                        ) : (
-                          <span className="cx-resume-icon">
-                            <BookOpen size={24} />
-                          </span>
-                        )}
-                        <span>
-                          <small>{label}</small>
-                          <b>{title}</b>
-                          <small>
-                            <Clock3 size={12} />
-                            Continue your saved work
-                          </small>
-                        </span>
-                        <ArrowRight size={18} />
-                      </button>
-                    );
-                  })}
-                </div>
-              </section>
-            )}
-            <section className="cx-recent">
-              <div className="cx-section-line">
-                <h2>Fresh from your kitchen</h2>
-                <button className="cx-link" onClick={() => navigate("library")}>
-                  View My Dishes <ArrowRight size={16} />
-                </button>
-              </div>
-              {recent.length ? (
-                <div className="cx-dish-grid">
-                  {recent.map((d: Row) => {
-                    const a =
-                      state.assets.find(
-                        (a: Row) => a.dish_id === d.id && a.approved_at,
-                      ) || state.assets.find((a: Row) => a.dish_id === d.id);
-                    return (
-                      <button
-                        key={d.id}
-                        className="cx-dish-card"
-                        onClick={() => photo(d.id, a?.id || "")}
-                      >
-                        {a ? (
-                          <img src={`/api/assets/${a.id}`} alt={d.name} />
-                        ) : (
-                          <div className="cx-dish-empty">
-                            <UtensilsCrossed size={28} />
-                          </div>
-                        )}
-                        <div>
-                          <b>{d.name}</b>
-                          <small>
-                            {a?.approved_at
-                              ? "Ready to use"
-                              : a
-                                ? "Ready to improve"
-                                : "Add a photo"}
-                          </small>
-                        </div>
-                      </button>
-                    );
-                  })}
-                </div>
-              ) : (
-                <div className="cx-empty-library">
-                  <Images size={29} />
-                  <div>
-                    <h3>Your best dishes will live here.</h3>
-                    <p>
-                      Save a photo once. Use it in your menu, posts and delivery
-                      listings.
-                    </p>
-                  </div>
-                  <button
-                    className="cx-btn cx-secondary"
-                    onClick={() => photo()}
-                  >
-                    Add your first dish <Plus size={16} />
-                  </button>
-                </div>
-              )}
-            </section>
-            {active.length > 0 && (
-              <button
-                className="cx-feedback cx-full"
-                onClick={() => photo(active[0].dish_id)}
-              >
-                <Sparkles size={18} />
-                {active.length}{" "}
-                {active.length === 1 ? "photo is" : "photos are"} being created.
-                Open Photo Studio to check progress.
-              </button>
-            )}
-            <div className="cx-home-note">
-              <Check size={16} />
-              <span>
-                {approved.length
-                  ? `${approved.length} approved photos ready to reuse`
-                  : "Your originals stay saved, and every result is yours to review."}
-              </span>
-            </div>
-          </div>
+          {view === "loading" && (
+            <p className="cx-feedback" role="status">
+              Opening your workspace…
+            </p>
+          )}
           {visited.includes("studio") && (
             <div hidden={view !== "studio"} aria-hidden={view !== "studio"}>
               <PhotoStudio

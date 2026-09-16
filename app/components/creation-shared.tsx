@@ -16,6 +16,19 @@ import {
 import { api, type Row } from "@/lib/client";
 import { drawPhoto, imageBitmap } from "@/lib/creation-export";
 import { emptyAdjustments, type Adjustments } from "@/lib/studio";
+import {
+  hasSavedContent,
+  readPreference,
+  rememberPreference,
+} from "@/lib/workspace-navigation";
+import {
+  Dialog,
+  DialogContent,
+  DialogDescription,
+  DialogHeader,
+  DialogTitle,
+  DialogTrigger,
+} from "@/components/ui/dialog";
 export function track(kind: string, entityId?: string, details: Row = {}) {
   void api("creation-events", {
     kind,
@@ -45,7 +58,12 @@ export function useAction() {
   }
   return { busy, error, notice, setError, setNotice, act };
 }
-export function useCreationDraft(kind: string, initial: Row) {
+export function useCreationDraft(
+  kind: string,
+  initial: Row,
+  workspaceKey: string,
+) {
+  const preferenceKey = `${workspaceKey}:draft:${kind}`;
   const [draft, setDraft] = useState<Row>(initial),
     [ready, setReady] = useState(false),
     [status, setStatus] = useState("Opening saved work…");
@@ -60,7 +78,13 @@ export function useCreationDraft(kind: string, initial: Row) {
     api("creation-drafts")
       .then((data) => {
         if (!live.current) return;
-        const row = data.drafts.find((d: Row) => d.kind === kind);
+        const remembered = readPreference(preferenceKey);
+        const row =
+          data.drafts.find(
+            (d: Row) => d.kind === kind && d.id === remembered,
+          ) ||
+          data.drafts.find((d: Row) => d.kind === kind && hasSavedContent(d)) ||
+          data.drafts.find((d: Row) => d.kind === kind);
         const value = row
           ? { ...initialRef.current, ...row.draft }
           : initialRef.current;
@@ -68,6 +92,7 @@ export function useCreationDraft(kind: string, initial: Row) {
           id: row?.id || crypto.randomUUID(),
           revision: row?.revision || 0,
         };
+        if (row) rememberPreference(preferenceKey, row.id);
         latest.current = value;
         saved.current = JSON.stringify(value);
         setDraft(value);
@@ -78,7 +103,7 @@ export function useCreationDraft(kind: string, initial: Row) {
     return () => {
       live.current = false;
     };
-  }, [kind]);
+  }, [kind, preferenceKey]);
   const save = useCallback(async () => {
     if (saving.current) return saving.current;
     const run = async () => {
@@ -94,6 +119,7 @@ export function useCreationDraft(kind: string, initial: Row) {
         });
         meta.current.revision = data.revision;
         saved.current = content;
+        rememberPreference(preferenceKey, meta.current.id);
         window.dispatchEvent(new Event("plateworthy:draft-saved"));
       }
       setStatus("All changes saved");
@@ -108,7 +134,7 @@ export function useCreationDraft(kind: string, initial: Row) {
     } finally {
       if (saving.current === p) saving.current = null;
     }
-  }, [kind]);
+  }, [kind, preferenceKey]);
   function change(patch: Row) {
     const next = { ...latest.current, ...patch };
     latest.current = next;
@@ -141,6 +167,7 @@ export function useCreationDraft(kind: string, initial: Row) {
     setDraft(value);
     setStatus("Saving…");
     await save();
+    rememberPreference(preferenceKey, meta.current.id);
   }
   async function resume(id: string) {
     await save();
@@ -160,6 +187,126 @@ export function useCreationDraft(kind: string, initial: Row) {
     id: meta.current.id,
     read: () => latest.current,
   };
+}
+export function SavedDrafts({
+  kind,
+  store,
+  disabled = false,
+  onResume,
+}: {
+  kind: "studio" | "menu" | "post";
+  store: ReturnType<typeof useCreationDraft>;
+  disabled?: boolean;
+  onResume?: () => void;
+}) {
+  const [open, setOpen] = useState(false),
+    [drafts, setDrafts] = useState<Row[] | null>(null),
+    [error, setError] = useState(""),
+    [opening, setOpening] = useState("");
+  const label =
+    kind === "studio"
+      ? "Saved photos"
+      : kind === "menu"
+        ? "Saved menus"
+        : "Saved posts";
+  useEffect(() => {
+    if (!open) return;
+    let live = true;
+    setDrafts(null);
+    setError("");
+    void store
+      .save()
+      .then(() => api("creation-drafts"))
+      .then((data) => {
+        if (live)
+          setDrafts(
+            data.drafts.filter(
+              (row: Row) => row.kind === kind && hasSavedContent(row),
+            ),
+          );
+      })
+      .catch((e) => {
+        if (live) setError(e.message);
+      });
+    return () => {
+      live = false;
+    };
+  }, [open, kind, store.save]);
+  return (
+    <Dialog open={open} onOpenChange={setOpen}>
+      <DialogTrigger asChild>
+        <button className="cx-link" disabled={disabled}>
+          {label}
+        </button>
+      </DialogTrigger>
+      <DialogContent className="cx-draft-dialog">
+        <DialogHeader>
+          <DialogTitle>{label}</DialogTitle>
+          <DialogDescription>Pick up where you left off.</DialogDescription>
+        </DialogHeader>
+        {error && (
+          <p className="cx-feedback" role="alert">
+            {error}
+          </p>
+        )}
+        {!drafts && !error && <p role="status">Opening saved work…</p>}
+        {drafts?.length === 0 && (
+          <p>Your saved work will appear here as you create.</p>
+        )}
+        <div className="cx-draft-list">
+          {drafts?.map((row) => {
+            const draft = row.draft;
+            const title =
+              kind === "studio"
+                ? draft.name || "Untitled photo"
+                : kind === "post"
+                  ? draft.title || "Untitled post"
+                  : `${draft.rows?.length || 0} dishes · ${draft.layout === "grid" ? "Photo grid" : draft.layout === "featured" ? "Featured dish" : "Classic text"}`;
+            const photoId =
+              kind === "studio"
+                ? draft.resultId || draft.sourceId
+                : kind === "post"
+                  ? draft.items?.[0]?.photoId
+                  : draft.rows?.find((row: Row) => row.photoId)?.photoId;
+            return (
+              <button
+                key={row.id}
+                className="cx-draft-item"
+                disabled={!!opening}
+                aria-current={row.id === store.id ? "true" : undefined}
+                onClick={async () => {
+                  setOpening(row.id);
+                  setError("");
+                  try {
+                    await store.resume(row.id);
+                    onResume?.();
+                    setOpen(false);
+                  } catch (e) {
+                    setError((e as Error).message);
+                  } finally {
+                    setOpening("");
+                  }
+                }}
+              >
+                {photoId && <img src={`/api/assets/${photoId}`} alt="" />}
+                <span>
+                  <b>{title}</b>
+                  <small>
+                    {opening === row.id
+                      ? "Opening…"
+                      : row.id === store.id
+                        ? "Currently open"
+                        : "Continue saved work"}
+                  </small>
+                </span>
+                <ArrowRight size={18} />
+              </button>
+            );
+          })}
+        </div>
+      </DialogContent>
+    </Dialog>
+  );
 }
 export function Steps({
   labels,

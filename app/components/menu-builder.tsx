@@ -1,4 +1,5 @@
 "use client";
+import { workspacePreferenceKey } from "@/lib/workspace-navigation";
 import { useEffect, useRef, useState } from "react";
 import {
   Upload,
@@ -25,6 +26,7 @@ import {
   Field,
   Footer,
   ToolHeader,
+  SavedDrafts,
   Steps,
   track,
   useAction,
@@ -157,19 +159,23 @@ export default function MenuBuilder({
   onSeedUsed: () => void;
   onPhoto: (dishId: string, photoId?: string) => void;
 }) {
-  const store = useCreationDraft("menu", {
-      step: 1,
-      rows: fromMenu(state),
-      layout: state.restaurant.menuDraft.layout || "classic",
-      appearance: state.restaurant.menuDraft.appearance || "light",
-      paper: state.restaurant.menuDraft.paper || "letter",
-      reviewed: false,
-      importId: "",
-      batchId: "",
-      batch: null,
-      batchSelected: [],
-      batchLook: "restaurant",
-    }),
+  const store = useCreationDraft(
+      "menu",
+      {
+        step: 1,
+        rows: fromMenu(state),
+        layout: state.restaurant.menuDraft.layout || "classic",
+        appearance: state.restaurant.menuDraft.appearance || "light",
+        paper: state.restaurant.menuDraft.paper || "letter",
+        reviewed: false,
+        importId: "",
+        batchId: "",
+        batch: null,
+        batchSelected: [],
+        batchLook: "restaurant",
+      },
+      workspacePreferenceKey(state.user.id, state.restaurant.id),
+    ),
     { draft: b, change, save, ready, status } = store;
   const root = useStepFocus(b.step, ready);
   const action = useAction(),
@@ -446,6 +452,7 @@ export default function MenuBuilder({
   return (
     <section className="cx-tool cx-feature-page" ref={root}>
       <ToolHeader title="Menu Builder" status={status}>
+        <SavedDrafts kind="menu" store={store} disabled={!!busy} />
         <span className="cx-pill">
           {state.restaurant.published
             ? "Published menu + private edits"

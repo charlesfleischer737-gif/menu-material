@@ -59,7 +59,6 @@ export default function Home() {
     captions: [],
   });
   const [loaded, setLoaded] = useState(false),
-    [overview, setOverview] = useState(false),
     [auth, setAuth] = useState(false),
     [authMode, setAuthMode] = useState<"login" | "signup">("login"),
     [settings, setSettings] = useState(false),
@@ -119,22 +118,14 @@ export default function Home() {
   }
   return (
     <>
-      {!state.user || overview ? (
+      {!state.user ? (
         <Landing
           signedIn={!!state.user}
           onStart={() => {
-            if (state.user) {
-              setOverview(false);
-              return;
-            }
             setAuthMode("signup");
             setAuth(true);
           }}
           onSignIn={() => {
-            if (state.user) {
-              setOverview(false);
-              return;
-            }
             setAuthMode("login");
             setAuth(true);
           }}
@@ -143,12 +134,17 @@ export default function Home() {
         <CoreWorkspace
           state={state}
           refresh={refresh}
-          onOverview={() => setOverview(true)}
+          key={`${state.user.id}:${state.restaurant.id}`}
           onSettings={() => setSettings(true)}
           onLogout={() =>
             act("Signing out", async () => {
               await api("auth/logout", {});
               clearExportImages();
+              history.replaceState(
+                null,
+                "",
+                location.pathname + location.search,
+              );
               await refresh();
             })
           }
@@ -171,7 +167,6 @@ export default function Home() {
         initialMode={authMode}
         onDone={async () => {
           await refresh();
-          setOverview(false);
         }}
       />
       <SettingsPanel
