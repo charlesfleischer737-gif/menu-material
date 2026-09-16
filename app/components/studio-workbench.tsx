@@ -1,9 +1,11 @@
 "use client";
-import { useRef, useState } from "react";
+import { useEffect, useRef, useState } from "react";
 import {
   Camera,
   Check,
   ChevronDown,
+  ChevronLeft,
+  ChevronRight,
   ImagePlus,
   LoaderCircle,
   SlidersHorizontal,
@@ -29,6 +31,122 @@ import { recommendationsForPhoto, drinkKinds } from "@/lib/studio-onboarding";
 import type { PhotoStyle } from "@/lib/photo-styles";
 import type { Row } from "@/lib/client";
 import { CropControls, Field, PhotoFrame } from "./creation-shared";
+
+function CategoryRail({
+  value,
+  hasRecommendations,
+  onChange,
+}: {
+  value: string;
+  hasRecommendations: boolean;
+  onChange: (category: string) => void;
+}) {
+  const rail = useRef<HTMLDivElement>(null);
+  const [edges, setEdges] = useState({ left: false, right: false });
+  useEffect(() => {
+    const element = rail.current;
+    if (!element) return;
+    const update = () => {
+      const left = element.scrollLeft > 4;
+      const right =
+        element.scrollWidth - element.clientWidth - element.scrollLeft > 4;
+      setEdges((current) =>
+        current.left === left && current.right === right
+          ? current
+          : { left, right },
+      );
+    };
+    update();
+    const observer = new ResizeObserver(update);
+    observer.observe(element);
+    element.addEventListener("scroll", update, { passive: true });
+    return () => {
+      observer.disconnect();
+      element.removeEventListener("scroll", update);
+    };
+  }, [hasRecommendations]);
+  useEffect(() => {
+    const element = rail.current;
+    const selected = element?.querySelector<HTMLElement>(
+      '[aria-pressed="true"]',
+    );
+    if (!element || !selected) return;
+    element.scrollTo({
+      left:
+        selected.offsetLeft - (element.clientWidth - selected.offsetWidth) / 2,
+      behavior: window.matchMedia("(prefers-reduced-motion: reduce)").matches
+        ? "instant"
+        : "smooth",
+    });
+  }, [value, hasRecommendations]);
+  function scroll(direction: number) {
+    const element = rail.current;
+    if (!element) return;
+    element.scrollBy({
+      left: direction * element.clientWidth * 0.7,
+      behavior: window.matchMedia("(prefers-reduced-motion: reduce)").matches
+        ? "instant"
+        : "smooth",
+    });
+  }
+  const categories = [
+    { id: "all", name: "All styles" },
+    ...(hasRecommendations
+      ? [{ id: "recommended", name: "For your photo" }]
+      : []),
+    ...styleCategories,
+  ];
+  return (
+    <div
+      className="ps-category-rail"
+      data-scroll-left={edges.left}
+      data-scroll-right={edges.right}
+    >
+      <div
+        ref={rail}
+        id="studio-style-categories"
+        className="ps-collections"
+        role="group"
+        aria-label="Filter photo styles by category"
+      >
+        {categories.map((category) => (
+          <button
+            key={category.id}
+            className={category.id === "recommended" ? "ps-for-you" : undefined}
+            aria-pressed={value === category.id}
+            aria-controls="studio-style-results"
+            onClick={() => onChange(category.id)}
+          >
+            {category.id === "recommended" && <Sparkles size={14} />}
+            {category.name}
+          </button>
+        ))}
+      </div>
+      {edges.left && (
+        <button
+          type="button"
+          className="ps-category-arrow ps-category-back"
+          aria-label="Scroll to earlier categories"
+          aria-controls="studio-style-categories"
+          onClick={() => scroll(-1)}
+        >
+          <ChevronLeft size={17} />
+        </button>
+      )}
+      {edges.right && (
+        <button
+          type="button"
+          className="ps-category-arrow ps-category-next"
+          aria-label="Scroll to more categories"
+          aria-controls="studio-style-categories"
+          onClick={() => scroll(1)}
+        >
+          <ChevronRight size={17} />
+        </button>
+      )}
+    </div>
+  );
+}
 
 export function StudioWorkbench({
   draft: b,
@@ -64,6 +182,7 @@ export function StudioWorkbench({
   const [collection, setCollection] = useState("all");
   const [dragging, setDragging] = useState(false);
   const panel = useRef<HTMLElement>(null);
+  const gallery = useRef<HTMLDivElement>(null);
   const upload = useRef<HTMLInputElement>(null);
   const camera = useRef<HTMLInputElement>(null);
   const reference = useRef<HTMLInputElement>(null);
@@ -106,6 +225,10 @@ export function StudioWorkbench({
     if (window.matchMedia("(max-width: 850px)").matches)
       requestAnimationFrame(scrollToPhoto);
   }
+  function changeCollection(category: string) {
+    setCollection(category);
+    gallery.current?.scrollTo({ top: 0, behavior: "instant" });
+  }
   function identify(family: string) {
     update({
       family,
@@ -125,37 +248,6 @@ export function StudioWorkbench({
             <span className="ps-number">01</span>
             <h2>Find your look</h2>
           </div>
-          <span>{photoStyles.length} curated styles</span>
-        </div>
-        <div
-          className="ps-collections"
-          role="group"
-          aria-label="Filter photo styles by category"
-        >
-          <button
-            aria-pressed={activeCollection === "all"}
-            onClick={() => setCollection("all")}
-          >
-            All styles
-          </button>
-          {suggested.length > 0 && (
-            <button
-              className="ps-for-you"
-              aria-pressed={activeCollection === "recommended"}
-              onClick={() => setCollection("recommended")}
-            >
-              <Sparkles size={14} /> For your photo
-            </button>
-          )}
-          {styleCategories.map((c) => (
-            <button
-              key={c.id}
-              aria-pressed={activeCollection === c.id}
-              onClick={() => setCollection(c.id)}
-            >
-              {c.name}
-            </button>
-          ))}
         </div>
         {source && !b.menuDocument && (
           <div className="ps-photo-guidance">
@@ -172,13 +264,12 @@ export function StudioWorkbench({
                     {b.analysisSubject
                       ? `Looks like ${b.analysisSubject.charAt(0).toLowerCase() + b.analysisSubject.slice(1)}.`
                       : `Styles for ${b.recommendationFamily.toLowerCase()}.`}{" "}
-                    <b>{suggested.length} looks to try.</b>
                   </span>
                 </p>
                 <button
                   className="cx-link"
                   onClick={() =>
-                    setCollection(
+                    changeCollection(
                       activeCollection === "recommended"
                         ? "all"
                         : "recommended",
@@ -247,19 +338,17 @@ export function StudioWorkbench({
             </Collapsible>
           </div>
         )}
-        <div className="ps-collection-note">
-          <span>
-            {activeCollection === "recommended"
-              ? "Chosen for the subject in your photo"
-              : category?.description ||
-                "A new setting. Beautiful light. Still your food."}
-          </span>
-          <small>{cards.length} styles</small>
-        </div>
+        <CategoryRail
+          value={activeCollection}
+          hasRecommendations={suggested.length > 0}
+          onChange={changeCollection}
+        />
         <div
+          ref={gallery}
+          id="studio-style-results"
           className="ps-gallery"
           role="group"
-          aria-label="Choose a photo style"
+          aria-label={`Choose a photo style: ${activeCollection === "recommended" ? "For your photo" : category?.name || "All styles"}`}
         >
           {cards.map((style) => (
             <button
