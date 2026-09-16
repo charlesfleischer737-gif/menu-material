@@ -158,6 +158,60 @@ export function restaurantPhotoDefaults(restaurant: Record<string, any>) {
     composition: style.photoDefaults?.composition || "Full dish",
   };
 }
+
+const photoSelectionKeys = [
+  "look",
+  "lookCategory",
+  "surface",
+  "lighting",
+  "plate",
+  "angle",
+  "composition",
+] as const;
+
+export function restaurantPhotoSelection(
+  draft: Record<string, any>,
+  restaurant: Record<string, any>,
+  enabled: boolean,
+) {
+  const selection = (value: Record<string, any>) =>
+    Object.fromEntries(
+      photoSelectionKeys
+        .filter((key) => value[key] !== undefined)
+        .map((key) => [key, value[key]]),
+    );
+  if (enabled) {
+    return {
+      ...restaurantPhotoDefaults({
+        style: { ...restaurant.style, autoApply: true },
+      }),
+      previousPhotoStyle:
+        draft.look === "restaurant"
+          ? draft.previousPhotoStyle || null
+          : selection(draft),
+    };
+  }
+  const previous = draft.previousPhotoStyle;
+  const hasPrevious =
+    previous &&
+    (photoStyles.some((style) => style.id === previous.look) ||
+      ["keep", "reference"].includes(previous.look));
+  const fallback =
+    photoStyles.find((style) => style.id === restaurant.style?.photoPreset) ||
+    photoStyles.find((style) => style.id === "menu-stone")!;
+  return {
+    look: fallback.id,
+    lookCategory: fallback.category,
+    surface: "As shown",
+    lighting: "As shown",
+    plate: "style",
+    angle: fallback.angle || "keep",
+    composition: "Full dish",
+    ...(hasPrevious ? selection(previous) : {}),
+    styleChosen: true,
+    previousPhotoStyle: null,
+  };
+}
 export function brandPostFields(style: Record<string, any> = {}) {
   return {
     color: style.primary || "#202820",

@@ -19,8 +19,8 @@ import {
   CollapsibleContent,
   CollapsibleTrigger,
 } from "@/components/ui/collapsible";
+import { Switch } from "@/components/ui/switch";
 import {
-  looks,
   photoStyles,
   styleCategories,
   formats,
@@ -158,6 +158,7 @@ export function StudioWorkbench({
   advice,
   update,
   chooseLook,
+  matchRestaurant,
   uploadPhoto,
   uploadReference,
   create,
@@ -173,6 +174,7 @@ export function StudioWorkbench({
   advice: string;
   update: (patch: Row) => void;
   chooseLook: (id: string) => void;
+  matchRestaurant: (enabled: boolean) => void;
   uploadPhoto: (file: File) => void;
   uploadReference: (file: File) => void;
   create: () => void;
@@ -384,26 +386,6 @@ export function StudioWorkbench({
             </button>
           ))}
         </div>
-        <div className="ps-personal">
-          <span>Make it familiar</span>
-          <div>
-            {["keep", "restaurant", "reference"].map((id) => (
-              <button
-                key={id}
-                disabled={!!busy}
-                aria-pressed={hasStyle && b.look === id}
-                onClick={() => select(id)}
-              >
-                {looks.find((l) => l.id === id)!.name}
-                {hasStyle && b.look === id && <Check size={14} />}
-              </button>
-            ))}
-          </div>
-        </div>
-        <p className="ps-example-note">
-          Style examples show the atmosphere. Your uploaded photo supplies the
-          food.
-        </p>
       </div>
       <aside
         ref={panel}
@@ -621,6 +603,23 @@ export function StudioWorkbench({
                 </CollapsibleTrigger>
                 <CollapsibleContent>
                   <div className="ps-settings-fields">
+                    <div className="ps-restaurant-setting">
+                      <div>
+                        <label htmlFor="studio-restaurant-look">
+                          Match my restaurant look
+                        </label>
+                        <p id="studio-restaurant-look-hint">
+                          Use your saved lighting and setting.
+                        </p>
+                      </div>
+                      <Switch
+                        id="studio-restaurant-look"
+                        aria-describedby="studio-restaurant-look-hint"
+                        checked={b.look === "restaurant"}
+                        onCheckedChange={matchRestaurant}
+                        disabled={!!busy}
+                      />
+                    </div>
                     <Field label="Lighting">
                       <select
                         value={b.lighting}

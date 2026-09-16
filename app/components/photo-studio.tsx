@@ -35,7 +35,10 @@ import {
   photoExport,
 } from "@/lib/creation-export";
 import { photoAdvice } from "@/lib/photo-advice";
-import { restaurantPhotoDefaults } from "@/lib/restaurant-look";
+import {
+  restaurantPhotoDefaults,
+  restaurantPhotoSelection,
+} from "@/lib/restaurant-look";
 import { photoAnalysisRecommendation } from "@/lib/studio-onboarding";
 import { PhotoComparison, StudioCreating } from "./studio-onboarding";
 import { StudioWorkbench } from "./studio-workbench";
@@ -124,6 +127,7 @@ export default function PhotoStudio({
     update({
       look: id,
       styleChosen: true,
+      previousPhotoStyle: null,
       ...(preset.category ? { lookCategory: preset.category } : {}),
       surface: "As shown",
       lighting: "As shown",
@@ -139,6 +143,15 @@ export default function PhotoStudio({
         : {}),
     });
     track("style_selected", b.dishId, { look: id, category: preset.category });
+  }
+  function matchRestaurant(enabled: boolean) {
+    if (busy) return;
+    const patch = restaurantPhotoSelection(read(), state.restaurant, enabled);
+    update(patch);
+    track("style_selected", b.dishId, {
+      look: patch.look,
+      category: patch.lookCategory,
+    });
   }
   const styleImage =
     b.look === "keep" && source
@@ -570,6 +583,7 @@ export default function PhotoStudio({
             advice={advice}
             update={update}
             chooseLook={chooseLook}
+            matchRestaurant={matchRestaurant}
             uploadPhoto={(file) => void uploadPhoto(file)}
             uploadReference={(file) =>
               void act("Saving your reference", async () => {

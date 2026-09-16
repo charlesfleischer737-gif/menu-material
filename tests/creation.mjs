@@ -18,7 +18,7 @@ const {
 } = await import("../lib/studio-onboarding.ts");
 const { foodFamilies, photoBrief } = await import("../lib/studio.ts");
 const { imagePrompt } = await import("../lib/server/generation.ts");
-const { restaurantPhotoDefaults, brandPostFields } =
+const { restaurantPhotoDefaults, restaurantPhotoSelection, brandPostFields } =
   await import("../lib/restaurant-look.ts");
 const { applyPostTemplate } = await import("../lib/post-templates.ts");
 const brand = {
@@ -30,6 +30,56 @@ const brand = {
   photoDefaults: { lighting: "Soft daylight", surface: "Pale stone" },
 };
 const automatic = restaurantPhotoDefaults({ style: brand });
+const chosenStyle = {
+  ...photoBrief(),
+  look: "bar-velvet",
+  lookCategory: "bar",
+  styleChosen: true,
+  surface: "Warm wood",
+  lighting: "Warm & cozy",
+  angle: "overhead",
+  plate: "keep",
+  composition: "Room around the plate",
+  sourceId: "uploaded-photo",
+  note: "Keep the logo visible",
+};
+const restaurantSelection = {
+  ...chosenStyle,
+  ...restaurantPhotoSelection(chosenStyle, { style: brand }, true),
+};
+assert.equal(restaurantSelection.look, "restaurant");
+assert.equal(restaurantSelection.surface, "Pale stone");
+assert.equal(restaurantSelection.sourceId, "uploaded-photo");
+assert.equal(restaurantSelection.note, "Keep the logo visible");
+const restoredStyle = {
+  ...restaurantSelection,
+  ...restaurantPhotoSelection(restaurantSelection, { style: brand }, false),
+};
+assert.deepEqual(
+  restoredStyle,
+  { ...chosenStyle, previousPhotoStyle: null },
+  "Turning restaurant matching off restores the user's style and custom settings",
+);
+assert.deepEqual(
+  restaurantPhotoSelection(restaurantSelection, { style: brand }, true)
+    .previousPhotoStyle,
+  restaurantSelection.previousPhotoStyle,
+  "Reapplying restaurant matching does not replace the previous style",
+);
+assert.equal(
+  restaurantPhotoSelection(automatic, { style: brand }, false).look,
+  "menu-stone",
+  "An automatically applied restaurant look can also be switched off",
+);
+assert.equal(
+  restaurantPhotoSelection(
+    { ...automatic, previousPhotoStyle: { look: "removed-style" } },
+    { style: { photoPreset: "removed-style" } },
+    false,
+  ).look,
+  "menu-stone",
+  "Older drafts fall back to an available catalog style",
+);
 assert.equal(automatic.look, "restaurant");
 assert.equal(automatic.lighting, "Soft daylight");
 assert.equal(automatic.plate, "style");

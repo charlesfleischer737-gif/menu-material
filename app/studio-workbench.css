@@ -3,12 +3,20 @@
   display: grid;
   grid-template-columns: minmax(0, 1fr) 340px;
   gap: 32px;
-  align-items: start;
-  padding-bottom: 32px;
+  align-items: stretch;
+  min-height: calc(100dvh - 112px);
 }
 .ps-library,
 .ps-session {
   min-width: 0;
+}
+.ps-library {
+  display: flex;
+  flex-direction: column;
+  min-height: 0;
+}
+.ps-library > :not(.ps-gallery) {
+  flex-shrink: 0;
 }
 .ps-library-heading,
 .ps-session-heading {
@@ -157,8 +165,10 @@
   display: grid;
   grid-template-columns: repeat(3, minmax(0, 1fr));
   gap: 20px 16px;
-  max-height: 720px;
-  max-height: max(500px, calc(100dvh - 320px));
+  flex: 1 1 0px;
+  height: 0;
+  min-height: 360px;
+  align-content: start;
   overflow-y: auto;
   scrollbar-width: thin;
   scrollbar-color: #b4c3b4 transparent;
@@ -270,42 +280,6 @@
   font-size: 0.8125rem;
   line-height: 1.45;
 }
-.ps-personal {
-  margin-top: 22px;
-  padding-top: 19px;
-  border-top: 1px solid #dce2d9;
-}
-.ps-personal > span {
-  color: #69766d;
-  font-size: 0.8125rem;
-}
-.ps-personal > div {
-  display: flex;
-  flex-wrap: wrap;
-  gap: 7px;
-  margin-top: 9px;
-}
-.ps-personal button {
-  display: flex;
-  gap: 8px;
-  align-items: center;
-  background: transparent;
-  border: 1px solid #ced8ca;
-  border-radius: 8px;
-  color: #425f48;
-  padding: 9px 12px;
-  font-size: 0.875rem;
-}
-.ps-personal button[aria-pressed="true"] {
-  border-color: #28573e;
-  background: #e5ecd9;
-}
-.cx-app .ps-example-note {
-  margin-top: 15px;
-  color: #778176;
-  font-size: 0.8125rem;
-  line-height: 1.6;
-}
 .ps-photo-guidance {
   margin: 0 0 12px;
   background: #edf2e2;
@@ -349,6 +323,7 @@
   padding-top: 12px;
 }
 .ps-session {
+  align-self: start;
   background: #fff;
   border: 1px solid #dfe5db;
   border-radius: 20px;
@@ -598,6 +573,28 @@
   display: grid;
   gap: 15px;
   padding-top: 17px;
+}
+.ps-restaurant-setting {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  padding-bottom: 15px;
+  border-bottom: 1px solid #e8ece2;
+}
+.ps-restaurant-setting > div {
+  flex: 1;
+  min-width: 0;
+}
+.ps-restaurant-setting label {
+  color: #365039;
+  font-size: 0.875rem;
+  cursor: pointer;
+}
+.cx-app .ps-restaurant-setting p {
+  color: #778170;
+  font-size: 0.75rem;
+  line-height: 1.5;
+  margin-top: 4px;
 }
 .ps-framing [data-slot="collapsible-content"] {
   padding-top: 12px;
@@ -872,9 +869,13 @@
 @media (max-width: 850px) {
   .ps-workbench {
     grid-template-columns: 1fr;
+    min-height: 0;
     padding-bottom: 85px;
   }
   .ps-gallery {
+    flex: none;
+    height: auto;
+    min-height: 0;
     max-height: 600px;
     grid-template-columns: repeat(3, minmax(0, 1fr));
   }
