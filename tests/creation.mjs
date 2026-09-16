@@ -10,8 +10,12 @@ delete process.env.OPENAI_IMAGE_MODEL;
 delete process.env.OPENAI_IMAGE_QUALITY;
 const { handle } = await import("../lib/server/api.ts");
 const { all, one, run } = await import("../lib/server/core.ts");
-const { recommendedPhotoStyles, photoAnalysisRecommendation } =
-  await import("../lib/studio-onboarding.ts");
+const {
+  recommendedPhotoStyles,
+  photoAnalysisRecommendation,
+  recommendationsForPhoto,
+  studioRenderProgress,
+} = await import("../lib/studio-onboarding.ts");
 const { foodFamilies, photoBrief } = await import("../lib/studio.ts");
 const { imagePrompt } = await import("../lib/server/generation.ts");
 const { restaurantPhotoDefaults, brandPostFields } =
@@ -123,11 +127,6 @@ assert.match(
   "White-plate overrides apply to food, not a branded drink",
 );
 assert.deepEqual(
-  photoAnalysisRecommendation({ ...automatic, step: 2 }, "Drinks"),
-  {},
-  "automatic restaurant look survives late image analysis",
-);
-assert.deepEqual(
   restaurantPhotoDefaults({ style: { ...brand, autoApply: false } }),
   {},
   "owners can turn automatic styling off",
@@ -155,13 +154,12 @@ for (const family of foodFamilies) {
       "each recommendation has a different example",
     );
     for (const look of recommended) {
-      assert.equal(
-        look.angle,
-        "keep",
-        "onboarding does not reconstruct the food from another angle",
-      );
       assert(readFileSync("public" + look.image).length > 0);
-      if (destination === "delivery") assert.equal(look.category, "delivery");
+      if (
+        destination === "delivery" &&
+        !["Drinks", "Desserts"].includes(family)
+      )
+        assert.equal(look.category, "delivery");
     }
   }
 }
@@ -169,28 +167,115 @@ const drinkChoices = recommendedPhotoStyles("Drinks");
 assert(
   drinkChoices.every((style) => ["beverage", "bar"].includes(style.category)),
 );
+const vision = {
+  family: "Drinks",
+  subject: "A pint of stout",
+  confidence: "high",
+  drinkKind: "beer",
+  menuDocument: false,
+  issue: "none",
+  advice: "",
+};
+const currentPhoto = {
+  ...photoBrief(),
+  sourceId: "original",
+  styleChosen: true,
+  look: "studio-dark",
+};
+const classified = photoAnalysisRecommendation(
+  currentPhoto,
+  vision,
+  "original",
+);
+assert.equal(classified.recommendationFamily, "Drinks");
+assert.equal(classified.recommendationDrink, "beer");
+assert(!("look" in classified), "Analysis never replaces the chosen style");
+assert(!("styleChosen" in classified));
+const suggestions = recommendationsForPhoto({
+  ...currentPhoto,
+  ...classified,
+  destination: "delivery",
+});
+assert.equal(suggestions.length, 3);
+assert(
+  suggestions.every(
+    (s) => ["bar", "beverage"].includes(s.category) && s.id !== "bar-candle",
+  ),
+  "A beer gets only drink examples, including for delivery",
+);
+assert.equal(suggestions[0].id, "bar-speakeasy");
+assert.equal(
+  recommendedPhotoStyles("Drinks", "menu", "coffee")[0].id,
+  "beverage-cafe",
+);
+assert.deepEqual(
+  recommendedPhotoStyles(),
+  [],
+  "There are no generic fallback recommendations",
+);
+assert.deepEqual(
+  recommendationsForPhoto(photoBrief()),
+  [],
+  "No upload means no photo recommendations",
+);
+assert.deepEqual(
+  recommendationsForPhoto({
+    ...currentPhoto,
+    ...classified,
+    sourceId: "replacement",
+  }),
+  [],
+  "Old recommendations cannot follow a replacement upload",
+);
+assert.deepEqual(
+  photoAnalysisRecommendation({ ...currentPhoto, step: 4 }, vision, "original"),
+  {},
+  "Analysis cannot relabel a submitted image",
+);
+assert.deepEqual(
+  photoAnalysisRecommendation(currentPhoto, vision, "other-photo"),
+  {},
+  "Late analysis is bound to its upload",
+);
 assert.deepEqual(
   photoAnalysisRecommendation(
-    { step: 2, styleChosen: true, look: "menu-stone" },
-    "Drinks",
+    { ...currentPhoto, analysisSourceId: "original", analysisStatus: "manual" },
+    vision,
+    "original",
   ),
   {},
-  "late analysis preserves a user's selected style or fine-tuning",
+  "Late vision cannot overwrite a manual correction",
 );
-assert.deepEqual(
-  photoAnalysisRecommendation({ step: 4, styleChosen: false }, "Drinks"),
-  {},
-  "analysis cannot relabel a submitted image",
-);
-const suggested = photoAnalysisRecommendation(
-  { ...photoBrief(), step: 2 },
-  "Drinks",
-);
+for (const patch of [
+  { confidence: "low" },
+  { confidence: "medium" },
+  { menuDocument: true },
+  { issue: "multiple" },
+]) {
+  const uncertain = photoAnalysisRecommendation(
+    currentPhoto,
+    { ...vision, ...patch },
+    "original",
+  );
+  assert.deepEqual(
+    recommendationsForPhoto({ ...currentPhoto, ...uncertain }),
+    [],
+    "Ambiguous and menu photos do not get pretend recommendations",
+  );
+}
 assert.equal(
-  suggested.look,
-  drinkChoices[0].id,
-  "a new upload gets relevant suggestions without an extra step",
+  studioRenderProgress(60, true).value,
+  6,
+  "Queued work never pretends to be rendering",
 );
+assert(
+  studioRenderProgress(30, false).value > studioRenderProgress(5, false).value,
+);
+assert(
+  studioRenderProgress(600, false).value < 100,
+  "Only the real output completes the waiting screen",
+);
+assert(studioRenderProgress(60, false).takingLonger);
 
 const jpeg = readFileSync("public/pasta.jpg"),
   png = readFileSync("public/og.png");
@@ -204,6 +289,22 @@ globalThis.fetch = async (url, init = {}) => {
   if (init.method === "POST") {
     const b = JSON.parse(init.body);
     if (!b.tools) {
+      if (b.text?.format?.type === "json_object") {
+        assert(
+          b.input.some((message) =>
+            message.content.some(
+              (item) => item.type === "input_text" && /json/i.test(item.text),
+            ),
+          ),
+          "JSON mode requires JSON in the input message, not only in instructions",
+        );
+        assert(
+          b.input.some((message) =>
+            message.content.some((item) => item.type === "input_image"),
+          ),
+          "Photo recommendations must inspect the actual uploaded image",
+        );
+      }
       calls++;
       return Response.json({
         output: [
@@ -212,9 +313,7 @@ globalThis.fetch = async (url, init = {}) => {
               {
                 type: "output_text",
                 text: JSON.stringify({
-                  family: "Pizza",
-                  menuDocument: true,
-                  issue: "cropped",
+                  ...vision,
                 }),
               },
             ],
@@ -632,8 +731,11 @@ try {
   );
   const beforeAnalysis = calls;
   const analysis = await call("photo-analysis", { sourceId: original.id });
-  assert.equal(analysis.menuDocument, true);
-  assert.equal(analysis.family, "Pizza");
+  assert.equal(analysis.menuDocument, false);
+  assert.equal(analysis.family, "Drinks");
+  assert.equal(analysis.confidence, "high");
+  assert.equal(analysis.drinkKind, "beer");
+  assert.equal(analysis.subject, "A pint of stout");
   await call("photo-analysis", { sourceId: original.id });
   assert.equal(
     calls - beforeAnalysis,

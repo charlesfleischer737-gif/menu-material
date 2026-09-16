@@ -1,43 +1,120 @@
 import { photoStyles } from "./photo-styles";
 
-// Recommendations use existing presets and never require a paid image preview.
-// Keep the source camera angle in the short flow; new angles remain optional.
+export const drinkKinds = [
+  "beer",
+  "wine",
+  "cocktail",
+  "spirits",
+  "coffee",
+  "tea",
+  "juice",
+  "smoothie",
+  "other",
+] as const;
+
+// Subject relevance comes before output size. A delivery-format drink still
+// needs beverage examples, never the burger/food defaults.
 export function recommendedPhotoStyles(
-  family = "Plated mains",
+  family = "",
   destination = "menu",
+  drinkKind = "other",
 ) {
-  const ids =
-    destination === "delivery" || family === "Takeout"
-      ? ["delivery-white", "delivery-takeout", "delivery-daylight"]
-      : family === "Drinks"
-        ? ["beverage-backlit", "beverage-cafe", "bar-speakeasy"]
-        : family === "Desserts"
-          ? ["bakery-morning", "bakery-patisserie", "bakery-jewel"]
-          : destination === "social"
-            ? ["studio-color", "menu-wood", "studio-dark"]
-            : family === "Burgers & sandwiches"
-              ? ["delivery-daylight", "menu-stone", "studio-dark"]
-              : family === "Bowls & salads"
-                ? ["menu-stone", "delivery-takeout", "fine-counter"]
-                : family === "Pizza"
-                  ? ["menu-neutral", "menu-wood", "studio-ivory"]
-                  : ["menu-stone", "menu-wood", "fine-slate"];
+  const drinks: Record<string, string[]> = {
+    beer: ["bar-speakeasy", "bar-bluehour", "beverage-backlit"],
+    wine: ["bar-velvet", "bar-speakeasy", "beverage-backlit"],
+    cocktail: ["bar-velvet", "bar-bluehour", "bar-speakeasy"],
+    spirits: ["bar-speakeasy", "bar-bluehour", "bar-velvet"],
+    coffee: ["beverage-cafe", "beverage-matcha", "beverage-backlit"],
+    tea: ["beverage-matcha", "beverage-backlit", "beverage-cafe"],
+    juice: ["beverage-citrus", "beverage-backlit", "beverage-matcha"],
+    smoothie: ["beverage-citrus", "beverage-matcha", "beverage-cafe"],
+    other: ["beverage-backlit", "beverage-cafe", "bar-speakeasy"],
+  };
+  const families: Record<string, string[]> = {
+    "Plated mains": ["menu-neutral", "menu-wood", "fine-slate"],
+    "Burgers & sandwiches": [
+      "delivery-white",
+      "delivery-daylight",
+      "studio-color",
+    ],
+    Pizza: ["delivery-overhead", "menu-overhead", "menu-wood"],
+    "Bowls & salads": ["delivery-takeout", "menu-stone", "menu-neutral"],
+    Desserts: ["bakery-patisserie", "studio-ivory", "bakery-jewel"],
+    Takeout: ["delivery-takeout", "delivery-white", "delivery-daylight"],
+  };
+  let ids =
+    family === "Drinks"
+      ? drinks[drinkKind] || drinks.other
+      : families[family] || [];
+  if (destination === "delivery" && family !== "Drinks") {
+    if (family === "Pizza")
+      ids = ["delivery-overhead", "delivery-daylight", "delivery-white"];
+    else if (family === "Desserts")
+      ids = ["bakery-patisserie", "studio-ivory", "bakery-jewel"];
+    else if (ids.length)
+      ids = ["delivery-white", "delivery-takeout", "delivery-daylight"];
+  }
   return ids.map((id) => photoStyles.find((style) => style.id === id)!);
 }
 
-export function studioProgress(step: number) {
-  return step < 3 ? step : step === 3 ? 2 : 3;
-}
-
+// Analysis can offer alternatives, but never silently select a different style.
 export function photoAnalysisRecommendation(
   current: Record<string, any>,
-  family: string,
+  result: Record<string, any>,
+  sourceId: string,
 ) {
-  if (current.styleChosen || current.step !== 2) return {};
-  const style = recommendedPhotoStyles(family, current.destination)[0];
+  if (
+    current.sourceId !== sourceId ||
+    current.step > 3 ||
+    current.mode !== "photo" ||
+    (current.analysisSourceId === sourceId &&
+      current.analysisStatus === "manual")
+  )
+    return {};
+  const confident =
+    result.confidence === "high" &&
+    !result.menuDocument &&
+    result.issue !== "multiple";
   return {
-    recommendationFamily: family,
-    look: style.id,
-    lookCategory: style.category,
+    analysisSourceId: sourceId,
+    analysisStatus: confident ? "ready" : "uncertain",
+    analysisSubject: confident ? result.subject : "",
+    recommendationFamily: confident ? result.family : "",
+    recommendationDrink:
+      confident && result.family === "Drinks"
+        ? result.drinkKind || "other"
+        : "other",
+    ...(confident ? { family: result.family } : {}),
+    menuDocument: result.menuDocument,
+    analysisAdvice: result.advice,
+  };
+}
+
+export function recommendationsForPhoto(draft: Record<string, any>) {
+  if (
+    !draft.sourceId ||
+    draft.mode !== "photo" ||
+    draft.analysisSourceId !== draft.sourceId ||
+    !["ready", "manual"].includes(draft.analysisStatus) ||
+    draft.menuDocument
+  )
+    return [];
+  return recommendedPhotoStyles(
+    draft.recommendationFamily,
+    draft.destination,
+    draft.recommendationDrink,
+  );
+}
+
+// This is an estimate for the waiting experience, not provider telemetry.
+// Completion is driven exclusively by a real saved output.
+export function studioRenderProgress(elapsedSeconds: number, queued: boolean) {
+  const elapsed = Math.max(0, elapsedSeconds);
+  return {
+    value: queued
+      ? 6
+      : Math.min(94, Math.round(8 + 86 * (1 - Math.exp(-elapsed / 13)))),
+    stage: queued ? -1 : elapsed < 8 ? 0 : elapsed < 18 ? 1 : 2,
+    takingLonger: elapsed >= 45,
   };
 }

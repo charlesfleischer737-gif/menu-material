@@ -1,7 +1,8 @@
 "use client";
-import { useId, useState } from "react";
+import { useEffect, useId, useRef, useState } from "react";
 import { Check, ChevronsLeftRight, Sparkles } from "lucide-react";
 import type { PhotoStyle } from "@/lib/photo-styles";
+import { studioRenderProgress } from "@/lib/studio-onboarding";
 
 export function PhotoComparison({
   original,
@@ -83,146 +84,125 @@ export function PhotoComparison({
   );
 }
 
-export function StudioIntroduction() {
-  return (
-    <aside className="cx-first-guide">
-      <div className="cx-first-example">
-        <PhotoComparison
-          original="/homepage/burger-original.webp"
-          result="/homepage/burger-enhanced.webp"
-          example
-        />
-      </div>
-      <div className="cx-first-guidance">
-        <span className="cx-eyebrow">
-          YOU BRING THE FOOD. WE BRING THE LIGHT.
-        </span>
-        <h2>No studio. No editing experience.</h2>
-        <p>
-          A clear phone photo is a great place to start. You’ll choose the look
-          before we create anything.
-        </p>
-        <ul>
-          <li>
-            <Check size={16} /> Keep the whole dish in the frame.
-          </li>
-          <li>
-            <Check size={16} /> Start with one dish or drink.
-          </li>
-          <li>
-            <Check size={16} /> Your original is always saved.
-          </li>
-        </ul>
-      </div>
-    </aside>
-  );
-}
-
-export function RecommendedPhotoStyles({
-  recommendations,
-  selected,
-  onSelect,
-  busy,
-}: {
-  recommendations: PhotoStyle[];
-  selected: PhotoStyle;
-  onSelect: (id: string) => void;
-  busy: boolean;
-}) {
-  return (
-    <>
-      <div
-        className="cx-recommended-styles"
-        role="group"
-        aria-label="Three recommended photo styles"
-      >
-        {recommendations.map((style, index) => (
-          <button
-            className="cx-recommendation"
-            key={style.id}
-            aria-pressed={selected.id === style.id}
-            disabled={busy}
-            onClick={() => onSelect(style.id)}
-          >
-            <div className="cx-recommendation-image">
-              <img src={style.image} alt={`${style.name} style example`} />
-              <span className="cx-recommendation-check">
-                {selected.id === style.id && <Check size={17} />}
-              </span>
-              {index === 0 && (
-                <span className="cx-recommendation-badge">Recommended</span>
-              )}
-            </div>
-            <div className="cx-recommendation-copy">
-              <span className="cx-eyebrow">{style.group}</span>
-              <strong>{style.name}</strong>
-              <p>{style.cue}</p>
-            </div>
-          </button>
-        ))}
-      </div>
-      <p className="cx-recommendation-note">
-        Style inspiration. We’ll create this look with your food.
-      </p>
-    </>
-  );
-}
-
 export function StudioCreating({
   source,
   style,
   queued,
+  startedAt,
+  jobId,
 }: {
   source: string;
   style: PhotoStyle;
   queued: boolean;
+  startedAt?: number;
+  jobId: string;
 }) {
+  const fallbackStart = useRef(Date.now());
+  const [elapsed, setElapsed] = useState(0);
+  useEffect(() => {
+    const start = Number(startedAt) || fallbackStart.current;
+    const tick = () => setElapsed(Math.max(0, (Date.now() - start) / 1000));
+    tick();
+    const timer = window.setInterval(tick, 1000);
+    return () => clearInterval(timer);
+  }, [startedAt, jobId]);
+  const progress = studioRenderProgress(elapsed, queued);
+  const stages = [
+    ["Adjusting the lighting", "Giving your food its best light."],
+    ["Building your chosen setting", style.name + ", made for your photo."],
+    [
+      "Refining textures & detail",
+      "Bringing the finished photograph together.",
+    ],
+  ];
   return (
-    <div className="cx-creating-scene" role="status">
-      <div className="cx-creating-photo">
-        <img
-          src={source || style.image}
-          alt={
-            source
-              ? "Your original photo, safely saved"
-              : "Your chosen style example"
-          }
-        />
-        <span className="cx-comparison-tag is-before">
-          {source ? "Your original" : "Style inspiration"}
-        </span>
-        <div className="cx-creating-style">
-          <img src={style.image} alt="Chosen style example" />
-          <span>
-            Your chosen look<strong>{style.name}</strong>
-          </span>
+    <div className="ps-render" aria-busy="true">
+      <div className="ps-render-visual">
+        <div className="ps-render-photo">
+          <img
+            src={source || style.image}
+            alt={
+              source
+                ? "Your original photo, saved while your image is created"
+                : "Your selected style example"
+            }
+          />
+          <span>{source ? "YOUR ORIGINAL" : "STYLE INSPIRATION"}</span>
+        </div>
+        <div className="ps-render-style">
+          <img src={style.image} alt="Selected style example" />
+          <div>
+            <span>THE LOOK WE’RE CREATING</span>
+            <b>{style.name}</b>
+          </div>
         </div>
       </div>
-      <div className="cx-creating-copy">
-        <span className="cx-creating-icon">
-          <Sparkles size={28} />
+      <div className="ps-render-copy">
+        <span className="ps-render-mark">
+          <Sparkles size={23} />
         </span>
-        <span className="cx-eyebrow">
-          {queued ? "IN THE QUEUE" : "IN YOUR PHOTO STUDIO"}
-        </span>
-        <h2>
-          {queued ? "Ready for its close-up." : "A fresh light on your food."}
-        </h2>
-        <p>
+        <p className="cx-eyebrow">IN YOUR PHOTO STUDIO</p>
+        <h1 tabIndex={-1}>
+          A little light.
+          <br />A whole new look.
+        </h1>
+        <p className="ps-render-status" role="status">
           {queued
-            ? "Your photo and style are saved. We’re waiting to start your image."
-            : "We’re creating your chosen look, using your original food as the reference."}
+            ? progress.takingLonger
+              ? "Your image is still queued. Your photo and choices are safely saved."
+              : "Your photo is saved. Waiting for the studio to start."
+            : progress.takingLonger
+              ? "Still creating your photo. Some images take a little longer."
+              : "Your photo is taking shape. This usually takes around 20–30 seconds."}
         </p>
-        <div className="cx-creating-activity" aria-hidden="true">
-          <span />
+        <div className="ps-render-progress">
+          <div>
+            <span>{queued ? "Waiting to start" : "Estimated progress"}</span>
+            <span>{queued ? "Queued" : `${progress.value}%`}</span>
+          </div>
+          <progress
+            max={100}
+            value={progress.value}
+            aria-label="Estimated image creation progress"
+            aria-valuetext={
+              queued
+                ? "Waiting to start"
+                : `${progress.value}% estimated; waiting for the finished image`
+            }
+          />
         </div>
-        <p className="cx-creating-note">
-          Keep this tab open. Your result will appear here, ready to compare and
-          download.
+        <ol
+          className="ps-render-stages"
+          aria-label="Image creation steps — estimated timing"
+        >
+          {stages.map(([title, detail], i) => (
+            <li
+              key={title}
+              data-phase={
+                i < progress.stage
+                  ? "past"
+                  : i === progress.stage
+                    ? "active"
+                    : "next"
+              }
+            >
+              <span className="ps-render-step">
+                {String(i + 1).padStart(2, "0")}
+              </span>
+              <div>
+                <b>{title}</b>
+                <p>{detail}</p>
+              </div>
+              {i === progress.stage && (
+                <span className="ps-render-pulse" aria-hidden="true" />
+              )}
+            </li>
+          ))}
+        </ol>
+        <p className="ps-render-safe">
+          <Check size={15} />
+          Your original stays saved. Your result appears here.
         </p>
-        <span className="cx-original-safe">
-          <Check size={16} /> Your original stays saved
-        </span>
       </div>
     </div>
   );
