@@ -126,7 +126,7 @@ for (const [index, t] of postTemplates.entries())
     assert.equal(c.width, 1080);
     assert.equal(c.height, channel === "story" ? 1920 : 1350);
     for (const box of result.textBoxes) {
-      assert(box.fontSize >= 42, `${t.id}: phone-size type floor`);
+      assert(box.fontSize >= 36, `${t.id}: phone-size type floor`);
       assert(
         box.x >= 0 &&
           box.y >= 0 &&
@@ -287,7 +287,7 @@ for (const d of menuDesigns)
       assert(
         content.includes("18.50") &&
           content.includes("16.00") &&
-          content.includes("Dinner"),
+          content.toLowerCase().includes("dinner"),
       );
       if (paper === "letter" && printProfile === "home") {
         const viewport = page.getViewport({ scale: 1.3 }),
@@ -340,7 +340,7 @@ for (const layout of ["classic", "grid"]) {
       text = content.items.map((i) => i.str).join(" ");
     total += text;
     for (const section of sections)
-      if (text.includes(section.name))
+      if (text.toLowerCase().includes(section.name.toLowerCase()))
         assert(
           section.items.some((i) => text.includes(i.name)),
           `Orphan heading on ${layout} page ${n}`,

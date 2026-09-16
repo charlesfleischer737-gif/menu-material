@@ -1,12 +1,20 @@
 import type { Row } from "./client";
 export const menuDesigns = [
-  { id: "bistro", name: "Bistro", note: "Familiar, generous, neatly ruled" },
-  { id: "cafe", name: "Café", note: "Bright, compact, easy to browse" },
-  { id: "fine", name: "Fine dining", note: "Quiet space and considered type" },
+  {
+    id: "bistro",
+    name: "Brasserie",
+    note: "Serif masthead · editorial columns",
+  },
+  {
+    id: "cafe",
+    name: "Market Café",
+    note: "Category rails · warm, open space",
+  },
+  { id: "fine", name: "Atelier", note: "Centered courses · quiet luxury" },
   {
     id: "casual",
-    name: "Casual",
-    note: "Bold section headings, relaxed rhythm",
+    name: "Counter Club",
+    note: "Oversized type · asymmetric columns",
   },
 ];
 export const menuCrop = (crop: Row = {}) => ({

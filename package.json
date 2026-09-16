@@ -18,7 +18,8 @@
     "format": "prettier --write app lib db tests scripts/job-runner.mjs scripts/bootstrap-admin.mjs",
     "test:exports": "node --disable-warning=ExperimentalWarning --experimental-loader ./tests/runtime-loader.mjs tests/exports.mjs",
     "test:web-assets": "node tests/web-assets.mjs",
-    "test:workspace-exports": "node --disable-warning=ExperimentalWarning --experimental-loader ./tests/runtime-loader.mjs tests/workspace-exports.mjs"
+    "test:workspace-exports": "node --disable-warning=ExperimentalWarning --experimental-loader ./tests/runtime-loader.mjs tests/workspace-exports.mjs",
+    "test:templates": "node --disable-warning=ExperimentalWarning --experimental-loader ./tests/runtime-loader.mjs tests/template-quality.mjs"
   },
   "dependencies": {
     "@base-ui/react": "^1.7.0",

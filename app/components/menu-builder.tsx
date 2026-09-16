@@ -29,6 +29,7 @@ import {
 } from "@/lib/menu-design";
 import { Dialog, DialogContent, DialogTitle } from "@/components/ui/dialog";
 import PrintPreview from "./print-preview";
+import MenuTemplatePreview from "./menu-template-preview";
 import MenuSharing from "./menu-sharing";
 import {
   Feedback,
@@ -1049,15 +1050,7 @@ export default function MenuBuilder({
                       aria-pressed={(b.design || "bistro") === d.id}
                       onClick={() => patch({ design: d.id })}
                     >
-                      <span
-                        className={`mm-menu-swatch swatch-${d.id}`}
-                        aria-hidden="true"
-                      >
-                        <b>Menu</b>
-                        <i />
-                        <i />
-                        <i />
-                      </span>
+                      <MenuTemplatePreview menu={menu} design={d.id} />
                       <strong>{d.name}</strong>
                       <small>{d.note}</small>
                     </button>
@@ -1148,7 +1141,8 @@ export default function MenuBuilder({
                   </p>
                 </details>
                 <p className="mm-muted">
-                  Uses your saved restaurant colors, logo, and typography.
+                  Your restaurant colors and logo, with typography chosen for
+                  each design.
                 </p>
               </>
             )}

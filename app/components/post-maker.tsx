@@ -69,7 +69,7 @@ const initial = (restaurant: Row, version = 1) => ({
   layouts: Object.fromEntries(
     ["feed", "story", "carousel"].map((k) => [
       k,
-      { ...emptyAdjustments, fit: true, autoFrame: true },
+      { ...emptyAdjustments, fit: false, autoFrame: true },
     ]),
   ),
   caption: "",
@@ -77,6 +77,7 @@ const initial = (restaurant: Row, version = 1) => ({
   reviewed: false,
   voice: restaurant.style?.tone || "Warm and welcoming",
   ...brandPostFields(restaurant.style),
+  typography: "template",
 });
 export default function PostMaker({
   state,
@@ -712,8 +713,8 @@ export default function PostMaker({
                 <>
                   <h2>Your restaurant, in every detail.</h2>
                   <p className="mm-muted">
-                    Your saved colors and typography are applied. The photo and
-                    layout adapt to each format.
+                    Your restaurant colors carry through each design. The photo
+                    and layout adapt to each format.
                   </p>
                   {b.compositionVersion !== 2 && (
                     <button
@@ -741,21 +742,23 @@ export default function PostMaker({
                     />
                     Restaurant name & logo
                   </label>
-                  <Field label="Text placement">
-                    <select
-                      value={b.textPlacement || "auto"}
-                      onChange={(e) =>
-                        update({
-                          textPlacement: e.target.value,
-                          compositionVersion: 2,
-                        })
-                      }
-                    >
-                      <option value="auto">Recommended for this photo</option>
-                      <option value="top">Above the photo</option>
-                      <option value="bottom">Below the photo</option>
-                    </select>
-                  </Field>
+                  {["editorial", "afterdark", "fresh"].includes(b.template) && (
+                    <Field label="Text placement">
+                      <select
+                        value={b.textPlacement || "auto"}
+                        onChange={(e) =>
+                          update({
+                            textPlacement: e.target.value,
+                            compositionVersion: 2,
+                          })
+                        }
+                      >
+                        <option value="auto">Designed placement</option>
+                        <option value="top">At the top</option>
+                        <option value="bottom">At the bottom</option>
+                      </select>
+                    </Field>
+                  )}
                   <Field label="Small heading (optional)">
                     <input
                       value={b.kicker || ""}

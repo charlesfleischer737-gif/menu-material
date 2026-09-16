@@ -12,6 +12,7 @@ import "./launch.css";
 import "./homepage.css";
 import "./photo-exports.css";
 import "./creative-workspace.css";
+import "./menu-templates.css";
 export async function generateMetadata(): Promise<Metadata> {
   const origin = config("APP_ORIGIN");
   const images = origin

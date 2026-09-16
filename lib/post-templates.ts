@@ -24,7 +24,7 @@ export const postTemplates = [
     group: "Announcements",
     headline: "",
     description:
-      "Close-up food, a bold condensed headline, and a discreet line for the price and time.",
+      "A ruled paper masthead, oversized condensed type, and a clear price tab on your photograph.",
     layout: "special",
     color: "#c42d23",
     accent: "#fff3d8",
@@ -72,7 +72,7 @@ export const postTemplates = [
     group: "Photo first",
     headline: "",
     description:
-      "A sunlit photograph with a loose, handwritten headline. Warm, casual, and easy to make your own.",
+      "An offset photograph, expressive italic type, and a quiet paper border. Made for unhurried mornings.",
     layout: "brunch",
     color: "#43352c",
     accent: "#fff6de",
@@ -88,7 +88,7 @@ export const postTemplates = [
     group: "Photo first",
     headline: "",
     description:
-      "A close crop, a fine white edge, and a handwritten note directly on your photograph.",
+      "A generous photographic print with warm paper, a fine edge, and an elegant italic signature.",
     layout: "bakery",
     color: "#704126",
     accent: "#fff9e9",
@@ -206,6 +206,7 @@ export function applyPostTemplate(draft: Row, id: string) {
     textMode: t.textMode,
     showBrand: t.showBrand,
     textY: 0,
+    typography: "template",
     layouts: Object.fromEntries(
       ["feed", "story", "carousel"].map((c) => [
         c,
@@ -219,7 +220,7 @@ export function applyPostTemplate(draft: Row, id: string) {
             contrast: 100,
             warmth: 0,
           }),
-          fit: draft.compositionVersion === 2,
+          fit: false,
         },
       ]),
     ),

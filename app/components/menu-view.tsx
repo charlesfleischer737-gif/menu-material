@@ -1,7 +1,6 @@
 "use client";
 import { useCallback, useEffect, useRef, useState } from "react";
 import MenuPhoto from "./menu-photo";
-import { UtensilsCrossed } from "lucide-react";
 import { scheduleLabel } from "@/lib/promotions";
 import { money, Row } from "@/lib/client";
 import { brandTypeface, readableBrandInk } from "@/lib/restaurant-look";
@@ -111,7 +110,7 @@ export default function MenuView({
     <article
       role={preview ? undefined : "main"}
       aria-label={preview ? undefined : `${menu.restaurant.name} menu`}
-      className={`customer-menu menu-designed menu-design-${menu.design || "bistro"} menu-density-${menu.density || "comfortable"} menu-layout-${menu.layout || "classic"} menu-appearance-${menu.appearance || "light"}`}
+      className={`customer-menu menu-designed menu-art-directed menu-design-${menu.design || "bistro"} menu-density-${menu.density || "comfortable"} menu-layout-${menu.layout || "classic"} menu-appearance-${menu.appearance || "light"}`}
       style={
         {
           "--menu-brand":
@@ -139,9 +138,7 @@ export default function MenuView({
             }
             alt="Restaurant logo"
           />
-        ) : (
-          <UtensilsCrossed className="menu-mark" />
-        )}
+        ) : null}
         <h1>{menu.restaurant.name}</h1>
         <p>{menu.title || menu.restaurant.cuisine}</p>
         {menu.restaurant.orderingUrl && (
@@ -223,63 +220,73 @@ export default function MenuView({
             </p>
           </section>
         ))}
-      {menu.sections.map((section: Row, sectionIndex: number) => {
-        const dishes = section.items.filter((d: Row) =>
-          `${d.name} ${d.description || ""} ${section.name}`
-            .toLowerCase()
-            .includes(search.toLowerCase()),
-        );
-        return (
-          !!dishes.length && (
-            <section key={section.id} data-menu-section={sectionIndex}>
-              <h2>{section.name}</h2>
-              {dishes.map((dish: Row, index: number) => {
-                const featured =
-                  menu.layout === "featured" &&
-                  (dish.featured ?? section.items[0] === dish);
-                return (
-                  <div
-                    className={`customer-dish ${!dish.available ? "sold-out" : ""} ${featured ? "is-featured" : ""} ${onSelect ? "is-editable" : ""}`}
-                    key={dish.id + index}
-                    data-dish={dish.id}
-                  >
-                    <div className="mm-menu-dish-copy">
-                      <div className="dish-title">
-                        <h3>{dish.name}</h3>
-                        <span>
-                          {Number.isFinite(dish.price)
-                            ? money(dish.price, menu.restaurant.currency)
-                            : "—"}
-                        </span>
+      <div className="menu-sections">
+        {menu.sections.map((section: Row, sectionIndex: number) => {
+          const dishes = section.items.filter((d: Row) =>
+            `${d.name} ${d.description || ""} ${section.name}`
+              .toLowerCase()
+              .includes(search.toLowerCase()),
+          );
+          return (
+            !!dishes.length && (
+              <section key={section.id} data-menu-section={sectionIndex}>
+                <header className="menu-section-heading">
+                  <span aria-hidden="true">
+                    {String(sectionIndex + 1).padStart(2, "0")}
+                  </span>
+                  <h2>{section.name}</h2>
+                </header>
+                <div className="menu-section-body">
+                  {dishes.map((dish: Row, index: number) => {
+                    const featured =
+                      menu.layout === "featured" &&
+                      (dish.featured ?? section.items[0] === dish);
+                    return (
+                      <div
+                        className={`customer-dish ${!dish.available ? "sold-out" : ""} ${featured ? "is-featured" : ""} ${onSelect ? "is-editable" : ""}`}
+                        key={dish.id + index}
+                        data-dish={dish.id}
+                      >
+                        <div className="mm-menu-dish-copy">
+                          <div className="dish-title">
+                            <h3>{dish.name}</h3>
+                            <span>
+                              {Number.isFinite(dish.price)
+                                ? money(dish.price, menu.restaurant.currency)
+                                : "—"}
+                            </span>
+                          </div>
+                          {dish.description && <p>{dish.description}</p>}
+                          {!dish.available && (
+                            <span className="tag">Currently unavailable</span>
+                          )}
+                        </div>
+                        {dish.photoId &&
+                          (menu.layout === "grid" || featured) && (
+                            <MenuPhoto
+                              photoId={dish.photoId}
+                              crop={dish.crop}
+                              featured={featured}
+                              slug={preview ? undefined : slug}
+                              alt={dish.name}
+                            />
+                          )}
+                        {onSelect && (
+                          <button
+                            className="mm-menu-edit-target"
+                            aria-label={`Edit ${dish.name}`}
+                            onClick={() => onSelect(dish.id)}
+                          />
+                        )}
                       </div>
-                      {dish.description && <p>{dish.description}</p>}
-                      {!dish.available && (
-                        <span className="tag">Currently unavailable</span>
-                      )}
-                    </div>
-                    {dish.photoId && (menu.layout === "grid" || featured) && (
-                      <MenuPhoto
-                        photoId={dish.photoId}
-                        crop={dish.crop}
-                        featured={featured}
-                        slug={preview ? undefined : slug}
-                        alt={dish.name}
-                      />
-                    )}
-                    {onSelect && (
-                      <button
-                        className="mm-menu-edit-target"
-                        aria-label={`Edit ${dish.name}`}
-                        onClick={() => onSelect(dish.id)}
-                      />
-                    )}
-                  </div>
-                );
-              })}
-            </section>
-          )
-        );
-      })}
+                    );
+                  })}
+                </div>
+              </section>
+            )
+          );
+        })}
+      </div>
       {search &&
         !menu.sections.some((s: Row) =>
           s.items.some((d: Row) =>

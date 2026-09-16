@@ -1,0 +1,400 @@
+/* Four complete menu identities. Typography and architecture survive without photos. */
+.customer-menu.menu-art-directed {
+  container-type: inline-size;
+  --menu-paper: #fcf9f1;
+  --menu-ink: #252c26;
+  --menu-muted: #686b61;
+  --menu-rule: #cecbbf;
+  --menu-space: 22px;
+  background: var(--menu-paper);
+  color: var(--menu-ink);
+  font-family: "Post Sans", Arial, sans-serif;
+  padding: 32px 26px;
+}
+.customer-menu.menu-art-directed.menu-density-compact {
+  --menu-space: 15px;
+}
+.customer-menu.menu-art-directed.menu-density-spacious {
+  --menu-space: 34px;
+}
+.customer-menu.menu-art-directed > header {
+  padding: 8px 0 28px;
+  border: 0;
+  color: var(--menu-brand);
+}
+.customer-menu.menu-art-directed > header h1 {
+  color: inherit;
+  margin: 0;
+  overflow-wrap: anywhere;
+}
+.customer-menu.menu-art-directed > header p {
+  font-size: 12px;
+  letter-spacing: 0.13em;
+  text-transform: uppercase;
+  margin: 16px 0 0;
+  color: var(--menu-muted);
+}
+.customer-menu.menu-art-directed .menu-logo {
+  display: block;
+  max-width: 120px;
+  height: 42px;
+  margin: 0 0 18px;
+}
+.customer-menu.menu-art-directed .menu-sections {
+  display: block;
+}
+.customer-menu.menu-art-directed .menu-sections > section {
+  display: block;
+  margin: 0;
+  padding: 30px 0 0;
+  scroll-margin-top: 110px;
+  break-inside: avoid;
+}
+.customer-menu.menu-art-directed .menu-section-heading {
+  display: block;
+  padding: 0;
+  margin: 0 0 20px;
+  border: 0;
+  text-align: left;
+}
+.customer-menu.menu-art-directed .menu-section-heading > span {
+  display: none;
+  font-size: 12px;
+  color: var(--menu-muted);
+}
+.customer-menu.menu-art-directed .menu-section-heading h2 {
+  padding: 0;
+  margin: 0;
+  background: none;
+  color: var(--menu-brand);
+  line-height: 1.05;
+}
+.customer-menu.menu-art-directed .menu-section-body {
+  display: block;
+  min-width: 0;
+}
+.customer-menu.menu-art-directed .customer-dish {
+  border: 0;
+  display: flex;
+  flex-direction: column;
+  padding: 0;
+  margin: 0 0 var(--menu-space);
+  gap: 12px;
+}
+.customer-menu.menu-art-directed .dish-title {
+  display: flex;
+  justify-content: space-between;
+  gap: 18px;
+  align-items: baseline;
+}
+.customer-menu.menu-art-directed .dish-title h3 {
+  color: var(--menu-ink);
+  font-family: "Post Sans", Arial, sans-serif;
+  font-size: 16px;
+  font-weight: 600;
+  letter-spacing: -0.015em;
+}
+.customer-menu.menu-art-directed .dish-title span {
+  display: block;
+  margin: 0;
+  font-size: 14px;
+  font-weight: 500;
+  font-variant-numeric: tabular-nums;
+  color: var(--menu-ink);
+}
+.customer-menu.menu-art-directed .customer-dish p {
+  font-size: 14px;
+  line-height: 1.55;
+  color: var(--menu-muted);
+  margin: 5px 0 0;
+}
+.customer-menu.menu-art-directed > footer {
+  padding-top: 36px;
+  font-size: 11px;
+  color: var(--menu-muted);
+  opacity: 0.7;
+}
+.customer-menu.menu-art-directed .order-button {
+  background: var(--menu-brand);
+  color: white;
+  border: 0;
+  border-radius: 0;
+  font-size: 14px;
+  margin-top: 20px;
+  padding: 11px 16px;
+  display: inline-block;
+}
+.customer-menu.menu-designed.menu-art-directed.menu-layout-grid
+  .menu-sections
+  > section {
+  display: block;
+  grid-template-columns: none;
+}
+.customer-menu.menu-art-directed.menu-layout-grid .menu-section-body {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 0 20px;
+}
+.customer-menu.menu-art-directed.menu-layout-grid .dish-title {
+  display: block;
+}
+.customer-menu.menu-art-directed.menu-layout-grid .dish-title span {
+  margin-top: 5px;
+}
+.customer-menu.menu-art-directed .mm-menu-photo {
+  order: -1;
+}
+/* Brasserie: double-rule masthead, serif dish names, editorial section columns. */
+.customer-menu.menu-art-directed.menu-design-bistro {
+  border: 1px solid var(--menu-rule);
+  outline: 1px solid var(--menu-rule);
+  outline-offset: -7px;
+}
+.customer-menu.menu-art-directed.menu-design-bistro > header {
+  text-align: center;
+  border-bottom: 4px double var(--menu-brand);
+}
+.customer-menu.menu-art-directed.menu-design-bistro > header h1 {
+  font-family: "Post Serif", Georgia, serif;
+  font-size: 45px;
+  line-height: 0.98;
+  font-weight: 600;
+  letter-spacing: -0.035em;
+}
+.customer-menu.menu-art-directed.menu-design-bistro .menu-logo {
+  margin: 0 auto 18px;
+}
+.customer-menu.menu-art-directed.menu-design-bistro .menu-section-heading {
+  border-bottom: 1px solid var(--menu-rule);
+  padding-bottom: 12px;
+}
+.customer-menu.menu-art-directed.menu-design-bistro .menu-section-heading h2 {
+  font-family: "Post Sans", Arial, sans-serif;
+  text-transform: uppercase;
+  font-size: 13px;
+  font-weight: 600;
+  letter-spacing: 0.08em;
+  line-height: 1.35;
+}
+.customer-menu.menu-art-directed.menu-design-bistro .dish-title h3 {
+  font-family: "Post Serif", Georgia, serif;
+  font-size: 21px;
+  font-weight: 600;
+  line-height: 1.12;
+}
+/* Market Café: asymmetric masthead and numbered category rail. */
+.customer-menu.menu-art-directed.menu-design-cafe {
+  --menu-paper: #f7f2e8;
+}
+.customer-menu.menu-art-directed.menu-design-cafe > header {
+  border-bottom: 3px solid var(--menu-brand);
+}
+.customer-menu.menu-art-directed.menu-design-cafe > header h1 {
+  font-family: "Post Sans", Arial, sans-serif;
+  font-size: 39px;
+  font-weight: 600;
+  letter-spacing: -0.055em;
+  line-height: 1.02;
+  max-width: 90%;
+}
+.customer-menu.menu-art-directed.menu-design-cafe
+  .menu-sections
+  > section
+  + section {
+  border-top: 1px solid var(--menu-rule);
+  margin-top: 12px;
+}
+.customer-menu.menu-art-directed.menu-design-cafe .menu-section-heading {
+  display: flex;
+  gap: 14px;
+  align-items: baseline;
+}
+.customer-menu.menu-art-directed.menu-design-cafe .menu-section-heading > span {
+  display: block;
+}
+.customer-menu.menu-art-directed.menu-design-cafe .menu-section-heading h2 {
+  font-family: "Post Serif", Georgia, serif;
+  font-size: 32px;
+  font-weight: 500;
+  letter-spacing: -0.025em;
+}
+/* Atelier: quiet centered courses with discreet prices and a narrow reading axis. */
+.customer-menu.menu-art-directed.menu-design-fine {
+  --menu-paper: #fffefa;
+  padding: 42px 30px;
+}
+.customer-menu.menu-art-directed.menu-design-fine > header {
+  text-align: center;
+  padding-bottom: 20px;
+}
+.customer-menu.menu-art-directed.menu-design-fine > header h1 {
+  font-family: "Post Serif", Georgia, serif;
+  font-size: 33px;
+  font-weight: 500;
+  letter-spacing: 0;
+  line-height: 1.15;
+}
+.customer-menu.menu-art-directed.menu-design-fine > header p {
+  font-family: "Post Serif", Georgia, serif;
+  font-size: 28px;
+  line-height: 1.1;
+  letter-spacing: -0.025em;
+  text-transform: none;
+  color: var(--menu-ink);
+  margin-top: 22px;
+}
+.customer-menu.menu-art-directed.menu-design-fine > header::after {
+  content: "";
+  display: block;
+  width: 44px;
+  margin: 28px auto 0;
+  border-bottom: 1px solid var(--menu-brand);
+}
+.customer-menu.menu-art-directed.menu-design-fine .menu-logo {
+  margin: 0 auto 22px;
+}
+.customer-menu.menu-art-directed.menu-design-fine .menu-sections {
+  max-width: 460px;
+  margin: auto;
+}
+.customer-menu.menu-art-directed.menu-design-fine .menu-section-heading {
+  text-align: center;
+  margin-bottom: 26px;
+}
+.customer-menu.menu-art-directed.menu-design-fine .menu-section-heading h2 {
+  font-family: "Post Sans", Arial, sans-serif;
+  text-transform: uppercase;
+  font-size: 12px;
+  font-weight: 500;
+  letter-spacing: 0.14em;
+  line-height: 1.5;
+}
+.customer-menu.menu-art-directed.menu-design-fine .mm-menu-dish-copy {
+  display: flex;
+  flex-direction: column;
+  text-align: center;
+}
+.customer-menu.menu-art-directed.menu-design-fine .dish-title {
+  display: contents;
+}
+.customer-menu.menu-art-directed.menu-design-fine .dish-title h3 {
+  font-family: "Post Serif", Georgia, serif;
+  font-size: 23px;
+  font-weight: 500;
+  line-height: 1.2;
+}
+.customer-menu.menu-art-directed.menu-design-fine .dish-title span {
+  order: 2;
+  margin-top: 9px;
+  font-size: 13px;
+  color: var(--menu-muted);
+}
+.customer-menu.menu-art-directed.menu-design-fine .customer-dish {
+  margin-bottom: calc(var(--menu-space) + 8px);
+}
+/* Counter Club: condensed display type, strong edge rail, asymmetric print-like columns. */
+.customer-menu.menu-art-directed.menu-design-casual {
+  border-left: 9px solid var(--menu-brand);
+  border-top: 9px solid var(--menu-accent);
+}
+.customer-menu.menu-art-directed.menu-design-casual > header {
+  border-bottom: 3px solid var(--menu-brand);
+  padding-bottom: 24px;
+}
+.customer-menu.menu-art-directed.menu-design-casual > header h1 {
+  font-family: "Post Condensed", Arial, sans-serif;
+  font-size: 60px;
+  line-height: 0.94;
+  font-weight: 700;
+  text-transform: uppercase;
+  letter-spacing: -0.02em;
+}
+.customer-menu.menu-art-directed.menu-design-casual .menu-section-heading {
+  display: flex;
+  align-items: baseline;
+  gap: 12px;
+}
+.customer-menu.menu-art-directed.menu-design-casual
+  .menu-section-heading
+  > span {
+  display: block;
+}
+.customer-menu.menu-art-directed.menu-design-casual .menu-section-heading h2 {
+  font-family: "Post Condensed", Arial, sans-serif;
+  text-transform: uppercase;
+  font-weight: 700;
+  font-size: 35px;
+}
+.customer-menu.menu-art-directed.menu-design-casual .dish-title h3 {
+  font-weight: 600;
+}
+.customer-menu.menu-art-directed.menu-appearance-dark {
+  --menu-paper: #1c2623;
+  --menu-ink: #fbf8ed;
+  --menu-muted: #c7ccc5;
+  --menu-rule: #66736a;
+  --menu-brand: #f5f1e3 !important;
+}
+.customer-menu.menu-art-directed.menu-appearance-dark .order-button {
+  background: var(--menu-accent);
+  color: var(--menu-accent-ink);
+}
+@container (min-width: 590px) {
+  .menu-design-bistro .menu-sections,
+  .menu-design-casual .menu-sections {
+    display: grid !important;
+    grid-template-columns: 1fr 1fr;
+    column-gap: 42px;
+  }
+  .menu-design-casual .menu-sections {
+    grid-template-columns: 1.35fr 1fr;
+  }
+  .menu-design-bistro .menu-sections > section:nth-child(even),
+  .menu-design-casual .menu-sections > section:nth-child(even) {
+    border-left: 1px solid var(--menu-rule);
+    padding-left: 24px;
+  }
+  .menu-design-cafe .menu-sections > section {
+    display: grid !important;
+    grid-template-columns: 24% minmax(0, 1fr);
+    gap: 24px;
+  }
+  .menu-design-cafe .menu-section-heading {
+    display: block !important;
+  }
+  .menu-design-cafe .menu-section-heading > span {
+    margin-bottom: 10px;
+  }
+}
+.mm-menu-designs .mm-menu-template-preview {
+  display: block;
+  aspect-ratio: 612 / 792;
+  width: 100%;
+  overflow: hidden;
+  background: #f7f2e8;
+  border: 1px solid #e0ddcf;
+  margin-bottom: 12px;
+}
+.mm-menu-template-preview canvas {
+  width: 100%;
+}
+.mm-menu-template-preview canvas:not([hidden]) {
+  display: block;
+}
+.mm-menu-template-preview > span {
+  display: flex;
+  height: 100%;
+  align-items: center;
+  justify-content: center;
+  font-size: 12px;
+  color: #65715d;
+  padding: 12px;
+}
+.mm-menu-designs button {
+  padding: 10px !important;
+  border-radius: 5px;
+}
+.mm-menu-designs button[aria-pressed="true"] {
+  outline: 2px solid #355b37;
+  outline-offset: -2px;
+}
