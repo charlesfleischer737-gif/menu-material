@@ -18,6 +18,7 @@ import {
   CarouselPrevious,
 } from "@/components/ui/carousel";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
+import HomepageStyleGallery from "./homepage-style-gallery";
 const PostCanvas = lazy(() =>
   import("./post-canvas").then((m) => ({ default: m.PostCanvas })),
 );
@@ -213,6 +214,7 @@ export default function HomepageSections({
           </div>
         </Carousel>
       </section>
+      <HomepageStyleGallery />
       <section
         className="pw-features pw-features-compact"
         id="features"

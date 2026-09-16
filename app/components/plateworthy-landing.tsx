@@ -12,7 +12,6 @@ import {
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import Brand from "./brand";
 import HomepageSections from "./homepage-sections";
-import HomepageStyleGallery from "./homepage-style-gallery";
 
 const beforePhoto = "/burger-phone-original.jpg";
 const afterPhoto = "/burger-studio-transformation.png";
@@ -109,14 +108,6 @@ export default function Landing({
               <DropdownMenuItem
                 asChild
                 onSelect={() => {
-                  navigationTarget.current = "how-it-works";
-                }}
-              >
-                <a href="#how-it-works">How it works</a>
-              </DropdownMenuItem>
-              <DropdownMenuItem
-                asChild
-                onSelect={() => {
                   navigationTarget.current = "use-cases";
                 }}
               >
@@ -210,42 +201,6 @@ export default function Landing({
             </p>
           </div>
         </section>
-        <section
-          className="pw-workflow"
-          id="how-it-works"
-          aria-labelledby="workflow-title"
-          tabIndex={-1}
-        >
-          <div className="pw-section-heading">
-            <h2 id="workflow-title">Easy enough to do between orders.</h2>
-          </div>
-          <ol className="pw-steps">
-            <li>
-              <span className="pw-step-number">1</span>
-              <div>
-                <h3>Start with your dish</h3>
-                <p>Add a real photo and choose your look.</p>
-              </div>
-            </li>
-            <li>
-              <span className="pw-step-number">2</span>
-              <div>
-                <h3>Create and review</h3>
-                <p>Check that every detail still looks like your food.</p>
-              </div>
-            </li>
-            <li>
-              <span className="pw-step-number">3</span>
-              <div>
-                <h3>Use it where you sell</h3>
-                <p>
-                  Download for your menu, delivery apps, or social channels.
-                </p>
-              </div>
-            </li>
-          </ol>
-        </section>
-        <HomepageStyleGallery />
         <HomepageSections onStart={onStart} signedIn={signedIn} />
         <section className="pw-start">
           <div>
