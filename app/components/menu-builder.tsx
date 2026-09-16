@@ -24,7 +24,7 @@ import {
   Feedback,
   Field,
   Footer,
-  Heading,
+  ToolHeader,
   Steps,
   track,
   useAction,
@@ -437,13 +437,6 @@ export default function MenuBuilder({
       .then(refresh)
       .catch(() => {});
   }
-  const titles = [
-    "A menu that feels like you.",
-    "Let’s get the details right.",
-    "Find your menu’s look.",
-    "Give your dishes a little polish.",
-    "Your menu, ready to serve.",
-  ];
   if (!ready)
     return (
       <p className="cx-feedback" role="status">
@@ -451,31 +444,19 @@ export default function MenuBuilder({
       </p>
     );
   return (
-    <section className="cx-tool" ref={root}>
-      <div className="cx-tool-top">
-        <span className="cx-save">{status}</span>
+    <section className="cx-tool cx-feature-page" ref={root}>
+      <ToolHeader title="Menu Builder" status={status}>
         <span className="cx-pill">
           {state.restaurant.published
             ? "Published menu + private edits"
             : "Private menu draft"}
         </span>
-      </div>
+      </ToolHeader>
       <Steps
         labels={["Start", "Your dishes", "Design", "Photos", "Preview & use"]}
         step={b.step}
         onBack={(n) => change({ step: n })}
       />
-      <Heading eyebrow="MENU BUILDER" title={titles[b.step - 1]}>
-        {b.step === 1
-          ? "Start with what you have. We’ll help you turn it into a menu you’re proud of."
-          : b.step === 2
-            ? "Review names, descriptions and prices. Nothing goes live until you publish."
-            : b.step === 3
-              ? "Your content, instantly styled. Choose a look for the screen and the table."
-              : b.step === 4
-                ? "Use approved photos, or try the look on one dish before creating the rest."
-                : "Preview your digital menu and real print pages, then choose how to use them."}
-      </Heading>
       <Feedback {...action} />
       {newerRows(rows, state.dishes).length > 0 && (
         <div className="cx-panel cx-shared-update" role="status">

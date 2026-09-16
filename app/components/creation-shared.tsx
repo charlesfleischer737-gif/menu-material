@@ -203,6 +203,25 @@ export function Steps({
     </div>
   );
 }
+export function ToolHeader({
+  title,
+  status,
+  children,
+}: {
+  title: string;
+  status: string;
+  children?: ReactNode;
+}) {
+  return (
+    <header className="cx-feature-header">
+      <h1 tabIndex={-1}>{title}</h1>
+      <div className="cx-feature-actions">
+        <span className="cx-save cx-header-status">{status}</span>
+        {children}
+      </div>
+    </header>
+  );
+}
 export function Heading({
   eyebrow,
   title,

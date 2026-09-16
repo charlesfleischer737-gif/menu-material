@@ -170,13 +170,29 @@ export default function CoreWorkspace({
         Skip to your workspace
       </a>
       <aside className="cx-sidebar">
-        <button
-          className="cx-brand"
-          onClick={onOverview}
-          aria-label="Plateworthy home"
-        >
-          <Brand />
-        </button>
+        <div className="cx-sidebar-heading">
+          <button
+            className="cx-brand"
+            onClick={onOverview}
+            aria-label="Plateworthy home"
+          >
+            <Brand />
+          </button>
+          <details className="cx-mobile-tools">
+            <summary aria-label="More workspace options">
+              <SlidersHorizontal size={20} />
+            </summary>
+            <div>
+              <span>{state.remaining} images remaining</span>
+              <button onClick={onSettings}>Restaurant look & settings</button>
+              <button onClick={() => navigate("tools")}>More tools</button>
+              {state.user.role === "admin" && (
+                <button onClick={() => navigate("admin")}>Pilot admin</button>
+              )}
+              <button onClick={onLogout}>Sign out</button>
+            </div>
+          </details>
+        </div>
         <p className="cx-sidebar-label">YOUR CREATIVE KITCHEN</p>
         <nav aria-label="Workspace">
           {nav.map(([id, label, Icon]) => (
@@ -221,33 +237,10 @@ export default function CoreWorkspace({
         </div>
       </aside>
       <div className="cx-body">
-        <header className="cx-topbar">
-          <span>{state.restaurant.name}</span>
-          <span className="cx-topbar-caption">
-            Food photos worth ordering from.
-          </span>
-          <button
-            className="cx-account"
-            aria-label="Restaurant settings"
-            onClick={onSettings}
-          >
-            {state.restaurant.name.slice(0, 1)}
-          </button>
-          <details className="cx-mobile-tools">
-            <summary aria-label="More workspace options">
-              <SlidersHorizontal size={20} />
-            </summary>
-            <div>
-              <span>{state.remaining} images remaining</span>
-              <button onClick={() => navigate("tools")}>More tools</button>
-              {state.user.role === "admin" && (
-                <button onClick={() => navigate("admin")}>Pilot admin</button>
-              )}
-              <button onClick={onLogout}>Sign out</button>
-            </div>
-          </details>
-        </header>
-        <main id="creation-main" className="cx-main">
+        <main
+          id="creation-main"
+          className={`cx-main${["studio", "menu", "post"].includes(view) ? " cx-feature-main" : ""}`}
+        >
           <div hidden={view !== "home"} aria-hidden={view !== "home"}>
             <div className="cx-overview-intro">
               <div>

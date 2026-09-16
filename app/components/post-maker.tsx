@@ -37,7 +37,7 @@ import {
   Feedback,
   Field,
   Footer,
-  Heading,
+  ToolHeader,
   Steps,
   track,
   useAction,
@@ -283,16 +283,9 @@ export default function PostMaker({
         {status}
       </p>
     );
-  const titles = [
-    "A great dish. A little inspiration.",
-    "Choose your look.",
-    "The finishing touches.",
-    "Ready to make people hungry.",
-  ];
   return (
-    <section className="cx-tool" ref={root}>
-      <div className="cx-tool-top">
-        <span className="cx-save">{status}</span>
+    <section className="cx-tool cx-feature-page" ref={root}>
+      <ToolHeader title="Post Maker" status={status}>
         <div className="cx-button-row">
           <button
             className="cx-link"
@@ -316,7 +309,7 @@ export default function PostMaker({
             New post
           </button>
         </div>
-      </div>
+      </ToolHeader>
       {showSaved && (
         <div className="cx-panel cx-saved-posts">
           {saved.map((d) => (
@@ -345,15 +338,6 @@ export default function PostMaker({
         step={page}
         onBack={(n) => change({ step: [1, 3, 4, 6][n - 1] })}
       />
-      <Heading eyebrow="POST MAKER" title={titles[page - 1]}>
-        {page === 1
-          ? "Choose your photo and add the details. We’ll take care of the design."
-          : page === 2
-            ? "Start with a look. Keep it photographic, or add a few words."
-            : page === 3
-              ? "Frame your photo for each format, then make the caption sound like you."
-              : "Your images and caption are ready. Check the details, then save or share."}
-      </Heading>
       <Feedback {...action} />
       {page === 1 && (
         <>

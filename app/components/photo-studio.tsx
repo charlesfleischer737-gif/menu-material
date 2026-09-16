@@ -43,7 +43,7 @@ import {
   CropControls,
   Feedback,
   Field,
-  Heading,
+  ToolHeader,
   PhotoFrame,
   track,
   useAction,
@@ -521,9 +521,8 @@ export default function PhotoStudio({
       </p>
     );
   return (
-    <section className="cx-tool cx-guided-studio" ref={root}>
-      <div className="cx-tool-top">
-        <span className="cx-save">{status}</span>
+    <section className="cx-tool cx-feature-page cx-guided-studio" ref={root}>
+      <ToolHeader title="Photo Studio" status={status}>
         <div className="cx-button-row">
           {(b.step >= 4 || resultId) && (
             <button
@@ -557,16 +556,10 @@ export default function PhotoStudio({
             New photo
           </button>
         </div>
-      </div>
+      </ToolHeader>
       <Feedback {...action} />
       {b.step <= 3 && (
         <>
-          <Heading
-            eyebrow="PHOTO STUDIO"
-            title="Find your signature look."
-          >
-            Choose a style. Add your photo. Make it yours.
-          </Heading>
           <StudioWorkbench
             draft={b}
             state={state}
@@ -602,26 +595,6 @@ export default function PhotoStudio({
       )}
       {b.step === 4 && (
         <>
-          {(!creating || resultId) && (
-            <Heading
-              eyebrow={resultId ? "MADE FOR YOUR DISH" : "PHOTO STUDIO"}
-              title={
-                resultId
-                  ? firstImage && asset?.kind === "generated"
-                    ? "Your first studio photo is ready."
-                    : "Your photo is ready."
-                  : running
-                    ? "Your dish is getting its moment."
-                    : "Your photo is saved."
-              }
-            >
-              {resultId
-                ? "Does this look like the dish you serve? Compare the food, then make it yours."
-                : running
-                  ? "Your next great photo is on its way."
-                  : "Your original is safe. Return to your choices to try again."}
-            </Heading>
-          )}
           {!resultId ? (
             creating ? (
               <StudioCreating
@@ -963,13 +936,6 @@ export default function PhotoStudio({
       )}
       {b.step === 5 && resultId && (
         <>
-          <Heading
-            eyebrow="SAVED TO MY DISHES"
-            title="Your photo, ready to share."
-          >
-            Your photo is saved in My Dishes. Download it now, or turn it into a
-            menu or post.
-          </Heading>
           <div className="cx-success">
             <img src={`/api/assets/${resultId}`} alt={b.name} />
             <div>
