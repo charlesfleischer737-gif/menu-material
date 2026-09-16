@@ -1151,7 +1151,7 @@ export default function PhotoStudio({
                       </fieldset>
                       <Field
                         label="Plate"
-                        hint="Match the style lets us choose serving ware that suits the scene. Your food and portion stay the same."
+                        hint="Match the style chooses a plate that suits the scene. Drinks keep their original glass and visible branding. Your portion stays the same."
                       >
                         <select
                           value={b.plate}

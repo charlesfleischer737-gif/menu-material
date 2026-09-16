@@ -1,6 +1,6 @@
 import { photoStyles, type PhotoStyle } from "./photo-styles";
 export { photoStyles, styleCategories } from "./photo-styles";
-export const PIPELINE_VERSION = "studio-2026-09-15-flare-v4";
+export const PIPELINE_VERSION = "studio-2026-09-15-flare-v5";
 const legacyLooks = [
   {
     id: "keep",

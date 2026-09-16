@@ -79,13 +79,49 @@ const controlledPrompt = imagePrompt(
 );
 assert.match(
   controlledPrompt,
-  /Replace the original plate with a simple white/,
+  /replace the original plate with a simple white/,
 );
 assert.match(controlledPrompt, /requested overhead camera angle/);
 assert.match(controlledPrompt, /chosen "Warm wood" surface/);
 assert.match(controlledPrompt, /chosen "Soft daylight" lighting/);
 assert.match(controlledPrompt, /Requested adjustment: "Remove the napkin"/);
 assert(!controlledPrompt.includes("Keep the original plate"));
+const drinkPrompt = imagePrompt(
+  {
+    ...promptDetails,
+    name: "Guinness",
+    description: "Dark stout with a creamy head in its branded pint glass",
+    style: { photoStyle: "Amber light, walnut bar and a dark background" },
+  },
+  "Restore the logo from my original photo",
+);
+assert.match(drinkPrompt, /preserve the exact original glass/);
+assert.match(drinkPrompt, /existing visible logos, brand marks/);
+assert.match(drinkPrompt, /foam or head shape and thickness/);
+assert.match(drinkPrompt, /restore those details from the original upload/);
+assert.match(
+  drinkPrompt,
+  /fully rebuilding the background, tabletop and lighting/,
+);
+assert.match(
+  drinkPrompt,
+  /Without an original drink photo, do not invent a brand logo/,
+);
+assert.doesNotMatch(
+  drinkPrompt,
+  /watermarks, logos or/,
+  "The finish instructions must not ban existing product logos",
+);
+assert.doesNotMatch(
+  drinkPrompt,
+  /plate, bowl, board or glass/,
+  "Matching a style must not authorize replacing drink glassware",
+);
+assert.match(
+  controlledPrompt,
+  /drink-identity rule overrides any plate control/,
+  "White-plate overrides apply to food, not a branded drink",
+);
 assert.deepEqual(
   photoAnalysisRecommendation({ ...automatic, step: 2 }, "Drinks"),
   {},
@@ -324,6 +360,11 @@ try {
   assert.equal(requests[0].tools[0].action, "edit");
   assert(
     requests[0].input[0].content[0].text.includes("Keep the original plate"),
+  );
+  assert.match(
+    requests[0].input[0].content[0].text,
+    /Retain its existing visible logos/,
+    "Drink identity protection reaches the provider even for legacy requests",
   );
   const result = await one("SELECT * FROM outputs WHERE job_id=?", a.id);
   const storedImage = await one(

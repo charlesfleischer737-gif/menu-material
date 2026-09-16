@@ -24,6 +24,10 @@ for (const style of photoStyles) {
     { style: { primary: "#235b48", accent: "#eeeeee", referenceIds: [] } },
   );
   assert.equal(configured.photoStyle, style.prompt);
+  if (["bar", "beverage"].includes(style.category)) {
+    assert.match(configured.photoStyle, /original (glass|cup|vessel)/);
+    assert.match(configured.photoStyle, /visible branding/);
+  }
   assert(
     configured.photoStyle.length <= 300,
     "Preset exceeds live generation schema: " + style.id,

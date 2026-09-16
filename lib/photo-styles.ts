@@ -273,7 +273,7 @@ export const photoStyles: PhotoStyle[] = [
     bestFor: "Whiskey cocktails and dark spirits",
     traits: ["Amber rim light", "Polished walnut", "Charcoal shadows"],
     prompt:
-      "Polished dark walnut bar, refined clear glassware appropriate to the drink, amber side and rim light, charcoal background. Luxurious intimate speakeasy mood. Preserve drink volume, ice, garnish and ingredients. No added drink or smoke.",
+      "Polished dark walnut bar, amber side and rim light, charcoal background. Luxurious intimate speakeasy mood. Keep the original glass and visible branding, drink volume, foam, ice and garnish. Relight the same drink in this new setting. No added drink or smoke.",
     image: "/studio/styles/bar-speakeasy.webp",
     angle: "keep",
   },
@@ -288,7 +288,7 @@ export const photoStyles: PhotoStyle[] = [
     bestFor: "Martinis, coupes and signature cocktails",
     traits: ["Cool rim light", "Dark stone", "Emerald velvet blur"],
     prompt:
-      "Dark stone bar with softly blurred deep emerald velvet lounge. Elegant clear glassware suited to the drink, cool precise rim light and restrained warm ambient glow. Preserve contents, drink volume, ice and garnish. No extra glasses or props.",
+      "Dark stone bar with softly blurred deep emerald velvet lounge, cool precise rim light and restrained warm ambient glow. Keep the original glass and visible branding, contents, drink volume, foam, ice and garnish. No extra glasses or props.",
     image: "/studio/styles/bar-velvet.webp",
     angle: "keep",
   },
@@ -303,7 +303,7 @@ export const photoStyles: PhotoStyle[] = [
     bestFor: "Colorful cocktails and evening announcements",
     traits: ["Cool ambient light", "Cobalt bar", "Warm highlights"],
     prompt:
-      "Midnight cobalt-blue bar, contemporary clear glassware suited to the drink, cool ambient light, precise warm highlights and distant soft bokeh. Vivid realistic color and visible drink detail. Preserve contents, drink volume, ice and garnish. No neon text.",
+      "Midnight cobalt-blue bar, cool ambient light, precise warm highlights and distant soft bokeh. Vivid realistic color and visible drink detail. Keep the original glass and visible branding, contents, drink volume, foam, ice and garnish. No added neon text.",
     image: "/studio/styles/bar-bluehour.webp",
     angle: "keep",
   },
@@ -322,7 +322,7 @@ export const photoStyles: PhotoStyle[] = [
       "Shallow background depth",
     ],
     prompt:
-      "Intimate wine bar in burgundy and chocolate tones, warm neutral stoneware for food or fine glassware for drinks, candlelike sidelight and shallow background depth. Preserve the serving and food arrangement. Keep textures visible. No added pairings or props.",
+      "Intimate wine bar in burgundy and chocolate tones, candlelike sidelight and shallow background depth. Warm neutral stoneware for food; keep the original glass and visible branding for drinks. Preserve the serving, foam, garnish and food arrangement. No added pairings or props.",
     image: "/studio/styles/bar-candle.webp",
     angle: "keep",
   },
@@ -337,7 +337,7 @@ export const photoStyles: PhotoStyle[] = [
     bestFor: "Iced coffee, lattes and café drinks",
     traits: ["Morning window light", "Warm café table", "Clear glass detail"],
     prompt:
-      "Warm café tabletop, refined café serving ware appropriate to the drink, soft morning window light and restrained background blur. Authentic liquid texture and clear highlights without glare. Preserve drink volume, layers, foam, ice and garnish.",
+      "Warm café tabletop, soft morning window light and restrained background blur. Authentic liquid texture and clear highlights without glare. Keep the original cup or glass and visible branding, drink volume, layers, foam, ice and garnish.",
     image: "/studio/styles/beverage-cafe.webp",
     angle: "keep",
   },
@@ -352,7 +352,7 @@ export const photoStyles: PhotoStyle[] = [
     bestFor: "Fresh juice, smoothies and summer drinks",
     traits: ["Clean sunshine", "Pale terracotta", "Fresh natural color"],
     prompt:
-      "Sunny pale terracotta tabletop, simple clear glassware suited to the drink, clean directional daylight and fresh natural color. Luminous beverage photography without artificial saturation. Preserve drink amount, ice and garnish. Do not add fruit or ingredients.",
+      "Sunny pale terracotta tabletop, clean directional daylight and fresh natural color. Luminous beverage photography without artificial saturation. Keep the original glass and visible branding, drink amount, foam, ice and garnish. Do not add fruit or ingredients.",
     image: "/studio/styles/beverage-citrus.webp",
     angle: "keep",
   },
@@ -367,7 +367,7 @@ export const photoStyles: PhotoStyle[] = [
     bestFor: "Matcha, milk teas and specialty drinks",
     traits: ["Soft studio sidelight", "Pale green matte", "Delicate shadows"],
     prompt:
-      "Contemporary pale-green matte studio backdrop, minimal serving ware suited to the drink, soft clean sidelight, delicate grounded shadow and rich true drink color. Preserve drink volume, liquid layers, ice and garnish. No additional ingredients or lettering.",
+      "Contemporary pale-green matte studio backdrop, soft clean sidelight, delicate grounded shadow and rich true drink color. Keep the original vessel and visible branding, drink volume, layers, foam, ice and garnish. No additional ingredients or lettering.",
     image: "/studio/styles/beverage-matcha.webp",
     angle: "keep",
   },
@@ -382,7 +382,7 @@ export const photoStyles: PhotoStyle[] = [
     bestFor: "Iced teas, spritzes and clear cold drinks",
     traits: ["Luminous backlight", "Cool pale stone", "Controlled highlights"],
     prompt:
-      "Cool pale stone, clean transparent glassware suited to the drink and luminous controlled backlighting. Authentic translucency and ice with crisp glass edges, avoiding blown highlights. Preserve liquid amount, layers, ice and garnish. No new ingredients.",
+      "Cool pale stone and luminous controlled backlighting. Authentic translucency and ice with crisp glass edges; avoid blown highlights over branding. Keep the original vessel and visible branding, liquid amount, layers, foam, ice and garnish. No new ingredients.",
     image: "/studio/styles/beverage-backlit.webp",
     angle: "keep",
   },
