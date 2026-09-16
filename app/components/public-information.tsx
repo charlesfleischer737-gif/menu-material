@@ -24,7 +24,7 @@ export default function PublicInformation({
         </Link>
       </header>
       <main id="main" className="pw-information">
-        <p className="pw-eyebrow">Plateworthy · Early access</p>
+        <p className="pw-eyebrow">Plateworthy</p>
         <h1>{title}</h1>
         <p className="pw-information-intro">{intro}</p>
         {children}
@@ -32,7 +32,7 @@ export default function PublicInformation({
       <footer className="pw-footer">
         <Link href="/">Plateworthy</Link>
         <nav className="pw-footer-links" aria-label="Help and information">
-          <a href="/pilot">The free pilot</a>
+          <a href="/pricing">Plans & pricing</a>
           <a href="/privacy">Photo privacy</a>
           <a href="/guidelines">Usage guidelines</a>
         </nav>

@@ -33,13 +33,11 @@ export default function Auth({
     [restaurant, setRestaurant] = useState(""),
     [error, setError] = useState(""),
     [busy, setBusy] = useState(false),
-    [requested, setRequested] = useState(false),
     [website, setWebsite] = useState(""),
     [resetting, setResetting] = useState(false);
   useEffect(() => {
     if (open && !new URLSearchParams(location.search).get("invite")) {
-      setMode(initialMode === "signup" ? "request" : "login");
-      setRequested(false);
+      setMode(initialMode);
       setError("");
     }
   }, [open, initialMode]);
@@ -55,19 +53,23 @@ export default function Auth({
   }, [setOpen]);
   async function submit(e: React.FormEvent) {
     e.preventDefault();
+    if (busy) return;
     setBusy(true);
     setError("");
     try {
-      if (mode === "request") {
-        await api("access-requests", { email, restaurant, website });
-        setRequested(true);
-        return;
-      }
-      await api("auth/" + mode, { email, password, invite, restaurant });
+      await api("auth/" + mode, {
+        email,
+        password,
+        invite,
+        restaurant,
+        website,
+      });
       await onDone();
       setOpen(false);
-      history.replaceState({}, "", location.pathname);
+      history.replaceState({}, "", location.pathname + location.hash);
       setPassword("");
+      setInvite("");
+      setResetting(false);
     } catch (e) {
       setError((e as Error).message);
     } finally {
@@ -75,50 +77,50 @@ export default function Auth({
     }
   }
   return (
-    <Dialog open={open} onOpenChange={setOpen}>
+    <Dialog
+      open={open}
+      onOpenChange={(v) => {
+        if (!busy) setOpen(v);
+      }}
+    >
       <DialogContent className="auth-dialog">
         <Brand />
         <DialogHeader>
           <DialogTitle>
             {mode === "login"
               ? "Welcome back."
-              : mode === "request"
-                ? "Request early access."
-                : resetting
-                  ? "Choose a new password."
-                  : "Let’s make your food stand out."}
+              : resetting
+                ? "Choose a new password."
+                : "Your first 5 images are on us."}
           </DialogTitle>
           <DialogDescription>
             {mode === "login"
               ? "Sign in to your restaurant workspace."
-              : mode === "request"
-                ? "Join the free restaurant pilot. Places are limited; requesting access does not create an account or guarantee a place."
-                : resetting
-                  ? "Use your secure reset invitation to restore access. Your previous sign-ins will be closed."
-                  : "Use your invitation to join the free pilot. Your included image allowance is shown in your workspace. No credit card needed."}
+              : resetting
+                ? "Restore access with your secure reset link. Your previous sign-ins will be closed."
+                : "Create your free account to generate your image. Your photo and selected look stay ready. No credit card needed."}
           </DialogDescription>
         </DialogHeader>
-        <Tabs
-          value={mode}
-          onValueChange={(value) => {
-            setMode(value);
-            setError("");
-            setRequested(false);
-          }}
-        >
-          <TabsList className="mode-tabs">
-            <TabsTrigger value="login">Sign in</TabsTrigger>
-            <TabsTrigger value="request">Request access</TabsTrigger>
-            <TabsTrigger value="signup">Use invitation</TabsTrigger>
-          </TabsList>
-        </Tabs>
+        {!resetting && (
+          <Tabs
+            value={mode}
+            onValueChange={(value) => {
+              setMode(value);
+              setError("");
+            }}
+          >
+            <TabsList className="mode-tabs">
+              <TabsTrigger value="signup">Create account</TabsTrigger>
+              <TabsTrigger value="login">Sign in</TabsTrigger>
+            </TabsList>
+          </Tabs>
+        )}
         {ownerSetup && !invite && (
           <Button
             variant="outline"
             disabled={busy}
             onClick={async () => {
               setBusy(true);
-              setError("");
               try {
                 const d = await api("auth/owner-invite", {});
                 setInvite(d.invite);
@@ -131,110 +133,94 @@ export default function Auth({
               }
             }}
           >
-            Set up your pilot administrator account
+            Set up your administrator account
           </Button>
         )}
-        {requested ? (
-          <div className="pw-access-success" role="status">
-            <h2>Your request is saved.</h2>
-            <p>
-              You’re on our early-access list. Invitations are reviewed manually
-              as places become available. No confirmation email has been sent.
-            </p>
-            <Button onClick={() => setOpen(false)}>Done</Button>
-          </div>
-        ) : (
-          <form onSubmit={submit}>
-            {(mode === "request" || (mode === "signup" && !resetting)) && (
-              <>
-                <label className="field">
-                  Restaurant name
-                  <input
-                    required
-                    value={restaurant}
-                    onChange={(e) => setRestaurant(e.target.value)}
-                    autoComplete="organization"
-                  />
-                </label>
-                {mode === "signup" && (
-                  <label className="field">
-                    Invitation code
-                    <input
-                      required
-                      value={invite}
-                      onChange={(e) => setInvite(e.target.value)}
-                      autoComplete="off"
-                    />
-                  </label>
-                )}
-              </>
-            )}
+        <form onSubmit={submit}>
+          {mode === "signup" && !resetting && (
             <label className="field">
-              Email address
+              Restaurant name <small>Optional—you can add it later.</small>
               <input
-                required
-                type="email"
-                value={email}
-                onChange={(e) => setEmail(e.target.value)}
-                autoComplete="email"
+                maxLength={100}
+                value={restaurant}
+                onChange={(e) => setRestaurant(e.target.value)}
+                autoComplete="organization"
               />
             </label>
-            {mode !== "request" && (
-              <label className="field">
-                Password
-                {mode === "signup" && <small>At least 12 characters.</small>}
-                <input
-                  required
-                  minLength={mode === "signup" ? 12 : 1}
-                  maxLength={128}
-                  type="password"
-                  value={password}
-                  onChange={(e) => setPassword(e.target.value)}
-                  autoComplete={
-                    mode === "signup" ? "new-password" : "current-password"
-                  }
-                />
-              </label>
-            )}
-            {mode === "request" && (
-              <label className="pw-honeypot" aria-hidden="true">
-                Website
-                <input
-                  value={website}
-                  onChange={(e) => setWebsite(e.target.value)}
-                  tabIndex={-1}
-                  autoComplete="off"
-                />
-              </label>
-            )}
-            {error && (
-              <p className="error" role="alert">
-                {error}
-              </p>
-            )}
-            <Button className="wide mt-5" disabled={busy}>
-              {busy
-                ? mode === "request"
-                  ? "Saving your request…"
-                  : "Opening your workspace…"
-                : mode === "login"
-                  ? "Sign in"
-                  : mode === "request"
-                    ? "Request free pilot access"
-                    : resetting
-                      ? "Save new password"
-                      : "Create my free account"}
-            </Button>
-          </form>
+          )}
+          <label className="field">
+            Email address
+            <input
+              required
+              type="email"
+              maxLength={254}
+              value={email}
+              onChange={(e) => setEmail(e.target.value)}
+              autoComplete="email"
+            />
+          </label>
+          <label className="field">
+            {resetting ? "New password" : "Password"}
+            {mode === "signup" && <small>At least 12 characters.</small>}
+            <input
+              required
+              minLength={mode === "signup" ? 12 : 1}
+              maxLength={128}
+              type="password"
+              value={password}
+              onChange={(e) => setPassword(e.target.value)}
+              autoComplete={
+                mode === "signup" ? "new-password" : "current-password"
+              }
+            />
+          </label>
+          <label className="pw-honeypot" aria-hidden="true">
+            Website
+            <input
+              value={website}
+              onChange={(e) => setWebsite(e.target.value)}
+              tabIndex={-1}
+              autoComplete="off"
+            />
+          </label>
+          {error && (
+            <p className="error" role="alert">
+              {error}
+            </p>
+          )}
+          <Button className="wide mt-5" disabled={busy}>
+            {busy
+              ? "Opening your workspace…"
+              : mode === "login"
+                ? "Sign in"
+                : resetting
+                  ? "Save new password"
+                  : "Create free account & continue"}
+          </Button>
+        </form>
+        {mode === "signup" && !resetting && (
+          <p className="fine">
+            5 free image generations, once per account. Pro: $9.99/month for 100
+            generations per month.{" "}
+            <a href="/pricing" target="_blank" rel="noreferrer">
+              See plans
+            </a>
+            .
+          </p>
         )}
         <p className="fine">
-          <a href="/pilot">What’s included</a> ·{" "}
-          <a href="/privacy">Photo & account privacy</a>
+          <a href="/privacy" target="_blank" rel="noreferrer">
+            Photo & account privacy
+          </a>{" "}
+          ·{" "}
+          <a href="/guidelines" target="_blank" rel="noreferrer">
+            Usage guidelines
+          </a>
         </p>
         {mode === "login" && (
           <p className="fine">
-            Forgot your password? Your pilot coordinator can give you a secure
-            reset invitation.
+            Automated password-reset emails are not available yet. If you have
+            an administrator contact, request a secure reset link.
           </p>
         )}
         {local && (
@@ -254,7 +240,7 @@ export default function Auth({
               }
             }}
           >
-            Open local pilot workspace
+            Open local workspace
           </Button>
         )}
       </DialogContent>

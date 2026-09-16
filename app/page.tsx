@@ -10,6 +10,8 @@ import {
 import Auth from "./components/auth";
 import Landing from "./components/plateworthy-landing";
 import { api, type Row } from "@/lib/client";
+const GuestStudio = lazy(() => import("./components/guest-studio"));
+const PlanDialog = lazy(() => import("./components/plan-dialog"));
 const CoreWorkspace = lazy(() => import("./components/core-workspace"));
 const SettingsPanel = lazy(() =>
   import("./components/account-panels").then((m) => ({
@@ -32,6 +34,8 @@ export default function Home() {
     [auth, setAuth] = useState(false),
     [authMode, setAuthMode] = useState<"login" | "signup">("login"),
     [settings, setSettings] = useState(false),
+    [guest, setGuest] = useState(false),
+    [plans, setPlans] = useState(false),
     [busy, setBusy] = useState(""),
     [error, setError] = useState("");
   const actionBusy = useRef(false),
@@ -49,6 +53,25 @@ export default function Home() {
   }, [refresh]);
   useEffect(() => {
     if (state.user?.id) void api("events", { kind: "visit" }).catch(() => {});
+  }, [state.user?.id]);
+  useEffect(() => {
+    if (loaded && !state.user && location.hash === "#studio") setGuest(true);
+    if (loaded && new URLSearchParams(location.search).has("upgrade")) {
+      if (state.user) setPlans(true);
+      else {
+        setAuthMode("signup");
+        setAuth(true);
+      }
+    }
+  }, [loaded, state.user]);
+  useEffect(() => {
+    const open = () => setPlans(true);
+    window.addEventListener("plateworthy:plans", open);
+    return () => window.removeEventListener("plateworthy:plans", open);
+  }, []);
+  useEffect(() => {
+    if (state.user && new URLSearchParams(location.search).has("billing"))
+      setPlans(true);
   }, [state.user?.id]);
   useEffect(() => {
     if (!state.user) return;
@@ -88,12 +111,40 @@ export default function Home() {
   }
   return (
     <>
-      {!state.user ? (
+      {guest ? (
+        <Suspense
+          fallback={
+            <p className="cx-feedback" role="status">
+              Opening Photo Studio…
+            </p>
+          }
+        >
+          <GuestStudio
+            state={state}
+            onBack={() => {
+              setGuest(false);
+              history.replaceState(null, "", "/");
+            }}
+            onSignIn={() => {
+              setAuthMode("login");
+              setAuth(true);
+            }}
+            onSignup={() => {
+              setAuthMode("signup");
+              setAuth(true);
+            }}
+            onFinish={async () => {
+              await refresh();
+              setGuest(false);
+            }}
+          />
+        </Suspense>
+      ) : !state.user ? (
         <Landing
           signedIn={!!state.user}
           onStart={() => {
-            setAuthMode("signup");
-            setAuth(true);
+            setGuest(true);
+            history.pushState(null, "", "/#studio");
           }}
           onSignIn={() => {
             setAuthMode("login");
@@ -113,6 +164,7 @@ export default function Home() {
             refresh={refresh}
             key={`${state.user.id}:${state.restaurant.id}`}
             onSettings={() => setSettings(true)}
+            onPlans={() => setPlans(true)}
             onLogout={() =>
               act("Signing out", async () => {
                 await api("auth/logout", {});
@@ -154,9 +206,21 @@ export default function Home() {
         ownerSetup={!!state.ownerSetup}
         initialMode={authMode}
         onDone={async () => {
+          if (new URLSearchParams(location.search).has("upgrade"))
+            setPlans(true);
           await refresh();
         }}
       />
+      {plans && state.user && (
+        <Suspense fallback={<p role="status">Opening your plan…</p>}>
+          <PlanDialog
+            open={plans}
+            close={() => setPlans(false)}
+            state={state}
+            refresh={refresh}
+          />
+        </Suspense>
+      )}
       {settings && (
         <Suspense fallback={<p role="status">Opening settings…</p>}>
           <SettingsPanel

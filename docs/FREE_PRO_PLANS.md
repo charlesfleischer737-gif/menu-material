@@ -1,0 +1,27 @@
+# Free and Pro plans
+
+This replaces the early-access pilot model. Public visitors can open Photo Studio, choose a look and prepare an original photo without an account. Generate image opens signup. After signup (or signing in), the prepared photo and settings transfer to the private workspace and the same generation request continues. A cancelled signup keeps the preparation in the current tab. Photos are held in memory until authenticated; closing/reloading the tab before saving discards them. Originals are uploaded unchanged after authentication; image model, quality, compression and export settings are unchanged.
+
+New public accounts receive **five image generations once**, with no expiry and no card requirement. Signup cannot choose a role or allowance. Existing granted allowances and secure invitations/reset links are retained. There is no ten-restaurant limit. The database's legacy restaurant default remains unchanged to avoid rebuilding a populated table; public signup always explicitly sets five. Existing photos and outputs retain their original allowance accounting.
+
+**Pro is $9.99 USD/month for 100 generations per paid monthly billing period.** Unused monthly generations do not roll over. Billing is inactive until Stripe is connected and explicitly enabled. The public pricing page and plan dialog show Pro as coming soon while inactive; checkout never simulates a successful purchase. Free accounts work immediately. Email delivery remains deferred at the owner's request.
+
+## Stripe activation
+
+1. In the intended Stripe account, create the Plateworthy Pro product and a recurring price: USD 9.99, interval month, quantity one, no trial. Configure the customer portal to update payment methods, view invoices and cancel at period end; disable product switches, quantity changes and prorated plan changes for this single-plan integration.
+2. Set these secrets/configuration values through Sites runtime settings (never in source or conversation): `STRIPE_SECRET_KEY`, `STRIPE_WEBHOOK_SECRET`, `STRIPE_PRO_PRICE_ID`. Keep `STRIPE_BILLING_ENABLED=false` until the test flow has been verified. `APP_ORIGIN` must be the canonical HTTPS site origin.
+3. Configure a Stripe webhook at `https://dishlight-studio.cflash7.chatgpt.site/api/billing/webhook`, using API version `2025-06-30.basil`. Subscribe to `checkout.session.completed`, `checkout.session.async_payment_succeeded`, `invoice.paid`, `invoice.payment_failed`, `customer.subscription.created`, `customer.subscription.updated`, and `customer.subscription.deleted`.
+4. In an isolated test environment, enable billing with test keys and verify checkout, the customer portal, cancellation at period end, a successful renewal, a failed renewal, retrying a payment, and signed webhook redelivery. Then set the matching live keys, live price and live webhook secret on production and set `STRIPE_BILLING_ENABLED=true`. Never mix test customers and live credentials in one database.
+5. Monitor Stripe webhook delivery and reconcile any failures. Users can refresh payment status from their plan dialog; checkout-return URLs themselves grant no credits.
+
+The server checks that the configured price is exactly USD 999 cents per month. Checkout requires authentication and ignores client-supplied prices/customer IDs. Per-account leases and persisted idempotency keys prevent duplicate checkout creation. Repeated clicks reuse an open session. Canonical Stripe subscriptions are fetched on signed events and account refresh, so reordered event payloads cannot restore an old plan. Grants require a matching paid invoice, the exact price and period, and the authenticated restaurant's customer/subscription relationship. Customer-specific IDs are never accepted from the browser.
+
+Each grant has a unique subscription/period key and invoice ID. Duplicated events cannot refill credits. Every output records its allowance period. New jobs atomically reserve against the active allowance; failed images refund their own original period. Explicit retries reserve the current allowance, even for failures from an earlier month. Unpaid renewals do not grant a new month. Cancellation at period end retains the paid period; immediate cancellation stops Pro entitlement. Existing free credits remain separately available after Pro ends. Saved work is never deleted when a subscription ends.
+
+## Validation
+
+`tests/plans.mjs` covers open signup, server-enforced free allowances, concurrent quota reservations, inactive/mispriced checkout, signature expiry/tampering, checkout reuse, confirmed payment grants, duplicate and out-of-order events, renewal failures and recovery, cancellation/resubscription, old-period failures/retries, tenant separation, and the guest-to-account handoff after a lost job response. Stripe and AI are isolated fixtures; these tests do not charge anyone or prove live Stripe configuration. The existing creation, export and launch suites remain applicable.
+
+Email verification and automated password recovery still require the deferred email service. Existing signup/IP limits and AI spending controls remain active. Closed-browser processing still requires the previously supplied always-on runner; this subscription change does not activate that service.
+
+Official implementation references: [Stripe Checkout subscriptions](https://docs.stripe.com/payments/checkout/build-subscriptions), [subscription webhooks](https://docs.stripe.com/billing/subscriptions/webhooks), [signature verification](https://docs.stripe.com/webhooks/signature).

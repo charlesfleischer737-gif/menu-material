@@ -1,6 +1,8 @@
-# Plateworthy restaurant promotion pilot
+# Plateworthy food photography and promotion
 
 Plateworthy is the existing branding in this codebase (the expansion brief calls the product Plated). It is a free, invitation-only restaurant promotion workspace, capped at 10 restaurant workspaces including outstanding invitations. It includes saved restaurant styles, a dish library, coordinated special and offer packages, private uploads, image versions, approvals, captions, menu imports, batch recovery, staff photo links, weekly suggestions, and engagement measurement.
+
+Visitors can prepare a photo before signing up; Generate image opens account creation with five free generations. Pro is $9.99/month for 100 generations per paid billing period. Stripe activation is deferred; see [Free and Pro plans](docs/FREE_PRO_PLANS.md) for the flow, credit rules and setup.
 
 Start in **Photo Studio**, **Menu Builder**, or **Post Maker**, with **My Dishes** as the shared library. Photo Studio opens as one style-first page: browse 56 styles across seven categories, select a look, upload a photo, adjust settings and create. Image-based recommendations appear only after confident analysis of that upload; drinks receive drink examples. Fine-tuning, framing, references and immediate quick edits remain available. New users open directly in Photo Studio. Returning users reopen their last workspace on this browser, with the latest useful saved draft as the fallback on another device. Each creation tool includes saved-work access; Post Maker offers ten Instagram designs across four stages. Earlier promotion campaigns and pilot tools remain under **More tools**. See [the core experience guide](docs/CORE_EXPERIENCE.md) for the flow, validation and connection status, and [the expansion guide](docs/PROMOTION_EXPANSION.md) for retained pilot tools.
 
@@ -14,7 +16,7 @@ cp .env.example .env
 npm run dev
 ```
 
-Open the local URL printed by the server. Select **Sign in → Open local pilot workspace** for a local administrator workspace. This shortcut is available only through the local Vite runtime adapter; it is not included in the production storage adapter. It creates an empty development restaurant and does not seed fictional customer data or AI results.
+Open the local URL printed by the server. Select **Sign in → Open local workspace** for a local administrator workspace. This shortcut is available only through the local Vite runtime adapter; it is not included in the production storage adapter. It creates an empty development restaurant and does not seed fictional customer data or AI results.
 
 Local records and uploads live in `.local-data/`, which is excluded from Git. Restarting the app retains them. Generated migrations in `drizzle/` apply automatically to the local database. Set `DISHLIGHT_DATA_DIR` to use a separate local data directory. Back up the SQLite database and objects together.
 
@@ -47,9 +49,9 @@ The browser also advances jobs while the workspace is open. Once submitted, Open
 
 Each new core request atomically reserves one image unit by default (legacy explicit two-output requests remain supported) using the output records themselves as the allowance ledger. Failed outputs stop counting against allowance; completed outputs keep counting even if the owner deletes them. Revisions create new jobs. Idempotency keys deduplicate repeated requests, including concurrent submissions. Per-output leases prevent duplicate dispatch. Transient retrieval failures retry using the stored provider ID. Ambiguous submissions are never automatically reissued; after 30 minutes their reservations are restored and their unknown provider costs remain a reconciliation item.
 
-## Pilot administration
+## Administration
 
-For this private hosted review, the Site owner can select **Sign in → Set up your pilot administrator account**, then choose a restaurant name and password. The one-time bootstrap checks the Sites-authenticated email against `BOOTSTRAP_OWNER_EMAIL` on the server. It becomes unavailable after an administrator exists.
+For this private hosted review, the Site owner can select **Sign in → Set up your administrator account**, then choose a restaurant name and password. The one-time bootstrap checks the Sites-authenticated email against `BOOTSTRAP_OWNER_EMAIL` on the server. It becomes unavailable after an administrator exists.
 
 For alternative hosted setup, configure a random `ADMIN_SETUP_KEY` as a server secret, then create the first administrator invitation:
 
@@ -60,7 +62,7 @@ ADMIN_SETUP_KEY='<server secret>' APP_ORIGIN='https://your-site.example' \
 
 The command prints a private one-use invitation. Open it, choose a password, and name your restaurant. Remove `ADMIN_SETUP_KEY` after creating the first admin. This command creates an invitation only; it does not send email.
 
-Pilot admin controls are at the bottom of the workspace. Administrators can create email-bound invitations, set total image allowances, pause generation, log support minutes, and issue one-use password-reset invitations. Invitations expire in seven days. Share them directly with the intended owner. Password resets revoke existing sessions. Passwords are salted with scrypt; sessions and invitation tokens are stored as hashes. Session cookies are HttpOnly, SameSite=Lax, and Secure on HTTPS.
+Administrator controls are at the bottom of the workspace. Administrators can create email-bound invitations, set total image allowances, pause generation, log support minutes, and issue one-use password-reset invitations. Invitations expire in seven days. Share them directly with the intended owner. Password resets revoke existing sessions. Passwords are salted with scrypt; sessions and invitation tokens are stored as hashes. Session cookies are HttpOnly, SameSite=Lax, and Secure on HTTPS.
 
 ## One restaurant look
 

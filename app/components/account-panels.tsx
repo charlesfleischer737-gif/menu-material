@@ -110,7 +110,7 @@ export function SettingsPanel({ open, close, state, act, refresh, busy }: any) {
 export function Admin({ act, refresh, busy }: any) {
   const [data, setData] = useState<Row | null>(null),
     [email, setEmail] = useState(""),
-    [allowance, setAllowance] = useState(20),
+    [allowance, setAllowance] = useState(5),
     [link, setLink] = useState(""),
     [reset, setReset] = useState(false),
     [loadError, setLoadError] = useState("");
@@ -121,8 +121,11 @@ export function Admin({ act, refresh, busy }: any) {
   return (
     <section className="admin-panel">
       <div className="section-toolbar">
-        <h2>Pilot administration</h2>
-        <Button variant="outline" onClick={() => act("Refreshing pilot", load)}>
+        <h2>Administration</h2>
+        <Button
+          variant="outline"
+          onClick={() => act("Refreshing administration", load)}
+        >
           Refresh
         </Button>
       </div>
@@ -135,60 +138,6 @@ export function Admin({ act, refresh, busy }: any) {
           busy={busy}
           load={load}
         />
-      )}
-      {data && (
-        <section className="cx-panel">
-          <h3>Early-access requests</h3>
-          <p>
-            Review requests here, then prepare an invitation to share directly.
-            Creating an invitation does not send an email.
-          </p>
-          {!data.requests.length && <p>No requests yet.</p>}
-          <div className="pw-access-list">
-            {data.requests.map((request: Row) => (
-              <div key={request.id}>
-                <div>
-                  <b>{request.restaurant}</b>
-                  <p>{request.email}</p>
-                  <small>
-                    {new Date(request.created_at).toLocaleDateString()} ·{" "}
-                    {request.status}
-                  </small>
-                </div>
-                <div className="cx-button-row">
-                  <Button
-                    variant="outline"
-                    disabled={!!busy}
-                    onClick={() => {
-                      setEmail(request.email);
-                      setReset(false);
-                      document.getElementById("admin-invite-email")?.focus();
-                    }}
-                  >
-                    Prepare invitation
-                  </Button>
-                  <Button
-                    variant="outline"
-                    disabled={!!busy}
-                    onClick={() =>
-                      act("Updating request", async () => {
-                        await api("admin/access-request", {
-                          id: request.id,
-                          status: request.status === "new" ? "reviewed" : "new",
-                        });
-                        await load();
-                      })
-                    }
-                  >
-                    {request.status === "new"
-                      ? "Mark reviewed"
-                      : "Reopen request"}
-                  </Button>
-                </div>
-              </div>
-            ))}
-          </div>
-        </section>
       )}
       <div className="admin-invite">
         <label className="field">

@@ -8,7 +8,7 @@ export default function Guidelines() {
   return (
     <PublicInformation
       title="Make work you can stand behind."
-      intro="Practical guidelines for using Plateworthy’s restaurant pilot."
+      intro="Practical guidelines for using Plateworthy."
     >
       <section>
         <h2>Use photos you have permission to use</h2>
@@ -20,7 +20,7 @@ export default function Guidelines() {
         </p>
         <p>
           The examples on the homepage demonstrate the product. Their stated
-          licenses still apply; requesting access does not grant a separate
+          licenses still apply; creating an account does not grant a separate
           license to use those example images in your restaurant’s marketing.
         </p>
       </section>
@@ -56,10 +56,10 @@ export default function Guidelines() {
           limits or submit harmful or unlawful material.
         </p>
         <p>
-          The pilot has limited capacity and may pause AI creation while limits
-          or service issues are addressed. Keep downloaded copies of work your
-          restaurant relies on. See <a href="/pilot">the pilot details</a> for
-          current help and account-access options.
+          AI creation may pause while usage limits or service issues are
+          addressed. Keep downloaded copies of work your restaurant relies on.
+          See <a href="/pricing">plans and account information</a> for current
+          help and account-access options.
         </p>
       </section>
     </PublicInformation>

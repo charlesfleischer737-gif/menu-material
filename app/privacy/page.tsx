@@ -2,21 +2,23 @@ import PublicInformation from "../components/public-information";
 export const metadata = {
   title: "Photo & account privacy · Plateworthy",
   description:
-    "How the Plateworthy pilot handles private photos, drafts, public menus and AI processing.",
+    "How the Plateworthy handles private photos, drafts, public menus and AI processing.",
 };
 export default function Privacy() {
   return (
     <PublicInformation
       title="Your photos, drafts and public menu."
-      intro="This page explains the pilot’s current data handling. Updated September 16, 2026."
+      intro="This page explains Plateworthy’s current data handling. Updated September 16, 2026."
     >
       <section>
-        <h2>Information used by the pilot</h2>
+        <h2>Information used by Plateworthy</h2>
         <p>
           Plateworthy stores your account email, protected password record,
           restaurant details, uploaded photos, menu files, drafts, generated
-          images and usage records. An early-access request stores your email
-          and restaurant name for manual invitation review.
+          images and usage records. Photos chosen before signup stay in the
+          current browser tab until you create an account or sign in and
+          generate. Closing that tab discards photos that have not been saved to
+          an account.
         </p>
         <p>
           Usage records include creation status, approvals, exports and support
@@ -63,13 +65,22 @@ export default function Privacy() {
         </p>
       </section>
       <section>
+        <h2>Payments</h2>
+        <p>
+          When subscriptions are available, Stripe handles checkout and billing.
+          Plateworthy stores customer and subscription identifiers, subscription
+          status, paid billing periods and image usage. Payment-card details are
+          entered on Stripe’s hosted pages and are not stored by Plateworthy.
+        </p>
+      </section>
+      <section>
         <h2>Saving and retention</h2>
         <p>
           Photos and drafts are retained to let you return to your work.
           Archiving a draft hides it from the active list; it does not delete
           the draft or its photos. Account and workspace removal requests are
-          handled through your pilot coordinator. There is no automatic
-          account-deletion screen yet.
+          handled by an administrator. There is no automatic account-deletion
+          screen yet.
         </p>
         <p>
           The browser uses a sign-in cookie, workspace preferences, temporary
@@ -81,8 +92,8 @@ export default function Privacy() {
       <section>
         <h2>Questions or removal requests</h2>
         <p>
-          Use the contact supplied with your pilot invitation. A public support
-          email address will be added when that service is ready.
+          If you have an administrator contact, use it for privacy or account
+          removal requests. A public support email address is not available yet.
         </p>
       </section>
     </PublicInformation>

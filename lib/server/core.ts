@@ -184,9 +184,6 @@ export async function admin(req: Request) {
   return u!;
 }
 export async function remaining(restaurantId: string) {
-  const row = await one(
-    "SELECT allowance-(SELECT count(*) FROM outputs WHERE restaurant_id=r.id AND status NOT IN ('failed')) AS remaining FROM restaurants r WHERE id=?",
-    restaurantId,
-  );
-  return Math.max(0, Number(row?.remaining || 0));
+  const { imageEntitlement } = await import("./entitlements");
+  return (await imageEntitlement(restaurantId)).remaining;
 }

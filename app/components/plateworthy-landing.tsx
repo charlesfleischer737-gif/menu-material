@@ -32,14 +32,14 @@ export default function Landing({
         <nav aria-label="Main navigation">
           <a href="#use-cases">Use cases</a>
           <a href="#features">Features</a>
-          <a href="#how-it-works">How it works</a>
+          <a href="/pricing">Pricing</a>
           {!signedIn && (
             <button className="pw-login" onClick={onSignIn}>
               Log in
             </button>
           )}
           <Button className="pw-header-cta" onClick={onStart}>
-            {signedIn ? "My studio" : "Request early access"}
+            {signedIn ? "My studio" : "Try it free"}
           </Button>
         </nav>
       </header>
@@ -78,12 +78,10 @@ export default function Landing({
               No editing skills.
             </p>
             <Button onClick={onStart}>
-              {signedIn ? "Open my studio" : "Request early access"}
+              {signedIn ? "Open my studio" : "Try it free"}
               <ArrowRight size={17} />
             </Button>
-            <span className="pw-pilot-note">
-              Free pilot · No credit card · Limited places
-            </span>
+            <span className="pw-free-note">5 free images · No credit card</span>
           </div>
           <div className="pw-comparison" id="the-difference">
             <figure className="pw-before">
@@ -173,14 +171,14 @@ export default function Landing({
             </li>
           </ol>
         </section>
-        <section className="pw-pilot-facts" aria-labelledby="pilot-facts-title">
+        <section className="pw-plan-facts" aria-labelledby="plan-facts-title">
           <div>
-            <p className="pw-eyebrow">A small, hands-on pilot</p>
-            <h2 id="pilot-facts-title">Know what you’re joining.</h2>
+            <p className="pw-eyebrow">FREE TO START. MORE ROOM TO CREATE.</p>
+            <h2 id="plan-facts-title">5 free images. Then make it Pro.</h2>
             <p>
-              One restaurant workspace for your photos, menus and posts. Free
-              while you’re in the pilot, with a limited image allowance and no
-              credit card.
+              Start with 5 free image generations. Pro gives you 100 generations
+              a month for $9.99. The same full-quality photos and exports on
+              both plans.
             </p>
           </div>
           <div>
@@ -192,9 +190,8 @@ export default function Landing({
               <strong>Publish when you’re ready.</strong> Your drafts are
               private; you choose what appears on your public menu.
             </p>
-            <a href="/pilot">
-              See what’s included and how the pilot works{" "}
-              <ArrowRight size={16} />
+            <a href="/pricing">
+              Compare Free and Pro <ArrowRight size={16} />
             </a>
           </div>
         </section>
@@ -202,12 +199,12 @@ export default function Landing({
           <div>
             <h2>Start with one dish. See the difference.</h2>
             <p>
-              Join the free Plateworthy pilot and give your food the
-              presentation it deserves.
+              Choose your look, add your photo, and give your food the
+              presentation it deserves. Your first 5 images are free.
             </p>
           </div>
           <Button onClick={onStart}>
-            {signedIn ? "Open my studio" : "Request early access"}
+            {signedIn ? "Open my studio" : "Try it free"}
             <ArrowRight size={17} />
           </Button>
         </section>
@@ -217,7 +214,7 @@ export default function Landing({
           <Brand />
         </a>
         <nav className="pw-footer-links" aria-label="Help and information">
-          <a href="/pilot">The free pilot</a>
+          <a href="/pricing">Plans & pricing</a>
           <a href="/privacy">Photo privacy</a>
           <a href="/guidelines">Usage guidelines</a>
         </nav>

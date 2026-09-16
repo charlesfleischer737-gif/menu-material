@@ -1,4 +1,5 @@
 import type { Row } from "./core";
+import { entitlementSql } from "./entitlements";
 import { z } from "zod";
 import { PIPELINE_VERSION } from "../studio";
 import { styleSchema, validateStyle } from "./promotions";
@@ -21,7 +22,6 @@ import {
   id,
   now,
   one,
-  remaining,
   run,
 } from "./core";
 function imageSettings(
@@ -110,7 +110,7 @@ export async function enqueue(r: Row, input: Row) {
   assert(
     !r.paused,
     403,
-    "Image creation is paused. Contact your pilot coordinator.",
+    "Image creation is temporarily paused. Please try again later.",
   );
   assert(
     typeof input.requestKey === "string" &&
@@ -236,7 +236,7 @@ export async function enqueue(r: Row, input: Row) {
     await db().batch([
       db()
         .prepare(
-          "INSERT INTO jobs (id,restaurant_id,dish_id,request_key,fingerprint,prompt,details,input_method,source_id,parent_id,status,created_at) SELECT ?,?,?,?,?,?,?,?,?,?,'queued',? WHERE (SELECT allowance FROM restaurants WHERE id=? AND paused=0) - (SELECT count(*) FROM outputs WHERE restaurant_id=? AND status!='failed') >= ?",
+          `INSERT INTO jobs (id,restaurant_id,dish_id,request_key,fingerprint,prompt,details,input_method,source_id,parent_id,status,created_at,credit_period) SELECT ?,?,?,?,?,?,?,?,?,?,'queued',?,e.credit_period FROM (${entitlementSql}) e WHERE e.paused=0 AND e.allowance-(SELECT count(*) FROM outputs o WHERE o.restaurant_id=e.id AND o.credit_period=e.credit_period AND o.status!='failed') >= ?`,
         )
         .bind(
           jobId,
@@ -250,14 +250,15 @@ export async function enqueue(r: Row, input: Row) {
           source?.id ?? null,
           parent?.id ?? null,
           t,
-          r.id,
+          t,
+          t,
           r.id,
           count,
         ),
       ...Array.from({ length: count }, (_, i) => i).map((slot) =>
         db()
           .prepare(
-            "INSERT INTO outputs (id,job_id,restaurant_id,slot,status,attempts,lease_until,created_at) SELECT ?,?,?,?,'queued',0,0,? WHERE EXISTS (SELECT 1 FROM jobs WHERE id=?)",
+            "INSERT INTO outputs (id,job_id,restaurant_id,slot,status,attempts,lease_until,created_at,credit_period) SELECT ?,?,?,?,'queued',0,0,?,credit_period FROM jobs WHERE id=?",
           )
           .bind(id(), jobId, r.id, slot, t, jobId),
       ),
@@ -297,7 +298,7 @@ export async function enqueue(r: Row, input: Row) {
   assert(
     job,
     402,
-    `You need ${count} free image${count === 1 ? "" : "s"} remaining for this request. Ask your pilot coordinator for more.`,
+    `You need ${count} image${count === 1 ? "" : "s"} remaining for this request. Check your plan to upgrade or see when your allowance renews.`,
   );
   await event(r.id, "generation_requested", jobId, {
     method: source ? "photo" : "description",
@@ -580,7 +581,7 @@ export async function tick(restaurantId?: string) {
         // A lost response may still be running remotely. Never automatically bill a second attempt.
         if (now() - (o.submitted_at || o.created_at) > 30 * 60000)
           await run(
-            "UPDATE outputs SET status='failed',error='The provider response could not be recovered. Allowance restored; ask your coordinator to review provider costs.',lease_until=0 WHERE id=? AND lease_token=?",
+            "UPDATE outputs SET status='failed',error='The provider response could not be recovered. Allowance restored; please try again.',lease_until=0 WHERE id=? AND lease_token=?",
             o.id,
             lease,
           );

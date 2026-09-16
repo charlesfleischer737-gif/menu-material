@@ -38,12 +38,14 @@ export default function CoreWorkspace({
   state,
   refresh,
   onSettings,
+  onPlans,
   onLogout,
   adminContent,
 }: {
   state: Row;
   refresh: () => Promise<void>;
   onSettings: () => void;
+  onPlans: () => void;
   onLogout: () => void;
   adminContent: ReactNode;
 }) {
@@ -168,10 +170,17 @@ export default function CoreWorkspace({
             </summary>
             <div>
               <span>{state.remaining} images remaining</span>
+              <button onClick={onPlans}>
+                {state.billing?.plan === "pro"
+                  ? "Pro · Manage plan"
+                  : "Free · View plans"}
+              </button>
               <button onClick={onSettings}>Restaurant look & settings</button>
               <button onClick={() => navigate("tools")}>More tools</button>
               {state.user.role === "admin" && (
-                <button onClick={() => navigate("admin")}>Pilot admin</button>
+                <button onClick={() => navigate("admin")}>
+                  Administration
+                </button>
               )}
               <button onClick={onLogout}>Sign out</button>
             </div>
@@ -198,7 +207,16 @@ export default function CoreWorkspace({
           <div className="cx-pilot">
             <Sparkles size={17} />
             <b>{state.remaining} images remaining</b>
-            <small>Your free pilot allowance</small>
+            <small>
+              {state.billing?.plan === "pro"
+                ? "Pro · Monthly allowance"
+                : "Free · One-time allowance"}
+            </small>
+            <button className="cx-link" onClick={onPlans}>
+              {state.billing?.plan === "pro"
+                ? "Manage plan"
+                : "Get Pro · $9.99/month"}
+            </button>
           </div>
           <button onClick={onSettings}>
             <Settings size={18} />
@@ -211,7 +229,7 @@ export default function CoreWorkspace({
           {state.user.role === "admin" && (
             <button onClick={() => navigate("admin")}>
               <ShieldCheck size={18} />
-              Pilot admin
+              Administration
             </button>
           )}
           <button onClick={onLogout}>
@@ -278,7 +296,7 @@ export default function CoreWorkspace({
                 eyebrow="A LITTLE EXTRA HELP"
                 title="Keep your kitchen moving."
               >
-                Staff photos, imports, earlier campaigns and pilot activity.
+                Staff photos, imports, earlier campaigns and activity.
               </Heading>
               <button
                 className="cx-btn cx-secondary"

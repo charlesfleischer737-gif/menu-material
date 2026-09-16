@@ -563,7 +563,11 @@ export function StudioWorkbench({
               hidden
               disabled={!!busy}
               type="file"
-              accept="image/jpeg,image/png,image/heic,image/heif,application/pdf"
+              accept={
+                state.guest
+                  ? "image/jpeg,image/png,image/heic,image/heif"
+                  : "image/jpeg,image/png,image/heic,image/heif,application/pdf"
+              }
               onChange={(e) => {
                 if (e.target.files?.[0]) uploadPhoto(e.target.files[0]);
                 e.target.value = "";
@@ -632,23 +636,25 @@ export function StudioWorkbench({
                 </CollapsibleTrigger>
                 <CollapsibleContent>
                   <div className="ps-settings-fields">
-                    <div className="ps-restaurant-setting">
-                      <div>
-                        <label htmlFor="studio-restaurant-look">
-                          Match my restaurant look
-                        </label>
-                        <p id="studio-restaurant-look-hint">
-                          Use your saved lighting and setting.
-                        </p>
+                    {!state.guest && (
+                      <div className="ps-restaurant-setting">
+                        <div>
+                          <label htmlFor="studio-restaurant-look">
+                            Match my restaurant look
+                          </label>
+                          <p id="studio-restaurant-look-hint">
+                            Use your saved lighting and setting.
+                          </p>
+                        </div>
+                        <Switch
+                          id="studio-restaurant-look"
+                          aria-describedby="studio-restaurant-look-hint"
+                          checked={b.look === "restaurant"}
+                          onCheckedChange={matchRestaurant}
+                          disabled={!!busy}
+                        />
                       </div>
-                      <Switch
-                        id="studio-restaurant-look"
-                        aria-describedby="studio-restaurant-look-hint"
-                        checked={b.look === "restaurant"}
-                        onCheckedChange={matchRestaurant}
-                        disabled={!!busy}
-                      />
-                    </div>
+                    )}
                     <Field label="Lighting">
                       <select
                         value={b.lighting}
@@ -769,22 +775,34 @@ export function StudioWorkbench({
                 )}
                 {busy === "Creating your photo"
                   ? "Starting your photo…"
-                  : "Create my photo"}
+                  : "Generate image"}
                 <ArrowRight size={17} />
               </button>
               <p>
-                {!state.aiConnected
-                  ? "Image creation isn’t connected yet. Your choices are saved."
-                  : state.remaining < 1
-                    ? "Your image allowance is used up. Free touch-up tools are still available."
-                    : !photoReady
-                      ? "Add your photo to create this look."
-                      : b.look === "reference" && !b.referenceId
-                        ? "Add your style reference to continue."
-                        : `1 image · ${state.remaining} remaining`}
+                {state.guest
+                  ? "Sign up to generate · 5 free images · No credit card"
+                  : !state.aiConnected
+                    ? "Image creation isn’t connected yet. Your choices are saved."
+                    : state.remaining < 1
+                      ? "Your image allowance is used up. Free touch-up tools are still available."
+                      : !photoReady
+                        ? "Add your photo to create this look."
+                        : b.look === "reference" && !b.referenceId
+                          ? "Add your style reference to continue."
+                          : `1 image · ${state.remaining} remaining`}
               </p>
+              {!state.guest && state.remaining < 1 && (
+                <button
+                  className="cx-link"
+                  onClick={() =>
+                    window.dispatchEvent(new Event("plateworthy:plans"))
+                  }
+                >
+                  View plans
+                </button>
+              )}
             </div>
-            {source && (
+            {source && !state.guest && (
               <button
                 className="cx-link ps-quick-edit"
                 disabled={!!busy}
@@ -795,7 +813,9 @@ export function StudioWorkbench({
             )}
             <p className="ps-preservation">
               <Check size={15} />
-              Your original is saved. Your food stays yours.
+              {state.guest
+                ? "Your photo stays in this tab until you sign up."
+                : "Your original is saved. Your food stays yours."}
             </p>
           </>
         )}
@@ -815,7 +835,7 @@ export function StudioWorkbench({
             onClick={photoReady && canCreate ? create : scrollToPhoto}
             disabled={!!busy}
           >
-            {photoReady && canCreate ? "Create photo" : "Your photo"}
+            {photoReady && canCreate ? "Generate image" : "Your photo"}
             <ArrowRight size={16} />
           </button>
         </div>

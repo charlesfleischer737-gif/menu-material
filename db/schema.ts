@@ -53,6 +53,41 @@ export const restaurants = sqliteTable("restaurants", {
   publishedAt: integer("published_at"),
   createdAt: integer("created_at").notNull(),
 });
+export const billingAccounts = sqliteTable("billing_accounts", {
+  restaurantId: text("restaurant_id")
+    .primaryKey()
+    .references(() => restaurants.id),
+  customerId: text("customer_id").unique(),
+  subscriptionId: text("subscription_id").unique(),
+  status: text().notNull().default("free"),
+  cancelAtPeriodEnd: integer("cancel_at_period_end").notNull().default(0),
+  checkoutId: text("checkout_id"),
+  checkoutKey: text("checkout_key"),
+  leaseUntil: integer("lease_until").notNull().default(0),
+  leaseToken: text("lease_token"),
+  syncedAt: integer("synced_at").notNull().default(0),
+});
+export const billingPeriods = sqliteTable(
+  "billing_periods",
+  {
+    id: text().primaryKey(),
+    restaurantId: text("restaurant_id")
+      .notNull()
+      .references(() => restaurants.id),
+    subscriptionId: text("subscription_id").notNull(),
+    invoiceId: text("invoice_id").notNull().unique(),
+    startsAt: integer("starts_at").notNull(),
+    endsAt: integer("ends_at").notNull(),
+    allowance: integer().notNull().default(100),
+  },
+  (t) => [
+    index("idx_billing_period_restaurant").on(
+      t.restaurantId,
+      t.startsAt,
+      t.endsAt,
+    ),
+  ],
+);
 export const dishes = sqliteTable(
   "dishes",
   {
@@ -139,6 +174,7 @@ export const jobs = sqliteTable(
       .notNull()
       .references(() => dishes.id),
     requestKey: text("request_key").notNull(),
+    creditPeriod: text("credit_period").notNull().default("free"),
     fingerprint: text().notNull(),
     prompt: text().notNull(),
     details: text().notNull(),
@@ -162,6 +198,7 @@ export const outputs = sqliteTable(
       .references(() => jobs.id),
     restaurantId: text("restaurant_id").notNull(),
     slot: integer().notNull(),
+    creditPeriod: text("credit_period").notNull().default("free"),
     status: text().notNull().default("queued"),
     responseId: text("response_id"),
     assetId: text("asset_id"),
@@ -178,6 +215,11 @@ export const outputs = sqliteTable(
   },
   (t) => [
     uniqueIndex("idx_outputs_slot").on(t.jobId, t.slot),
+    index("idx_outputs_credit_period").on(
+      t.restaurantId,
+      t.creditPeriod,
+      t.status,
+    ),
     index("idx_outputs_restaurant_status").on(t.restaurantId, t.status),
     index("idx_outputs_poll").on(t.status, t.nextPollAt, t.leaseUntil),
     index("idx_outputs_restaurant_submitted").on(t.restaurantId, t.submittedAt),

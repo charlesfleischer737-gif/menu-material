@@ -1,5 +1,6 @@
 import type { Row } from "./core";
 import { z } from "zod";
+import { billingRoute, billingSummary, billingEnabled } from "./billing";
 import { validateImageDimensions } from "./image-validation";
 import { checkMenuSharing } from "./menu-sharing";
 import {
@@ -107,16 +108,20 @@ async function signup(req: Request, b: Row) {
     password = passwordSchema.parse(b.password),
     hash = digest(String(b.invite || ""));
   await limit(`signup:${caller(req)}:${email}`, 10);
-  const invite = await one(
-    "SELECT * FROM invites WHERE hash=? AND email=? AND used_by IS NULL AND expires_at>?",
-    hash,
-    email,
-    now(),
-  );
+  const invited = !!String(b.invite || "").trim();
+  const invite = invited
+    ? await one(
+        "SELECT * FROM invites WHERE hash=? AND email=? AND used_by IS NULL AND expires_at>?",
+        hash,
+        email,
+        now(),
+      )
+    : { role: "owner", allowance: 5 };
+  assert(!b.website, 400, "Please check the form and try again.");
   assert(
     invite,
     403,
-    "This invitation is invalid, expired, or belongs to another email. Ask your pilot coordinator for a new link.",
+    "This invitation is invalid, expired, or belongs to another email. Request a new link from the administrator.",
   );
   if (invite.role === "reset") {
     const u = await one("SELECT id FROM users WHERE email=?", email);
@@ -164,9 +169,18 @@ async function signup(req: Request, b: Row) {
   await db().batch([
     db()
       .prepare(
-        "INSERT INTO users (id,email,password,role,created_at) SELECT ?,?,?,?,? WHERE EXISTS(SELECT 1 FROM invites WHERE hash=? AND used_by IS NULL AND expires_at>?)",
+        "INSERT INTO users (id,email,password,role,created_at) SELECT ?,?,?,?,? WHERE ?=0 OR EXISTS(SELECT 1 FROM invites WHERE hash=? AND used_by IS NULL AND expires_at>?)",
       )
-      .bind(userId, email, hashPassword(password), invite.role, t, hash, t),
+      .bind(
+        userId,
+        email,
+        hashPassword(password),
+        invite.role,
+        t,
+        invited ? 1 : 0,
+        hash,
+        t,
+      ),
     db()
       .prepare(
         "INSERT INTO restaurants (id,user_id,name,slug,allowance,created_at) SELECT ?,?,?,?,?,? WHERE EXISTS (SELECT 1 FROM users WHERE id=?)",
@@ -196,23 +210,14 @@ async function signup(req: Request, b: Row) {
 }
 async function issueInvite(email: string, allowance: number, role = "owner") {
   const raw = token();
-  const issued = await run(
-    "INSERT INTO invites (hash,email,role,allowance,expires_at,created_at) SELECT ?,?,?,?,?,? WHERE ?!='owner' OR (SELECT count(*) FROM restaurants)+(SELECT count(DISTINCT email) FROM invites WHERE role='owner' AND used_by IS NULL AND expires_at>? AND email NOT IN (SELECT email FROM users))<10 OR EXISTS(SELECT 1 FROM invites WHERE email=? AND role='owner' AND used_by IS NULL AND expires_at>?)",
+  await run(
+    "INSERT INTO invites (hash,email,role,allowance,expires_at,created_at) VALUES (?,?,?,?,?,?)",
     digest(raw),
     email,
     role,
     allowance,
     now() + 7 * 86400000,
     now(),
-    role,
-    now(),
-    email,
-    now(),
-  );
-  assert(
-    issued.meta.changes,
-    409,
-    "This free pilot is limited to 10 restaurant workspaces, including pending invitations.",
   );
   return {
     invite: raw,
@@ -446,7 +451,9 @@ export async function handle(req: Request) {
         .split("/")
         .filter(Boolean);
     const method = req.method;
-    if (method !== "GET") sameOrigin(req);
+    if (!(p[0] === "billing" && p[1] === "webhook") && method !== "GET")
+      sameOrigin(req);
+    if (p[0] === "billing") return await billingRoute(req, p);
     const staffResponse = await staffAccess(req, p, upload);
     if (staffResponse) return staffResponse;
     if (p[0] === "health") return response({ ok: true });
@@ -560,7 +567,7 @@ export async function handle(req: Request) {
             trustedEmail === config("BOOTSTRAP_OWNER_EMAIL").toLowerCase() &&
             req.headers.get("oai-authenticated-user-id"),
           403,
-          "Only the signed-in Site owner can initialize this pilot.",
+          "Only the signed-in Site owner can initialize administration.",
         );
         assert(
           !(await one("SELECT id FROM users WHERE role='admin'")),
@@ -615,6 +622,7 @@ export async function handle(req: Request) {
       if (!u)
         return response({
           user: null,
+          billingEnabled: billingEnabled(),
           ownerSetup:
             !!config("BOOTSTRAP_OWNER_EMAIL") &&
             req.headers.get("oai-authenticated-user-email")?.toLowerCase() ===
@@ -635,6 +643,7 @@ export async function handle(req: Request) {
           published: r.published ? JSON.parse(r.published) : null,
         },
         remaining: await remaining(r.id),
+        billing: await billingSummary(r.id),
         aiConnected: !!config("OPENAI_API_KEY"),
         local: config("LOCAL_DEVELOPMENT") === "true",
         dishes: await all(

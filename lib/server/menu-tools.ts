@@ -1,3 +1,4 @@
+import { entitlementSql } from "./entitlements";
 import { z } from "zod";
 import { validateImageDimensions } from "./image-validation";
 import {
@@ -134,22 +135,25 @@ export async function retryFailed(r: Row, jobId: string) {
   assert(
     failed.length,
     400,
-    "There are no retryable images. Contact your pilot coordinator after three attempts.",
+    "There are no retryable images. Start a new image after three unsuccessful attempts.",
   );
-  await run(
-    "UPDATE outputs SET status='queued',response_id=NULL,error=NULL,lease_until=0,lease_token=NULL,next_poll_at=0,submitted_at=NULL,poll_count=0 WHERE job_id=? AND status='failed' AND attempts<3 AND (SELECT allowance FROM restaurants WHERE id=? AND paused=0)-(SELECT count(*) FROM outputs WHERE restaurant_id=? AND status!='failed')>=(SELECT count(*) FROM outputs WHERE job_id=? AND status='failed' AND attempts<3)",
-    job.id,
-    r.id,
+  const t = now();
+  const retried = await run(
+    `WITH entitlement AS MATERIALIZED (${entitlementSql}),
+      retry AS MATERIALIZED (SELECT id FROM outputs WHERE job_id=? AND status='failed' AND attempts<3),
+      room AS MATERIALIZED (SELECT e.credit_period FROM entitlement e WHERE e.paused=0
+        AND e.allowance-(SELECT count(*) FROM outputs o WHERE o.restaurant_id=e.id AND o.credit_period=e.credit_period AND o.status!='failed') >= (SELECT count(*) FROM retry))
+    UPDATE outputs SET status='queued',credit_period=(SELECT credit_period FROM room),response_id=NULL,error=NULL,lease_until=0,lease_token=NULL,next_poll_at=0,submitted_at=NULL,poll_count=0
+    WHERE id IN (SELECT id FROM retry) AND EXISTS(SELECT 1 FROM room)`,
+    t,
+    t,
     r.id,
     job.id,
   );
   assert(
-    await one(
-      "SELECT id FROM outputs WHERE job_id=? AND status='queued'",
-      job.id,
-    ),
+    retried.meta.changes,
     402,
-    "Not enough image allowance for the failed images.",
+    "Not enough image generations. Check your plan or wait for your next allowance.",
   );
   await run("UPDATE jobs SET status='queued' WHERE id=?", job.id);
   await event(r.id, "generation_retried", job.id, { slots: failed.length });
