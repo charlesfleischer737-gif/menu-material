@@ -1,7 +1,7 @@
 "use client";
 
 import { useEffect, useId, useRef, useState, type RefObject } from "react";
-import { ArrowRight, Check, Expand } from "lucide-react";
+import { Check, Expand } from "lucide-react";
 import { RadioGroup, RadioGroupItem } from "@/components/ui/radio-group";
 import {
   Dialog,
@@ -85,8 +85,8 @@ function StylePicker({
             srcSet={`/homepage/styles/cheesecake-${style.asset}-160.webp 160w, /homepage/styles/cheesecake-${style.asset}-320.webp 320w`}
             sizes={
               compact
-                ? "(max-width: 700px) 72px, 40px"
-                : "(max-width: 700px) 40px, 52px"
+                ? "40px"
+                : "(max-width: 700px) 40px, (max-width: 900px) 48px, 60px"
             }
             alt=""
             width={160}
@@ -108,26 +108,6 @@ function StylePicker({
         </label>
       ))}
     </RadioGroup>
-  );
-}
-
-function OriginalPhoto({ enlarged = false }: { enlarged?: boolean }) {
-  return (
-    <img
-      src="/homepage/styles/cheesecake-original-640.webp"
-      srcSet="/homepage/styles/cheesecake-original-320.webp 320w, /homepage/styles/cheesecake-original-640.webp 640w, /homepage/styles/cheesecake-original-960.webp 960w, /homepage/styles/cheesecake-original.jpg 2592w"
-      sizes={
-        enlarged
-          ? "(max-width: 560px) 88px, (max-width: 860px) 42vw, 394px"
-          : "(max-width: 700px) 50px, (max-width: 1000px) 25vw, 290px"
-      }
-      alt="Original strawberry cheesecake photograph before styling"
-      width={2592}
-      height={1944}
-      loading="lazy"
-      decoding="async"
-      fetchPriority="low"
-    />
   );
 }
 
@@ -156,8 +136,8 @@ function StyledPhoto({
           srcSet={`/homepage/styles/cheesecake-${photo.asset}-320.webp 320w, /homepage/styles/cheesecake-${photo.asset}-480.webp 480w, /homepage/styles/cheesecake-${photo.asset}-640.webp 640w, /homepage/styles/cheesecake-${photo.asset}-960.webp 960w, /homepage/styles/cheesecake-${photo.asset}.webp 1254w`}
           sizes={
             enlarged
-              ? "(max-width: 560px) 86vw, (max-width: 860px) 42vw, 394px"
-              : "(max-width: 700px) calc(100vw - 134px), (max-width: 1000px) 28vw, 320px"
+              ? "(max-width: 700px) min(calc(100vw - 58px), 66vh), min(698px, 66vh)"
+              : "(max-width: 700px) calc(100vw - 134px), (max-width: 856px) calc(54vw - 31px), 430px"
           }
           alt={
             photo.id === style.id ? `Illustrative AI edit: ${photo.alt}` : ""
@@ -250,53 +230,39 @@ export default function HomepageStyleGallery() {
       <div className="pw-section-heading pw-style-heading">
         <div>
           <h2 id="style-gallery-title">One photo. Endless possibilities.</h2>
-          <p>New angles, settings, and ways to show off your dish.</p>
+          <p>The same dish, reimagined. Find your favorite look.</p>
         </div>
-        <span className="pw-style-heading-note">Pick a look to explore.</span>
       </div>
       <Dialog>
         <div className="pw-style-workbench">
-          <div className="pw-style-stage">
-            <figure className="pw-style-source">
-              <div className="pw-style-source-frame">
-                <OriginalPhoto />
-              </div>
-              <figcaption>
-                <strong>Your starting photo</strong>
-              </figcaption>
-            </figure>
-            <span className="pw-style-direction" aria-hidden="true">
-              <ArrowRight size={20} />
-            </span>
-            <figure className="pw-style-result" aria-busy={pending !== null}>
-              <DialogTrigger asChild>
-                <button
-                  type="button"
-                  className="pw-style-result-button"
-                  aria-label={`Enlarge ${active.name} and compare with the original`}
-                >
-                  <StyledPhoto
-                    style={active}
-                    preload={preload}
-                    imageRefs={photoRefs}
-                  />
-                  {pending && (
-                    <span className="pw-style-loading" role="status">
-                      Loading photo…
-                    </span>
-                  )}
-                  <span className="pw-style-expand">
-                    <Expand size={14} /> Enlarge
+          <figure className="pw-style-result" aria-busy={pending !== null}>
+            <DialogTrigger asChild>
+              <button
+                type="button"
+                className="pw-style-result-button"
+                aria-label={`Enlarge ${active.name}`}
+              >
+                <StyledPhoto
+                  style={active}
+                  preload={preload}
+                  imageRefs={photoRefs}
+                />
+                {pending && (
+                  <span className="pw-style-loading" role="status">
+                    Loading photo…
                   </span>
-                </button>
-              </DialogTrigger>
-              <figcaption aria-live="polite" aria-atomic="true">
-                <strong>{active.name}</strong>
-              </figcaption>
-            </figure>
-          </div>
+                )}
+                <span className="pw-style-expand">
+                  <Expand size={14} /> Enlarge
+                </span>
+              </button>
+            </DialogTrigger>
+            <figcaption aria-live="polite" aria-atomic="true">
+              <strong>{active.name}</strong>
+            </figcaption>
+          </figure>
           <div className="pw-style-choices">
-            <p className="pw-style-picker-label">FIND YOUR LOOK</p>
+            <p className="pw-style-picker-label">Choose a style</p>
             <StylePicker value={pending ?? selected} onChange={selectStyle} />
           </div>
         </div>
@@ -305,21 +271,22 @@ export default function HomepageStyleGallery() {
             <DialogTitle>{active.name}</DialogTitle>
             <DialogDescription>{active.detail}</DialogDescription>
           </DialogHeader>
-          <div className="pw-style-comparison">
-            <figure className="pw-style-comparison-original">
-              <OriginalPhoto enlarged />
-              <figcaption>Original photo</figcaption>
-            </figure>
-            <figure>
-              <StyledPhoto
-                style={active}
-                enlarged
-                preload
-                imageRefs={enlargedRefs}
-              />
-              <figcaption>{active.name}</figcaption>
-            </figure>
-          </div>
+          <figure
+            className="pw-style-enlarged-photo"
+            aria-busy={pending !== null}
+          >
+            <StyledPhoto
+              style={active}
+              enlarged
+              preload
+              imageRefs={enlargedRefs}
+            />
+            {pending && (
+              <span className="pw-style-loading" role="status">
+                Loading photo…
+              </span>
+            )}
+          </figure>
           <StylePicker
             value={pending ?? selected}
             onChange={selectStyle}
@@ -341,8 +308,7 @@ export default function HomepageStyleGallery() {
         </p>
       )}
       <p className="pw-style-disclosure">
-        Illustrative AI edits from one original photo. Review every result
-        before sharing.
+        AI-styled examples of the same dish.
       </p>
     </section>
   );
