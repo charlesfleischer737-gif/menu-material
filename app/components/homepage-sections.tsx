@@ -25,8 +25,8 @@ const PostCanvas = lazy(() =>
 const useCases = [
   {
     name: "Delivery apps",
-    image: "/homepage/delivery.webp",
-    alt: "Juicy burger with crisp lettuce on a sesame bun, photographed against a clean background",
+    image: "/homepage/restaurants.webp",
+    alt: "Sliced steak with herb butter and golden fries on a ceramic plate",
     text: "Make the first bite happen with a photo. Clean, appetizing images for your delivery listings.",
   },
   {

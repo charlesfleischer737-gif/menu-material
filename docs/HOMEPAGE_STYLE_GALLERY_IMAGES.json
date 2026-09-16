@@ -1,117 +1,141 @@
 {
-  "tool": "Built-in image_gen",
-  "editTarget": "public/burger-phone-original.jpg",
-  "originalSource": "https://commons.wikimedia.org/wiki/File:Hamburger_(5).jpg",
-  "attribution": "cyclonebill",
-  "license": "CC BY-SA 2.0",
-  "licenseUrl": "https://creativecommons.org/licenses/by-sa/2.0/",
-  "notes": "Illustrative AI edits. Full-size WebP files preserve every decoded source pixel; responsive sizes use Lanczos3 resizing and lossless WebP encoding. Existing homepage attribution applies to these derivatives.",
+  "dish": "Strawberry cheesecake slice",
+  "tool": "built-in image_gen edit",
+  "source": {
+    "title": "Carnegie Deli Strawberry Cheesecake.jpg",
+    "author": "Pilauricey at English Wikipedia",
+    "source_url": "https://commons.wikimedia.org/wiki/File:Carnegie_Deli_Strawberry_Cheesecake.jpg",
+    "image_url": "https://upload.wikimedia.org/wikipedia/commons/9/9e/Carnegie_Deli_Strawberry_Cheesecake.jpg",
+    "license": "CC BY-SA 3.0 Unported",
+    "license_url": "https://creativecommons.org/licenses/by-sa/3.0/",
+    "original_path": "public/homepage/styles/cheesecake-original.jpg",
+    "width": 2592,
+    "height": 1944,
+    "attribution": "Strawberry cheesecake photo by Pilauricey, via Wikimedia Commons, CC BY-SA 3.0. Gallery variations edited with AI; derivatives licensed CC BY-SA 3.0."
+  },
+  "notes": "Illustrative AI edits with exact pixel preservation in lossless WebP masters and responsive variants. Original downloaded JPEG is preserved unchanged; its 320, 640 and 960px responsive variants also use lossless WebP. Original and derivatives are CC BY-SA 3.0 with linked homepage credit.",
   "assets": [
     {
       "style": "dark",
-      "name": "dark-editorial",
-      "prompt": "Use case: precise-object-edit.\nAsset type: square 1024x1024 commercial food photograph for Plateworthy's compact homepage style gallery.\nInput images: Image 1 is the edit target, an actual phone photo. Edit that exact burger photograph, never substitute a different burger.\nPrimary request: Improve presentation, professional lighting and environment only while preserving the exact recognizable food identity.\nSubject invariants: Keep the same broad flattened sesame bun with its recognizable geometry and sesame seed placement, same single beef patty, same tomato, same lettuce, same single white cheese slice, same ingredient count, portion, orientation and assembly. Preserve the visible tomato in front, the white cheese corner toward front-right, and the lettuce arrangement. Maintain the source's elevated three-quarter camera angle and recognizable framing relationships. Preserve the same white round ceramic plate. Retain natural imperfect food details.\nComposition/framing: Square 1024x1024 image. Entire burger and complete plate centered within the central 85% of the image; extend the surrounding scene as needed to include the complete plate. No cropped food. Do not rebuild, rotate, rearrange or restyle the food itself.\nConstraints: Remove the source's drinking glass, cutlery, colorful napkin and background clutter. Tidy stray plate crumbs and food smears only. No added garnish, extra cheese, extra ingredients, fries, side dishes, props, text, watermark, logo, collage, borders or split screen. Produce exactly one image.\nScene/backdrop: Matte charcoal tabletop and deep charcoal studio background, dark editorial food photography.\nLighting/mood: Dramatic soft side lighting with luminous natural bun texture, rich shadows that still show the patty and existing ingredients; premium moody editorial finish.",
+      "name": "Dark & dramatic",
+      "prompt": "Use case: precise-object-edit.\nAsset type: Plateworthy website gallery, single square food photograph.\nInput image: the attached original photograph is the EDIT TARGET, not inspiration.\nPrimary request: edit this exact strawberry-cheesecake photograph into a professionally lit restaurant menu photograph. Change only the surrounding environment, lighting, color balance and presentation cleanup.\nSubject invariants: preserve the original tall wedge of pale ivory cheesecake with its thin golden crust, irregular cut face, glossy red strawberry sauce, exact strawberry count/shape/positions on top, and the single existing cut strawberry resting in front on the plate. Keep the dessert's exact portion, height, wedge silhouette, topping arrangement, food colors and natural edible textures. Preserve the original plain white round plate and dessert-to-plate arrangement. Preserve the same camera viewing angle and orientation, with wedge point facing left and wider back at right; do not rotate or redesign the food. Existing sauce belongs to the dish. Do not add mint, herbs, icing, berries, extra sauce, cutlery or any other food.\nComposition/framing: 1:1 square, one image only. Pull the framing back while preserving viewpoint so the entire round white plate and entire dessert fit comfortably inside the central 85% of the square, with clear margin on every side. Dessert and plate centered. Keep everything recognizable as the identical uploaded dish. Remove distracting background plates, sugar packets, containers and restaurant clutter.\nStyle: realistic food photography with convincing light physics, natural surface detail, appetizing clarity, no artificial plastic texture.\nAvoid: cropped plate or food, invented toppings or sides, changes to berry arrangement, altered cheesecake shape, new props, branding, lettering, watermark, collage, split panel.\nScene/backdrop: a clean charcoal-gray restaurant tabletop and deep charcoal background, no other objects. Lighting/mood: directional soft side lighting that makes the cheesecake creamy and the strawberries rich red, dramatic deep but detailed shadows, restrained cinematic contrast, visibly dark setting.",
       "files": [
         {
-          "path": "public/homepage/styles/burger-dark-320.webp",
+          "path": "public/homepage/styles/cheesecake-dark-320.webp",
           "width": 320,
-          "bytes": 127168
+          "height": 320,
+          "bytes": 118846
         },
         {
-          "path": "public/homepage/styles/burger-dark-480.webp",
+          "path": "public/homepage/styles/cheesecake-dark-480.webp",
           "width": 480,
-          "bytes": 264364
+          "height": 480,
+          "bytes": 255338
         },
         {
-          "path": "public/homepage/styles/burger-dark-640.webp",
+          "path": "public/homepage/styles/cheesecake-dark-640.webp",
           "width": 640,
-          "bytes": 483684
+          "height": 640,
+          "bytes": 438126
         },
         {
-          "path": "public/homepage/styles/burger-dark.webp",
+          "path": "public/homepage/styles/cheesecake-dark.webp",
           "width": 1254,
-          "bytes": 1689436
+          "height": 1254,
+          "bytes": 1512156
         }
       ]
     },
     {
       "style": "color",
-      "name": "cobalt-studio",
-      "prompt": "Use case: precise-object-edit.\nAsset type: square 1024x1024 commercial food photograph for Plateworthy's compact homepage style gallery.\nInput images: Image 1 is the edit target, an actual phone photo. Edit that exact burger photograph, never substitute a different burger.\nPrimary request: Improve presentation, professional lighting and environment only while preserving the exact recognizable food identity.\nSubject invariants: Keep the same broad flattened sesame bun with its recognizable geometry and sesame seed placement, same single beef patty, same tomato, same lettuce, same single white cheese slice, same ingredient count, portion, orientation and assembly. Preserve the visible tomato in front, the white cheese corner toward front-right, and the lettuce arrangement. Maintain the source's elevated three-quarter camera angle and recognizable framing relationships. Preserve the same white round ceramic plate. Retain natural imperfect food details.\nComposition/framing: Square 1024x1024 image. Entire burger and complete plate centered within the central 85% of the image; extend the surrounding scene as needed to include the complete plate. No cropped food. Do not rebuild, rotate, rearrange or restyle the food itself.\nConstraints: Remove the source's drinking glass, cutlery, colorful napkin and background clutter. Tidy stray plate crumbs and food smears only. No added garnish, extra cheese, extra ingredients, fries, side dishes, props, text, watermark, logo, collage, borders or split screen. Produce exactly one image.\nScene/backdrop: Vivid saturated cobalt-blue seamless studio tabletop and backdrop, clean and entirely uncluttered.\nLighting/mood: Soft clean commercial studio light, true appetizing food colors and gentle natural contact shadow under the white plate; bright graphic modern studio finish.",
+      "name": "Bold color",
+      "prompt": "Use case: precise-object-edit.\nAsset type: Plateworthy website gallery, single square food photograph.\nInput image: the attached original photograph is the EDIT TARGET, not inspiration.\nPrimary request: edit this exact strawberry-cheesecake photograph into a professionally lit restaurant menu photograph. Change only the surrounding environment, lighting, color balance and presentation cleanup.\nSubject invariants: preserve the original tall wedge of pale ivory cheesecake with its thin golden crust, irregular cut face, glossy red strawberry sauce, exact strawberry count/shape/positions on top, and the single existing cut strawberry resting in front on the plate. Keep the dessert's exact portion, height, wedge silhouette, topping arrangement, food colors and natural edible textures. Preserve the original plain white round plate and dessert-to-plate arrangement. Preserve the same camera viewing angle and orientation, with wedge point facing left and wider back at right; do not rotate or redesign the food. Existing sauce belongs to the dish. Do not add mint, herbs, icing, berries, extra sauce, cutlery or any other food.\nComposition/framing: 1:1 square, one image only. Pull the framing back while preserving viewpoint so the entire round white plate and entire dessert fit comfortably inside the central 85% of the square, with clear margin on every side. Dessert and plate centered. Keep everything recognizable as the identical uploaded dish. Remove distracting background plates, sugar packets, containers and restaurant clutter.\nStyle: realistic food photography with convincing light physics, natural surface detail, appetizing clarity, no artificial plastic texture.\nAvoid: cropped plate or food, invented toppings or sides, changes to berry arrangement, altered cheesecake shape, new props, branding, lettering, watermark, collage, split panel.\nScene/backdrop: a saturated cobalt-blue seamless studio tabletop and background, no other objects. Lighting/mood: crisp clean commercial studio light with a defined believable soft-edged cast shadow, vivid blue environment and bright natural red strawberries, controlled highlights on the original glossy sauce.",
       "files": [
         {
-          "path": "public/homepage/styles/burger-color-320.webp",
+          "path": "public/homepage/styles/cheesecake-color-320.webp",
           "width": 320,
-          "bytes": 122056
+          "height": 320,
+          "bytes": 110836
         },
         {
-          "path": "public/homepage/styles/burger-color-480.webp",
+          "path": "public/homepage/styles/cheesecake-color-480.webp",
           "width": 480,
-          "bytes": 252124
+          "height": 480,
+          "bytes": 240412
         },
         {
-          "path": "public/homepage/styles/burger-color-640.webp",
+          "path": "public/homepage/styles/cheesecake-color-640.webp",
           "width": 640,
-          "bytes": 458996
+          "height": 640,
+          "bytes": 416942
         },
         {
-          "path": "public/homepage/styles/burger-color.webp",
+          "path": "public/homepage/styles/cheesecake-color.webp",
           "width": 1254,
-          "bytes": 1638546
+          "height": 1254,
+          "bytes": 1514566
         }
       ]
     },
     {
       "style": "rustic",
-      "name": "rustic-oak",
-      "prompt": "Use case: precise-object-edit.\nAsset type: square 1024x1024 commercial food photograph for Plateworthy's compact homepage style gallery.\nInput images: Image 1 is the edit target, an actual phone photo. Edit that exact burger photograph, never substitute a different burger.\nPrimary request: Improve presentation, professional lighting and environment only while preserving the exact recognizable food identity.\nSubject invariants: Keep the same broad flattened sesame bun with its recognizable geometry and sesame seed placement, same single beef patty, same tomato, same lettuce, same single white cheese slice, same ingredient count, portion, orientation and assembly. Preserve the visible tomato in front, the white cheese corner toward front-right, and the lettuce arrangement. Maintain the source's elevated three-quarter camera angle and recognizable framing relationships. Preserve the same white round ceramic plate. Retain natural imperfect food details.\nComposition/framing: Square 1024x1024 image. Entire burger and complete plate centered within the central 85% of the image; extend the surrounding scene as needed to include the complete plate. No cropped food. Do not rebuild, rotate, rearrange or restyle the food itself.\nConstraints: Remove the source's drinking glass, cutlery, colorful napkin and background clutter. Tidy stray plate crumbs and food smears only. No added garnish, extra cheese, extra ingredients, fries, side dishes, props, text, watermark, logo, collage, borders or split screen. Produce exactly one image.\nScene/backdrop: Rustic warm dark oak tabletop with authentic subtle wood grain; soft dark warm restaurant background, no visible props or objects.\nLighting/mood: Warm natural restaurant light, softly modeled bun, inviting amber warmth with believable natural food colors; rustic commercial food photography.",
+      "name": "Rustic & warm",
+      "prompt": "Use case: precise-object-edit.\nAsset type: Plateworthy website gallery, single square food photograph.\nInput image: the attached original photograph is the EDIT TARGET, not inspiration.\nPrimary request: edit this exact strawberry-cheesecake photograph into a professionally lit restaurant menu photograph. Change only the surrounding environment, lighting, color balance and presentation cleanup.\nSubject invariants: preserve the original tall wedge of pale ivory cheesecake with its thin golden crust, irregular cut face, glossy red strawberry sauce, exact strawberry count/shape/positions on top, and the single existing cut strawberry resting in front on the plate. Keep the dessert's exact portion, height, wedge silhouette, topping arrangement, food colors and natural edible textures. Preserve the original plain white round plate and dessert-to-plate arrangement. Preserve the same camera viewing angle and orientation, with wedge point facing left and wider back at right; do not rotate or redesign the food. Existing sauce belongs to the dish. Do not add mint, herbs, icing, berries, extra sauce, cutlery or any other food.\nComposition/framing: 1:1 square, one image only. Pull the framing back while preserving viewpoint so the entire round white plate and entire dessert fit comfortably inside the central 85% of the square, with clear margin on every side. Dessert and plate centered. Keep everything recognizable as the identical uploaded dish. Remove distracting background plates, sugar packets, containers and restaurant clutter.\nStyle: realistic food photography with convincing light physics, natural surface detail, appetizing clarity, no artificial plastic texture.\nAvoid: cropped plate or food, invented toppings or sides, changes to berry arrangement, altered cheesecake shape, new props, branding, lettering, watermark, collage, split panel.\nScene/backdrop: a warm honey-oak wooden café table with subtle real wood grain and softly blurred warm neutral background, no other objects. Lighting/mood: warm diffused late-afternoon side light, soft comfortable shadows, inviting rustic restaurant atmosphere, natural ivory cheesecake and red berries.",
       "files": [
         {
-          "path": "public/homepage/styles/burger-rustic-320.webp",
+          "path": "public/homepage/styles/cheesecake-rustic-320.webp",
           "width": 320,
-          "bytes": 131170
+          "height": 320,
+          "bytes": 127786
         },
         {
-          "path": "public/homepage/styles/burger-rustic-480.webp",
+          "path": "public/homepage/styles/cheesecake-rustic-480.webp",
           "width": 480,
-          "bytes": 266306
+          "height": 480,
+          "bytes": 266690
         },
         {
-          "path": "public/homepage/styles/burger-rustic-640.webp",
+          "path": "public/homepage/styles/cheesecake-rustic-640.webp",
           "width": 640,
-          "bytes": 473952
+          "height": 640,
+          "bytes": 449206
         },
         {
-          "path": "public/homepage/styles/burger-rustic.webp",
+          "path": "public/homepage/styles/cheesecake-rustic.webp",
           "width": 1254,
-          "bytes": 1615880
+          "height": 1254,
+          "bytes": 1511084
         }
       ]
     },
     {
       "style": "daylight",
-      "name": "sunny-cafe",
-      "prompt": "Use case: precise-object-edit.\nAsset type: square 1024x1024 commercial food photograph for Plateworthy's compact homepage style gallery.\nInput images: Image 1 is the edit target, an actual phone photo. Edit that exact burger photograph, never substitute a different burger.\nPrimary request: Improve presentation, professional lighting and environment only while preserving the exact recognizable food identity.\nSubject invariants: Keep the same broad flattened sesame bun with its recognizable geometry and sesame seed placement, same single beef patty, same tomato, same lettuce, same single white cheese slice, same ingredient count, portion, orientation and assembly. Preserve the visible tomato in front, the white cheese corner toward front-right, and the lettuce arrangement. Maintain the source's elevated three-quarter camera angle and recognizable framing relationships. Preserve the same white round ceramic plate. Retain natural imperfect food details.\nComposition/framing: Square 1024x1024 image. Entire burger and complete plate centered within the central 85% of the image; extend the surrounding scene as needed to include the complete plate. No cropped food. Do not rebuild, rotate, rearrange or restyle the food itself.\nConstraints: Remove the source's drinking glass, cutlery, colorful napkin and background clutter. Tidy stray plate crumbs and food smears only. No added garnish, extra cheese, extra ingredients, fries, side dishes, props, text, watermark, logo, collage, borders or split screen. Produce exactly one image.\nScene/backdrop: Pale stone cafe tabletop with a gently blurred bright cafe interior behind it, no distinct objects, no people, no clutter.\nLighting/mood: Sunny cafe atmosphere, gentle natural window light and soft airy shadows; fresh luminous commercial food photography with believable food colors.",
+      "name": "Bright & airy",
+      "prompt": "Use case: precise-object-edit.\nAsset type: Plateworthy website gallery, single square food photograph.\nInput image: the attached original photograph is the EDIT TARGET, not inspiration.\nPrimary request: edit this exact strawberry-cheesecake photograph into a professionally lit restaurant menu photograph. Change only the surrounding environment, lighting, color balance and presentation cleanup.\nSubject invariants: preserve the original tall wedge of pale ivory cheesecake with its thin golden crust, irregular cut face, glossy red strawberry sauce, exact strawberry count/shape/positions on top, and the single existing cut strawberry resting in front on the plate. Keep the dessert's exact portion, height, wedge silhouette, topping arrangement, food colors and natural edible textures. Preserve the original plain white round plate and dessert-to-plate arrangement. Preserve the same camera viewing angle and orientation, with wedge point facing left and wider back at right; do not rotate or redesign the food. Existing sauce belongs to the dish. Do not add mint, herbs, icing, berries, extra sauce, cutlery or any other food.\nComposition/framing: 1:1 square, one image only. Pull the framing back while preserving viewpoint so the entire round white plate and entire dessert fit comfortably inside the central 85% of the square, with clear margin on every side. Dessert and plate centered. Keep everything recognizable as the identical uploaded dish. Remove distracting background plates, sugar packets, containers and restaurant clutter.\nStyle: realistic food photography with convincing light physics, natural surface detail, appetizing clarity, no artificial plastic texture.\nAvoid: cropped plate or food, invented toppings or sides, changes to berry arrangement, altered cheesecake shape, new props, branding, lettering, watermark, collage, split panel.\nScene/backdrop: pale cream café tabletop and softly luminous off-white café background, no other objects. Lighting/mood: bright diffused daylight from a nearby window with delicate soft shadows, airy high-key restaurant photography with clear detail and true food color, clean neutral white plate.",
       "files": [
         {
-          "path": "public/homepage/styles/burger-daylight-320.webp",
+          "path": "public/homepage/styles/cheesecake-daylight-320.webp",
           "width": 320,
-          "bytes": 125604
+          "height": 320,
+          "bytes": 110610
         },
         {
-          "path": "public/homepage/styles/burger-daylight-480.webp",
+          "path": "public/homepage/styles/cheesecake-daylight-480.webp",
           "width": 480,
-          "bytes": 257926
+          "height": 480,
+          "bytes": 233598
         },
         {
-          "path": "public/homepage/styles/burger-daylight-640.webp",
+          "path": "public/homepage/styles/cheesecake-daylight-640.webp",
           "width": 640,
-          "bytes": 442200
+          "height": 640,
+          "bytes": 397302
         },
         {
-          "path": "public/homepage/styles/burger-daylight.webp",
+          "path": "public/homepage/styles/cheesecake-daylight.webp",
           "width": 1254,
-          "bytes": 1483600
+          "height": 1254,
+          "bytes": 1368354
         }
       ]
     }

@@ -45,8 +45,10 @@ export default function HomepageStyleGallery() {
       <div className="pw-style-journey">
         <figure className="pw-style-original">
           <img
-            src="/homepage/optimized/burger-before-640.webp"
-            alt="Original phone photo of a sesame burger on a white plate"
+            src="/homepage/styles/cheesecake-original-640.webp"
+            srcSet="/homepage/styles/cheesecake-original-320.webp 320w, /homepage/styles/cheesecake-original-640.webp 640w"
+            sizes="(max-width: 700px) 64px, 190px"
+            alt="Original photograph of a strawberry cheesecake slice on a white plate"
             width={640}
             height={480}
             loading="lazy"
@@ -64,7 +66,7 @@ export default function HomepageStyleGallery() {
         />
         <Carousel
           className="pw-style-carousel"
-          aria-label="Four styles from one burger photo"
+          aria-label="Four styles from one strawberry cheesecake photo"
           tabIndex={0}
           opts={{
             align: "start",
@@ -86,10 +88,10 @@ export default function HomepageStyleGallery() {
                     >
                       <span className="pw-style-image">
                         <img
-                          src={`/homepage/styles/burger-${style.id}-640.webp`}
-                          srcSet={`/homepage/styles/burger-${style.id}-320.webp 320w, /homepage/styles/burger-${style.id}-480.webp 480w, /homepage/styles/burger-${style.id}-640.webp 640w, /homepage/styles/burger-${style.id}.webp 1254w`}
+                          src={`/homepage/styles/cheesecake-${style.id}-640.webp`}
+                          srcSet={`/homepage/styles/cheesecake-${style.id}-320.webp 320w, /homepage/styles/cheesecake-${style.id}-480.webp 480w, /homepage/styles/cheesecake-${style.id}-640.webp 640w, /homepage/styles/cheesecake-${style.id}.webp 1254w`}
                           sizes="(max-width: 700px) 58vw, (max-width: 1000px) 20vw, 215px"
-                          alt={`The same burger reimagined in the ${style.name.toLowerCase()} style`}
+                          alt={`The same strawberry cheesecake reimagined in the ${style.name.toLowerCase()} style`}
                           width={1254}
                           height={1254}
                           loading="lazy"
@@ -111,10 +113,10 @@ export default function HomepageStyleGallery() {
                     <div className="pw-style-comparison">
                       <figure>
                         <img
-                          src="/homepage/optimized/burger-before-640.webp"
-                          srcSet="/homepage/optimized/burger-before-640.webp 640w, /burger-phone-original.jpg 2592w"
+                          src="/homepage/styles/cheesecake-original-640.webp"
+                          srcSet="/homepage/styles/cheesecake-original-640.webp 640w, /homepage/styles/cheesecake-original-960.webp 960w, /homepage/styles/cheesecake-original.jpg 2592w"
                           sizes="(max-width: 860px) 42vw, 394px"
-                          alt="Original burger photo before styling"
+                          alt="Original strawberry cheesecake photograph before styling"
                           width={640}
                           height={480}
                           decoding="async"
@@ -123,8 +125,8 @@ export default function HomepageStyleGallery() {
                       </figure>
                       <figure>
                         <img
-                          src={`/homepage/styles/burger-${style.id}.webp`}
-                          alt={`Illustrative AI edit of the burger in the ${style.name.toLowerCase()} style`}
+                          src={`/homepage/styles/cheesecake-${style.id}.webp`}
+                          alt={`Illustrative AI edit of the strawberry cheesecake in the ${style.name.toLowerCase()} style`}
                           width={1254}
                           height={1254}
                           decoding="async"

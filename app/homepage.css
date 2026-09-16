@@ -33,6 +33,9 @@
 .pw-style-original figcaption {
   padding-top: 12px;
 }
+.pw-style-original > img {
+  object-fit: contain;
+}
 .pw-style-original strong,
 .pw-style-card > strong {
   display: block;

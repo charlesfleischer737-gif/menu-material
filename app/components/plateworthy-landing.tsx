@@ -272,14 +272,15 @@ export default function Landing({
         </nav>
         <p>© {new Date().getFullYear()} Plateworthy</p>
         <p className="pw-image-credit">
+          Original photos and their AI edits:{" "}
           <a
             href="https://commons.wikimedia.org/wiki/File:Hamburger_(5).jpg"
             target="_blank"
             rel="noreferrer"
           >
-            Photo by cyclonebill
+            Burger by cyclonebill
           </a>
-          . Original burger and its AI-edited images licensed under{" "}
+          {" ("}
           <a
             href="https://creativecommons.org/licenses/by-sa/2.0/"
             target="_blank"
@@ -287,7 +288,23 @@ export default function Landing({
           >
             CC BY-SA 2.0
           </a>
-          .
+          {"); "}
+          <a
+            href="https://commons.wikimedia.org/wiki/File:Carnegie_Deli_Strawberry_Cheesecake.jpg"
+            target="_blank"
+            rel="noreferrer"
+          >
+            cheesecake by Pilauricey
+          </a>
+          {" ("}
+          <a
+            href="https://creativecommons.org/licenses/by-sa/3.0/"
+            target="_blank"
+            rel="noreferrer"
+          >
+            CC BY-SA 3.0
+          </a>
+          ).
         </p>
       </footer>
     </div>

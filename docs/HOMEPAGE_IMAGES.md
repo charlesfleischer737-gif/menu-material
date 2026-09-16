@@ -6,16 +6,16 @@ The homepage now includes six food-led use cases and three interactive feature e
 
 All paths below are relative to the project root. Images are optimized WebP files, lazy-loaded below the existing hero, at 960 pixels wide.
 
-| Use | Saved image | Source |
-| --- | --- | --- |
-| Delivery apps | `public/homepage/delivery.webp` | Existing `public/burger-studio-transformation.png` |
-| Social media | `public/homepage/social.webp` | Existing `public/tacos-social-example.png` |
-| Menus and promotion examples | `public/homepage/menus.webp` | Existing `public/rigatoni-menu-example.png` |
-| Bars & restaurants | `public/homepage/restaurants.webp` | New built-in imagegen photograph |
-| Bakeries & cafés | `public/homepage/cafes.webp` | New built-in imagegen photograph |
-| Food trucks | `public/homepage/food-trucks.webp` | New built-in imagegen photograph |
-| Original comparison | `public/homepage/burger-original.webp` | Existing `public/burger-phone-original.jpg` |
-| Enhanced comparison | `public/homepage/burger-enhanced.webp` | Existing `public/burger-studio-transformation.png` |
+| Use                          | Saved image                            | Source                                                                             |
+| ---------------------------- | -------------------------------------- | ---------------------------------------------------------------------------------- |
+| Delivery apps                | `public/homepage/restaurants.webp`     | Existing generated steak-frites photograph, reused at its original display quality |
+| Social media                 | `public/homepage/social.webp`          | Existing `public/tacos-social-example.png`                                         |
+| Menus and promotion examples | `public/homepage/menus.webp`           | Existing `public/rigatoni-menu-example.png`                                        |
+| Bars & restaurants           | `public/homepage/restaurants.webp`     | New built-in imagegen photograph                                                   |
+| Bakeries & cafés             | `public/homepage/cafes.webp`           | New built-in imagegen photograph                                                   |
+| Food trucks                  | `public/homepage/food-trucks.webp`     | New built-in imagegen photograph                                                   |
+| Original comparison          | `public/homepage/burger-original.webp` | Existing `public/burger-phone-original.jpg`                                        |
+| Enhanced comparison          | `public/homepage/burger-enhanced.webp` | Existing `public/burger-studio-transformation.png`                                 |
 
 The existing cyclonebill / CC BY-SA 2.0 burger attribution remains in the homepage footer and applies to its optimized derivatives. Newly generated images are illustrative category photography, not customer testimonials or documented results from a live restaurant account.
 
