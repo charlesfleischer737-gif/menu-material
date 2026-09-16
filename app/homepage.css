@@ -286,35 +286,40 @@
     margin-bottom: 14px;
   }
   .pw-style-workbench {
-    grid-template-columns: minmax(0, 1fr) 76px;
+    grid-template-columns: minmax(0, 1fr);
     border-radius: 16px;
-    background: #f5f6f2;
+    background: #fff;
   }
   .pw-style-result {
-    padding: 8px;
+    padding: 8px 8px 0;
   }
   .pw-style-result-button {
     border-radius: 10px;
   }
   .pw-style-choices {
-    padding: 8px 8px 8px 0;
+    padding: 10px 8px 8px;
   }
   .pw-style-picker-label {
     display: none;
   }
-  .pw-style-choices .pw-style-picker {
-    gap: 4px;
+  .pw-style-choices .pw-style-picker,
+  .pw-style-picker.is-compact {
+    grid-template-columns: repeat(4, minmax(3.5rem, 1fr));
+    gap: 6px;
+    overflow-x: auto;
+    padding: 3px;
+    margin: -3px;
   }
   .pw-style-option {
     flex-direction: column;
-    gap: 3px;
-    padding: 4px;
-    border-radius: 8px;
+    gap: 6px;
+    padding: 6px 4px;
+    border-radius: 10px;
   }
   .pw-style-choices .pw-style-option > img {
-    width: 40px;
-    height: 40px;
-    border-radius: 5px;
+    width: 44px;
+    height: 44px;
+    border-radius: 6px;
   }
   .pw-style-option-copy {
     padding-right: 0;
@@ -325,6 +330,8 @@
   .pw-style-option-copy .pw-style-name-short {
     display: block;
     font-size: 0.875rem;
+    white-space: nowrap;
+    overflow-wrap: normal;
   }
   .pw-style-selected-mark {
     top: 4px;

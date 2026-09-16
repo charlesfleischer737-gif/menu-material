@@ -17,7 +17,7 @@ const styles = [
     id: "color",
     asset: "color",
     name: "New backdrop",
-    short: "Backdrop",
+    short: "Color",
     detail: "Change the setting.",
     alt: "The same strawberry cheesecake on a vivid cobalt-blue studio backdrop",
   },
@@ -41,7 +41,7 @@ const styles = [
     id: "closeup",
     asset: "closeup",
     name: "Close-up",
-    short: "Close-up",
+    short: "Detail",
     detail: "Let the textures shine.",
     alt: "A low-angle close-up of the same strawberry cheesecake showing its creamy filling and glossy berries",
   },
@@ -86,7 +86,7 @@ function StylePicker({
             sizes={
               compact
                 ? "40px"
-                : "(max-width: 700px) 40px, (max-width: 900px) 48px, 60px"
+                : "(max-width: 700px) 44px, (max-width: 900px) 48px, 60px"
             }
             alt=""
             width={160}
@@ -137,7 +137,7 @@ function StyledPhoto({
           sizes={
             enlarged
               ? "(max-width: 700px) min(calc(100vw - 58px), 66vh), min(698px, 66vh)"
-              : "(max-width: 700px) calc(100vw - 134px), (max-width: 856px) calc(54vw - 31px), 430px"
+              : "(max-width: 700px) calc(100vw - 58px), (max-width: 856px) calc(54vw - 31px), 430px"
           }
           alt={
             photo.id === style.id ? `Illustrative AI edit: ${photo.alt}` : ""
