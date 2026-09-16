@@ -10,6 +10,8 @@ The hero keeps its headline and shorter benefit statement. At the user's request
 
 The delivery example is now a polished item-detail screen: a prominent steak photograph, circular back and favorite icons, restaurant identity, dish title, price, description, quantity indicator, and an Add to order bar. It is a labeled, noninteractive illustration with a complete accessible description. No real ratings, endorsements, delivery estimates, or integration claims are presented. The compact purchase bar adapts to narrow phone layouts.
 
+The expanded style gallery includes an Original photo option after the four styled images. Opening or reopening the gallery always shows the currently selected styled image; customers must select Original to view the source photograph. The original retains its full 4:3 framing and never replaces the main-page styled preview.
+
 The homepage now presents the complete output: ordinary food photos become professionally styled imagery, shareable menu pages, and crops/captions for delivery and social posts. The headline is “From phone photos to menus, listings, and posts.” The product's existing menu, caption, image, and invitation flows remain intact. It does not claim to publish to DoorDash or Instagram automatically.
 
 ## Current page

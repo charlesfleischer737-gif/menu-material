@@ -49,29 +49,44 @@ const styles = [
 
 type GalleryStyle = (typeof styles)[number];
 type PhotoRefs = RefObject<Map<string, HTMLImageElement>>;
+const originalPhoto: GalleryStyle = {
+  id: "original",
+  asset: "original",
+  name: "Original photo",
+  short: "Original",
+  detail: "The starting photo, before styling.",
+  alt: "Original strawberry cheesecake photograph on a white plate on a wooden restaurant table",
+};
+const expandedPhotos = [...styles, originalPhoto];
 
 function StylePicker({
   value,
   onChange,
   compact = false,
+  includeOriginal = false,
 }: {
   value: string;
   onChange: (value: string) => void;
   compact?: boolean;
+  includeOriginal?: boolean;
 }) {
   const id = useId();
   return (
     <RadioGroup
       value={value}
       onValueChange={onChange}
-      className={`pw-style-picker${compact ? " is-compact" : ""}`}
-      aria-label="Choose a photo style"
+      className={`pw-style-picker${compact ? " is-compact" : ""}${includeOriginal ? " has-original" : ""}`}
+      aria-label={
+        includeOriginal
+          ? "Choose an original or styled photo"
+          : "Choose a photo style"
+      }
     >
-      {styles.map((style) => (
+      {(includeOriginal ? expandedPhotos : styles).map((style) => (
         <label
           key={style.id}
           htmlFor={`${id}-${style.id}`}
-          className="pw-style-option"
+          className={`pw-style-option${style.id === "original" ? " is-original" : ""}`}
           data-selected={value === style.id}
         >
           <RadioGroupItem
@@ -81,16 +96,24 @@ function StylePicker({
             aria-label={style.name}
           />
           <img
-            src={`/homepage/styles/cheesecake-${style.asset}-160.webp`}
-            srcSet={`/homepage/styles/cheesecake-${style.asset}-160.webp 160w, /homepage/styles/cheesecake-${style.asset}-320.webp 320w`}
+            src={
+              style.id === "original"
+                ? "/homepage/styles/cheesecake-original-320.webp"
+                : `/homepage/styles/cheesecake-${style.asset}-160.webp`
+            }
+            srcSet={
+              style.id === "original"
+                ? undefined
+                : `/homepage/styles/cheesecake-${style.asset}-160.webp 160w, /homepage/styles/cheesecake-${style.asset}-320.webp 320w`
+            }
             sizes={
               compact
                 ? "40px"
                 : "(max-width: 700px) 44px, (max-width: 900px) 48px, 60px"
             }
             alt=""
-            width={160}
-            height={160}
+            width={style.id === "original" ? 320 : 160}
+            height={style.id === "original" ? 240 : 160}
             loading="lazy"
             decoding="async"
             fetchPriority="low"
@@ -124,7 +147,7 @@ function StyledPhoto({
 }) {
   return (
     <span className="pw-style-photo-stack">
-      {styles.map((photo) => (
+      {(enlarged ? expandedPhotos : styles).map((photo) => (
         <img
           key={photo.id}
           ref={(image) => {
@@ -133,19 +156,27 @@ function StyledPhoto({
           }}
           data-active={photo.id === style.id}
           src={`/homepage/styles/cheesecake-${photo.asset}-640.webp`}
-          srcSet={`/homepage/styles/cheesecake-${photo.asset}-320.webp 320w, /homepage/styles/cheesecake-${photo.asset}-480.webp 480w, /homepage/styles/cheesecake-${photo.asset}-640.webp 640w, /homepage/styles/cheesecake-${photo.asset}-960.webp 960w, /homepage/styles/cheesecake-${photo.asset}.webp 1254w`}
+          srcSet={
+            photo.id === "original"
+              ? "/homepage/styles/cheesecake-original-320.webp 320w, /homepage/styles/cheesecake-original-640.webp 640w, /homepage/styles/cheesecake-original-960.webp 960w"
+              : `/homepage/styles/cheesecake-${photo.asset}-320.webp 320w, /homepage/styles/cheesecake-${photo.asset}-480.webp 480w, /homepage/styles/cheesecake-${photo.asset}-640.webp 640w, /homepage/styles/cheesecake-${photo.asset}-960.webp 960w, /homepage/styles/cheesecake-${photo.asset}.webp 1254w`
+          }
           sizes={
             enlarged
               ? "(max-width: 700px) min(calc(100vw - 58px), 66vh), min(698px, 66vh)"
               : "(max-width: 700px) calc(100vw - 58px), (max-width: 856px) calc(54vw - 31px), 430px"
           }
           alt={
-            photo.id === style.id ? `Illustrative AI edit: ${photo.alt}` : ""
+            photo.id === style.id
+              ? photo.id === "original"
+                ? photo.alt
+                : `Illustrative AI edit: ${photo.alt}`
+              : ""
           }
           aria-hidden={photo.id !== style.id}
-          width={1254}
-          height={1254}
-          loading={preload ? "eager" : "lazy"}
+          width={photo.id === "original" ? 640 : 1254}
+          height={photo.id === "original" ? 480 : 1254}
+          loading={preload && photo.id !== "original" ? "eager" : "lazy"}
           decoding="async"
           fetchPriority="low"
           onLoad={(event) => {
@@ -159,6 +190,7 @@ function StyledPhoto({
 
 export default function HomepageStyleGallery() {
   const [selected, setSelected] = useState("served");
+  const [showOriginal, setShowOriginal] = useState(false);
   const [preload, setPreload] = useState(false);
   const [pending, setPending] = useState<string | null>(null);
   const [loadError, setLoadError] = useState("");
@@ -167,11 +199,13 @@ export default function HomepageStyleGallery() {
   const enlargedRefs = useRef(new Map<string, HTMLImageElement>());
   const selectionRequest = useRef(0);
   const active = styles.find((style) => style.id === selected) ?? styles[2];
+  const expandedActive = showOriginal ? originalPhoto : active;
+  const styledPending = pending !== null && pending !== "original";
 
   useEffect(() => {
     if (!("IntersectionObserver" in window)) {
-      setPreload(true);
-      return;
+      const frame = requestAnimationFrame(() => setPreload(true));
+      return () => cancelAnimationFrame(frame);
     }
     const observer = new IntersectionObserver(
       (entries) => {
@@ -199,11 +233,11 @@ export default function HomepageStyleGallery() {
     setPending(value);
     setLoadError("");
     try {
-      const photo = photoRefs.current.get(value);
-      if (!photo) throw new Error("Photo unavailable");
-      const images = [photo, enlargedRefs.current.get(value)].filter(
-        (image): image is HTMLImageElement => Boolean(image),
-      );
+      const images = [
+        photoRefs.current.get(value),
+        enlargedRefs.current.get(value),
+      ].filter((image): image is HTMLImageElement => Boolean(image));
+      if (!images.length) throw new Error("Photo unavailable");
       await Promise.all(
         images.map((image) => {
           image.loading = "eager";
@@ -211,7 +245,10 @@ export default function HomepageStyleGallery() {
           return image.decode();
         }),
       );
-      if (request === selectionRequest.current) setSelected(value);
+      if (request === selectionRequest.current) {
+        setShowOriginal(value === "original");
+        if (value !== "original") setSelected(value);
+      }
     } catch {
       if (request === selectionRequest.current) {
         setLoadError("That photo couldn’t load. Please try another style.");
@@ -233,9 +270,16 @@ export default function HomepageStyleGallery() {
           <p>The same dish, reimagined. Find your favorite look.</p>
         </div>
       </div>
-      <Dialog>
+      <Dialog
+        onOpenChange={() => {
+          selectionRequest.current += 1;
+          setShowOriginal(false);
+          setPending(null);
+          setLoadError("");
+        }}
+      >
         <div className="pw-style-workbench">
-          <figure className="pw-style-result" aria-busy={pending !== null}>
+          <figure className="pw-style-result" aria-busy={styledPending}>
             <DialogTrigger asChild>
               <button
                 type="button"
@@ -247,7 +291,7 @@ export default function HomepageStyleGallery() {
                   preload={preload}
                   imageRefs={photoRefs}
                 />
-                {pending && (
+                {styledPending && (
                   <span className="pw-style-loading" role="status">
                     Loading photo…
                   </span>
@@ -263,20 +307,23 @@ export default function HomepageStyleGallery() {
           </figure>
           <div className="pw-style-choices">
             <p className="pw-style-picker-label">Choose a style</p>
-            <StylePicker value={pending ?? selected} onChange={selectStyle} />
+            <StylePicker
+              value={styledPending ? pending! : selected}
+              onChange={selectStyle}
+            />
           </div>
         </div>
         <DialogContent className="pw-style-dialog">
           <DialogHeader>
-            <DialogTitle>{active.name}</DialogTitle>
-            <DialogDescription>{active.detail}</DialogDescription>
+            <DialogTitle>{expandedActive.name}</DialogTitle>
+            <DialogDescription>{expandedActive.detail}</DialogDescription>
           </DialogHeader>
           <figure
             className="pw-style-enlarged-photo"
             aria-busy={pending !== null}
           >
             <StyledPhoto
-              style={active}
+              style={expandedActive}
               enlarged
               preload
               imageRefs={enlargedRefs}
@@ -288,9 +335,10 @@ export default function HomepageStyleGallery() {
             )}
           </figure>
           <StylePicker
-            value={pending ?? selected}
+            value={pending ?? expandedActive.id}
             onChange={selectStyle}
             compact
+            includeOriginal
           />
           {loadError && (
             <p className="pw-style-disclosure" role="status">
@@ -298,7 +346,9 @@ export default function HomepageStyleGallery() {
             </p>
           )}
           <p className="pw-style-disclosure">
-            Illustrative AI edits. Review your results before sharing.
+            {showOriginal
+              ? "Original photograph, shown without AI edits."
+              : "Illustrative AI edits. Review your results before sharing."}
           </p>
         </DialogContent>
       </Dialog>

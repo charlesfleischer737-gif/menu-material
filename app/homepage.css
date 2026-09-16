@@ -241,6 +241,9 @@
 .pw-style-picker.is-compact {
   grid-template-columns: repeat(4, minmax(0, 1fr));
 }
+.pw-style-picker.is-compact.has-original {
+  grid-template-columns: repeat(5, minmax(0, 1fr));
+}
 .is-compact .pw-style-option {
   gap: 8px;
 }
@@ -311,12 +314,20 @@
     display: none;
   }
   .pw-style-choices .pw-style-picker,
-  .pw-style-picker.is-compact {
+  .pw-style-picker.is-compact,
+  .pw-style-picker.is-compact.has-original {
     grid-template-columns: repeat(4, minmax(3.5rem, 1fr));
     gap: 6px;
     overflow-x: auto;
     padding: 3px;
     margin: -3px;
+  }
+  .pw-style-picker.is-compact .pw-style-option.is-original {
+    grid-column: 1 / -1;
+    flex-direction: row;
+    justify-content: center;
+    gap: 10px;
+    margin-top: 2px;
   }
   .pw-style-option {
     flex-direction: column;
