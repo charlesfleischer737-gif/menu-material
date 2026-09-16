@@ -169,9 +169,9 @@ export default function Landing({
               as good as it tastes.
             </h1>
             <p>
-              Turn a quick phone photo into studio-quality images, a polished
-              menu, and content ready for DoorDash and Instagram. No photoshoot.
-              No editing skills.
+              Turn a quick phone photo into studio-quality images and matching
+              posts. Ready to upload to Toast, delivery apps, your website, and
+              Instagram. Keep using the tools you know.
             </p>
             <Button onClick={onStart}>
               {signedIn ? "Open my studio" : "Try it free"}
@@ -204,8 +204,8 @@ export default function Landing({
           <div className="pw-comparison-notes">
             <p>Illustrative AI edit. Review every result before sharing.</p>
             <p>
-              Keep your originals <span aria-hidden="true">·</span> Publish when
-              you’re ready
+              Keep your originals <span aria-hidden="true">·</span> Download for
+              the channels you use
             </p>
           </div>
         </section>
@@ -222,22 +222,24 @@ export default function Landing({
             <li>
               <span className="pw-step-number">1</span>
               <div>
-                <h3>Choose your look</h3>
-                <p>Pick a style for your restaurant.</p>
+                <h3>Start with your dish</h3>
+                <p>Add a real photo and choose your look.</p>
               </div>
             </li>
             <li>
               <span className="pw-step-number">2</span>
               <div>
-                <h3>Add your dish</h3>
-                <p>Upload your photo and generate.</p>
+                <h3>Create and review</h3>
+                <p>Check that every detail still looks like your food.</p>
               </div>
             </li>
             <li>
               <span className="pw-step-number">3</span>
               <div>
-                <h3>Review and share</h3>
-                <p>Check, download, or add to your menu.</p>
+                <h3>Use it where you sell</h3>
+                <p>
+                  Download for your menu, delivery apps, or social channels.
+                </p>
               </div>
             </li>
           </ol>
@@ -248,8 +250,8 @@ export default function Landing({
             <p className="pw-eyebrow">FREE TO START. MORE ROOM TO CREATE.</p>
             <h2 id="plan-facts-title">Start with 5 free images.</h2>
             <p>
-              No credit card. Full-quality photos and exports, from your very
-              first dish.
+              No credit card. Full-quality photos and exports for your next menu
+              refresh, new dish, or weekly special.
             </p>
           </div>
           <div className="pw-pro-offer">

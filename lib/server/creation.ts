@@ -367,6 +367,7 @@ export async function creationRoute(req: Request, p: string[], r: Row) {
           "step_view",
           "quick_adjustment",
           "post_saved",
+          "photo_reused",
         ]),
         entityId: z.string().uuid().optional(),
         details: z

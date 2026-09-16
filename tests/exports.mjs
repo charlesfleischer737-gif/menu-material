@@ -60,7 +60,7 @@ globalThis.fetch = async (url) => {
     });
   throw Error("Unexpected export request " + path);
 };
-const { menuPdf, renderPost, campaignZip, photoExport } =
+const { menuPdf, renderPost, campaignZip, photoExport, masterPhotoExport } =
   await import("../lib/creation-export.ts");
 const restaurant = {
   name: "The Orchard Kitchen",
@@ -305,6 +305,30 @@ const delivery = await photoExport("burger", "uber");
 assert.equal(delivery.blob.type, "image/jpeg");
 assert(delivery.width >= 550 && delivery.height >= 440);
 checks++;
+const master = await masterPhotoExport("burger");
+assert.deepEqual(
+  Buffer.from(await master.blob.arrayBuffer()),
+  jpg,
+  "Full-quality download is byte-for-byte unchanged",
+);
+assert.equal(master.extension, "jpg");
+const toast = await photoExport("burger", "toast");
+assert.equal(toast.blob.type, "image/jpeg");
+assert(toast.width >= 750 && toast.height >= 450);
+assert(Math.abs(toast.width / toast.height - 5 / 3) < 0.002);
+assert(toast.blob.size <= 5 * 1024 * 1024);
+const inputPhoto = await loadImage(jpg);
+assert(
+  toast.width <= inputPhoto.width && toast.height <= inputPhoto.height,
+  "Toast does not invent pixels by enlarging the photo",
+);
+await assert.rejects(photoExport("burger", "toast", { zoom: 10 }), /too small/);
+const printPhoto = await photoExport("burger", "print", { fit: true });
+assert(
+  printPhoto.width <= Math.min(inputPhoto.width, inputPhoto.height),
+  "Fit exports preserve detail without upscaling",
+);
+checks += 4;
 const { menuQrCard } = await import("../lib/qr-card.ts");
 const { default: QR } = await import("qrcode");
 const qrLink = "https://example.test/m/orchard";

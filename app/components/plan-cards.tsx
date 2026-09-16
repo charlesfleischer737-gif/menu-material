@@ -23,7 +23,7 @@ export default function PlanCards({
         <ul>
           <li>One-time allowance, no expiry</li>
           <li>Full-quality image generation and exports</li>
-          <li>Photo Studio, Menu Builder and Post Maker</li>
+          <li>Photos for your existing menu and social channels</li>
           <li>No credit card required</li>
         </ul>
         {onFree ? (
@@ -48,7 +48,8 @@ export default function PlanCards({
         <ul>
           <li>Fresh allowance each paid billing period</li>
           <li>The same full-quality images and exports</li>
-          <li>All your photos, menus and posts in one place</li>
+          <li>New dishes, menu refreshes and weekly specials</li>
+          <li>Reuse approved photos in matching posts and Stories</li>
           <li>Cancel future renewals through billing</li>
         </ul>
         {enabled ? (

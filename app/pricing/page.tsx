@@ -20,7 +20,7 @@ export default function Pricing() {
           Choose a style and prepare your photo before creating an account. When
           you click Generate image, sign up to receive five free image
           generations. Original photos are kept separately from AI results. All
-          plans include Photo Studio, Menu Builder, Post Maker and full-quality
+          plans include Photo Studio, My Dishes, Post Maker and full-quality
           exports.
         </p>
       </section>

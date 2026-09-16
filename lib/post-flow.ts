@@ -1,4 +1,33 @@
 import { money, type Row } from "./client";
+export function postFromPhoto(
+  base: Row,
+  dish: Row,
+  photo: Row,
+  restaurant: Row,
+  quick = false,
+) {
+  const draft = {
+    ...base,
+    items: [
+      { dishId: dish.id, photoId: photo.id, name: dish.name, quantity: 1 },
+    ],
+    title: dish.name,
+    description: dish.description || "",
+    price:
+      Number.isFinite(dish.price) && dish.price > 0
+        ? (dish.price / 100).toFixed(2)
+        : "",
+    showPrice: false,
+    validity: "",
+    channels: ["feed", "story"],
+    quickStart: quick,
+    step: quick ? 6 : 1,
+    reviewed: false,
+    captionMode: "auto",
+    captionNeedsReview: false,
+  };
+  return { ...draft, caption: postCaption(draft, restaurant) };
+}
 export function postPage(step: number) {
   return step <= 2 ? 1 : step === 3 ? 2 : step <= 5 ? 3 : 4;
 }

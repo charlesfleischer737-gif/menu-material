@@ -1,9 +1,11 @@
 import assert from "node:assert/strict";
+import "./photo-destinations.mjs";
 import {
   postPage,
   postCaption,
   updatePost,
   postDetailError,
+  postFromPhoto,
 } from "../lib/post-flow.ts";
 
 const restaurant = { name: "The Orchard Kitchen", currency: "USD" };
@@ -16,6 +18,48 @@ const item = {
 const assets = [
   { id: item.photoId, dish_id: item.dishId, approved_at: "2026-09-15" },
 ];
+const quick = postFromPhoto(
+  { template: "editorial", color: "#123456", typography: "editorial" },
+  {
+    id: item.dishId,
+    name: item.name,
+    description: "Our real pasta",
+    price: 1850,
+  },
+  assets[0],
+  restaurant,
+  true,
+);
+assert.equal(
+  quick.items[0].photoId,
+  item.photoId,
+  "Reuse the exact approved version",
+);
+assert.equal(
+  quick.step,
+  6,
+  "A matching post opens at the combined review and download screen",
+);
+assert.deepEqual(quick.channels, ["feed", "story"]);
+assert.equal(quick.color, "#123456");
+assert.equal(quick.typography, "editorial");
+assert.equal(quick.price, "18.50");
+assert.equal(
+  quick.showPrice,
+  false,
+  "A stored price is optional and needs review before publication",
+);
+assert.equal(
+  quick.validity,
+  "",
+  "Never carry stale offer dates into a new post",
+);
+assert.equal(quick.reviewed, false);
+assert.equal(quick.caption, postCaption(quick, restaurant));
+assert.match(
+  updatePost(quick, { showPrice: true }, restaurant).caption,
+  /18\.50/,
+);
 const base = {
   step: 2,
   items: [item],

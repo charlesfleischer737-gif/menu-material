@@ -615,6 +615,16 @@ export async function menuTools(req: Request, p: string[], r: Row) {
   }
   if (p[0] === "insights" && req.method === "GET") {
     const since = now() - 28 * 86400000;
+    const creative = await one(
+      "SELECT count(*) AS downloads,count(DISTINCT a.dish_id) AS dishes,count(DISTINCT date(e.created_at/1000,'unixepoch')) AS days FROM events e JOIN assets a ON a.id=e.entity_id AND a.restaurant_id=e.restaurant_id WHERE e.restaurant_id=? AND e.kind='export_complete' AND a.approved_at IS NOT NULL AND e.created_at>=?",
+      r.id,
+      since,
+    );
+    const firstDownload = await one(
+      "SELECT MIN(e.created_at) AS downloaded,(SELECT MIN(created_at) FROM assets WHERE restaurant_id=? AND kind='source') AS uploaded FROM events e JOIN assets a ON a.id=e.entity_id AND a.restaurant_id=e.restaurant_id WHERE e.restaurant_id=? AND e.kind='export_complete' AND a.approved_at IS NOT NULL",
+      r.id,
+      r.id,
+    );
     const counts = await all(
       "SELECT kind,count(*) AS count FROM events WHERE restaurant_id=? AND created_at>=? GROUP BY kind",
       r.id,
@@ -668,6 +678,11 @@ export async function menuTools(req: Request, p: string[], r: Row) {
     }
     return response({
       counts: Object.fromEntries(counts.map((x) => [x.kind, x.count])),
+      creative,
+      firstDownloadElapsedMs:
+        firstDownload?.downloaded != null && firstDownload?.uploaded != null
+          ? Math.max(0, firstDownload.downloaded - firstDownload.uploaded)
+          : null,
       active,
       wait,
       weeks,

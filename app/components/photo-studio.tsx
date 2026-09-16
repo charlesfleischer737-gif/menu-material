@@ -8,10 +8,6 @@ import {
   SlidersHorizontal,
   ArrowRight,
   ImagePlus,
-  BookOpen,
-  Megaphone,
-  Truck,
-  Printer,
   Download,
   History,
   Expand,
@@ -26,15 +22,10 @@ import {
   photoBrief,
   styleFor,
   emptyAdjustments,
-  deliveryProfiles,
   type PhotoFormat,
 } from "@/lib/studio";
-import {
-  canvasBlob,
-  drawPhoto,
-  imageBitmap,
-  photoExport,
-} from "@/lib/creation-export";
+import { canvasBlob, drawPhoto, imageBitmap } from "@/lib/creation-export";
+import PhotoDownloads from "./photo-downloads";
 import { photoAdvice } from "@/lib/photo-advice";
 import {
   restaurantPhotoDefaults,
@@ -92,9 +83,7 @@ export default function PhotoStudio({
     [adjust, setAdjust] = useState(""),
     [aiChanges, setAiChanges] = useState(""),
     [accurate, setAccurate] = useState(false),
-    [zoom, setZoom] = useState(false),
-    [download, setDownload] = useState(false),
-    [fullDish, setFullDish] = useState(false);
+    [zoom, setZoom] = useState(false);
   const seedHandled = useRef(""),
     editKey = useRef("");
   const selected =
@@ -112,8 +101,7 @@ export default function PhotoStudio({
     creating =
       !!running ||
       ["Creating your photo", "Applying your changes"].includes(busy),
-    format = formats[b.format as PhotoFormat] || formats.menu,
-    delivery = ["doordash", "uber"].includes(b.format);
+    format = formats[b.format as PhotoFormat] || formats.menu;
   const restaurantLook = {
     ...looks.find((l) => l.id === "restaurant")!,
     image: state.restaurant.style?.referenceIds?.[0]
@@ -443,25 +431,6 @@ export default function PhotoStudio({
     change({ step: 5 });
     await save();
     await refresh();
-  }
-  async function downloadPhoto() {
-    if (delivery) {
-      setDownload(true);
-      setFullDish(false);
-      change({ adjustments: { ...emptyAdjustments, fit: false } });
-      return;
-    }
-    const file = await photoExport(resultId, b.format, emptyAdjustments);
-    downloadBlob(
-      file.blob,
-      `${b.name.toLowerCase().replace(/[^a-z0-9]+/g, "-")}-${b.format}.jpg`,
-    );
-    track("export_complete", resultId, {
-      format: b.format,
-      width: file.width,
-      height: file.height,
-    });
-    setNotice("Downloaded. Your photo is also saved in My Dishes.");
   }
   async function quickSave() {
     const im = await imageBitmap(`/api/assets/${resultId}`);
@@ -858,19 +827,16 @@ export default function PhotoStudio({
                     onClick={() =>
                       act("Saving your photo", async () => {
                         await approve();
-                        await downloadPhoto();
                       })
                     }
                   >
-                    <Download size={18} />
-                    {delivery
-                      ? "Save & check delivery crop"
-                      : "Save & download"}
+                    <Check size={18} />
+                    Approve & choose download
                   </button>
                   <p className="cx-review-save-note">
                     {adjust === "quick"
                       ? "Save your adjustments below, then download your finished photo."
-                      : "Also saved in My Dishes for your next menu or post."}
+                      : "Saved in My Dishes. Download for your channels next."}
                   </p>
                   <div className="cx-rule" />
                   <button
@@ -1013,7 +979,7 @@ export default function PhotoStudio({
       )}
       {b.step === 5 && resultId && (
         <>
-          <div className="cx-success">
+          <div className="cx-success cx-approved-summary">
             <img src={`/api/assets/${resultId}`} alt={b.name} />
             <div>
               <span className="cx-pill">
@@ -1021,16 +987,7 @@ export default function PhotoStudio({
                 Approved & saved
               </span>
               <h2>{b.name}</h2>
-              <p>A keeper, ready for your next menu or post.</p>
-              <button
-                className="cx-btn cx-success-download"
-                disabled={!!busy}
-                onClick={() => act("Preparing your photo", downloadPhoto)}
-              >
-                <Download size={18} />{" "}
-                {delivery ? "Prepare delivery download" : "Download my photo"}
-              </button>
-
+              <p>Ready for the places you already sell and share.</p>
               {!b.savedLook && (
                 <button
                   className="cx-link"
@@ -1038,178 +995,70 @@ export default function PhotoStudio({
                   onClick={() => act("Saving your restaurant look", saveLook)}
                 >
                   <Sparkles size={16} />
-                  Use this look for my restaurant
+                  Use this look for my next dish
                 </button>
               )}
             </div>
           </div>
-          <div className="cx-destinations">
-            {[
-              [
-                "menu",
-                "Add to menu",
-                "Make your bestsellers look their best.",
-                BookOpen,
-              ],
-              [
-                "post",
-                "Make a post",
-                "Turn this dish into your next great post.",
-                Megaphone,
-              ],
-              [
-                "delivery",
-                "Delivery download",
-                "Clean, correctly shaped item photos.",
-                Truck,
-              ],
-              ["print", "Print", "A beautiful menu, ready for paper.", Printer],
-            ].map(([where, title, desc, Icon]) => {
-              const I = Icon as typeof Camera;
-              return (
-                <button
-                  className={
-                    (
-                      b.destination === "social"
-                        ? where === "post"
-                        : b.destination === where
-                    )
-                      ? "recommended"
-                      : ""
-                  }
-                  key={String(where)}
-                  onClick={() => {
-                    track("destination_selected", b.dishId, {
-                      destination: String(where),
-                    });
-                    if (where === "delivery") {
-                      setDownload(true);
-                      setFullDish(false);
-                      change({
-                        format: "doordash",
-                        adjustments: { ...emptyAdjustments, fit: false },
-                      });
-                    } else onDestination(String(where), b.dishId, resultId);
-                  }}
-                >
-                  <I size={24} />
-                  <b>{String(title)}</b>
-                  <p>{String(desc)}</p>
-                  <ArrowRight size={18} />
-                </button>
-              );
-            })}
-          </div>
-          <button className="cx-link" onClick={() => change({ step: 4 })}>
-            Review or adjust this photo
-          </button>
-        </>
-      )}
-      {download && (
-        <div className="cx-panel cx-download-panel">
-          <div className="cx-section-line">
-            <h2>Download for delivery</h2>
+          <PhotoDownloads
+            key={resultId}
+            items={[
+              {
+                assetId: resultId,
+                dishId: b.dishId,
+                name: b.name,
+                fromPhoto: b.mode === "photo",
+              },
+            ]}
+            initialFormat={b.format}
+            preferenceKey={workspacePreferenceKey(
+              state.user.id,
+              state.restaurant.id,
+            )}
+            onPromote={(photo) =>
+              onDestination("post", photo.dishId, photo.assetId, {
+                quick: true,
+              })
+            }
+          />
+          <div className="cx-button-row cx-secondary-actions">
             <button
-              aria-label="Close delivery downloads"
-              className="cx-icon"
-              onClick={() => setDownload(false)}
+              className="cx-btn cx-secondary"
+              disabled={!!busy}
+              onClick={() =>
+                act("Starting your next dish", () =>
+                  start({
+                    ...photoBrief(),
+                    ...restaurantPhotoDefaults(state.restaurant),
+                  }),
+                )
+              }
             >
-              <X size={18} />
+              <ImagePlus size={17} />
+              Add another dish
             </button>
-          </div>
-          <div className="cx-studio-grid">
-            <div>
-              <PhotoFrame
-                src={`/api/assets/${resultId}`}
-                ratio={format.ratio}
-                edits={{ ...b.adjustments, fit: false }}
-                onChange={(adjustments) =>
-                  change({ adjustments: { ...adjustments, fit: false } })
-                }
-                label="Your approved photo · delivery crop"
-              />
-            </div>
-            <div>
-              <Field label="Delivery app">
-                <select
-                  value={b.format}
-                  onChange={(e) => {
-                    change({ format: e.target.value });
-                    setFullDish(false);
-                  }}
+            <button className="cx-link" onClick={() => change({ step: 4 })}>
+              Review or create another version
+            </button>
+            <details>
+              <summary>Menus & print</summary>
+              <div className="cx-button-row">
+                <button
+                  className="cx-link"
+                  onClick={() => onDestination("menu", b.dishId, resultId)}
                 >
-                  <option value="doordash">DoorDash</option>
-                  <option value="uber">Uber Eats</option>
-                </select>
-              </Field>
-              <CropControls
-                value={b.adjustments}
-                onChange={(adjustments) => {
-                  change({ adjustments });
-                  setFullDish(false);
-                }}
-                allowFit={false}
-              />
-              <label className="cx-check">
-                <input
-                  type="checkbox"
-                  checked={fullDish}
-                  onChange={(e) => setFullDish(e.target.checked)}
-                />
-                The full dish is visible and accurately represents what I serve.
-              </label>
-              <button
-                className="cx-btn"
-                disabled={!fullDish || !!busy || b.mode === "description"}
-                onClick={() =>
-                  act("Preparing your delivery photo", async () => {
-                    const output = await photoExport(
-                      resultId,
-                      b.format,
-                      b.adjustments,
-                    );
-                    downloadBlob(
-                      output.blob,
-                      `${b.name.toLowerCase().replace(/[^a-z0-9]+/g, "-")}-${b.format}.jpg`,
-                    );
-                    track("export_complete", resultId, {
-                      format: b.format,
-                      width: output.width,
-                      height: output.height,
-                    });
-                    setNotice(
-                      "Photo downloaded. Upload it in your delivery app’s merchant portal.",
-                    );
-                  })
-                }
-              >
-                <Download size={17} />
-                Download for {b.format === "uber" ? "Uber Eats" : "DoorDash"}
-              </button>
-              {b.mode === "description" && (
-                <p className="cx-hint">
-                  Use a photograph of the actual dish for delivery listings.
-                  This image was created from a description.
-                </p>
-              )}
-              <p className="cx-hint">
-                We check size and format. The delivery app reviews photo
-                acceptance. No text or logo is added.
-              </p>
-              <a
-                className="cx-link"
-                target="_blank"
-                rel="noreferrer"
-                href={
-                  deliveryProfiles[b.format === "uber" ? "uber" : "doordash"]
-                    .source
-                }
-              >
-                Photo requirements & upload guidance <ArrowRight size={14} />
-              </a>
-            </div>
+                  Add to a Plateworthy menu
+                </button>
+                <button
+                  className="cx-link"
+                  onClick={() => onDestination("print", b.dishId, resultId)}
+                >
+                  Create a print menu
+                </button>
+              </div>
+            </details>
           </div>
-        </div>
+        </>
       )}
       <Dialog open={zoom} onOpenChange={setZoom}>
         <DialogContent className="cx-zoom-dialog">

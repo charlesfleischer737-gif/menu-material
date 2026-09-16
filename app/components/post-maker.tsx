@@ -21,6 +21,7 @@ import {
   postCaption,
   updatePost,
   postDetailError,
+  postFromPhoto,
 } from "@/lib/post-flow";
 import { emptyAdjustments } from "@/lib/studio";
 import PostSharing from "./post-sharing";
@@ -186,13 +187,19 @@ export default function PostMaker({
         a = state.assets.find(
           (a: Row) => a.id === seed.photoId && a.approved_at,
         );
-      if (d && a)
-        await start({
-          ...initial(state.restaurant),
-          items: [{ dishId: d.id, photoId: a.id, name: d.name, quantity: 1 }],
-          title: d.name,
-          step: 1,
-        });
+      if (d && a) {
+        await start(
+          postFromPhoto(
+            initial(state.restaurant),
+            d,
+            a,
+            state.restaurant,
+            !!seed.quick,
+          ),
+        );
+        if (seed.quick)
+          track("photo_reused", a.id, { dishId: d.id, destination: "post" });
+      }
       onSeedUsed();
     });
   }, [ready, seed]);
@@ -228,16 +235,18 @@ export default function PostMaker({
         </div>
       </ToolHeader>
       <DraftRecovery store={store} />
-      <Steps
-        labels={[
-          "Dish & details",
-          "Design",
-          "Formats & caption",
-          "Save & share",
-        ]}
-        step={page}
-        onBack={(n) => change({ step: [1, 3, 4, 6][n - 1] })}
-      />
+      {!b.quickStart && (
+        <Steps
+          labels={[
+            "Dish & details",
+            "Design",
+            "Formats & caption",
+            "Save & share",
+          ]}
+          step={page}
+          onBack={(n) => change({ step: [1, 3, 4, 6][n - 1] })}
+        />
+      )}
       <Feedback {...action} />
       {page === 1 && (
         <>
@@ -922,6 +931,67 @@ export default function PostMaker({
       )}
       {page === 4 && (
         <>
+          {b.quickStart && (
+            <div className="cx-quick-post-details">
+              <h2>Your photo. A matching post and Story.</h2>
+              <p>
+                Your approved photo is ready in both formats. Add an offer if
+                you want, then review both previews and your caption.
+              </p>
+              <div className="cx-quick-post-fields">
+                <Field label="Headline">
+                  <input
+                    value={b.title}
+                    maxLength={90}
+                    onChange={(e) => update({ title: e.target.value })}
+                  />
+                </Field>
+                <div>
+                  <label className="cx-check">
+                    <input
+                      type="checkbox"
+                      checked={b.showPrice}
+                      onChange={(e) => update({ showPrice: e.target.checked })}
+                    />
+                    Include a price
+                  </label>
+                  {b.showPrice && (
+                    <Field label={`Price (${state.restaurant.currency})`}>
+                      <input
+                        type="number"
+                        min="0"
+                        step="0.01"
+                        value={b.price}
+                        onChange={(e) => update({ price: e.target.value })}
+                      />
+                    </Field>
+                  )}
+                </div>
+                <Field label="Offer dates or hours (optional)">
+                  <input
+                    value={b.validity}
+                    maxLength={100}
+                    placeholder="Friday · 5–9 pm"
+                    onChange={(e) => update({ validity: e.target.value })}
+                  />
+                </Field>
+              </div>
+              <div className="cx-button-row">
+                <button
+                  className="cx-link"
+                  onClick={() => change({ quickStart: false, step: 3 })}
+                >
+                  Customize the design
+                </button>
+                <button
+                  className="cx-link"
+                  onClick={() => change({ quickStart: false, step: 1 })}
+                >
+                  Change dish or promotion type
+                </button>
+              </div>
+            </div>
+          )}
           <div className="cx-share-layout">
             <div>
               <div className="cx-channel-previews">
@@ -944,6 +1014,12 @@ export default function PostMaker({
               </div>
               <div className="cx-caption-preview">
                 <h3>Your caption</h3>
+                {b.captionNeedsReview && (
+                  <p className="cx-feedback" role="status">
+                    Your offer details changed. Check that your custom caption
+                    still matches the price and dates before sharing.
+                  </p>
+                )}
                 <p>{b.caption}</p>
                 <button className="cx-link" onClick={() => change({ step: 4 })}>
                   Edit caption
@@ -957,6 +1033,9 @@ export default function PostMaker({
                 <input
                   type="checkbox"
                   checked={b.reviewed}
+                  disabled={
+                    !!postDetailError(b, state.assets) || !b.channels.length
+                  }
                   onChange={(e) =>
                     change({
                       reviewed: e.target.checked,
@@ -966,6 +1045,11 @@ export default function PostMaker({
                 />
                 I’ve checked the images, text, prices and dates.
               </label>
+              {postDetailError(b, state.assets) && (
+                <p className="cx-feedback" role="alert">
+                  {postDetailError(b, state.assets)}
+                </p>
+              )}
               <PostSharing
                 draft={b}
                 restaurant={state.restaurant}
@@ -974,23 +1058,29 @@ export default function PostMaker({
               />
               <button
                 className="cx-btn cx-secondary cx-full"
-                disabled={!b.reviewed || !!busy}
+                disabled={
+                  !b.reviewed || !!busy || !!postDetailError(b, state.assets)
+                }
                 onClick={() =>
                   act("Preparing your campaign files", async () => {
                     await save();
+                    const error = postDetailError(b, state.assets);
+                    if (error) throw Error(error);
                     const blob = await campaignZip(b, state.restaurant);
                     downloadBlob(blob, `${state.restaurant.slug}-campaign.zip`);
                     track("export_complete", undefined, {
                       format: "campaign-zip",
                     });
                     setNotice(
-                      "Campaign saved with your images and caption text file.",
+                      "Your images and caption are downloaded together, ready to upload.",
                     );
                   })
                 }
               >
                 <Download size={17} />
-                Download campaign ZIP
+                {b.channels.includes("feed") && b.channels.includes("story")
+                  ? "Download post, Story & caption"
+                  : "Download selected images & caption"}
               </button>
               <p className="cx-hint">
                 Saving or sharing opens your files or apps. It does not

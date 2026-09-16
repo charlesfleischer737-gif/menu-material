@@ -92,6 +92,13 @@ export const looks: PhotoStyle[] = [
 ];
 export type LookId = string;
 export const formats = {
+  toast: {
+    label: "Toast item photo",
+    short: "Toast photo",
+    width: 1500,
+    height: 900,
+    ratio: 5 / 3,
+  },
   menu: {
     label: "Menu & website",
     short: "Menu photo",
@@ -138,13 +145,13 @@ export const formats = {
 export type PhotoFormat = keyof typeof formats;
 export const deliveryProfiles = {
   doordash: {
-    version: "2026-09-15",
-    verified: "2026-09-15",
+    version: "2026-09-16",
+    verified: "2026-09-16",
     source:
       "https://help.doordash.com/en-us/merchants/article/common-photo-issues-explained",
     minWidth: 1400,
     minHeight: 800,
-    maxBytes: 2 * 1024 * 1024,
+    maxBytes: 16 * 1024 * 1024,
   },
   uber: {
     version: "2026-09-15",
@@ -154,6 +161,18 @@ export const deliveryProfiles = {
     minWidth: 550,
     minHeight: 440,
     maxBytes: 10 * 1024 * 1024,
+  },
+};
+export const catalogProfiles = {
+  ...deliveryProfiles,
+  toast: {
+    version: "2026-09-16",
+    verified: "2026-09-16",
+    source:
+      "https://support.toasttab.com/en/article/Adding-Images-to-Menu-Items-in-the-Menu?lang=en_US",
+    minWidth: 750,
+    minHeight: 450,
+    maxBytes: 5 * 1024 * 1024,
   },
 };
 export const emptyAdjustments = {

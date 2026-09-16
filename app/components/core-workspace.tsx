@@ -16,9 +16,10 @@ import {
   UtensilsCrossed,
   Sparkles,
 } from "lucide-react";
-import { api, downloadBlob, money, type Row } from "@/lib/client";
-import { photoExport } from "@/lib/creation-export";
-import { formats, type PhotoFormat } from "@/lib/studio";
+import { api, money, type Row } from "@/lib/client";
+import { downloadPhotoItem } from "@/lib/photo-destinations";
+import { Dialog, DialogContent, DialogTitle } from "@/components/ui/dialog";
+import PhotoDownloads from "./photo-downloads";
 import {
   hasSavedContent,
   readPreference,
@@ -33,7 +34,7 @@ import MenuBuilder from "./menu-builder";
 import PostMaker from "./post-maker";
 import MenuTools from "./menu-tools";
 import PromotionWorkspace from "./promotion-workspace";
-import { Feedback, Field, Heading, track, useAction } from "./creation-shared";
+import { Feedback, Field, Heading, useAction } from "./creation-shared";
 export default function CoreWorkspace({
   state,
   refresh,
@@ -99,6 +100,7 @@ export default function CoreWorkspace({
     };
   }, [preferenceKey, state.user.role]);
   function navigate(next: string) {
+    setMoreOpen(false);
     if (location.hash !== "#" + next) history.pushState(null, "", "#" + next);
     if (next !== "admin") rememberPreference(preferenceKey, next);
     setView(next);
@@ -121,7 +123,7 @@ export default function CoreWorkspace({
     extra: Row = {},
   ) {
     if (where === "post") {
-      setPostSeed({ token: crypto.randomUUID(), dishId, photoId });
+      setPostSeed({ token: crypto.randomUUID(), dishId, photoId, ...extra });
       navigate("post");
     } else if (where === "menu" || where === "print") {
       setMenuSeed({
@@ -139,9 +141,8 @@ export default function CoreWorkspace({
   );
   const nav = [
     ["studio", "Photo Studio", Camera],
-    ["menu", "Menu Builder", BookOpen],
-    ["post", "Post Maker", Megaphone],
     ["library", "My Dishes", Images],
+    ["post", "Post Maker", Megaphone],
   ] as const;
   return (
     <div className="cx-app">
@@ -159,6 +160,7 @@ export default function CoreWorkspace({
           </button>
           <details
             className="cx-mobile-tools"
+            open={moreOpen}
             onToggle={(e) => setMoreOpen(e.currentTarget.open)}
           >
             <summary
@@ -176,6 +178,7 @@ export default function CoreWorkspace({
                   : "Free · View plans"}
               </button>
               <button onClick={onSettings}>Restaurant look & settings</button>
+              <button onClick={() => navigate("menu")}>Menus & print</button>
               <button onClick={() => navigate("tools")}>More tools</button>
               {state.user.role === "admin" && (
                 <button onClick={() => navigate("admin")}>
@@ -204,6 +207,14 @@ export default function CoreWorkspace({
           ))}
         </nav>
         <div className="cx-sidebar-bottom">
+          <button
+            className={view === "menu" ? "active" : ""}
+            aria-current={view === "menu" ? "page" : undefined}
+            onClick={() => navigate("menu")}
+          >
+            <BookOpen size={18} />
+            Menus & print
+          </button>
           <div className="cx-pilot">
             <Sparkles size={17} />
             <b>{state.remaining} images remaining</b>
@@ -287,6 +298,7 @@ export default function CoreWorkspace({
                 refresh={refresh}
                 onPhoto={photo}
                 onDestination={destination}
+                onImports={() => navigate("tools")}
               />
             </div>
           )}
@@ -296,7 +308,8 @@ export default function CoreWorkspace({
                 eyebrow="A LITTLE EXTRA HELP"
                 title="Keep your kitchen moving."
               >
-                Staff photos, imports, earlier campaigns and activity.
+                Import an existing menu to organize your photos, refresh several
+                dishes, or review your activity.
               </Heading>
               <button
                 className="cx-btn cx-secondary"
@@ -342,15 +355,17 @@ function DishLibrary({
   refresh,
   onPhoto,
   onDestination,
+  onImports,
 }: {
   state: Row;
   refresh: () => Promise<void>;
   onPhoto: (id?: string, photoId?: string, destination?: string) => void;
-  onDestination: (where: string, did: string, aid: string) => void;
+  onDestination: (where: string, did: string, aid: string, extra?: Row) => void;
+  onImports: () => void;
 }) {
   const [search, setSearch] = useState(""),
     [selected, setSelected] = useState<string[]>([]),
-    [format, setFormat] = useState<PhotoFormat>("menu"),
+    [downloadIds, setDownloadIds] = useState<string[]>([]),
     [detail, setDetail] = useState<Row | null>(null),
     [chosen, setChosen] = useState(""),
     [deleting, setDeleting] = useState("");
@@ -390,55 +405,39 @@ function DishLibrary({
           Add a dish
         </button>
       </div>
+      <div className="cx-library-shortcuts">
+        <p>
+          Reuse a favorite, add this week’s special, or refresh your menu
+          photos.
+        </p>
+        <button className="cx-link" onClick={onImports}>
+          Import a menu or refresh several dishes <ArrowRight size={16} />
+        </button>
+      </div>
+      <p className="cx-hint">
+        Select up to 10 approved photos to download together.
+      </p>
       {selected.length > 0 && (
         <div className="cx-bulk-bar">
           <b>{selected.length} dishes selected</b>
-          <Field label="Download format">
-            <select
-              value={format}
-              onChange={(e) => setFormat(e.target.value as PhotoFormat)}
-            >
-              {Object.entries(formats)
-                .filter(([id]) => id !== "doordash" && id !== "uber")
-                .map(([id, f]) => (
-                  <option value={id} key={id}>
-                    {f.label}
-                  </option>
-                ))}
-            </select>
-          </Field>
           <button
             className="cx-btn cx-secondary"
             disabled={!!busy}
-            onClick={() =>
-              act("Preparing your photo collection", async () => {
-                const { zipSync } = await import("fflate");
-                const files: Record<string, Uint8Array> = {};
-                for (const id of selected) {
-                  const d = state.dishes.find((d: Row) => d.id === id),
-                    a = state.assets.find(
+            onClick={() => {
+              const ids = selected
+                .map(
+                  (id) =>
+                    state.assets.find(
                       (a: Row) => a.dish_id === id && a.approved_at,
-                    );
-                  if (!a) throw Error(`Approve a photo of ${d.name} first.`);
-                  const result = await photoExport(a.id, format);
-                  files[
-                    `${d.name.replace(/[^a-z0-9]+/gi, "-")}-${id.slice(0, 6)}.jpg`
-                  ] = new Uint8Array(await result.blob.arrayBuffer());
-                }
-                downloadBlob(
-                  new Blob(
-                    [zipSync(files, { level: 1 }) as Uint8Array<ArrayBuffer>],
-                    { type: "application/zip" },
-                  ),
-                  "plateworthy-dishes.zip",
+                    )?.id,
+                )
+                .filter(Boolean);
+              if (ids.length !== selected.length)
+                return action.setError(
+                  "Approve a photo for every selected dish first.",
                 );
-                track("export_complete", undefined, {
-                  format: "dish-zip",
-                  count: selected.length,
-                });
-                setNotice("Your selected approved photos are downloaded.");
-              })
-            }
+              setDownloadIds(ids);
+            }}
           >
             <Download size={16} />
             Download selected
@@ -502,6 +501,10 @@ function DishLibrary({
                     type="checkbox"
                     aria-label={`Select ${d.name} for download`}
                     checked={selected.includes(d.id)}
+                    disabled={
+                      !a?.approved_at ||
+                      (!selected.includes(d.id) && selected.length >= 10)
+                    }
                     onChange={(e) =>
                       setSelected(
                         e.target.checked
@@ -511,6 +514,35 @@ function DishLibrary({
                     }
                   />
                 </label>
+                <div className="cx-library-actions">
+                  {a?.approved_at && (
+                    <>
+                      <button
+                        className="cx-link"
+                        onClick={() => setDownloadIds([a.id])}
+                      >
+                        <Download size={15} />
+                        Download
+                      </button>
+                      <button
+                        className="cx-link"
+                        onClick={() =>
+                          onDestination("post", d.id, a.id, { quick: true })
+                        }
+                      >
+                        <Megaphone size={15} />
+                        Make a post
+                      </button>
+                    </>
+                  )}
+                  <button
+                    className="cx-link"
+                    onClick={() => onPhoto(d.id, a?.id || "")}
+                  >
+                    <Sparkles size={15} />
+                    {a?.approved_at ? "Create another version" : "Review photo"}
+                  </button>
+                </div>
               </article>
             );
           })}
@@ -581,34 +613,28 @@ function DishLibrary({
                   <>
                     <button
                       className="cx-btn cx-secondary"
-                      onClick={() =>
-                        onDestination("menu", detail.id, current.id)
-                      }
+                      onClick={() => setDownloadIds([current.id])}
                     >
-                      Use in menu
+                      <Download size={16} />
+                      Download
                     </button>
                     <button
                       className="cx-btn cx-secondary"
                       onClick={() =>
-                        onDestination("post", detail.id, current.id)
-                      }
-                    >
-                      Make a post
-                    </button>
-                    <button
-                      className="cx-link"
-                      disabled={!!busy}
-                      onClick={() =>
-                        act("Saving your photo", async () => {
-                          const out = await photoExport(current.id, "menu");
-                          downloadBlob(
-                            out.blob,
-                            `${detail.name.replace(/[^a-z0-9]+/gi, "-")}.jpg`,
-                          );
+                        onDestination("post", detail.id, current.id, {
+                          quick: true,
                         })
                       }
                     >
-                      Download photo
+                      Make a post & Story
+                    </button>
+                    <button
+                      className="cx-link"
+                      onClick={() =>
+                        onDestination("menu", detail.id, current.id)
+                      }
+                    >
+                      Use in a Plateworthy menu
                     </button>
                   </>
                 )}
@@ -624,6 +650,11 @@ function DishLibrary({
               )}
             </div>
             <div>
+              <h3>Details for your creative projects</h3>
+              <p className="cx-hint">
+                Optional prices and availability stay in Plateworthy. Manage
+                your live menu in your ordering platform.
+              </p>
               <Field label="Dish name">
                 <input
                   value={detail.name}
@@ -670,7 +701,7 @@ function DishLibrary({
                     setDetail({ ...detail, available: e.target.checked })
                   }
                 />
-                Available to order
+                Available on my Plateworthy menu
               </label>
               <button
                 className="cx-btn cx-secondary"
@@ -684,7 +715,7 @@ function DishLibrary({
                     });
                     await refresh();
                     setNotice(
-                      "Dish details saved. Review and publish your menu to update what guests see.",
+                      "Details saved for your Plateworthy projects. Your external menu stays managed in its own platform.",
                     );
                   })
                 }
@@ -695,6 +726,47 @@ function DishLibrary({
           </div>
         </div>
       )}
+      <Dialog
+        open={downloadIds.length > 0}
+        onOpenChange={(open) => {
+          if (!open) setDownloadIds([]);
+        }}
+      >
+        <DialogContent
+          className="cx-app cx-export-dialog"
+          aria-describedby={undefined}
+        >
+          <DialogTitle>
+            {downloadIds.length > 1
+              ? "Download your photo collection"
+              : "Download your dish photo"}
+          </DialogTitle>
+          <PhotoDownloads
+            key={downloadIds.join(":")}
+            items={downloadIds
+              .map((id) => {
+                const asset = state.assets.find(
+                  (a: Row) => a.id === id && a.approved_at,
+                );
+                const dish =
+                  asset &&
+                  state.dishes.find((d: Row) => d.id === asset.dish_id);
+                return asset && dish
+                  ? downloadPhotoItem(state, asset, dish.name)
+                  : null;
+              })
+              .filter((item) => item !== null)}
+            preferenceKey={workspacePreferenceKey(
+              state.user.id,
+              state.restaurant.id,
+            )}
+            onPromote={(item) => {
+              setDownloadIds([]);
+              onDestination("post", item.dishId, item.assetId, { quick: true });
+            }}
+          />
+        </DialogContent>
+      </Dialog>
       <ConfirmDelete
         open={!!deleting}
         onClose={() => setDeleting("")}

@@ -541,6 +541,28 @@ try {
   await call("assets/" + result.asset_id + "?download=1", undefined, 403);
   await call("assets/" + result.asset_id + "/approve", { accurate: true });
   await call("assets/" + result.asset_id + "?download=1");
+  const allowanceBeforeExport = (await call("state")).remaining;
+  await call("creation-events", {
+    kind: "export_complete",
+    entityId: result.asset_id,
+    details: { format: "toast", dishId: dish.id },
+  });
+  await call("creation-events", {
+    kind: "photo_reused",
+    entityId: result.asset_id,
+    details: { destination: "post", dishId: dish.id },
+  });
+  const creativeInsights = await call("insights");
+  assert.equal(creativeInsights.creative.downloads, 1);
+  assert.equal(creativeInsights.creative.dishes, 1);
+  assert.equal(creativeInsights.creative.days, 1);
+  assert.equal(creativeInsights.counts.photo_reused, 1);
+  assert(creativeInsights.firstDownloadElapsedMs >= 0);
+  assert.equal(
+    (await call("state")).remaining,
+    allowanceBeforeExport,
+    "Exporting and reusing approved photos never spends generations",
+  );
   const download = await handle(
     new Request(
       "http://localhost/api/assets/" + result.asset_id + "?download=1",

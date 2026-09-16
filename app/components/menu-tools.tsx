@@ -44,7 +44,7 @@ export default function MenuTools({
     <section className="menu-tools">
       <div className="promotion-toolbar">
         <div>
-          <h2>Complete your menu</h2>
+          <h2>Refresh your dish photos</h2>
           <p className="muted">
             {missing.length} of {state.dishes.length} dishes need an approved
             photo.
@@ -72,7 +72,7 @@ export default function MenuTools({
           <TabsTrigger value="batch">Photos & batches</TabsTrigger>
           <TabsTrigger value="staff">Staff uploads</TabsTrigger>
           <TabsTrigger value="weekly">Weekly assistant</TabsTrigger>
-          <TabsTrigger value="insights">Engagement</TabsTrigger>
+          <TabsTrigger value="insights">Activity</TabsTrigger>
         </TabsList>
         <TabsContent value="import" forceMount className="tools-tab">
           <ImportMenu {...{ state, refresh, act, busy, setNotice }} />
@@ -144,10 +144,11 @@ function ImportMenu({ state, refresh, act, busy, setNotice }: Row) {
   }
   return (
     <div className="panel">
-      <h3>Turn your menu into an editable draft</h3>
+      <h3>Organize photos from your existing menu</h3>
       <p className="muted">
         Upload a clear photo or PDF, up to 4 MB and 60 dishes. Check every price
-        before adding dishes to your menu draft.
+        and dish before adding it to your library. Your live menu stays in your
+        existing ordering platform; publishing a Plateworthy menu is optional.
       </p>
       <div className="button-row">
         <label className="upload-button">
@@ -797,20 +798,15 @@ function Insights() {
         </Button>
       </div>
       <p className="muted">
-        Engagement measures, not sales. Sales attribution needs order data.
-        Customer events count once per browsing session, dish and action.
+        See what you create and reuse in Plateworthy. Downloads record your
+        export actions; publication and orders happen in your existing channels.
       </p>
       <div className="metric-grid">
         {[
-          ["Menu visits", count("menu_visit")],
-          ["Dish views", count("dish_view")],
-          ["Ordering-link clicks", count("ordering_click")],
-          ["Packages approved", count("promotion_approved")],
-          [
-            "Downloads",
-            count("promotion_exported") + count("image_downloaded"),
-          ],
-          ["Hosted special publications", count("promotion_published")],
+          ["Approved photo downloads", data.creative?.downloads || 0],
+          ["Dishes exported", data.creative?.dishes || 0],
+          ["Days with photo downloads", data.creative?.days || 0],
+          ["Posts started from saved photos", count("photo_reused")],
         ].map(([label, value]) => (
           <div key={label}>
             <strong>{value}</strong>
@@ -818,6 +814,39 @@ function Insights() {
           </div>
         ))}
       </div>
+      <p className="muted">
+        First approved photo download:{" "}
+        {data.firstDownloadElapsedMs == null
+          ? "Not recorded yet."
+          : `${Math.max(1, Math.round(data.firstDownloadElapsedMs / 60000))} minutes after your first upload (elapsed time, including time away).`}{" "}
+        Returned to download on {Math.max(0, (data.creative?.days || 0) - 1)}{" "}
+        additional days in this period.
+      </p>
+      <details className="cx-secondary-actions">
+        <summary>Optional hosted-menu activity</summary>
+        <p className="muted">
+          Customer events count once per browsing session, dish and action. Link
+          clicks measure interest; sales attribution needs order data.
+        </p>
+        <div className="metric-grid">
+          {[
+            ["Menu visits", count("menu_visit")],
+            ["Dish views", count("dish_view")],
+            ["Ordering-link clicks", count("ordering_click")],
+            ["Packages approved", count("promotion_approved")],
+            [
+              "Downloads",
+              count("promotion_exported") + count("image_downloaded"),
+            ],
+            ["Hosted special publications", count("promotion_published")],
+          ].map(([label, value]) => (
+            <div key={label}>
+              <strong>{value}</strong>
+              <span>{label}</span>
+            </div>
+          ))}
+        </div>
+      </details>
       <div className="measurement-list">
         <p>
           <b>Active time to approval:</b>{" "}

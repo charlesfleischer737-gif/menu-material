@@ -8,7 +8,7 @@ import {
   useState,
   type CSSProperties,
 } from "react";
-import { ArrowRight, Check, Clock3, Link2 } from "lucide-react";
+import { ArrowRight, Check, Download } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import {
   Carousel,
@@ -36,10 +36,10 @@ const useCases = [
     text: "Give today’s special its moment. Beautiful posts, Stories, and captions ready to make your own.",
   },
   {
-    name: "Menus",
+    name: "Your existing menu",
     image: "/homepage/menus.webp",
     alt: "Tomato rigatoni with basil and Parmesan on a ceramic plate",
-    text: "Let customers order with their eyes. Bring every dish to life on a menu you can share anywhere.",
+    text: "Refresh the photos on Toast, your website, or the menu platform you already use.",
   },
 ];
 
@@ -136,7 +136,6 @@ export default function HomepageSections({
 }) {
   const [price, setPrice] = useState("18");
   const [palette, setPalette] = useState("wine");
-  const [soldOut, setSoldOut] = useState(false);
   const amount = Number(price);
   const displayPrice =
     price !== "" && Number.isFinite(amount) && amount >= 0 && amount <= 9999
@@ -237,8 +236,9 @@ export default function HomepageSections({
               Every way to share it.
             </h3>
             <p>
-              Turn one dish photo into a matching post, Story, and menu. Your
-              colors carry through. Your food gets the spotlight.
+              Start with a photo for your existing menu. Make a matching post
+              and Story with your colors, then download for the channels you
+              use.
             </p>
             <ul className="pw-feature-benefits">
               <li>
@@ -252,14 +252,14 @@ export default function HomepageSections({
             </ul>
           </div>
           <Tabs
-            defaultValue="post"
+            defaultValue="photo"
             className="pw-promotion-demo"
             aria-label="Interactive example promotion package"
           >
             <TabsList aria-label="Preview format">
+              <TabsTrigger value="photo">Menu photo</TabsTrigger>
               <TabsTrigger value="post">Post</TabsTrigger>
               <TabsTrigger value="story">Story</TabsTrigger>
-              <TabsTrigger value="menu">Menu</TabsTrigger>
             </TabsList>
             <div className="pw-demo-controls">
               <label htmlFor="demo-offer-price">
@@ -311,7 +311,7 @@ export default function HomepageSections({
             <p id="demo-price-hint" className="pw-demo-hint">
               {price !== "" && displayPrice === "$—"
                 ? "Enter a price from $0 to $9,999."
-                : "Change the price or color. See it in every format."}
+                : "Change the price or color in your matching post and Story."}
             </p>
             <TabsContent value="post" className="pw-format-panel">
               <div className="pw-preview-stage">
@@ -340,65 +340,33 @@ export default function HomepageSections({
                 A matching vertical design, ready for your Story.
               </p>
             </TabsContent>
-            <TabsContent value="menu" className="pw-format-panel">
-              <div className="pw-preview-stage pw-menu-stage">
-                <div className="pw-demo-menu-sheet">
-                  <div className="pw-demo-menu-header">
-                    <span>THE NEIGHBORHOOD TABLE</span>
-                    <strong>
-                      Something good,
-                      <br />
-                      on the menu.
-                    </strong>
-                  </div>
-                  <div className="pw-demo-menu-item">
-                    <img
-                      src="/homepage/menus.webp"
-                      alt="Rigatoni in the example hosted menu"
-                      width="320"
-                      height="320"
-                      loading="lazy"
-                    />
-                    <div>
-                      <span className="pw-menu-special-label">
-                        TONIGHT’S SPECIAL
-                      </span>
-                      <h4>Rigatoni al pomodoro</h4>
-                      <p>Tomato, basil, Parmesan.</p>
-                      <strong data-demo-price>{displayPrice}</strong>
-                    </div>
-                  </div>
-                  <div
-                    className={`pw-demo-menu-status ${soldOut ? "is-sold-out" : ""}`}
-                    aria-live="polite"
-                  >
-                    <Clock3 size={15} aria-hidden="true" />
-                    {soldOut
-                      ? "Sold out for tonight"
-                      : "Available tonight · 5–9 pm"}
-                  </div>
-                  <div className="pw-demo-menu-link">
-                    <Link2 size={14} aria-hidden="true" />
-                    One menu link. Always up to date.
-                  </div>
+            <TabsContent value="photo" className="pw-format-panel">
+              <div className="pw-preview-stage pw-export-example">
+                <img
+                  src="/homepage/menus.webp"
+                  alt="The same rigatoni photo, ready to crop for an existing menu or ordering platform"
+                  width="1024"
+                  height="1024"
+                  loading="lazy"
+                  decoding="async"
+                />
+                <div>
+                  <Download size={20} aria-hidden="true" />
+                  <strong>Your dish. Your existing menu.</strong>
+                  <span>
+                    Download a clean photo for Toast, delivery apps, or your
+                    website.
+                  </span>
                 </div>
-                <button
-                  type="button"
-                  className="pw-menu-demo-toggle"
-                  onClick={() => setSoldOut(!soldOut)}
-                  aria-pressed={soldOut}
-                >
-                  {soldOut ? "Make available again" : "Try marking it sold out"}
-                  <ArrowRight size={15} aria-hidden="true" />
-                </button>
               </div>
               <p className="pw-format-note">
-                Review and publish when you’re ready. Your menu link and QR code
-                stay the same.
+                Choose a destination, check the crop, and upload through the
+                platform you already use.
               </p>
             </TabsContent>
             <p className="pw-demo-disclosure">
-              Interactive example. Changes here don’t publish a real menu.
+              Example previews. Download files to upload yourself; no platform
+              connection required.
             </p>
           </Tabs>
         </article>

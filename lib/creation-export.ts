@@ -1,7 +1,7 @@
 import { renderPost } from "./post-render";
 import {
   formats,
-  deliveryProfiles,
+  catalogProfiles,
   emptyAdjustments,
   type Adjustments,
   type PhotoFormat,
@@ -32,6 +32,8 @@ export function drawPhoto(
   canvas.width = width;
   canvas.height = height;
   const ctx = canvas.getContext("2d")!;
+  ctx.imageSmoothingEnabled = true;
+  ctx.imageSmoothingQuality = "high";
   ctx.fillStyle = background;
   ctx.fillRect(0, 0, width, height);
   const scale =
@@ -83,10 +85,18 @@ export async function photoExport(
   format: PhotoFormat,
   edits: Partial<Adjustments> = {},
 ) {
-  const im = await imageBitmap(`/api/assets/${aid}?download=1`);
+  const original = await fetch(`/api/assets/${aid}?original=1&download=1`);
+  if (!original.ok)
+    throw Error("This photo could not be opened. Please try again.");
+  const originalBlob = await original.blob();
+  // HEIC/HEIF originals stay available unchanged; browsers use their normalized JPEG for crops.
+  const im = ["image/heic", "image/heif"].includes(originalBlob.type)
+    ? await imageBitmap(`/api/assets/${aid}?download=1`)
+    : await createImageBitmap(originalBlob);
   try {
     const profile = formats[format];
-    const delivery = format === "doordash" || format === "uber";
+    const delivery = format in catalogProfiles;
+    const spec = catalogProfiles[format as keyof typeof catalogProfiles];
     const e = {
       ...emptyAdjustments,
       ...edits,
@@ -99,10 +109,9 @@ export async function photoExport(
     let width: number = profile.width,
       height: number = profile.height;
     if (delivery) {
-      const spec = deliveryProfiles[format];
       if (cropW < spec.minWidth || cropH < spec.minHeight)
         throw Error(
-          `This crop is too small for ${format === "uber" ? "Uber Eats" : "DoorDash"}. Use a wider, higher-resolution photo; enlarging it will not add detail.`,
+          `This crop is too small for ${profile.label}. Use a wider, higher-resolution photo; enlarging it will not add detail.`,
         );
       const scale = Math.min(1, cropW / width, cropH / height);
       width = Math.floor(width * scale);
@@ -113,27 +122,42 @@ export async function photoExport(
         (e.fit ? rw : cropW) / width,
         (e.fit ? rh : cropH) / height,
       );
-      if (!e.fit) {
-        width = Math.floor(width * scale);
-        height = Math.round(width / profile.ratio);
-      }
+      width = Math.max(1, Math.floor(width * scale));
+      height = Math.max(1, Math.round(width / profile.ratio));
     }
     const canvas = document.createElement("canvas");
     drawPhoto(canvas, im, width, height, e);
-    let blob = await canvasBlob(canvas);
-    const max = delivery ? deliveryProfiles[format].maxBytes : Infinity;
-    for (const quality of [0.86, 0.78, 0.68]) {
+    let blob = await canvasBlob(canvas, "image/jpeg", 0.96);
+    const max = delivery ? spec.maxBytes : Infinity;
+    for (const quality of [0.95, 0.94]) {
       if (blob.size <= max) break;
       blob = await canvasBlob(canvas, "image/jpeg", quality);
     }
     if (blob.size > max)
       throw Error(
-        "This file is too large for this destination. Try a simpler crop.",
+        "This file exceeds the destination’s size limit at full quality. Try a different crop or download the full-quality image.",
       );
     return { blob, width, height };
   } finally {
     im.close();
   }
+}
+export async function masterPhotoExport(aid: string) {
+  const res = await fetch(`/api/assets/${aid}?original=1&download=1`);
+  if (!res.ok)
+    throw Error("This photo could not be downloaded. Please try again.");
+  const blob = await res.blob();
+  const extension = (
+    {
+      "image/png": "png",
+      "image/jpeg": "jpg",
+      "image/webp": "webp",
+      "image/heic": "heic",
+      "image/heif": "heif",
+    } as Record<string, string>
+  )[blob.type];
+  if (!extension) throw Error("This file is not a supported image.");
+  return { blob, extension };
 }
 export { renderPost } from "./post-render";
 function colorInk(color: string) {
