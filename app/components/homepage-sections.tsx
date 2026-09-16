@@ -1,5 +1,6 @@
 "use client";
 
+import { ArrowLeft, Heart, Minus, Plus } from "lucide-react";
 import {
   Carousel,
   CarouselContent,
@@ -34,6 +35,58 @@ const useCases = [
 ];
 
 function OutputExample({ item }: { item: (typeof useCases)[number] }) {
+  if (item.kind === "delivery") {
+    return (
+      <div className="pw-output-stage is-delivery">
+        <figure
+          className="pw-delivery-preview"
+          role="img"
+          aria-label="Illustrative delivery-app listing for Your restaurant: Steak and fries, $24.00. Grilled steak with herb butter and golden fries, with a quantity selector and Add to order bar."
+        >
+          <div aria-hidden="true">
+            <div className="pw-delivery-photo">
+              <img
+                src={item.image}
+                alt=""
+                width="960"
+                height="640"
+                loading="lazy"
+                decoding="async"
+              />
+              <div className="pw-delivery-photo-toolbar">
+                <span>
+                  <ArrowLeft size={18} />
+                </span>
+                <span>
+                  <Heart size={18} />
+                </span>
+              </div>
+            </div>
+            <div className="pw-delivery-details">
+              <span className="pw-delivery-restaurant">Your restaurant</span>
+              <strong className="pw-delivery-title">Steak & fries</strong>
+              <span className="pw-delivery-price">$24.00</span>
+              <p>
+                Grilled steak, rich herb butter, and a generous side of golden
+                fries.
+              </p>
+            </div>
+            <div className="pw-delivery-order-bar">
+              <span className="pw-delivery-quantity">
+                <Minus size={14} />
+                <span>1</span>
+                <Plus size={14} />
+              </span>
+              <span className="pw-delivery-add">
+                <span>Add to order</span>
+                <span>$24.00</span>
+              </span>
+            </div>
+          </div>
+        </figure>
+      </div>
+    );
+  }
   if (item.kind === "social") {
     return (
       <div className="pw-output-stage is-social">
@@ -56,13 +109,11 @@ function OutputExample({ item }: { item: (typeof useCases)[number] }) {
     );
   }
   return (
-    <div className={`pw-output-stage is-${item.kind}`}>
-      <div className={`pw-output-${item.kind}`}>
+    <div className="pw-output-stage is-menu">
+      <div className="pw-output-menu">
         <div className="pw-output-heading">
           <span>Your restaurant</span>
-          <strong>
-            {item.kind === "delivery" ? "Delivery menu" : "Dinner menu"}
-          </strong>
+          <strong>Dinner menu</strong>
         </div>
         <img
           src={item.image}
@@ -74,23 +125,15 @@ function OutputExample({ item }: { item: (typeof useCases)[number] }) {
         />
         <div className="pw-output-dish">
           <div className="pw-output-dish-title">
-            <strong>
-              {item.kind === "delivery" ? "Steak & fries" : "Tomato rigatoni"}
-            </strong>
-            <span>{item.kind === "delivery" ? "$24" : "$18"}</span>
+            <strong>Tomato rigatoni</strong>
+            <span>$18</span>
           </div>
-          <p>
-            {item.kind === "delivery"
-              ? "Grilled steak, herb butter & golden fries."
-              : "Tomato sauce, fresh basil & Parmesan."}
-          </p>
+          <p>Tomato sauce, fresh basil & Parmesan.</p>
         </div>
-        {item.kind === "menu" && (
-          <div className="pw-output-menu-row">
-            <strong>Strawberry cheesecake</strong>
-            <span>$9</span>
-          </div>
-        )}
+        <div className="pw-output-menu-row">
+          <strong>Strawberry cheesecake</strong>
+          <span>$9</span>
+        </div>
       </div>
     </div>
   );

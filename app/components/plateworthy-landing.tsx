@@ -15,7 +15,10 @@ import HomepageSections from "./homepage-sections";
 
 const beforePhoto = "/burger-phone-original.jpg";
 const afterPhoto = "/burger-studio-transformation.png";
-const heroFoodAccents = ["sushi", "gelato"];
+const heroFoodBubbles = [
+  ["sushi", "pizza", "cheesecake"],
+  ["burrata", "gelato", "gyoza"],
+];
 
 function ComparisonPhoto({ after = false }: { after?: boolean }) {
   return (
@@ -119,17 +122,25 @@ export default function Landing({
       <main id="main">
         <section className="pw-hero" aria-labelledby="hero-title">
           <div className="pw-hero-intro">
-            <div className="pw-hero-accents" aria-hidden="true">
-              {heroFoodAccents.map((food) => (
-                <img
-                  key={food}
-                  src={`/homepage/hero-${food}.webp`}
-                  alt=""
-                  width="512"
-                  height="512"
-                  decoding="async"
-                  fetchPriority="low"
-                />
+            <div className="pw-hero-bubbles" aria-hidden="true">
+              {heroFoodBubbles.map((foods, side) => (
+                <div
+                  className={`pw-bubble-cluster ${side === 0 ? "is-left" : "is-right"}`}
+                  key={side}
+                >
+                  {foods.map((food) => (
+                    <span className="pw-food-bubble" key={food}>
+                      <img
+                        src={`/homepage/hero-${food}.webp`}
+                        alt=""
+                        width="512"
+                        height="512"
+                        decoding="async"
+                        fetchPriority="low"
+                      />
+                    </span>
+                  ))}
+                </div>
               ))}
             </div>
             <h1 id="hero-title">
