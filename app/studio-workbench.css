@@ -168,6 +168,10 @@
 }
 .ps-style-card {
   appearance: none;
+  display: flex;
+  flex-direction: column;
+  justify-content: flex-start;
+  min-width: 0;
   border: 1px solid #dde3d8;
   padding: 0;
   background: #fff;
@@ -192,14 +196,19 @@
 }
 .ps-style-photo {
   position: relative;
+  flex: 0 0 auto;
+  width: 100%;
   aspect-ratio: 1.1;
   overflow: hidden;
   background: #e7e9df;
 }
 .ps-style-photo > img {
+  position: absolute;
+  inset: 0;
   width: 100%;
   height: 100%;
   object-fit: cover;
+  object-position: center;
   transition: transform 0.5s;
 }
 .ps-style-card:hover:not(:disabled) .ps-style-photo > img {
@@ -244,8 +253,11 @@
   line-height: 1.4;
 }
 .ps-style-copy {
+  flex: 1;
+  width: 100%;
   padding: 13px 13px 15px;
   display: grid;
+  align-content: start;
   gap: 4px;
 }
 .ps-style-copy b {

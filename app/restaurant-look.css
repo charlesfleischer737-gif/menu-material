@@ -316,6 +316,9 @@
   margin: 24px 0 18px;
 }
 .cx-look-presets > button {
+  display: flex;
+  flex-direction: column;
+  justify-content: flex-start;
   min-width: 0;
   padding: 0 0 13px;
   border: 1px solid #dce4d9;
@@ -335,12 +338,16 @@
   box-shadow: 0 0 0 2px #26513b;
 }
 .cx-look-preset-photo {
+  flex: 0 0 auto;
+  width: 100%;
   height: 108px;
   position: relative;
   margin-bottom: 12px;
   overflow: hidden;
 }
 .cx-look-preset-photo > img {
+  position: absolute;
+  inset: 0;
   width: 100%;
   height: 100%;
   object-fit: cover;
