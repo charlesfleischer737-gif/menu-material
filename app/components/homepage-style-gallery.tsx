@@ -57,36 +57,31 @@ const originalPhoto: GalleryStyle = {
   detail: "The starting photo, before styling.",
   alt: "Original strawberry cheesecake photograph on a white plate on a wooden restaurant table",
 };
-const expandedPhotos = [...styles, originalPhoto];
+const galleryPhotos = [originalPhoto, ...styles];
+const defaultPhoto = galleryPhotos[1];
 
 function StylePicker({
   value,
   onChange,
   compact = false,
-  includeOriginal = false,
 }: {
   value: string;
   onChange: (value: string) => void;
   compact?: boolean;
-  includeOriginal?: boolean;
 }) {
   const id = useId();
   return (
     <RadioGroup
       value={value}
       onValueChange={onChange}
-      className={`pw-style-picker${compact ? " is-compact" : ""}${includeOriginal ? " has-original" : ""}`}
-      aria-label={
-        includeOriginal
-          ? "Choose an original or styled photo"
-          : "Choose a photo style"
-      }
+      className={`pw-style-picker${compact ? " is-compact" : ""}`}
+      aria-label="Choose an original or styled photo"
     >
-      {(includeOriginal ? expandedPhotos : styles).map((style) => (
+      {galleryPhotos.map((style) => (
         <label
           key={style.id}
           htmlFor={`${id}-${style.id}`}
-          className={`pw-style-option${style.id === "original" ? " is-original" : ""}`}
+          className="pw-style-option"
           data-selected={value === style.id}
         >
           <RadioGroupItem
@@ -147,7 +142,7 @@ function StyledPhoto({
 }) {
   return (
     <span className="pw-style-photo-stack">
-      {(enlarged ? expandedPhotos : styles).map((photo) => (
+      {galleryPhotos.map((photo) => (
         <img
           key={photo.id}
           ref={(image) => {
@@ -189,8 +184,7 @@ function StyledPhoto({
 }
 
 export default function HomepageStyleGallery() {
-  const [selected, setSelected] = useState("served");
-  const [showOriginal, setShowOriginal] = useState(false);
+  const [selected, setSelected] = useState(defaultPhoto.id);
   const [preload, setPreload] = useState(false);
   const [pending, setPending] = useState<string | null>(null);
   const [loadError, setLoadError] = useState("");
@@ -198,9 +192,8 @@ export default function HomepageStyleGallery() {
   const photoRefs = useRef(new Map<string, HTMLImageElement>());
   const enlargedRefs = useRef(new Map<string, HTMLImageElement>());
   const selectionRequest = useRef(0);
-  const active = styles.find((style) => style.id === selected) ?? styles[2];
-  const expandedActive = showOriginal ? originalPhoto : active;
-  const styledPending = pending !== null && pending !== "original";
+  const active =
+    galleryPhotos.find((photo) => photo.id === selected) ?? defaultPhoto;
 
   useEffect(() => {
     if (!("IntersectionObserver" in window)) {
@@ -246,8 +239,7 @@ export default function HomepageStyleGallery() {
         }),
       );
       if (request === selectionRequest.current) {
-        setShowOriginal(value === "original");
-        if (value !== "original") setSelected(value);
+        setSelected(value);
       }
     } catch {
       if (request === selectionRequest.current) {
@@ -273,13 +265,12 @@ export default function HomepageStyleGallery() {
       <Dialog
         onOpenChange={() => {
           selectionRequest.current += 1;
-          setShowOriginal(false);
           setPending(null);
           setLoadError("");
         }}
       >
         <div className="pw-style-workbench">
-          <figure className="pw-style-result" aria-busy={styledPending}>
+          <figure className="pw-style-result" aria-busy={pending !== null}>
             <DialogTrigger asChild>
               <button
                 type="button"
@@ -291,7 +282,7 @@ export default function HomepageStyleGallery() {
                   preload={preload}
                   imageRefs={photoRefs}
                 />
-                {styledPending && (
+                {pending && (
                   <span className="pw-style-loading" role="status">
                     Loading photo…
                   </span>
@@ -307,23 +298,20 @@ export default function HomepageStyleGallery() {
           </figure>
           <div className="pw-style-choices">
             <p className="pw-style-picker-label">Choose a style</p>
-            <StylePicker
-              value={styledPending ? pending! : selected}
-              onChange={selectStyle}
-            />
+            <StylePicker value={pending ?? selected} onChange={selectStyle} />
           </div>
         </div>
         <DialogContent className="pw-style-dialog">
           <DialogHeader>
-            <DialogTitle>{expandedActive.name}</DialogTitle>
-            <DialogDescription>{expandedActive.detail}</DialogDescription>
+            <DialogTitle>{active.name}</DialogTitle>
+            <DialogDescription>{active.detail}</DialogDescription>
           </DialogHeader>
           <figure
             className="pw-style-enlarged-photo"
             aria-busy={pending !== null}
           >
             <StyledPhoto
-              style={expandedActive}
+              style={active}
               enlarged
               preload
               imageRefs={enlargedRefs}
@@ -335,10 +323,9 @@ export default function HomepageStyleGallery() {
             )}
           </figure>
           <StylePicker
-            value={pending ?? expandedActive.id}
+            value={pending ?? selected}
             onChange={selectStyle}
             compact
-            includeOriginal
           />
           {loadError && (
             <p className="pw-style-disclosure" role="status">
@@ -346,7 +333,7 @@ export default function HomepageStyleGallery() {
             </p>
           )}
           <p className="pw-style-disclosure">
-            {showOriginal
+            {selected === "original"
               ? "Original photograph, shown without AI edits."
               : "Illustrative AI edits. Review your results before sharing."}
           </p>
