@@ -106,9 +106,20 @@
   width: 100%;
   height: 100%;
   object-fit: contain;
+  visibility: hidden;
 }
-.pw-style-photo-stack > img:last-child {
-  animation: pw-style-reveal 180ms ease-out;
+.pw-style-photo-stack > img[data-active="true"] {
+  visibility: visible;
+}
+.pw-style-loading {
+  position: absolute;
+  top: 10px;
+  left: 10px;
+  padding: 6px 10px;
+  border-radius: 20px;
+  background: #fffffff0;
+  color: #202820;
+  font-size: 0.875rem;
 }
 .pw-style-expand {
   position: absolute;
@@ -433,20 +444,9 @@
     padding-top: 0;
   }
 }
-@keyframes pw-style-reveal {
-  from {
-    opacity: 0;
-  }
-  to {
-    opacity: 1;
-  }
-}
 @media (prefers-reduced-motion: reduce) {
   .pw-style-option {
     transition: none;
-  }
-  .pw-style-photo-stack > img:last-child {
-    animation: none;
   }
 }
 .pw-header .pw-mobile-menu-trigger,

@@ -45,6 +45,12 @@
           "bytes": 416942
         },
         {
+          "path": "public/homepage/styles/cheesecake-color-960.webp",
+          "width": 960,
+          "height": 960,
+          "bytes": 846966
+        },
+        {
           "path": "public/homepage/styles/cheesecake-color.webp",
           "width": 1254,
           "height": 1254,
@@ -82,6 +88,12 @@
           "bytes": 462482
         },
         {
+          "path": "public/homepage/styles/cheesecake-angle-960.webp",
+          "width": 960,
+          "height": 960,
+          "bytes": 965686
+        },
+        {
           "path": "public/homepage/styles/cheesecake-angle.webp",
           "width": 1254,
           "height": 1254,
@@ -92,37 +104,43 @@
     {
       "style": "served",
       "name": "Served by hand",
-      "prompt": "Use case: style-transfer.\nAsset type: square editorial food photography for a restaurant gallery, high resolution approximately 1254 × 1254 pixels.\nInput image: the provided local photograph is the EDIT TARGET and source of truth for the food, not a loose inspiration.\nPreserve invariants: the same identifiable tall triangular strawberry-cheesecake wedge, ivory filling with its subtle horizontal seam, thin golden crumb base, thick glossy red strawberry glaze, original strawberry topping count and relative arrangement, one loose strawberry on the same plain round white ceramic plate. View-dependent occlusion is natural, but do not add or remove strawberries. Preserve the natural irregular cut surfaces and dense creamy texture. No new ingredients, toppings, garnish, sauces, cutlery, text, logos, watermark, graphics, or collage. Natural, delicious, believable photographic fidelity. Remove the source's background clutter, extra plates, sugar packets and wood table. This is a deliberate change of physical camera position and scene, not merely a recolor or crop of the source.\nPrimary request: Rephotograph the same cheesecake on its original white plate being offered toward the viewer by a cafe server. It must unmistakably show a person holding the plate. Show a cropped torso in a dark olive apron over a cream shirt, with exactly two realistic hands naturally supporting the left and right underside/rim of the plate. No face is needed. Clearly plausible wrists, fingers, hand anatomy and grip. The plate is held in front of the torso, food prominently centered, photographed slightly above plate level so the filling face and berries read clearly. The full plate must remain completely inside the square frame with comfortable margins, and both holding hands remain visible. The background is a softly blurred relaxed restaurant interior. Natural soft window light, delicious polished editorial food photo, realistic perspective, believable scale.",
+      "prompt": "Use case: precise-object-edit.\nAsset type: replacement square editorial food photograph for Plateworthy's \"Served by hand\" gallery, approximately 1254 × 1254 pixels.\nInput images: Image 1 (cheesecake-original.jpg) is the edit target and authoritative food identity source. Image 2 (cheesecake-served.webp) is only a supporting reference for appetizing photographic detail; do not preserve its person, torso, apron, setting or two-hand pose.\nPrimary request: Rather than an image of someone's body presenting the cheesecake, have it be a hand presenting the plate fancily.\nScene/backdrop: restrained, softly lit dark studio background.\nSubject and invariants: faithfully preserve the exact identifiable strawberry cheesecake wedge from Image 1: same creamy filling, thin golden crust, large portion, red glaze, same five visible strawberry topping pieces in the same arrangement, including the front-facing cut strawberry, and the same single loose strawberry on the plate in front. Preserve the same plain round white plate. No ingredient changes, additions, garnish or props.\nComposition/framing: square frame; full plate visible with tasteful small margins; three-quarter food view showing the cake face and glossy topping. One elegant natural hand enters from an edge, palm up, with fingers gracefully supporting the underside of the plate in a refined restaurant-service gesture. Show only this one hand, its wrist and a small portion of forearm. The plate and cheesecake remain the visual focus.\nStyle/medium and lighting: photorealistic premium editorial food photography; beautifully controlled soft light on creamy filling and glossy red strawberries; sharp appetizing detail with natural textures, physically realistic scale, anatomically plausible hand and believable contact and shadows under the supported plate.\nAvoid: absolutely no torso, apron, face, shoulders, second hand, extra fingers, extra limbs, jewelry, text, logo, watermarks, table, cutlery, new toppings or decorative objects.",
       "files": [
         {
-          "path": "public/homepage/styles/cheesecake-served-160.webp",
+          "path": "public/homepage/styles/cheesecake-hand-160.webp",
           "width": 160,
           "height": 160,
-          "bytes": 34424
+          "bytes": 29904
         },
         {
-          "path": "public/homepage/styles/cheesecake-served-320.webp",
+          "path": "public/homepage/styles/cheesecake-hand-320.webp",
           "width": 320,
           "height": 320,
-          "bytes": 112082
+          "bytes": 104264
         },
         {
-          "path": "public/homepage/styles/cheesecake-served-480.webp",
+          "path": "public/homepage/styles/cheesecake-hand-480.webp",
           "width": 480,
           "height": 480,
-          "bytes": 234248
+          "bytes": 224828
         },
         {
-          "path": "public/homepage/styles/cheesecake-served-640.webp",
+          "path": "public/homepage/styles/cheesecake-hand-640.webp",
           "width": 640,
           "height": 640,
-          "bytes": 396436
+          "bytes": 384156
         },
         {
-          "path": "public/homepage/styles/cheesecake-served.webp",
+          "path": "public/homepage/styles/cheesecake-hand-960.webp",
+          "width": 960,
+          "height": 960,
+          "bytes": 772284
+        },
+        {
+          "path": "public/homepage/styles/cheesecake-hand.webp",
           "width": 1254,
           "height": 1254,
-          "bytes": 1369598
+          "bytes": 1326728
         }
       ]
     },
@@ -154,6 +172,12 @@
           "width": 640,
           "height": 640,
           "bytes": 427400
+        },
+        {
+          "path": "public/homepage/styles/cheesecake-closeup-960.webp",
+          "width": 960,
+          "height": 960,
+          "bytes": 834682
         },
         {
           "path": "public/homepage/styles/cheesecake-closeup.webp",

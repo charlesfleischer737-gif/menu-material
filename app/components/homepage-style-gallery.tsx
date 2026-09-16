@@ -1,6 +1,6 @@
 "use client";
 
-import { useId, useState } from "react";
+import { useEffect, useId, useRef, useState, type RefObject } from "react";
 import { ArrowRight, Check, Expand } from "lucide-react";
 import { RadioGroup, RadioGroupItem } from "@/components/ui/radio-group";
 import {
@@ -15,6 +15,7 @@ import {
 const styles = [
   {
     id: "color",
+    asset: "color",
     name: "New backdrop",
     short: "Backdrop",
     detail: "Change the setting.",
@@ -22,6 +23,7 @@ const styles = [
   },
   {
     id: "angle",
+    asset: "angle",
     name: "From above",
     short: "Angle",
     detail: "Find a new perspective.",
@@ -29,13 +31,15 @@ const styles = [
   },
   {
     id: "served",
+    asset: "hand",
     name: "Served by hand",
     short: "In hand",
     detail: "Add a human touch.",
-    alt: "A server in an olive apron holding the same strawberry cheesecake on its white plate with both hands",
+    alt: "One graceful hand presenting the same strawberry cheesecake on a white plate against a dark studio background",
   },
   {
     id: "closeup",
+    asset: "closeup",
     name: "Close-up",
     short: "Close-up",
     detail: "Let the textures shine.",
@@ -44,6 +48,7 @@ const styles = [
 ];
 
 type GalleryStyle = (typeof styles)[number];
+type PhotoRefs = RefObject<Map<string, HTMLImageElement>>;
 
 function StylePicker({
   value,
@@ -76,8 +81,8 @@ function StylePicker({
             aria-label={style.name}
           />
           <img
-            src={`/homepage/styles/cheesecake-${style.id}-160.webp`}
-            srcSet={`/homepage/styles/cheesecake-${style.id}-160.webp 160w, /homepage/styles/cheesecake-${style.id}-320.webp 320w`}
+            src={`/homepage/styles/cheesecake-${style.asset}-160.webp`}
+            srcSet={`/homepage/styles/cheesecake-${style.asset}-160.webp 160w, /homepage/styles/cheesecake-${style.asset}-320.webp 320w`}
             sizes="(max-width: 700px) 72px, 52px"
             alt=""
             width={160}
@@ -125,48 +130,119 @@ function OriginalPhoto({ enlarged = false }: { enlarged?: boolean }) {
 function StyledPhoto({
   style,
   enlarged = false,
+  preload = false,
+  imageRefs,
 }: {
   style: GalleryStyle;
   enlarged?: boolean;
+  preload?: boolean;
+  imageRefs: PhotoRefs;
 }) {
   return (
     <span className="pw-style-photo-stack">
-      <img
-        className="pw-style-photo-placeholder"
-        src={`/homepage/styles/cheesecake-${style.id}-160.webp`}
-        alt=""
-        width={160}
-        height={160}
-        loading="lazy"
-        decoding="async"
-        aria-hidden="true"
-      />
-      <img
-        key={style.id}
-        src={`/homepage/styles/cheesecake-${style.id}-640.webp`}
-        srcSet={`/homepage/styles/cheesecake-${style.id}-320.webp 320w, /homepage/styles/cheesecake-${style.id}-480.webp 480w, /homepage/styles/cheesecake-${style.id}-640.webp 640w, /homepage/styles/cheesecake-${style.id}.webp 1254w`}
-        sizes={
-          enlarged
-            ? "(max-width: 560px) 86vw, (max-width: 860px) 42vw, 394px"
-            : "(max-width: 360px) 80vw, (max-width: 700px) 280px, (max-width: 1000px) 28vw, 320px"
-        }
-        alt={`Illustrative AI edit: ${style.alt}`}
-        width={1254}
-        height={1254}
-        loading="lazy"
-        decoding="async"
-        fetchPriority="low"
-      />
+      {styles.map((photo) => (
+        <img
+          key={photo.id}
+          ref={(image) => {
+            if (image) imageRefs.current.set(photo.id, image);
+            else imageRefs.current.delete(photo.id);
+          }}
+          data-active={photo.id === style.id}
+          src={`/homepage/styles/cheesecake-${photo.asset}-640.webp`}
+          srcSet={`/homepage/styles/cheesecake-${photo.asset}-320.webp 320w, /homepage/styles/cheesecake-${photo.asset}-480.webp 480w, /homepage/styles/cheesecake-${photo.asset}-640.webp 640w, /homepage/styles/cheesecake-${photo.asset}-960.webp 960w, /homepage/styles/cheesecake-${photo.asset}.webp 1254w`}
+          sizes={
+            enlarged
+              ? "(max-width: 560px) 86vw, (max-width: 860px) 42vw, 394px"
+              : "(max-width: 360px) 80vw, (max-width: 700px) 280px, (max-width: 1000px) 28vw, 320px"
+          }
+          alt={
+            photo.id === style.id ? `Illustrative AI edit: ${photo.alt}` : ""
+          }
+          aria-hidden={photo.id !== style.id}
+          width={1254}
+          height={1254}
+          loading={preload ? "eager" : "lazy"}
+          decoding="async"
+          fetchPriority="low"
+          onLoad={(event) => {
+            void event.currentTarget.decode().catch(() => {});
+          }}
+        />
+      ))}
     </span>
   );
 }
 
 export default function HomepageStyleGallery() {
   const [selected, setSelected] = useState("served");
+  const [preload, setPreload] = useState(false);
+  const [pending, setPending] = useState<string | null>(null);
+  const [loadError, setLoadError] = useState("");
+  const sectionRef = useRef<HTMLElement>(null);
+  const photoRefs = useRef(new Map<string, HTMLImageElement>());
+  const enlargedRefs = useRef(new Map<string, HTMLImageElement>());
+  const selectionRequest = useRef(0);
   const active = styles.find((style) => style.id === selected) ?? styles[2];
 
+  useEffect(() => {
+    if (!("IntersectionObserver" in window)) {
+      setPreload(true);
+      return;
+    }
+    const observer = new IntersectionObserver(
+      (entries) => {
+        if (entries.some((entry) => entry.isIntersecting)) {
+          setPreload(true);
+          observer.disconnect();
+        }
+      },
+      { rootMargin: "600px" },
+    );
+    if (sectionRef.current) observer.observe(sectionRef.current);
+    return () => observer.disconnect();
+  }, []);
+
+  useEffect(
+    () => () => {
+      selectionRequest.current += 1;
+    },
+    [],
+  );
+
+  async function selectStyle(value: string) {
+    const request = ++selectionRequest.current;
+    setPreload(true);
+    setPending(value);
+    setLoadError("");
+    try {
+      const photo = photoRefs.current.get(value);
+      if (!photo) throw new Error("Photo unavailable");
+      const images = [photo, enlargedRefs.current.get(value)].filter(
+        (image): image is HTMLImageElement => Boolean(image),
+      );
+      await Promise.all(
+        images.map((image) => {
+          image.loading = "eager";
+          image.fetchPriority = "auto";
+          return image.decode();
+        }),
+      );
+      if (request === selectionRequest.current) setSelected(value);
+    } catch {
+      if (request === selectionRequest.current) {
+        setLoadError("That photo couldn’t load. Please try another style.");
+      }
+    } finally {
+      if (request === selectionRequest.current) setPending(null);
+    }
+  }
+
   return (
-    <section className="pw-style-gallery" aria-labelledby="style-gallery-title">
+    <section
+      ref={sectionRef}
+      className="pw-style-gallery"
+      aria-labelledby="style-gallery-title"
+    >
       <div className="pw-section-heading pw-style-heading">
         <div>
           <h2 id="style-gallery-title">One photo. Endless possibilities.</h2>
@@ -188,14 +264,23 @@ export default function HomepageStyleGallery() {
             <span className="pw-style-direction" aria-hidden="true">
               <ArrowRight size={20} />
             </span>
-            <figure className="pw-style-result">
+            <figure className="pw-style-result" aria-busy={pending !== null}>
               <DialogTrigger asChild>
                 <button
                   type="button"
                   className="pw-style-result-button"
                   aria-label={`Enlarge ${active.name} and compare with the original`}
                 >
-                  <StyledPhoto style={active} />
+                  <StyledPhoto
+                    style={active}
+                    preload={preload}
+                    imageRefs={photoRefs}
+                  />
+                  {pending && (
+                    <span className="pw-style-loading" role="status">
+                      Loading photo…
+                    </span>
+                  )}
                   <span className="pw-style-expand">
                     <Expand size={14} /> Enlarge
                   </span>
@@ -208,7 +293,7 @@ export default function HomepageStyleGallery() {
           </div>
           <div className="pw-style-choices">
             <p className="pw-style-picker-label">FIND YOUR LOOK</p>
-            <StylePicker value={selected} onChange={setSelected} />
+            <StylePicker value={pending ?? selected} onChange={selectStyle} />
           </div>
         </div>
         <DialogContent className="pw-style-dialog">
@@ -222,16 +307,35 @@ export default function HomepageStyleGallery() {
               <figcaption>Original photo</figcaption>
             </figure>
             <figure>
-              <StyledPhoto style={active} enlarged />
+              <StyledPhoto
+                style={active}
+                enlarged
+                preload
+                imageRefs={enlargedRefs}
+              />
               <figcaption>{active.name}</figcaption>
             </figure>
           </div>
-          <StylePicker value={selected} onChange={setSelected} compact />
+          <StylePicker
+            value={pending ?? selected}
+            onChange={selectStyle}
+            compact
+          />
+          {loadError && (
+            <p className="pw-style-disclosure" role="status">
+              {loadError}
+            </p>
+          )}
           <p className="pw-style-disclosure">
             Illustrative AI edits. Review your results before sharing.
           </p>
         </DialogContent>
       </Dialog>
+      {loadError && (
+        <p className="pw-style-disclosure" role="status">
+          {loadError}
+        </p>
+      )}
       <p className="pw-style-disclosure">
         Illustrative AI edits from one original photo. Review every result
         before sharing.
