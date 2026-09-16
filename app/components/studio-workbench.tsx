@@ -125,7 +125,7 @@ export function StudioWorkbench({
             <span className="ps-number">01</span>
             <h2>Find your look</h2>
           </div>
-          <span>28 curated styles</span>
+          <span>{photoStyles.length} curated styles</span>
         </div>
         <div
           className="ps-collections"

@@ -20,7 +20,7 @@ import {
 } from "lucide-react";
 import { api, downloadBlob, money, type Row } from "@/lib/client";
 import { photoExport } from "@/lib/creation-export";
-import { formats, type PhotoFormat } from "@/lib/studio";
+import { formats, photoStyles, type PhotoFormat } from "@/lib/studio";
 import Brand from "./brand";
 import PhotoStudio from "./photo-studio";
 import MenuBuilder from "./menu-builder";
@@ -286,7 +286,8 @@ export default function CoreWorkspace({
                     <em>as good as it tastes.</em>
                   </h2>
                   <p>
-                    Explore 28 looks for delivery, fine dining, drinks and more.
+                    Explore {photoStyles.length} looks for delivery, fine
+                    dining, drinks and more.
                   </p>
                   <span className="cx-launch-cta">
                     Open Photo Studio <ArrowRight size={19} />

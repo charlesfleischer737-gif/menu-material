@@ -11,9 +11,9 @@ import {
 } from "../lib/post-templates.ts";
 const hashes = new Set();
 assert.equal(styleCategories.length, 7);
-assert.equal(photoStyles.length, 28);
+assert.equal(photoStyles.length, 56);
 for (const category of styleCategories)
-  assert.equal(photoStyles.filter((s) => s.category === category.id).length, 4);
+  assert.equal(photoStyles.filter((s) => s.category === category.id).length, 8);
 for (const style of photoStyles) {
   const bytes = readFileSync("public" + style.image);
   assert.equal(bytes.subarray(0, 4).toString(), "RIFF", style.id);
@@ -32,14 +32,19 @@ for (const style of photoStyles) {
     configured.photoStyle.length <= 300,
     "Preset exceeds live generation schema: " + style.id,
   );
+  if (style.angle === "overhead") {
+    const keepAngle = styleFor({ look: style.id, angle: "keep" }, {});
+    assert(!keepAngle.photoStyle.includes("Straight overhead"), style.id);
+    assert(keepAngle.photoStyle.length <= 300, style.id);
+  }
   assert.deepEqual(
     configured.referenceIds,
     [],
     "Example photos must never replace the customer source",
   );
 }
-assert.equal(hashes.size, 28, "Every preset needs its own photograph");
-assert.equal(new Set(photoStyles.map((s) => s.prompt)).size, 28);
+assert.equal(hashes.size, 56, "Every preset needs its own photograph");
+assert.equal(new Set(photoStyles.map((s) => s.prompt)).size, 56);
 assert.equal(postTemplates.length, 10);
 assert.equal(new Set(postTemplates.map((t) => t.example)).size, 10);
 const customer = {
@@ -70,5 +75,5 @@ assert.equal(getPostTemplate("photo").id, "editorial");
 assert.equal(getPostTemplate("price").id, "special");
 assert.equal(getPostTemplate("story").id, "chef");
 console.log(
-  "PASS: 28 distinct style photos and generation prompts; 7 complete categories; 10 template examples; customer facts and legacy drafts preserved.",
+  "PASS: 56 distinct style photos and generation prompts; 7 categories with 8 styles each; 10 template examples; customer facts and legacy drafts preserved.",
 );

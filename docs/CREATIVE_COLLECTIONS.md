@@ -4,7 +4,7 @@ September 15, 2026. The core tools retain their source-photo, approval, persiste
 
 ## Photo Studio
 
-Twenty-eight curated presets across seven collections. Each preset has a distinct photograph, lighting/surface/composition prompt, intended uses and visible traits. The four-image collection is the working surface. The selected reference updates immediately. Original food identity and serving size remain generation requirements; results still require review. Examples are never passed as food references to the provider.
+Fifty-six curated presets across seven collections. Each preset has a distinct photograph, lighting/surface/composition prompt, intended uses and visible traits. Each category has eight styles, browsable in the single-page workbench. The selected reference updates immediately. Original food identity and serving size remain generation requirements; results still require review. Examples are never passed as food references to the provider.
 
 ### Delivery & Takeout
 
@@ -16,6 +16,10 @@ Clear, appetizing item photos that make the dish easy to recognize at a glance. 
 | Takeout, elevated | Soft neutral light · Pale grey surface · Keep real packaging | Poke, grain bowls and boxed meals |
 | Natural daylight | Diffused daylight · Light oak · Natural color | Tacos, wraps and comfort food |
 | Top-down clarity | Overhead angle · Plain white surface · Complete edges | Pizza, flatbreads and shallow bowls |
+| Paper & crunch | Bright diffuse light · Sand seamless · Real takeaway container | Fried chicken, tenders and takeaway snacks |
+| Fresh on sage | Overhead angle · Muted sage surface · Even softbox light | Falafel bowls, salads and plant-based meals |
+| Crisp on charcoal | Graphite backdrop · Bright even light · Simple white tray | Fish and chips, golden entrées and hearty meals |
+| Peach-perfect | Pale peach surface · Soft daylight · Diagonal composition | Wraps, subs and colorful sandwiches |
 
 ### Fine Dining
 
@@ -27,6 +31,10 @@ Quiet luxury, considered light and an elegant setting for your signature dishes.
 | Dark degustation | Directional sidelight · Dark slate · Restrained contrast | Steak, duck and rich signature dishes |
 | Chef’s counter | Clean sidelight · Pale travertine · Quiet negative space | Crudo, tartare and sculptural plating |
 | Evening reservation | Warm low light · Deep burgundy tones · Distant candle bokeh | Dinner specials and reservation campaigns |
+| Presented by the chef | Hand-presented plate · Luminous sidelight · Warm dining-room blur | Signature pasta, tasting plates and chef specials |
+| Riviera terrace | Pale stone terrace · Olive garden blur · Late-afternoon light | Seafood, vegetable mains and seasonal plates |
+| Obsidian tasting | Overhead spotlight · Glossy obsidian · Black porcelain | Carpaccio, colorful starters and tasting courses |
+| The gallery plate | Warm plaster wall · Porcelain on a plinth · Architectural shadow | Delicate starters, seafood and sculptural plating |
 
 ### Menu
 
@@ -38,6 +46,10 @@ Versatile restaurant photography with balanced colors and easy-to-read detail. U
 | Neighborhood table | Warm window light · Natural oak · Gentle background blur | Roasts, breakfast plates and comfort food |
 | Menu flat lay | Overhead angle · Warm grey surface · Even soft light | Skillets, bowls and dishes with layered toppings |
 | Modern bistro | Balanced daylight · Matte light grey · Soft contact shadows | Risotto, pasta and everyday entrées |
+| Terrazzo brunch | Overhead daylight · Peach terrazzo · Cream ceramic | Brunch plates, pancakes and breakfast specials |
+| Courtyard table | Jade glazed tile · Courtyard blur · Soft front light | Grilled seafood, summer plates and vegetables |
+| From our kitchen | Two supporting hands · Taupe linen apron · Airy window light | Pasta bowls, signature dishes and daily specials |
+| Modern diner | Burgundy checks · White ceramic · Lateral daylight | Sandwiches, lunch favorites and comfort food |
 
 ### Bar & Lounge
 
@@ -49,6 +61,10 @@ After-dark atmosphere, rich shadows and precise highlights that make glassware g
 | Velvet lounge | Cool rim light · Dark stone · Emerald velvet blur | Martinis, coupes and signature cocktails |
 | Blue-hour bar | Cool ambient light · Cobalt bar · Warm highlights | Colorful cocktails and evening announcements |
 | Wine-bar warmth | Warm candlelike light · Rich earthy tones · Shallow background depth | Bar snacks, sharing plates and wine pairings |
+| The perfect pint | Brushed brass · Oxblood leather blur · Warm narrow sidelight | Stouts, ales and draft-beer features |
+| Rooftop at dusk | Dusky rose stone · Mauve skyline blur · Sunset rim light | Palomas, spritzes and aperitif specials |
+| Midnight reflection | Mirror surface · Copper glow · Sculptural sidelight | Espresso martinis, coupes and cocktail launches |
+| Cellar reserve | Aged limestone · Burgundy plaster · Narrow warm light | Red wine, wine flights and cellar selections |
 
 ### Beverage
 
@@ -60,6 +76,10 @@ Fresh, luminous drinks with beautiful color, texture and clarity. Keep the origi
 | Sunshine sip | Clean sunshine · Pale terracotta · Fresh natural color | Fresh juice, smoothies and summer drinks |
 | Modern matcha bar | Soft studio sidelight · Pale green matte · Delicate shadows | Matcha, milk teas and specialty drinks |
 | Light through glass | Luminous backlight · Cool pale stone · Controlled highlights | Iced teas, spritzes and clear cold drinks |
+| Poolside refresh | Turquoise tile · Water-light reflections · Crisp summer sun | Lemonades, sparkling drinks and seasonal refreshers |
+| The morning ritual | One supporting hand · Oatmeal linen · Gentle morning backlight | Flat whites, cappuccinos and warm café drinks |
+| Orchid pop | Lilac seamless · Curved tonal plinth · Luminous softbox | Smoothies, fruit drinks and colorful shakes |
+| Botanical light | Pale travertine · Greenhouse blur · Soft leaf shadows | Iced teas, herbal infusions and clear cold drinks |
 
 ### Studio
 
@@ -71,6 +91,10 @@ Controlled light and striking backgrounds for a polished commercial photograph. 
 | Color-pop campaign | Controlled softbox · Cobalt seamless · Crisp commercial finish | Bao, sandwiches and colorful hero dishes |
 | Spotlight studio | Directional studio light · Charcoal seamless · Detailed highlights | Noodles, grilled dishes and glossy sauces |
 | Soft-color studio | Gentle diffused light · Blush seamless · Soft short shadows | Gelato, sweets and playful seasonal items |
+| Lifted in coral | One supporting hand · Coral seamless · Controlled studio shadow | Small plates, snacks and colorful hero dishes |
+| Chrome editorial | Stainless steel tray · Cool silver sweep · Large softbox highlights | Sushi, refined small plates and modern campaigns |
+| Butter-yellow sun | Butter-yellow backdrop · Architectural shadow · Warm directional light | Cheesecake, desserts and golden baked treats |
+| Terracotta forms | Terracotta surface · Sculptural arch · Warm diffused light | Pastries, snacks and earthy-colored dishes |
 
 ### Bakery
 
@@ -82,8 +106,12 @@ Golden crusts, delicate layers and handcrafted details, beautifully lit. Let rea
 | Patisserie counter | Bright diffuse light · Pale marble · Natural highlights | Fruit tarts, entremets and refined cakes |
 | Artisan bread | Warm directional daylight · Rustic wood · Oatmeal linen backdrop | Sourdough, rolls and rustic baking |
 | Confectionery color | Luminous softbox · Lilac seamless · Soft confectionery color | Macarons, petit fours and colorful confections |
+| Parisian pause | Marble checkerboard · Scalloped cream plate · Soft café daylight | Éclairs, choux pastry and elegant café sweets |
+| Made by hand | Two supporting hands · Oatmeal linen apron · Soft window light | Galettes, pies and handcrafted bakes |
+| Blueberry morning | Cornflower blue · Textured blue linen · Bright diffused daylight | Muffins, scones and berry-filled pastries |
+| Golden on copper | Patinated copper · Cocoa plaster · Low warm sidelight | Cardamom knots, cinnamon rolls and laminated pastry |
 
-Overhead presets explicitly change the angle and show a review note. The owner can choose Keep my angle in fine-tuning; the resulting prompt respects that override. New choices reset old surface/lighting overrides so the selected preset has the advertised treatment. Restaurant looks and user-supplied references are preserved. Previous preset IDs still resolve for saved work. Menu batches can use the expanded catalog.
+Overhead and hand-presented food presets select an appropriate camera angle; fine-tuning shows a review note when the angle changes. The owner can choose Keep my angle in fine-tuning; the resulting prompt respects that override. New choices reset old surface/lighting overrides so the selected preset has the advertised treatment. Restaurant looks and user-supplied references are preserved. Previous preset IDs still resolve for saved work. Menu batches can use the expanded catalog.
 
 ## Post Maker
 
@@ -108,7 +136,10 @@ Fill frame is the new default. Fit whole dish remains available with a blurred e
 
 ## Assets and validation
 
-- 28 new images generated with the built-in image generator; optimized 1000 × 1000 WebP files in `public/studio/styles/`. Prompts and provenance: `STUDIO_V2_IMAGE_PROMPTS.json`. Each file and each preset prompt is unique.
+- Expanded collection: 28 additional unique photographs, generated using the built-in subscription tool only (no API calls), bringing every category to eight styles. Native-resolution WebP files in `public/studio/styles/`; exact prompts, original output paths and subject identities in `STUDIO_EXPANSION_IMAGE_PROMPTS.json`.
+- Preset art directions specify the depicted background, lighting, surface and presentation. Hands only appear in hand-presented styles. Drink styles preserve the uploaded vessel and visible branding. Beer, wine, coffee, tea and smoothie recommendations now include relevant new examples.
+
+- Original collection: 28 images generated with the built-in image generator; optimized 1000 × 1000 WebP files in `public/studio/styles/`. Prompts and provenance: `STUDIO_V2_IMAGE_PROMPTS.json`. Each file and each preset prompt is unique.
 - Existing API and persistence suites, 18 caption/flow assertions, and a catalog suite checking all preset prompts, images, category coverage, example isolation and old-draft mappings.
 - 57 export checks: original PDF/delivery checks, all ten templates plus legacy mappings in feed/story, safe text bounds, combo quantities/prices and non-overlapping text, and campaign ZIP contents.
 - Prior collection release: desktop/phone review of Photo Studio. Social redesign: actual feed/story export contact sheets and browser checks of font loading, example/customer switching, text controls and saving. The browser viewport override did not change its available 694px viewport in this run; no new 1440px/390px browser claim is made.

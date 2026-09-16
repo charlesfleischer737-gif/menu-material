@@ -20,14 +20,14 @@ export function recommendedPhotoStyles(
   drinkKind = "other",
 ) {
   const drinks: Record<string, string[]> = {
-    beer: ["bar-speakeasy", "bar-bluehour", "beverage-backlit"],
-    wine: ["bar-velvet", "bar-speakeasy", "beverage-backlit"],
-    cocktail: ["bar-velvet", "bar-bluehour", "bar-speakeasy"],
+    beer: ["bar-brass", "bar-speakeasy", "beverage-backlit"],
+    wine: ["bar-cellar", "bar-velvet", "bar-speakeasy"],
+    cocktail: ["bar-rooftop", "bar-velvet", "bar-bluehour"],
     spirits: ["bar-speakeasy", "bar-bluehour", "bar-velvet"],
-    coffee: ["beverage-cafe", "beverage-matcha", "beverage-backlit"],
-    tea: ["beverage-matcha", "beverage-backlit", "beverage-cafe"],
-    juice: ["beverage-citrus", "beverage-backlit", "beverage-matcha"],
-    smoothie: ["beverage-citrus", "beverage-matcha", "beverage-cafe"],
+    coffee: ["beverage-cafe", "beverage-ritual", "beverage-backlit"],
+    tea: ["beverage-botanical", "beverage-matcha", "beverage-backlit"],
+    juice: ["beverage-citrus", "beverage-poolside", "beverage-backlit"],
+    smoothie: ["beverage-orchid", "beverage-citrus", "beverage-matcha"],
     other: ["beverage-backlit", "beverage-cafe", "bar-speakeasy"],
   };
   const families: Record<string, string[]> = {

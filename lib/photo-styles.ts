@@ -139,6 +139,70 @@ export const photoStyles: PhotoStyle[] = [
     angle: "overhead",
   },
   {
+    id: "delivery-paper",
+    category: "delivery",
+    group: "Delivery & Takeout",
+    name: "Paper & crunch",
+    cue: "Warm sand · crisp texture",
+    description:
+      "A clean, softly lit setting that makes golden, crispy food look freshly prepared.",
+    bestFor: "Fried chicken, tenders and takeaway snacks",
+    traits: [
+      "Bright diffuse light",
+      "Sand seamless",
+      "Real takeaway container",
+    ],
+    prompt:
+      "Warm sand seamless tabletop, bright diffuse light and soft short shadows that reveal crisp food texture. Retain the original takeout container and any existing paper liner. Complete serving visible. No extra packaging, sides, props or text.",
+    image: "/studio/styles/delivery-paper.webp",
+    angle: "keep",
+  },
+  {
+    id: "delivery-sage",
+    category: "delivery",
+    group: "Delivery & Takeout",
+    name: "Fresh on sage",
+    cue: "Sage green · an overhead view",
+    description:
+      "A calm green backdrop gives fresh bowls and colorful ingredients clear definition.",
+    bestFor: "Falafel bowls, salads and plant-based meals",
+    traits: ["Overhead angle", "Muted sage surface", "Even softbox light"],
+    prompt:
+      "Straight overhead on a matte muted sage-green seamless tabletop with an off-white bowl or plate suited to the dish. Broad diffused softbox, clear true food color and soft shadow. Full serving and vessel edges visible. No extra food, props or text.",
+    image: "/studio/styles/delivery-sage.webp",
+    angle: "overhead",
+  },
+  {
+    id: "delivery-graphite",
+    category: "delivery",
+    group: "Delivery & Takeout",
+    name: "Crisp on charcoal",
+    cue: "Graphite · bright food detail",
+    description:
+      "A dark, uncluttered background makes golden food stand out at thumbnail size.",
+    bestFor: "Fish and chips, golden entrées and hearty meals",
+    traits: ["Graphite backdrop", "Bright even light", "Simple white tray"],
+    prompt:
+      "Clean graphite seamless background, simple shallow white serving tray appropriate to the dish, bright even light on food and a subtle grounded shadow. Clear complete serving with generous margins and true colors. No added food, props or text.",
+    image: "/studio/styles/delivery-graphite.webp",
+    angle: "keep",
+  },
+  {
+    id: "delivery-peach",
+    category: "delivery",
+    group: "Delivery & Takeout",
+    name: "Peach-perfect",
+    cue: "Soft peach · fresh contrast",
+    description:
+      "Soft warmth and a diagonal composition give handheld favorites an inviting finish.",
+    bestFor: "Wraps, subs and colorful sandwiches",
+    traits: ["Pale peach surface", "Soft daylight", "Diagonal composition"],
+    prompt:
+      "Pale peach seamless tabletop, soft daylight and a tidy diagonal composition. Keep the original serving vessel or paper sleeve and all food intact. Reveal actual cut filling without cutting or changing the serving. No extra food, props or text.",
+    image: "/studio/styles/delivery-peach.webp",
+    angle: "keep",
+  },
+  {
     id: "fine-linen",
     category: "fine",
     group: "Fine Dining",
@@ -196,6 +260,74 @@ export const photoStyles: PhotoStyle[] = [
     prompt:
       "Elegant evening restaurant in deep burgundy tones, fine ivory porcelain serving ware, warm directional light and distant candle bokeh. Keep food well exposed and colors believable. Preserve ingredients, arrangement and portion. No foreground props.",
     image: "/studio/styles/fine-candle.webp",
+    angle: "keep",
+  },
+  {
+    id: "fine-presented",
+    category: "fine",
+    group: "Fine Dining",
+    name: "Presented by the chef",
+    cue: "A graceful hand · dining-room glow",
+    description:
+      "An intimate moment of service, with your dish presented against a softly glowing room.",
+    bestFor: "Signature pasta, tasting plates and chef specials",
+    traits: [
+      "Hand-presented plate",
+      "Luminous sidelight",
+      "Warm dining-room blur",
+    ],
+    prompt:
+      "Broad ivory porcelain plate supported underneath by one anatomically natural hand, cropped charcoal sleeve and blurred warm fine-dining room. Luminous soft sidelight. Keep the complete food arrangement visible, untouched and unchanged; no face or added food.",
+    image: "/studio/styles/fine-presented.webp",
+    angle: "three-quarter",
+  },
+  {
+    id: "fine-terrace",
+    category: "fine",
+    group: "Fine Dining",
+    name: "Riviera terrace",
+    cue: "Pale stone · garden light",
+    description:
+      "A sunlit terrace and soft olive-green background bring fresh, relaxed luxury.",
+    bestFor: "Seafood, vegetable mains and seasonal plates",
+    traits: ["Pale stone terrace", "Olive garden blur", "Late-afternoon light"],
+    prompt:
+      "Cream porcelain on a pale stone terrace, softly blurred olive-green garden and late-afternoon daylight. Restrained dappled shadows only in the background; food remains evenly lit and fully visible. Preserve exact food and arrangement. No added ingredients or props.",
+    image: "/studio/styles/fine-terrace.webp",
+    angle: "keep",
+  },
+  {
+    id: "fine-obsidian",
+    category: "fine",
+    group: "Fine Dining",
+    name: "Obsidian tasting",
+    cue: "Glossy black · precise spotlight",
+    description:
+      "A dramatic pool of light draws attention to the color and detail of your plating.",
+    bestFor: "Carpaccio, colorful starters and tasting courses",
+    traits: ["Overhead spotlight", "Glossy obsidian", "Black porcelain"],
+    prompt:
+      "Straight overhead photograph, black porcelain on subtly reflective glossy obsidian, precise spotlight and deep black backdrop. Retain realistic soft reflections and readable food color. Complete plate visible; preserve food arrangement and portion. No additions.",
+    image: "/studio/styles/fine-obsidian.webp",
+    angle: "overhead",
+  },
+  {
+    id: "fine-gallery",
+    category: "fine",
+    group: "Fine Dining",
+    name: "The gallery plate",
+    cue: "Sculptural porcelain · arch shadows",
+    description:
+      "A quiet, architectural setting gives a beautifully plated dish room to shine.",
+    bestFor: "Delicate starters, seafood and sculptural plating",
+    traits: [
+      "Warm plaster wall",
+      "Porcelain on a plinth",
+      "Architectural shadow",
+    ],
+    prompt:
+      "Sculptural white plate on a low off-white plinth against warm plaster with a soft architectural arch shadow. Gallery-like fine dining, diffused front light and quiet negative space. Preserve food arrangement, ingredients and portion. Entire serving visible; no added food.",
+    image: "/studio/styles/fine-gallery.webp",
     angle: "keep",
   },
   {
@@ -263,6 +395,66 @@ export const photoStyles: PhotoStyle[] = [
     angle: "keep",
   },
   {
+    id: "menu-terrazzo",
+    category: "menu",
+    group: "Menu",
+    name: "Terrazzo brunch",
+    cue: "Peach stone · an airy flat lay",
+    description:
+      "Subtle stone flecks and soft light create a bright, welcoming menu photograph.",
+    bestFor: "Brunch plates, pancakes and breakfast specials",
+    traits: ["Overhead daylight", "Peach terrazzo", "Cream ceramic"],
+    prompt:
+      "Straight overhead menu photograph, simple cream plate on warm peach terrazzo. Soft even daylight, restrained stone pattern and natural appetizing colors. Keep all food and vessel edges visible with generous margins. Preserve the original serving; no extra props or food.",
+    image: "/studio/styles/menu-terrazzo.webp",
+    angle: "overhead",
+  },
+  {
+    id: "menu-courtyard",
+    category: "menu",
+    group: "Menu",
+    name: "Courtyard table",
+    cue: "Jade tile · sunlit greenery",
+    description:
+      "Glazed green tile and gentle garden light add character without distracting from the dish.",
+    bestFor: "Grilled seafood, summer plates and vegetables",
+    traits: ["Jade glazed tile", "Courtyard blur", "Soft front light"],
+    prompt:
+      "White ceramic on jade-green glazed tile, softly blurred sunlit courtyard. Gentle leaf shadows on the background only, soft front light keeps food clear. Refined restaurant-menu composition, complete serving visible. No added ingredients, cutlery or other dishes.",
+    image: "/studio/styles/menu-courtyard.webp",
+    angle: "keep",
+  },
+  {
+    id: "menu-handheld",
+    category: "menu",
+    group: "Menu",
+    name: "From our kitchen",
+    cue: "Two hands · warm linen",
+    description:
+      "A personal, welcoming presentation that puts the people behind the food in the picture.",
+    bestFor: "Pasta bowls, signature dishes and daily specials",
+    traits: ["Two supporting hands", "Taupe linen apron", "Airy window light"],
+    prompt:
+      "Cream serving bowl or plate held at waist height by two anatomically natural hands at its outer rim, cropped taupe linen apron behind. Airy window light. Hands must not cover or touch food. Entire vessel and unchanged serving visible. No face or extra food.",
+    image: "/studio/styles/menu-handheld.webp",
+    angle: "three-quarter",
+  },
+  {
+    id: "menu-diner",
+    category: "menu",
+    group: "Menu",
+    name: "Modern diner",
+    cue: "Burgundy checks · soft window light",
+    description:
+      "A familiar checkered table, photographed with a clean contemporary touch.",
+    bestFor: "Sandwiches, lunch favorites and comfort food",
+    traits: ["Burgundy checks", "White ceramic", "Lateral daylight"],
+    prompt:
+      "Simple white plate on a restrained burgundy-and-cream checkered tabletop. Soft lateral window light, modern diner editorial with balanced color and crisp food detail. Keep the whole serving visible and original arrangement intact. No added sides, props or food.",
+    image: "/studio/styles/menu-diner.webp",
+    angle: "keep",
+  },
+  {
     id: "bar-speakeasy",
     category: "bar",
     group: "Bar & Lounge",
@@ -327,6 +519,66 @@ export const photoStyles: PhotoStyle[] = [
     angle: "keep",
   },
   {
+    id: "bar-brass",
+    category: "bar",
+    group: "Bar & Lounge",
+    name: "The perfect pint",
+    cue: "Antique brass · oxblood leather",
+    description:
+      "Warm light and rich materials give beer the same attention as a signature cocktail.",
+    bestFor: "Stouts, ales and draft-beer features",
+    traits: ["Brushed brass", "Oxblood leather blur", "Warm narrow sidelight"],
+    prompt:
+      "Brushed antique brass tabletop, dark oxblood leather banquette blur, warm narrow sidelight and amber reflections. Keep the original glass and visible branding, liquid level, color, foam, ice and garnish. Relight without obscuring the logo. No added drinks or props.",
+    image: "/studio/styles/bar-brass.webp",
+    angle: "keep",
+  },
+  {
+    id: "bar-rooftop",
+    category: "bar",
+    group: "Bar & Lounge",
+    name: "Rooftop at dusk",
+    cue: "Rose stone · sunset skyline",
+    description:
+      "A glowing horizon and soft city lights set the scene for an evening drink.",
+    bestFor: "Palomas, spritzes and aperitif specials",
+    traits: ["Dusky rose stone", "Mauve skyline blur", "Sunset rim light"],
+    prompt:
+      "Dusky rose stone rooftop bar, mauve-blue skyline blur and glowing sunset rim light. Chic evening editorial with legible drink detail. Keep the original glass and visible branding, liquid, fill, foam, ice and garnish. No new ingredients, glasses or text.",
+    image: "/studio/styles/bar-rooftop.webp",
+    angle: "keep",
+  },
+  {
+    id: "bar-mirror",
+    category: "bar",
+    group: "Bar & Lounge",
+    name: "Midnight reflection",
+    cue: "Polished mirror · copper highlights",
+    description:
+      "A crisp reflection and sculptural highlights create a striking cocktail portrait.",
+    bestFor: "Espresso martinis, coupes and cocktail launches",
+    traits: ["Mirror surface", "Copper glow", "Sculptural sidelight"],
+    prompt:
+      "Polished mirror tabletop, deep black background with a restrained copper gradient and crisp sculptural sidelight. Physically accurate vessel reflection. Keep the original glass and visible branding, liquid, fill, foam, ice and garnish. No extra drinks or decoration.",
+    image: "/studio/styles/bar-mirror.webp",
+    angle: "keep",
+  },
+  {
+    id: "bar-cellar",
+    category: "bar",
+    group: "Bar & Lounge",
+    name: "Cellar reserve",
+    cue: "Burgundy plaster · light through wine",
+    description:
+      "A warm beam of light reveals rich color against the texture of an intimate wine cellar.",
+    bestFor: "Red wine, wine flights and cellar selections",
+    traits: ["Aged limestone", "Burgundy plaster", "Narrow warm light"],
+    prompt:
+      "Dark aged limestone ledge, textured burgundy plaster and a narrow warm beam through the drink. Quiet wine-cellar luxury, readable glass edges. Keep the original glass and visible branding, liquid color, fill level, foam, ice and garnish. No added bottle or props.",
+    image: "/studio/styles/bar-cellar.webp",
+    angle: "keep",
+  },
+  {
     id: "beverage-cafe",
     category: "beverage",
     group: "Beverage",
@@ -384,6 +636,70 @@ export const photoStyles: PhotoStyle[] = [
     prompt:
       "Cool pale stone and luminous controlled backlighting. Authentic translucency and ice with crisp glass edges; avoid blown highlights over branding. Keep the original vessel and visible branding, liquid amount, layers, foam, ice and garnish. No new ingredients.",
     image: "/studio/styles/beverage-backlit.webp",
+    angle: "keep",
+  },
+  {
+    id: "beverage-poolside",
+    category: "beverage",
+    group: "Beverage",
+    name: "Poolside refresh",
+    cue: "Turquoise tile · dancing sunlight",
+    description:
+      "Ripples of reflected light give cold drinks an unmistakable summer feel.",
+    bestFor: "Lemonades, sparkling drinks and seasonal refreshers",
+    traits: ["Turquoise tile", "Water-light reflections", "Crisp summer sun"],
+    prompt:
+      "Turquoise glazed tile with subtle rippled water-light reflections across the background, crisp summer sunlight and clear drink detail. Keep the original glass and visible branding, liquid color, fill, foam, ice and garnish. No added fruit, water splashes or ingredients.",
+    image: "/studio/styles/beverage-poolside.webp",
+    angle: "keep",
+  },
+  {
+    id: "beverage-ritual",
+    category: "beverage",
+    group: "Beverage",
+    name: "The morning ritual",
+    cue: "A gentle hand · oatmeal linen",
+    description:
+      "An inviting café moment with beautiful light and the personal touch of a hand in frame.",
+    bestFor: "Flat whites, cappuccinos and warm café drinks",
+    traits: [
+      "One supporting hand",
+      "Oatmeal linen",
+      "Gentle morning backlight",
+    ],
+    prompt:
+      "Oatmeal linen tabletop, gentle morning backlight, one natural hand holding the existing handle or supporting the base without hiding branding. Keep the original cup or glass and visible branding, contents, fill, foam art, ice and garnish. No invented handle or ingredients.",
+    image: "/studio/styles/beverage-ritual.webp",
+    angle: "keep",
+  },
+  {
+    id: "beverage-orchid",
+    category: "beverage",
+    group: "Beverage",
+    name: "Orchid pop",
+    cue: "Tonal lilac · vivid drink color",
+    description:
+      "Soft purple shapes make naturally colorful drinks feel like a polished product campaign.",
+    bestFor: "Smoothies, fruit drinks and colorful shakes",
+    traits: ["Lilac seamless", "Curved tonal plinth", "Luminous softbox"],
+    prompt:
+      "Lilac seamless studio sweep and a soft curved lavender plinth, luminous softbox and delicate grounded shadows. Preserve natural beverage color. Keep the original vessel and visible branding, contents, fill, layers, foam, ice and garnish. No extra fruit or props.",
+    image: "/studio/styles/beverage-orchid.webp",
+    angle: "keep",
+  },
+  {
+    id: "beverage-botanical",
+    category: "beverage",
+    group: "Beverage",
+    name: "Botanical light",
+    cue: "Travertine · a greenhouse glow",
+    description:
+      "Fresh green surroundings and delicate shadows frame a bright, refreshing drink.",
+    bestFor: "Iced teas, herbal infusions and clear cold drinks",
+    traits: ["Pale travertine", "Greenhouse blur", "Soft leaf shadows"],
+    prompt:
+      "Pale travertine, softly blurred greenhouse foliage and clean daylight; delicate leaf shadows only on the background. Keep the original glass and visible branding, liquid color, fill, layers, foam, ice and garnish. No added botanicals, ingredients or glasses.",
+    image: "/studio/styles/beverage-botanical.webp",
     angle: "keep",
   },
   {
@@ -455,6 +771,78 @@ export const photoStyles: PhotoStyle[] = [
     angle: "keep",
   },
   {
+    id: "studio-levitate",
+    category: "studio",
+    group: "Studio",
+    name: "Lifted in coral",
+    cue: "Hand-held · bold coral",
+    description:
+      "A sculptural hand-held composition gives your dish a confident campaign moment.",
+    bestFor: "Small plates, snacks and colorful hero dishes",
+    traits: [
+      "One supporting hand",
+      "Coral seamless",
+      "Controlled studio shadow",
+    ],
+    prompt:
+      "Sculptural ivory plate supported from below by one anatomically natural hand entering the lower frame, warm coral seamless backdrop and crisp soft-edged studio shadow. Show all original food unchanged with complete plate edges. No floating food, face or extra ingredients.",
+    image: "/studio/styles/studio-levitate.webp",
+    angle: "three-quarter",
+  },
+  {
+    id: "studio-chrome",
+    category: "studio",
+    group: "Studio",
+    name: "Chrome editorial",
+    cue: "Cool silver · liquid reflections",
+    description:
+      "Polished metal and clean highlights bring a sharp, contemporary edge to the food.",
+    bestFor: "Sushi, refined small plates and modern campaigns",
+    traits: [
+      "Stainless steel tray",
+      "Cool silver sweep",
+      "Large softbox highlights",
+    ],
+    prompt:
+      "Small polished stainless serving tray appropriate to the dish, cool silver seamless studio and restrained abstract chrome reflections. Crisp large-softbox highlights; food stays naturally colored. Keep original food, arrangement and portion. No extra objects or ingredients.",
+    image: "/studio/styles/studio-chrome.webp",
+    angle: "keep",
+  },
+  {
+    id: "studio-sunbeam",
+    category: "studio",
+    group: "Studio",
+    name: "Butter-yellow sun",
+    cue: "A bold sunbeam · graphic shadows",
+    description:
+      "Warm yellow and a diagonal beam of light turn simple food into a beautiful still life.",
+    bestFor: "Cheesecake, desserts and golden baked treats",
+    traits: [
+      "Butter-yellow backdrop",
+      "Architectural shadow",
+      "Warm directional light",
+    ],
+    prompt:
+      "Warm-white serving plate on a buttery yellow backdrop and low plinth. Bold diagonal sunbeam and architectural shadow across the background, food luminous with natural texture. Preserve original food, portion and arrangement; no invented glaze or additions.",
+    image: "/studio/styles/studio-sunbeam.webp",
+    angle: "keep",
+  },
+  {
+    id: "studio-arch",
+    category: "studio",
+    group: "Studio",
+    name: "Terracotta forms",
+    cue: "Sculptural arch · earthy warmth",
+    description:
+      "A warm architectural backdrop adds depth and shape to a minimal studio photograph.",
+    bestFor: "Pastries, snacks and earthy-colored dishes",
+    traits: ["Terracotta surface", "Sculptural arch", "Warm diffused light"],
+    prompt:
+      "Soft white serving plate on earthy terracotta with one sculptural terracotta arch in the rear. Warm diffused studio light and gentle contact shadows, sophisticated minimal composition. Preserve food shape, amount and arrangement. No extra ingredients or props.",
+    image: "/studio/styles/studio-arch.webp",
+    angle: "keep",
+  },
+  {
     id: "bakery-morning",
     category: "bakery",
     group: "Bakery",
@@ -516,6 +904,78 @@ export const photoStyles: PhotoStyle[] = [
     prompt:
       "Soft lilac seamless patisserie studio, refined white porcelain serving ware, luminous diffused softbox light and delicate shadows. Preserve the exact number, colors and arrangement of confections. No added sweets, toppings or text.",
     image: "/studio/styles/bakery-jewel.webp",
+    angle: "keep",
+  },
+  {
+    id: "bakery-paris",
+    category: "bakery",
+    group: "Bakery",
+    name: "Parisian pause",
+    cue: "Marble checks · café glow",
+    description:
+      "Soft daylight, delicate porcelain and a glimpse of the café make pastry feel like an occasion.",
+    bestFor: "Éclairs, choux pastry and elegant café sweets",
+    traits: [
+      "Marble checkerboard",
+      "Scalloped cream plate",
+      "Soft café daylight",
+    ],
+    prompt:
+      "Scalloped cream plate on restrained black-and-white marble checkerboard, blurred warm café lights and soft daylight. Exquisite natural pastry detail, full serving visible. Preserve pastry shape, filling, icing and quantity. No additional decorations or dishes.",
+    image: "/studio/styles/bakery-paris.webp",
+    angle: "keep",
+  },
+  {
+    id: "bakery-hands",
+    category: "bakery",
+    group: "Bakery",
+    name: "Made by hand",
+    cue: "Flour-dusted hands · artisan warmth",
+    description:
+      "A generous, hands-on presentation celebrates the craft behind every bake.",
+    bestFor: "Galettes, pies and handcrafted bakes",
+    traits: [
+      "Two supporting hands",
+      "Oatmeal linen apron",
+      "Soft window light",
+    ],
+    prompt:
+      "Wide cream plate supported by two natural hands with lightly flour-dusted fingertips, cropped oatmeal linen apron behind and gentle window light. Hands stay below the plate, never touch food. Keep pastry and toppings unchanged. No added flour on food, crumbs or extra servings.",
+    image: "/studio/styles/bakery-hands.webp",
+    angle: "three-quarter",
+  },
+  {
+    id: "bakery-blue",
+    category: "bakery",
+    group: "Bakery",
+    name: "Blueberry morning",
+    cue: "Cornflower blue · bright detail",
+    description:
+      "Rich blue fabric and an airy backdrop give everyday baking a fresh campaign look.",
+    bestFor: "Muffins, scones and berry-filled pastries",
+    traits: [
+      "Cornflower blue",
+      "Textured blue linen",
+      "Bright diffused daylight",
+    ],
+    prompt:
+      "Small cream plate on blue linen with a cornflower-blue backdrop, bright diffused daylight and soft grounded shadows. Authentic crumb and natural color. Preserve pastry, liner, toppings and portion exactly. No invented berries, crumbs or decoration.",
+    image: "/studio/styles/bakery-blue.webp",
+    angle: "keep",
+  },
+  {
+    id: "bakery-copper",
+    category: "bakery",
+    group: "Bakery",
+    name: "Golden on copper",
+    cue: "Patinated metal · warm sidelight",
+    description:
+      "Rich copper and low warm light reveal the folds, crust and glaze of a beautiful bake.",
+    bestFor: "Cardamom knots, cinnamon rolls and laminated pastry",
+    traits: ["Patinated copper", "Cocoa plaster", "Low warm sidelight"],
+    prompt:
+      "Off-white ceramic on subtly patinated copper counter, cocoa-toned plaster background and low warm sidelight revealing real pastry texture. Refined indulgent editorial. Preserve shape, layers, glaze, toppings and portion. No added shine, crumbs or ingredients.",
+    image: "/studio/styles/bakery-copper.webp",
     angle: "keep",
   },
 ];

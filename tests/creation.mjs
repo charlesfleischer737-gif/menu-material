@@ -203,7 +203,7 @@ assert(
   ),
   "A beer gets only drink examples, including for delivery",
 );
-assert.equal(suggestions[0].id, "bar-speakeasy");
+assert.equal(suggestions[0].id, "bar-brass");
 assert.equal(
   recommendedPhotoStyles("Drinks", "menu", "coffee")[0].id,
   "beverage-cafe",
