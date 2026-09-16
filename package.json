@@ -12,12 +12,13 @@
     "start": "node --import ./scripts/sites-env.mjs ./node_modules/wrangler/bin/wrangler.js dev --config dist/server/wrangler.json --local --persist-to .wrangler/state --ip 127.0.0.1 --inspector-port 0",
     "lint": "eslint . --ignore-pattern dist --ignore-pattern .next",
     "db:generate": "drizzle-kit generate",
-    "test": "node --disable-warning=ExperimentalWarning --experimental-loader ./tests/runtime-loader.mjs tests/integration.mjs && node --disable-warning=ExperimentalWarning --experimental-loader ./tests/runtime-loader.mjs tests/expansion.mjs && node --disable-warning=ExperimentalWarning --experimental-loader ./tests/runtime-loader.mjs tests/creation.mjs && node --disable-warning=ExperimentalWarning --experimental-loader ./tests/runtime-loader.mjs tests/post-flow.mjs && node --disable-warning=ExperimentalWarning --experimental-loader ./tests/runtime-loader.mjs tests/creative-catalog.mjs && node --disable-warning=ExperimentalWarning --experimental-loader ./tests/runtime-loader.mjs tests/launch-readiness.mjs && node --disable-warning=ExperimentalWarning --experimental-loader ./tests/runtime-loader.mjs tests/plans.mjs",
+    "test": "node --disable-warning=ExperimentalWarning --experimental-loader ./tests/runtime-loader.mjs tests/integration.mjs && node --disable-warning=ExperimentalWarning --experimental-loader ./tests/runtime-loader.mjs tests/expansion.mjs && node --disable-warning=ExperimentalWarning --experimental-loader ./tests/runtime-loader.mjs tests/creation.mjs && node --disable-warning=ExperimentalWarning --experimental-loader ./tests/runtime-loader.mjs tests/post-flow.mjs && node --disable-warning=ExperimentalWarning --experimental-loader ./tests/runtime-loader.mjs tests/creative-catalog.mjs && node --disable-warning=ExperimentalWarning --experimental-loader ./tests/runtime-loader.mjs tests/launch-readiness.mjs && node --disable-warning=ExperimentalWarning --experimental-loader ./tests/runtime-loader.mjs tests/plans.mjs && node --disable-warning=ExperimentalWarning --experimental-loader ./tests/runtime-loader.mjs tests/workspace-upgrade.mjs",
     "typecheck": "tsc --noEmit",
     "worker": "node --env-file=.env scripts/job-runner.mjs",
     "format": "prettier --write app lib db tests scripts/job-runner.mjs scripts/bootstrap-admin.mjs",
     "test:exports": "node --disable-warning=ExperimentalWarning --experimental-loader ./tests/runtime-loader.mjs tests/exports.mjs",
-    "test:web-assets": "node tests/web-assets.mjs"
+    "test:web-assets": "node tests/web-assets.mjs",
+    "test:workspace-exports": "node --disable-warning=ExperimentalWarning --experimental-loader ./tests/runtime-loader.mjs tests/workspace-exports.mjs"
   },
   "dependencies": {
     "@base-ui/react": "^1.7.0",

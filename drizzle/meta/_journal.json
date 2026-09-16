@@ -57,6 +57,13 @@
       "when": 1789556160257,
       "tag": "0007_easy_thunderbird",
       "breakpoints": true
+    },
+    {
+      "idx": 8,
+      "version": "6",
+      "when": 1789582010768,
+      "tag": "0008_eminent_iron_patriot",
+      "breakpoints": true
     }
   ]
 }

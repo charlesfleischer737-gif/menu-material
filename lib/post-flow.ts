@@ -1,4 +1,5 @@
 import { money, type Row } from "./client";
+import { dishSnapshot } from "./dish-library";
 export function postFromPhoto(
   base: Row,
   dish: Row,
@@ -9,7 +10,13 @@ export function postFromPhoto(
   const draft = {
     ...base,
     items: [
-      { dishId: dish.id, photoId: photo.id, name: dish.name, quantity: 1 },
+      {
+        dishId: dish.id,
+        photoId: photo.id,
+        name: dish.name,
+        quantity: 1,
+        facts: dishSnapshot(dish),
+      },
     ],
     title: dish.name,
     description: dish.description || "",
@@ -90,11 +97,16 @@ export function updatePost(draft: Row, patch: Row, restaurant: Row) {
 }
 export function postDetailError(draft: Row, assets: Row[]) {
   if (!draft.items?.length) return "Choose an approved dish photo to start.";
+  if (draft.items.length > 6) return "Choose up to six dish photos.";
   if (
     draft.items.some(
       (i: Row) =>
         !assets.some(
-          (a) => a.id === i.photoId && a.dish_id === i.dishId && a.approved_at,
+          (a) =>
+            a.id === i.photoId &&
+            a.dish_id === i.dishId &&
+            a.approved_at &&
+            !a.deleted_at,
         ),
     )
   )

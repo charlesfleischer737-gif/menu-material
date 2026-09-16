@@ -1,5 +1,6 @@
 "use client";
 import { useCallback, useEffect, useRef, useState } from "react";
+import MenuPhoto from "./menu-photo";
 import { UtensilsCrossed } from "lucide-react";
 import { scheduleLabel } from "@/lib/promotions";
 import { money, Row } from "@/lib/client";
@@ -9,12 +10,15 @@ export default function MenuView({
   slug,
   preview = false,
   serverNow = 0,
+  onSelect,
 }: {
   menu: Row;
   slug?: string;
   preview?: boolean;
   serverNow?: number;
+  onSelect?: (dishId: string) => void;
 }) {
+  const [search, setSearch] = useState("");
   const [liveMenu, setMenu] = useState(initialMenu),
     [time, setTime] = useState(serverNow),
     [unavailable, setUnavailable] = useState(false);
@@ -107,7 +111,7 @@ export default function MenuView({
     <article
       role={preview ? undefined : "main"}
       aria-label={preview ? undefined : `${menu.restaurant.name} menu`}
-      className={`customer-menu menu-layout-${menu.layout || "classic"} menu-appearance-${menu.appearance || "light"}`}
+      className={`customer-menu menu-designed menu-design-${menu.design || "bistro"} menu-density-${menu.density || "comfortable"} menu-layout-${menu.layout || "classic"} menu-appearance-${menu.appearance || "light"}`}
       style={
         {
           "--menu-brand":
@@ -116,13 +120,15 @@ export default function MenuView({
               ? menu.restaurant.style?.primary || "#235b48"
               : "#203b2c",
           "--menu-accent": menu.restaurant.style?.accent || "#f0e3c3",
+          "--menu-accent-ink": readableBrandInk(
+            menu.restaurant.style?.accent || "#f0e3c3",
+          ),
           "--menu-heading-font": `"${brandTypeface(menu.restaurant.style).family}"`,
         } as React.CSSProperties
       }
       ref={article}
     >
       <header>
-        {preview && <p className="eyebrow">PRIVATE PREVIEW</p>}
         {menu.restaurant.logoId ? (
           <img
             className="menu-logo"
@@ -137,7 +143,7 @@ export default function MenuView({
           <UtensilsCrossed className="menu-mark" />
         )}
         <h1>{menu.restaurant.name}</h1>
-        <p>{menu.restaurant.cuisine}</p>
+        <p>{menu.title || menu.restaurant.cuisine}</p>
         {menu.restaurant.orderingUrl && (
           <a
             className="order-button"
@@ -149,6 +155,36 @@ export default function MenuView({
           </a>
         )}
       </header>
+      {(menu.sections.length > 3 ||
+        menu.sections.reduce((n: number, s: Row) => n + s.items.length, 0) >
+          12) && (
+        <nav className="mm-guest-nav" aria-label="Find a dish">
+          <input
+            aria-label="Search menu"
+            type="search"
+            placeholder="Find a dish…"
+            value={search}
+            onChange={(e) => setSearch(e.target.value)}
+          />
+          <div>
+            {menu.sections.map((s: Row, n: number) => (
+              <button
+                key={s.id}
+                onClick={() => {
+                  setSearch("");
+                  requestAnimationFrame(() =>
+                    article.current
+                      ?.querySelector(`[data-menu-section="${n}"]`)
+                      ?.scrollIntoView({ behavior: "smooth", block: "start" }),
+                  );
+                }}
+              >
+                {s.name}
+              </button>
+            ))}
+          </div>
+        </nav>
+      )}
       {(menu.specials || [])
         .filter((s: Row) => !s.endsAt || s.endsAt > time)
         .map((special: Row) => (
@@ -187,43 +223,71 @@ export default function MenuView({
             </p>
           </section>
         ))}
-      {menu.sections.map((section: Row) => (
-        <section key={section.id}>
-          <h2>{section.name}</h2>
-          {section.items.map((dish: Row, index: number) => (
-            <div
-              className={"customer-dish " + (!dish.available ? "sold-out" : "")}
-              key={dish.id + index}
-              data-dish={dish.id}
-            >
-              <div>
-                <div className="dish-title">
-                  <h3>{dish.name}</h3>
-                  <span>{money(dish.price, menu.restaurant.currency)}</span>
-                </div>
-                <p>{dish.description}</p>
-                {!dish.available && (
-                  <span className="tag">Currently unavailable</span>
-                )}
-              </div>
-              {dish.photoId &&
-                (menu.layout === "grid" ||
-                  (menu.layout === "featured" && index === 0)) && (
-                  <img
-                    src={
-                      preview
-                        ? `/api/assets/${dish.photoId}`
-                        : `/api/public/${slug}/assets/${dish.photoId}`
-                    }
-                    alt={dish.name}
-                    loading="lazy"
-                    decoding="async"
-                  />
-                )}
-            </div>
-          ))}
-        </section>
-      ))}
+      {menu.sections.map((section: Row, sectionIndex: number) => {
+        const dishes = section.items.filter((d: Row) =>
+          `${d.name} ${d.description || ""} ${section.name}`
+            .toLowerCase()
+            .includes(search.toLowerCase()),
+        );
+        return (
+          !!dishes.length && (
+            <section key={section.id} data-menu-section={sectionIndex}>
+              <h2>{section.name}</h2>
+              {dishes.map((dish: Row, index: number) => {
+                const featured =
+                  menu.layout === "featured" &&
+                  (dish.featured ?? section.items[0] === dish);
+                return (
+                  <div
+                    className={`customer-dish ${!dish.available ? "sold-out" : ""} ${featured ? "is-featured" : ""} ${onSelect ? "is-editable" : ""}`}
+                    key={dish.id + index}
+                    data-dish={dish.id}
+                  >
+                    <div className="mm-menu-dish-copy">
+                      <div className="dish-title">
+                        <h3>{dish.name}</h3>
+                        <span>
+                          {Number.isFinite(dish.price)
+                            ? money(dish.price, menu.restaurant.currency)
+                            : "—"}
+                        </span>
+                      </div>
+                      {dish.description && <p>{dish.description}</p>}
+                      {!dish.available && (
+                        <span className="tag">Currently unavailable</span>
+                      )}
+                    </div>
+                    {dish.photoId && (menu.layout === "grid" || featured) && (
+                      <MenuPhoto
+                        photoId={dish.photoId}
+                        crop={dish.crop}
+                        featured={featured}
+                        slug={preview ? undefined : slug}
+                        alt={dish.name}
+                      />
+                    )}
+                    {onSelect && (
+                      <button
+                        className="mm-menu-edit-target"
+                        aria-label={`Edit ${dish.name}`}
+                        onClick={() => onSelect(dish.id)}
+                      />
+                    )}
+                  </div>
+                );
+              })}
+            </section>
+          )
+        );
+      })}
+      {search &&
+        !menu.sections.some((s: Row) =>
+          s.items.some((d: Row) =>
+            `${d.name} ${d.description || ""} ${s.name}`
+              .toLowerCase()
+              .includes(search.toLowerCase()),
+          ),
+        ) && <p className="mm-menu-no-results">No dishes match “{search}”.</p>}
       <footer>Made with Menu Material</footer>
     </article>
   );

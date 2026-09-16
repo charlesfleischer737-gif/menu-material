@@ -315,7 +315,7 @@ export default function RestaurantLookEditor({
       </div>
       <details className="cx-look-customize">
         <summary>
-          Fine-tune colors, type & photography <span>Optional</span>
+          Fine-tune colors, type, photography & voice <span>Optional</span>
         </summary>
         <div className="cx-look-color-grid">
           <BrandColor
@@ -329,6 +329,18 @@ export default function RestaurantLookEditor({
             onChange={(accent) => change({ accent })}
           />
         </div>
+        <label className="mm-voice-setting">
+          Writing voice
+          <input
+            value={style.tone || "Warm and welcoming"}
+            maxLength={150}
+            onChange={(e) => change({ tone: e.target.value })}
+          />
+          <small>
+            Used for new social captions. For example: friendly, concise, and
+            quietly confident.
+          </small>
+        </label>
         <fieldset className="cx-brand-fonts">
           <legend>Your typography</legend>
           <div>

@@ -1,82 +1,83 @@
 "use client";
-import { workspacePreferenceKey } from "@/lib/workspace-navigation";
 import { useEffect, useRef, useState } from "react";
 import {
-  Camera,
-  Check,
-  Download,
-  ImagePlus,
-  Sparkles,
   Plus,
-  ArrowRight,
-  Megaphone,
-  CalendarDays,
-  UtensilsCrossed,
-  PartyPopper,
+  ArrowUp,
+  ArrowDown,
+  X,
+  ImagePlus,
+  Check,
+  ChevronDown,
+  Download,
 } from "lucide-react";
-import { api, downloadBlob, money, type Row } from "@/lib/client";
-import { campaignZip } from "@/lib/creation-export";
-import {
-  postPage,
-  postCaption,
-  updatePost,
-  postDetailError,
-  postFromPhoto,
-} from "@/lib/post-flow";
-import { emptyAdjustments } from "@/lib/studio";
-import PostSharing from "./post-sharing";
-import { PostCanvas } from "./post-canvas";
-export { PostCanvas } from "./post-canvas";
+import { api, downloadBlob, type Row } from "@/lib/client";
+import { workspacePreferenceKey } from "@/lib/workspace-navigation";
 import { brandPostFields, brandTypefaces } from "@/lib/restaurant-look";
 import {
-  postTemplates,
-  postTemplateGroups,
-  getPostTemplate,
-  applyPostTemplate,
-  postTemplateExample,
-} from "@/lib/post-templates";
+  preferredPhoto,
+  dishPhotos,
+  dishSnapshot,
+  changedDishFacts,
+} from "@/lib/dish-library";
+import {
+  postCaption,
+  postDetailError,
+  postFromPhoto,
+  updatePost,
+} from "@/lib/post-flow";
+import { postTemplates, applyPostTemplate } from "@/lib/post-templates";
+import {
+  carouselSlides,
+  postSlideCount,
+  recommendedDesigns,
+} from "@/lib/post-composition";
+import { campaignZip, renderPost } from "@/lib/creation-export";
+import { emptyAdjustments } from "@/lib/studio";
+import { Dialog, DialogContent, DialogTitle } from "@/components/ui/dialog";
 import {
   CropControls,
   Feedback,
   Field,
-  Footer,
-  ToolHeader,
   DraftRecovery,
   SavedDrafts,
-  Steps,
   track,
   useAction,
   useCreationDraft,
-  useStepFocus,
 } from "./creation-shared";
-function initial(restaurant: Row) {
-  return {
-    step: 1,
-    items: [],
-    occasion: "showcase",
-    title: "",
-    description: "",
-    price: "",
-    showPrice: false,
-    validity: "",
-    template: "editorial",
-    kicker: "",
-    cta: "",
-    accent: "#f5eee0",
-    color: restaurant.style?.primary || "#235b48",
-    textY: 0,
-    channels: ["feed", "story"],
-    layouts: {
-      feed: { ...emptyAdjustments, fit: false },
-      story: { ...emptyAdjustments, fit: false },
-      carousel: { ...emptyAdjustments, fit: false },
-    },
-    caption: "",
-    captionMode: "",
-    reviewed: false,
-    ...(restaurant.style?.autoApply ? brandPostFields(restaurant.style) : {}),
-  };
-}
+import CreativeHeader from "./creative-header";
+import WorkspaceControls from "./workspace-controls";
+import PostSharing from "./post-sharing";
+import { PostCanvas } from "./post-canvas";
+export { PostCanvas } from "./post-canvas";
+const initial = (restaurant: Row, version = 1) => ({
+  step: 1,
+  compositionVersion: version,
+  items: [],
+  occasion: "showcase",
+  title: "",
+  description: "",
+  price: "",
+  showPrice: false,
+  validity: "",
+  template: "chef",
+  kicker: "",
+  cta: "",
+  textMode: "minimal",
+  showBrand: true,
+  textPlacement: "auto",
+  channels: ["feed", "story"],
+  layouts: Object.fromEntries(
+    ["feed", "story", "carousel"].map((k) => [
+      k,
+      { ...emptyAdjustments, fit: true, autoFrame: true },
+    ]),
+  ),
+  caption: "",
+  captionMode: "auto",
+  reviewed: false,
+  voice: restaurant.style?.tone || "Warm and welcoming",
+  ...brandPostFields(restaurant.style),
+});
 export default function PostMaker({
   state,
   seed,
@@ -89,1021 +90,1086 @@ export default function PostMaker({
   onPhoto: () => void;
 }) {
   const store = useCreationDraft(
-      "post",
-      initial(state.restaurant),
-      workspacePreferenceKey(state.user.id, state.restaurant.id),
-    ),
-    { draft: b, change, save, start, ready, status } = store,
-    action = useAction(),
-    { act, busy, setNotice } = action;
-  const page = postPage(b.step);
-  const root = useStepFocus(page, ready);
-  const [showPicker, setShowPicker] = useState(false);
-  const [useExamples, setUseExamples] = useState(true);
-  const [templateGroup, setTemplateGroup] = useState("All designs"),
-    [designChannel, setDesignChannel] = useState("feed");
-  const [channel, setChannel] = useState("feed"),
-    [slide, setSlide] = useState(0),
-    seedHandled = useRef("");
-  const approved = state.dishes
-      .map((d: Row) => ({
-        ...d,
-        photo: state.assets.find(
-          (a: Row) => a.dish_id === d.id && a.approved_at,
-        ),
-      }))
-      .filter((d: Row) => d.photo),
-    items: Row[] = b.items || [];
+    "post",
+    initial(state.restaurant),
+    workspacePreferenceKey(state.user.id, state.restaurant.id),
+  );
+  const { draft: b, change, save, start, ready, status } = store;
+  const action = useAction();
+  const { act, busy } = action;
+  const [photoIndex, setPhotoIndex] = useState(0),
+    [panel, setPanel] = useState("details"),
+    [picker, setPicker] = useState(false),
+    [query, setQuery] = useState(""),
+    [versions, setVersions] = useState<Record<string, string>>({}),
+    [moreDesigns, setMoreDesigns] = useState(false),
+    [desiredChannel, setChannel] = useState("feed"),
+    [desiredSlide, setSlide] = useState(0),
+    [exporting, setExporting] = useState(false),
+    [issues, setIssues] = useState<string[]>([]),
+    [proofIssues, setProofIssues] = useState<string[]>([]),
+    [mobileControls, setMobileControls] = useState(false);
+  const handled = useRef("");
+  const items: Row[] = b.items || [];
+  const approved: Row[] = state.dishes
+    .filter((d: Row) => !d.archived_at)
+    .map((d: Row) => ({ ...d, photo: preferredPhoto(d, state.assets) }))
+    .filter((d: Row) => d.photo?.approved_at);
+  const stale = items.filter((item) => {
+    const d = state.dishes.find((d: Row) => d.id === item.dishId);
+    return d && changedDishFacts(item.facts, d).length;
+  });
+  const availableChannels = [
+    "feed",
+    "story",
+    ...(items.length > 1 ? ["carousel"] : []),
+  ];
+  const channel = availableChannels.includes(desiredChannel)
+    ? desiredChannel
+    : "feed";
+  const slide = Math.min(
+    desiredSlide,
+    Math.max(0, postSlideCount(b, channel) - 1),
+  );
+  const slides = carouselSlides(b);
+  const selectedSlide = channel === "carousel" ? slides[slide] : null;
+  const selectedItem =
+    selectedSlide?.kind === "dish"
+      ? selectedSlide.items[0]
+      : items[Math.min(photoIndex, items.length - 1)];
   function update(p: Row) {
-    const customized =
-      !p.brandMode && ("color" in p || "accent" in p || "typography" in p);
-    change(
-      updatePost(
-        b,
-        { ...(customized ? { brandMode: "custom" } : {}), ...p },
-        state.restaurant,
-      ),
-    );
+    change(updatePost(b, p, state.restaurant));
   }
-  function selectTemplate(id: string) {
-    update(applyPostTemplate(b, id));
-    if (window.matchMedia("(max-width: 760px)").matches)
-      requestAnimationFrame(() =>
-        document.querySelector(".cx-selected-design")?.scrollIntoView({
-          block: "start",
-          behavior: "instant",
-        }),
-      );
-  }
-  useEffect(() => {
-    if (
-      !b.channels.includes(channel) ||
-      (channel === "carousel" && items.length < 2)
-    ) {
-      setChannel(
-        b.channels.find((c: string) => c !== "carousel" || items.length > 1) ||
-          "feed",
-      );
-      setSlide(0);
-    } else if (slide >= items.length) setSlide(0);
-  }, [b.channels, items.length, channel, slide]);
-  function choose(d: Row, photoId?: string) {
-    if (
-      b.occasion === "combo" &&
-      items.length >= 4 &&
-      !items.some((i) => i.dishId === d.id)
-    ) {
-      action.setError(
-        "Choose up to four dishes for one design. Remove a dish to add another.",
-      );
-      return;
-    }
-    const item = {
-      dishId: d.id,
-      photoId: photoId || d.photo.id,
-      name: d.name,
-      quantity: 1,
-    };
+  function updateItem(index: number, p: Row) {
     update({
-      items:
-        b.occasion === "combo"
-          ? [...items.filter((i) => i.dishId !== d.id), item]
-          : [item],
-      title: !b.title || b.title === items[0]?.name ? d.name : b.title,
+      items: items.map((item, i) => (i === index ? { ...item, ...p } : item)),
     });
-    setShowPicker(false);
+  }
+  function applyDesign(id: string) {
+    const patch = applyPostTemplate({ ...b, compositionVersion: 2 }, id);
+    update({ ...patch, compositionVersion: 2 });
   }
   useEffect(() => {
-    if (!ready || !seed || seedHandled.current === seed.token) return;
-    seedHandled.current = seed.token;
-    void act("Opening your post", async () => {
-      if (seed.draftId) {
-        await store.resume(seed.draftId);
-        setShowPicker(false);
-        onSeedUsed();
-        return;
-      }
-      const d = state.dishes.find((d: Row) => d.id === seed.dishId),
-        a = state.assets.find(
-          (a: Row) => a.id === seed.photoId && a.approved_at,
-        );
-      if (d && a) {
-        await start(
-          postFromPhoto(
-            initial(state.restaurant),
-            d,
-            a,
-            state.restaurant,
-            !!seed.quick,
-          ),
-        );
-        if (seed.quick)
+    if (!ready || !seed || handled.current === seed.token) return;
+    handled.current = seed.token;
+    void act("Opening post", async () => {
+      if (seed.draftId) await store.resume(seed.draftId);
+      else {
+        const d = state.dishes.find((d: Row) => d.id === seed.dishId),
+          a = state.assets.find(
+            (a: Row) =>
+              a.id === seed.photoId && a.approved_at && a.dish_id === d?.id,
+          );
+        if (d && a) {
+          await start(
+            postFromPhoto(
+              initial(state.restaurant, 2),
+              d,
+              a,
+              state.restaurant,
+              true,
+            ),
+          );
           track("photo_reused", a.id, { dishId: d.id, destination: "post" });
+        }
       }
+      setPanel("design");
       onSeedUsed();
     });
   }, [ready, seed]);
-  function captionStarter(short = false) {
-    return postCaption(b, state.restaurant, short);
+  function choose(d: Row) {
+    if (items.length >= 6 && !items.some((i) => i.dishId === d.id)) {
+      action.setError("Choose up to six photos. Remove one to add another.");
+      return;
+    }
+    const a =
+      dishPhotos(d, state.assets).find(
+        (a) => a.id === versions[d.id] && a.approved_at,
+      ) || d.photo;
+    const existing = items.findIndex((i) => i.dishId === d.id);
+    if (existing >= 0) {
+      updateItem(existing, { photoId: a.id });
+      setPicker(false);
+      return;
+    }
+    if (items.some((i) => i.photoId === a.id)) {
+      setPicker(false);
+      return;
+    }
+    const first = !items.length;
+    const item = {
+      key: crypto.randomUUID(),
+      dishId: d.id,
+      photoId: a.id,
+      name: d.name,
+      category: d.category,
+      quantity: 1,
+      facts: dishSnapshot(d),
+    };
+    update({
+      items: [...items, item],
+      ...(first
+        ? {
+            compositionVersion: 2,
+            title: d.name,
+            description: d.description || "",
+            price: d.price ? (d.price / 100).toFixed(2) : "",
+            captionMode: "auto",
+          }
+        : {}),
+      channels: items.length
+        ? [...new Set([...b.channels, "carousel"])]
+        : b.channels,
+    });
+    setPicker(false);
+    setPanel(first ? "design" : "details");
   }
-  async function continueStep() {
+  function refreshFacts() {
+    const next = items.map((i) => {
+      const d = state.dishes.find((d: Row) => d.id === i.dishId);
+      return d
+        ? { ...i, name: d.name, category: d.category, facts: dishSnapshot(d) }
+        : i;
+    });
+    const first = state.dishes.find((d: Row) => d.id === items[0]?.dishId);
+    update({
+      items: next,
+      ...(items.length === 1 && first
+        ? {
+            title: b.title === items[0].name ? first.name : b.title,
+            description:
+              b.description === items[0].facts?.description
+                ? first.description
+                : b.description,
+            price:
+              b.price === String((items[0].facts?.price || 0) / 100) ||
+              Number(b.price) === (items[0].facts?.price || 0) / 100
+                ? (first.price / 100).toFixed(2)
+                : b.price,
+          }
+        : {}),
+      factsReviewed: true,
+    });
+  }
+  async function caption(mode = "draft") {
+    const data = await api("post-caption", {
+      dishIds: [...new Set(items.map((i) => i.dishId))],
+      quantities: items.map((i) => ({
+        dishId: i.dishId,
+        quantity: i.quantity,
+      })),
+      title: b.title,
+      description: b.description || "",
+      price: b.showPrice ? b.price : null,
+      validity: b.validity || "",
+      occasion: b.occasion,
+      voice: b.voice || state.restaurant.style?.tone || "Warm and welcoming",
+      mode,
+      caption: b.caption || "",
+    });
+    update({ caption: data.body, captionMode: "custom" });
+  }
+  async function openExport() {
     const error = postDetailError(b, state.assets);
     if (error) throw Error(error);
-    if (page === 3 && !b.channels.length)
-      throw Error("Choose at least one format for your post.");
-    change({
-      step: page === 1 ? 3 : page === 2 ? 4 : 6,
-      ...(!b.caption ? { caption: captionStarter(), captionMode: "auto" } : {}),
-    });
+    if (!b.channels.length) throw Error("Choose at least one format.");
+    if (stale.length)
+      throw Error("Review the changed dish details before exporting.");
+    if (b.captionNeedsReview)
+      throw Error("Review your caption after the details changed.");
+    const warnings: string[] = [];
+    for (const format of b.channels)
+      for (let n = 0; n < postSlideCount(b, format); n++) {
+        const result = await renderPost(
+          document.createElement("canvas"),
+          b,
+          state.restaurant,
+          format,
+          n,
+        );
+        warnings.push(
+          ...result.warnings.map(
+            (w) => `${format}${format === "carousel" ? ` ${n + 1}` : ""}: ${w}`,
+          ),
+        );
+      }
+    setProofIssues([...new Set(warnings)]);
+    change({ reviewed: false });
     await save();
+    setExporting(true);
   }
   if (!ready) return <DraftRecovery store={store} />;
+  const candidates = moreDesigns
+    ? postTemplates
+    : recommendedDesigns(b, state.restaurant).map((id) =>
+        postTemplates.find((t) => t.id === id)!,
+      );
+  const editingIndex = selectedItem ? items.indexOf(selectedItem) : 0;
+  const edits = {
+    ...emptyAdjustments,
+    fit: true,
+    ...b.layouts?.[channel],
+    ...selectedItem?.layouts?.[channel],
+  };
   return (
-    <section className="cx-tool cx-feature-page" ref={root}>
-      <ToolHeader title="Post Maker" status={status}>
-        <div className="cx-button-row">
-          <SavedDrafts kind="post" store={store} disabled={!!busy} />
-          <button
-            className="cx-link"
-            onClick={() =>
-              act("Starting a new post", () => start(initial(state.restaurant)))
-            }
-          >
-            <Plus size={16} />
-            New post
+    <section className="mm-workspace mm-post-workspace">
+      <CreativeHeader
+        title="Post Maker"
+        status={status}
+        action={
+          items.length ? (
+            <button
+              className="cx-btn"
+              disabled={!!busy}
+              onClick={() => act("Checking your formats", openExport)}
+            >
+              {busy === "Checking your formats"
+                ? "Checking…"
+                : "Review & export"}
+              <Download size={16} />
+            </button>
+          ) : undefined
+        }
+      >
+        <SavedDrafts kind="post" store={store} disabled={!!busy} />
+        <button
+          className="cx-link"
+          disabled={!!busy}
+          onClick={() =>
+            act("Starting post", async () => {
+              await start(initial(state.restaurant, 2));
+              setPanel("details");
+              setSlide(0);
+            })
+          }
+        >
+          <Plus size={16} />
+          New
+        </button>
+      </CreativeHeader>
+      <DraftRecovery store={store} />
+      <Feedback {...action} />
+      {stale.length > 0 && (
+        <div className="mm-fact-notice">
+          <strong>
+            Dish details changed: {stale.map((i) => i.name).join(", ")}.
+          </strong>
+          <p>
+            Review the latest names, prices, and availability before using this
+            design.
+          </p>
+          <button className="cx-link" onClick={refreshFacts}>
+            Use latest dish details
           </button>
         </div>
-      </ToolHeader>
-      <DraftRecovery store={store} />
-      {!b.quickStart && (
-        <Steps
-          labels={[
-            "Dish & details",
-            "Design",
-            "Formats & caption",
-            "Save & share",
-          ]}
-          step={page}
-          onBack={(n) => change({ step: [1, 3, 4, 6][n - 1] })}
-        />
       )}
-      <Feedback {...action} />
-      {page === 1 && (
-        <>
-          <div className="cx-section-line cx-post-picker-title">
-            <h2>{items.length ? "Your selected photo" : "Choose a dish"}</h2>
-            {items.length > 0 && (
-              <button
-                className="cx-link"
-                onClick={() => setShowPicker((v) => !v)}
-              >
-                {showPicker ? "Done choosing" : "Change photo"}
+      {!items.length ? (
+        <div className="mm-post-start">
+          <div>
+            <span className="mm-kicker">MAKE SOMETHING WORTH SHARING</span>
+            <h2>
+              Start with a dish.
+              <br />
+              We’ll bring the design.
+            </h2>
+            <p className="mm-muted">
+              Your approved photo, your restaurant’s look, and a matching post
+              and Story.
+            </p>
+            <button className="cx-btn" onClick={() => setPicker(true)}>
+              <ImagePlus size={18} />
+              Choose a dish
+            </button>
+            {!approved.length && (
+              <button className="cx-link" onClick={onPhoto}>
+                Prepare a photo in Photo Studio
               </button>
             )}
           </div>
-          {items.length > 0 && !showPicker && (
-            <div className="cx-selected-photos">
-              {items.map((i) => (
-                <div key={i.dishId}>
-                  <img src={`/api/assets/${i.photoId}`} alt={i.name} />
-                  <span>
-                    <b>{i.name}</b>
-                    <small>
-                      <Check size={13} />
-                      Approved photo
-                    </small>
-                  </span>
-                </div>
-              ))}
-            </div>
-          )}
-          {(!items.length || showPicker) && (
-            <div className="cx-dish-grid cx-post-picker">
-              {approved.map((d: Row) => (
-                <button
-                  key={d.id}
-                  className="cx-dish-card"
-                  aria-pressed={items.some((i) => i.dishId === d.id)}
-                  onClick={() => choose(d)}
-                >
-                  <img src={`/api/assets/${d.photo.id}`} alt={d.name} />
-                  <div>
-                    <b>{d.name}</b>
-                    <small>
-                      <Check size={13} />
-                      Approved photo
-                    </small>
-                  </div>
-                  {items.some((i) => i.dishId === d.id) && (
-                    <i>
-                      <Check size={16} />
-                    </i>
-                  )}
-                </button>
-              ))}
-              <button className="cx-add-dish" onClick={onPhoto}>
-                <ImagePlus size={30} />
-                <b>Start with a new photo</b>
-                <span>We’ll guide you through Photo Studio.</span>
-                <ArrowRight size={18} />
+          <div className="mm-start-photos">
+            {approved.slice(0, 3).map((d) => (
+              <button key={d.id} onClick={() => choose(d)}>
+                <img src={`/api/assets/${d.photo.id}`} alt={d.name} />
+                <span>{d.name}</span>
               </button>
-            </div>
-          )}
-        </>
-      )}
-      {page === 1 && items.length > 0 && (
-        <>
-          <div className="cx-occasion-grid">
-            {[
-              [
-                "showcase",
-                "Show off a dish",
-                "Let the food do the talking.",
-                UtensilsCrossed,
-              ],
-              [
-                "special",
-                "Tonight’s special",
-                "A reason to visit today.",
-                Sparkles,
-              ],
-              [
-                "combo",
-                "Combo / meal deal",
-                "Bring a few favorites together.",
-                Megaphone,
-              ],
-              [
-                "event",
-                "Event",
-                "Put something on their calendar.",
-                PartyPopper,
-              ],
-            ].map(([id, title, desc, Icon]) => {
-              const I = Icon as typeof Camera;
-              return (
-                <button
-                  key={String(id)}
-                  aria-pressed={b.occasion === id}
-                  onClick={() =>
-                    update({
-                      occasion: id,
-                      ...(id === "showcase"
-                        ? { description: "", validity: "" }
-                        : {}),
-                      showPrice: id === "special" || id === "combo",
-                      ...applyPostTemplate(
-                        b,
-                        id === "special"
-                          ? "special"
-                          : id === "combo"
-                            ? "combo"
-                            : id === "event"
-                              ? "event"
-                              : "editorial",
-                      ),
-                      items: id === "combo" ? items : items.slice(0, 1),
-                      channels:
-                        id === "combo"
-                          ? b.channels
-                          : b.channels.filter((c: string) => c !== "carousel"),
-                    })
-                  }
-                >
-                  <I size={22} />
-                  <b>{String(title)}</b>
-                  <small>{String(desc)}</small>
-                </button>
-              );
-            })}
+            ))}
+            {!approved.length && (
+              <div className="mm-start-empty">
+                <ImagePlus size={54} />
+                <p>Your approved dishes will appear here.</p>
+              </div>
+            )}
           </div>
-          <div className="cx-studio-grid">
-            <div className="cx-panel">
-              <Field label={b.occasion === "event" ? "Event name" : "Headline"}>
-                <input
-                  value={b.title}
-                  maxLength={90}
-                  onChange={(e) => update({ title: e.target.value })}
-                  placeholder={items[0]?.name || "Your headline"}
-                />
-              </Field>
-              {b.occasion !== "showcase" && (
-                <Field label="A little more detail (optional)">
-                  <textarea
-                    value={b.description}
-                    maxLength={250}
-                    onChange={(e) => update({ description: e.target.value })}
-                    placeholder="Only include details you have confirmed."
-                  />
-                </Field>
-              )}
-              {["special", "combo"].includes(b.occasion) && (
-                <>
-                  <label className="cx-check">
-                    <input
-                      type="checkbox"
-                      checked={b.showPrice}
-                      onChange={(e) => update({ showPrice: e.target.checked })}
-                    />
-                    Show price
-                  </label>
-                  {b.showPrice && (
-                    <Field label={`Price (${state.restaurant.currency})`}>
-                      <input
-                        type="number"
-                        min="0"
-                        step="0.01"
-                        value={b.price}
-                        onChange={(e) => update({ price: e.target.value })}
-                        placeholder="18.50"
-                      />
-                    </Field>
-                  )}
-                </>
-              )}
-              {b.occasion !== "showcase" && (
-                <Field
-                  label={
-                    b.occasion === "event"
-                      ? "When is it happening?"
-                      : "Available when? (optional)"
-                  }
+        </div>
+      ) : (
+        <>
+          <div className="mm-editor-grid">
+            <div className="mm-stage">
+              <div className="mm-stage-toolbar">
+                <div
+                  className="mm-segments"
+                  role="group"
+                  aria-label="Preview format"
                 >
-                  <input
-                    value={b.validity}
-                    maxLength={100}
-                    onChange={(e) => update({ validity: e.target.value })}
-                    placeholder="Friday, September 18 · 6–9 pm"
-                  />
-                </Field>
-              )}
-              {b.occasion === "combo" && (
-                <>
-                  <h3>What’s included?</h3>
-                  {items.map((i) => (
-                    <div className="cx-combo-row" key={i.dishId}>
-                      <span>{i.name}</span>
-                      <Field label="Quantity">
-                        <input
-                          type="number"
-                          min="1"
-                          max="100"
-                          value={i.quantity}
-                          onChange={(e) =>
-                            update({
-                              items: items.map((x) =>
-                                x.dishId === i.dishId
-                                  ? { ...x, quantity: Number(e.target.value) }
-                                  : x,
-                              ),
-                            })
-                          }
-                        />
-                      </Field>
-                      <button
-                        className="cx-link"
-                        onClick={() =>
-                          update({
-                            items: items.filter((x) => x.dishId !== i.dishId),
-                          })
-                        }
-                      >
-                        Remove
-                      </button>
-                    </div>
-                  ))}
-                  <Field label="Add another approved dish">
-                    <select
-                      value=""
-                      disabled={items.length >= 6}
-                      onChange={(e) => {
-                        const d = approved.find(
-                          (d: Row) => d.id === e.target.value,
-                        );
-                        if (d) choose(d);
+                  {availableChannels.map((c) => (
+                    <button
+                      key={c}
+                      aria-pressed={channel === c}
+                      onClick={() => {
+                        setChannel(c);
+                        setSlide(0);
                       }}
                     >
-                      <option value="">Choose a dish</option>
-                      {approved
-                        .filter(
-                          (d: Row) => !items.some((i) => i.dishId === d.id),
-                        )
-                        .map((d: Row) => (
-                          <option key={d.id} value={d.id}>
-                            {d.name}
-                          </option>
-                        ))}
-                    </select>
-                  </Field>
-                </>
-              )}
-            </div>
-            <div className="cx-post-side">
-              <PostCanvas draft={b} restaurant={state.restaurant} />
-              <p>Live design preview · your approved photo</p>
-            </div>
-          </div>
-          <Footer
-            label="Choose a design"
-            next={() => act("Saving your post details", continueStep)}
-            disabled={!items.length || !b.title.trim()}
-            busy={!!busy}
-          />
-        </>
-      )}
-      {page === 2 && (
-        <>
-          <div className="cx-template-toolbar">
-            <div
-              className="cx-template-filters"
-              role="group"
-              aria-label="Instagram design categories"
-            >
-              {postTemplateGroups.map((group) => (
-                <button
-                  key={group}
-                  aria-pressed={templateGroup === group}
-                  onClick={() => setTemplateGroup(group)}
-                >
-                  {group}
-                </button>
-              ))}
-            </div>
-            <div className="cx-preview-switches">
-              <div className="cx-segment" aria-label="Design preview format">
-                {[
-                  ["story", "Story 9:16"],
-                  ["feed", "Post 4:5"],
-                ].map(([id, label]) => (
-                  <button
-                    key={id}
-                    aria-pressed={designChannel === id}
-                    onClick={() => setDesignChannel(id)}
-                  >
-                    {label}
-                  </button>
-                ))}
-              </div>
-              <div className="cx-segment" aria-label="Preview photos">
-                <button
-                  aria-pressed={useExamples}
-                  onClick={() => setUseExamples(true)}
-                >
-                  Examples
-                </button>
-                <button
-                  aria-pressed={!useExamples}
-                  onClick={() => setUseExamples(false)}
-                >
-                  My photo
-                </button>
-              </div>
-            </div>
-          </div>
-          <div className="cx-gallery-mode">
-            <span>
-              {useExamples
-                ? "Example designs · each uses a different dish"
-                : "See every design with your approved photo"}
-            </span>
-          </div>
-          <div className="cx-template-workbench">
-            <div className="cx-instagram-gallery">
-              {postTemplates
-                .filter(
-                  (t) =>
-                    templateGroup === "All designs" ||
-                    t.group === templateGroup,
-                )
-                .map((t) => (
-                  <button
-                    className="cx-instagram-template"
-                    key={t.id}
-                    aria-pressed={getPostTemplate(b.template).id === t.id}
-                    onClick={() => selectTemplate(t.id)}
-                  >
-                    <PostCanvas
-                      draft={
-                        useExamples
-                          ? postTemplateExample(t.id)
-                          : { ...b, ...applyPostTemplate(b, t.id) }
-                      }
-                      restaurant={
-                        useExamples
-                          ? {
-                              name: postTemplateExample(t.id).restaurantName,
-                              currency: "USD",
-                            }
-                          : state.restaurant
-                      }
-                      channel={designChannel}
-                      example={useExamples}
-                    />
-                    <div>
-                      <span>
-                        <b>{t.name}</b>
-                        <small>{t.group}</small>
-                      </span>
-                      {getPostTemplate(b.template).id === t.id && (
-                        <Check size={18} />
-                      )}
-                    </div>
-                  </button>
-                ))}
-            </div>
-            <aside className="cx-selected-design">
-              <div className="cx-section-line">
-                <span className="cx-eyebrow">YOUR DESIGN</span>
-                <button
-                  className="cx-link cx-back-to-designs"
-                  onClick={() =>
-                    document
-                      .querySelector(".cx-template-toolbar")
-                      ?.scrollIntoView({ block: "start", behavior: "instant" })
-                  }
-                >
-                  Back to designs
-                </button>
-                <span className="cx-pill">
-                  {designChannel === "story"
-                    ? "Instagram Story"
-                    : "Instagram post"}
-                </span>
-              </div>
-              <PostCanvas
-                draft={b}
-                restaurant={state.restaurant}
-                channel={designChannel}
-              />
-              <h2>{getPostTemplate(b.template).name}</h2>
-              <p>{getPostTemplate(b.template).description}</p>
-              <div className="cx-post-treatment">
-                <span className="cx-control-label">Text on your photo</span>
-                <div className="cx-segment" aria-label="Amount of text">
-                  {[
-                    ["photo", "Photo only"],
-                    ["minimal", "A few words"],
-                    ["full", "All details"],
-                  ].map(([id, label]) => (
-                    <button
-                      key={id}
-                      aria-pressed={
-                        (b.textMode || getPostTemplate(b.template).textMode) ===
-                        id
-                      }
-                      onClick={() => update({ textMode: id })}
-                    >
-                      {label}
+                      {c === "feed"
+                        ? "Post"
+                        : c === "story"
+                          ? "Story"
+                          : "Carousel"}
                     </button>
                   ))}
                 </div>
-                <label className="cx-brand-toggle">
-                  <input
-                    type="checkbox"
-                    checked={
-                      b.showBrand ?? getPostTemplate(b.template).showBrand
-                    }
-                    onChange={(e) => update({ showBrand: e.target.checked })}
-                  />{" "}
-                  Add my restaurant name & logo
-                </label>
-                {(b.textMode || getPostTemplate(b.template).textMode) ===
-                  "photo" && (
-                  <p className="cx-hint">
-                    Your headline, price, and details stay in the caption. The
-                    image stays clear.
-                  </p>
-                )}
+                <button
+                  className="cx-link mm-mobile-edit"
+                  onClick={() => setMobileControls(!mobileControls)}
+                >
+                  {mobileControls ? "Close edits" : "Edit design"}
+                </button>
+                <span className="mm-muted">
+                  {channel === "story" ? "1080 × 1920" : "1080 × 1350"}
+                </span>
               </div>
-              {(b.textMode || getPostTemplate(b.template).textMode) !==
-                "photo" && (
-                <div className="cx-design-copy">
-                  <Field label="Small heading (optional)">
-                    <input
-                      value={b.kicker ?? getPostTemplate(b.template).kicker}
-                      maxLength={50}
-                      onChange={(e) => update({ kicker: e.target.value })}
+              <div
+                className={`mm-main-canvas ${channel === "story" ? "is-story" : ""}`}
+              >
+                <PostCanvas
+                  draft={b}
+                  restaurant={state.restaurant}
+                  channel={channel}
+                  slide={slide}
+                  onQuality={setIssues}
+                />
+              </div>
+              {channel === "carousel" && (
+                <div className="mm-slide-strip" aria-label="Carousel slides">
+                  {slides.map((s, i) => (
+                    <button
+                      key={s.key + i}
+                      aria-pressed={slide === i}
+                      onClick={() => setSlide(i)}
+                    >
+                      <span>{i + 1}</span>
+                      {s.kind === "cover"
+                        ? "Cover"
+                        : s.kind === "closing"
+                          ? "Closing"
+                          : s.title}
+                    </button>
+                  ))}
+                </div>
+              )}
+              {issues.length > 0 && (
+                <div className="mm-output-notes" role="status">
+                  {issues.map((i) => (
+                    <p key={i}>{i}</p>
+                  ))}
+                </div>
+              )}
+              <div className="mm-recommendation-heading">
+                <span>Made for your dish</span>
+                <button
+                  className="cx-link"
+                  onClick={() => setMoreDesigns(!moreDesigns)}
+                >
+                  {moreDesigns ? "Recommended" : "More designs"}
+                  <ChevronDown size={14} />
+                </button>
+              </div>
+              <div
+                className={`mm-design-strip ${moreDesigns ? "expanded" : ""}`}
+              >
+                {candidates.map((t) => (
+                  <button
+                    key={t.id}
+                    className="mm-design-choice"
+                    aria-pressed={b.template === t.id}
+                    onClick={() => applyDesign(t.id)}
+                  >
+                    <PostCanvas
+                      thumbnail
+                      draft={{
+                        ...b,
+                        ...applyPostTemplate(
+                          { ...b, compositionVersion: 2 },
+                          t.id,
+                        ),
+                        compositionVersion: 2,
+                      }}
+                      restaurant={state.restaurant}
+                      channel="feed"
                     />
+                    <span>
+                      {t.name}
+                      {b.template === t.id && <Check size={14} />}
+                    </span>
+                  </button>
+                ))}
+              </div>
+            </div>
+            <WorkspaceControls
+              className="mm-inspector"
+              open={mobileControls}
+              onOpenChange={setMobileControls}
+              title="Edit post"
+            >
+              <button
+                className="cx-link mm-mobile-edit"
+                onClick={() => setMobileControls(false)}
+              >
+                Done editing
+              </button>
+              <div
+                className="mm-inspector-tabs"
+                role="group"
+                aria-label="Edit post"
+              >
+                {["details", "design", "photo", "caption"].map((p) => (
+                  <button
+                    key={p}
+                    aria-pressed={panel === p}
+                    onClick={() => setPanel(p)}
+                  >
+                    {p[0].toUpperCase() + p.slice(1)}
+                  </button>
+                ))}
+              </div>
+              {panel === "details" && (
+                <>
+                  <Field label="Purpose">
+                    <select
+                      value={b.occasion}
+                      onChange={(e) => update({ occasion: e.target.value })}
+                    >
+                      <option value="showcase">Showcase a dish</option>
+                      <option value="special">Today’s special</option>
+                      <option value="combo">Meal or offer</option>
+                      <option value="event">Event</option>
+                    </select>
                   </Field>
+                  <div className="mm-post-items">
+                    {items.map((i, index) => (
+                      <div key={i.key || i.photoId} className="mm-post-item">
+                        <img src={`/api/assets/${i.photoId}`} alt={i.name} />
+                        <div>
+                          <b>{i.name}</b>
+                          {b.occasion === "combo" && (
+                            <input
+                              aria-label={`Quantity of ${i.name}`}
+                              type="number"
+                              min="1"
+                              max="100"
+                              value={i.quantity}
+                              onChange={(e) =>
+                                updateItem(index, {
+                                  quantity: Number(e.target.value),
+                                })
+                              }
+                            />
+                          )}
+                          <div className="mm-inline">
+                            <button
+                              className="cx-link"
+                              aria-label={`Move ${i.name} earlier`}
+                              disabled={!index}
+                              onClick={() => {
+                                const next = [...items];
+                                [next[index - 1], next[index]] = [
+                                  next[index],
+                                  next[index - 1],
+                                ];
+                                update({ items: next });
+                              }}
+                            >
+                              <ArrowUp size={14} />
+                            </button>
+                            <button
+                              className="cx-link"
+                              aria-label={`Move ${i.name} later`}
+                              disabled={index === items.length - 1}
+                              onClick={() => {
+                                const next = [...items];
+                                [next[index + 1], next[index]] = [
+                                  next[index],
+                                  next[index + 1],
+                                ];
+                                update({ items: next });
+                              }}
+                            >
+                              <ArrowDown size={14} />
+                            </button>
+                            <button
+                              className="cx-link"
+                              aria-label={`Remove ${i.name}`}
+                              onClick={() =>
+                                update({
+                                  items: items.filter((_, n) => n !== index),
+                                })
+                              }
+                            >
+                              <X size={14} />
+                            </button>
+                          </div>
+                        </div>
+                      </div>
+                    ))}
+                  </div>
+                  <button
+                    className="cx-link"
+                    disabled={items.length >= 6}
+                    onClick={() => setPicker(true)}
+                  >
+                    <Plus size={15} />
+                    Add another photo {items.length >= 6 ? "· limit 6" : ""}
+                  </button>
                   <Field label="Headline">
                     <textarea
-                      value={b.title}
                       rows={2}
+                      value={b.title}
                       maxLength={90}
                       onChange={(e) => update({ title: e.target.value })}
                     />
                   </Field>
-                  <Field label="Call to action (optional)">
-                    <input
-                      value={b.cta ?? getPostTemplate(b.template).cta}
-                      maxLength={60}
-                      onChange={(e) => update({ cta: e.target.value })}
+                  <Field label="Description for your caption">
+                    <textarea
+                      rows={3}
+                      maxLength={2000}
+                      value={b.description}
+                      onChange={(e) => update({ description: e.target.value })}
                     />
                   </Field>
-                  <div className="cx-design-colors">
-                    <Field label="Lettering color">
-                      <input
-                        type="color"
-                        value={b.accent || getPostTemplate(b.template).accent}
-                        onChange={(e) => update({ accent: e.target.value })}
-                      />
-                    </Field>
-                  </div>
-                  <Field label="Typography">
-                    <select
-                      value={b.typography || "template"}
-                      onChange={(e) => update({ typography: e.target.value })}
-                    >
-                      <option value="template">This design’s typography</option>
-                      {brandTypefaces.map((font) => (
-                        <option key={font.id} value={font.id}>
-                          {font.name}
-                        </option>
-                      ))}
-                    </select>
-                  </Field>
-                  <button
-                    className="cx-link"
-                    onClick={() =>
-                      update(brandPostFields(state.restaurant.style))
-                    }
-                  >
-                    {b.brandMode === "restaurant"
-                      ? "Restaurant look applied · refresh"
-                      : "Use my restaurant look"}
-                  </button>
-                </div>
-              )}
-              <p className="cx-hint">
-                Every design adapts to posts and stories. Next, adjust the photo
-                and finish your caption.
-              </p>
-            </aside>
-          </div>
-          <Footer
-            back={() => change({ step: 1 })}
-            label="Finish your post"
-            next={() => act("Saving your design", continueStep)}
-            busy={!!busy}
-            note="Your original photo stays unchanged"
-          />
-        </>
-      )}
-      {page === 3 && (
-        <>
-          <div className="cx-channel-options">
-            {[
-              ["feed", "Feed post", "1080 × 1350"],
-              ["story", "Story", "1080 × 1920"],
-              ["carousel", "Simple carousel", "One approved dish per slide"],
-            ].map(([id, label, desc]) => (
-              <label
-                key={id}
-                className={
-                  "cx-channel " + (b.channels.includes(id) ? "selected" : "")
-                }
-              >
-                <input
-                  type="checkbox"
-                  checked={b.channels.includes(id)}
-                  disabled={id === "carousel" && items.length < 2}
-                  onChange={(e) => {
-                    update({
-                      channels: e.target.checked
-                        ? [...b.channels, id]
-                        : b.channels.filter((c: string) => c !== id),
-                    });
-                    setChannel(
-                      e.target.checked
-                        ? id
-                        : b.channels.find((c: string) => c !== id) || "feed",
-                    );
-                    setSlide(0);
-                  }}
-                />
-                <span>
-                  <b>{label}</b>
-                  <small>{desc}</small>
-                </span>
-              </label>
-            ))}
-          </div>
-          {items.length < 2 && (
-            <p className="cx-hint">
-              Choose Combo / meal deal with two or more dishes to make a
-              carousel.
-            </p>
-          )}
-          <div className="cx-studio-grid">
-            <div className="cx-post-side">
-              <div className="cx-segment">
-                {b.channels.map((c: string) => (
-                  <button
-                    key={c}
-                    aria-pressed={channel === c}
-                    onClick={() => {
-                      setChannel(c);
-                      setSlide(0);
-                    }}
-                  >
-                    {c === "feed"
-                      ? "Feed"
-                      : c === "story"
-                        ? "Story"
-                        : "Carousel"}
-                  </button>
-                ))}
-              </div>
-              <PostCanvas
-                draft={b}
-                restaurant={state.restaurant}
-                channel={channel}
-                slide={slide}
-              />
-              {channel === "carousel" && (
-                <div className="cx-chips">
-                  {items.map((i, n) => (
-                    <button
-                      key={i.dishId}
-                      aria-pressed={slide === n}
-                      onClick={() => setSlide(n)}
-                    >
-                      Slide {n + 1}
-                    </button>
-                  ))}
-                </div>
-              )}
-            </div>
-            <aside className="cx-panel">
-              <h2>
-                {channel === "story"
-                  ? "Story"
-                  : channel === "carousel"
-                    ? "Carousel"
-                    : "Feed"}{" "}
-                framing
-              </h2>
-              <p>
-                Move the photo within your design. Use Fit whole dish to keep
-                the entire serving visible, or Fill frame for a full-bleed look.
-              </p>
-              <CropControls
-                value={b.layouts[channel] || emptyAdjustments}
-                onChange={(edits) =>
-                  update({ layouts: { ...b.layouts, [channel]: edits } })
-                }
-              />
-              <p className="cx-hint">
-                Each format keeps its own framing. Story text stays clear of the
-                top and bottom areas used by Instagram’s controls.
-              </p>
-            </aside>
-          </div>
-          <div className="cx-panel cx-caption-editor">
-            <span className="cx-pill">A starting point from your details</span>
-            <h2>The words to match.</h2>
-            {b.captionNeedsReview && (
-              <p className="cx-hint" role="status">
-                Your details changed. Check prices and dates in your caption, or
-                use a fresh starter.
-              </p>
-            )}
-            <Field label="Your caption">
-              <textarea
-                className="cx-caption"
-                value={b.caption}
-                maxLength={2200}
-                onChange={(e) => update({ caption: e.target.value })}
-              />
-            </Field>
-            <span className="cx-counter">
-              {b.caption.length} / 2,200 characters
-            </span>
-            <div className="cx-button-row">
-              <button
-                className="cx-link"
-                onClick={() =>
-                  update({ caption: captionStarter(), captionMode: "auto" })
-                }
-              >
-                Use current details
-              </button>
-              <button
-                className="cx-btn cx-secondary"
-                onClick={() => update({ caption: captionStarter(true) })}
-              >
-                Use a shorter version
-              </button>
-              <button
-                className="cx-link"
-                disabled={!!busy || !state.aiConnected}
-                onClick={() =>
-                  act("Writing from your confirmed details", async () => {
-                    const result = await api("post-caption", {
-                      dishIds: items.map((i) => i.dishId),
-                      title: b.title,
-                      description: b.description,
-                      price: b.showPrice ? b.price : null,
-                      validity: b.validity,
-                      occasion: b.occasion,
-                    });
-                    update({ caption: result.body });
-                  })
-                }
-              >
-                <Sparkles size={16} />
-                Try an AI caption
-              </button>
-            </div>
-            <p className="cx-hint">
-              Only confirmed facts belong in your post. Check prices, dates and
-              any claims before sharing.
-            </p>
-          </div>
-          <Footer
-            back={() => change({ step: 3 })}
-            label="Review & share"
-            next={() => act("Saving your channels", continueStep)}
-            disabled={!b.channels.length}
-            busy={!!busy}
-          />
-        </>
-      )}
-      {page === 4 && (
-        <>
-          {b.quickStart && (
-            <div className="cx-quick-post-details">
-              <h2>Your photo. A matching post and Story.</h2>
-              <p>
-                Your approved photo is ready in both formats. Add an offer if
-                you want, then review both previews and your caption.
-              </p>
-              <div className="cx-quick-post-fields">
-                <Field label="Headline">
-                  <input
-                    value={b.title}
-                    maxLength={90}
-                    onChange={(e) => update({ title: e.target.value })}
-                  />
-                </Field>
-                <div>
                   <label className="cx-check">
                     <input
                       type="checkbox"
                       checked={b.showPrice}
                       onChange={(e) => update({ showPrice: e.target.checked })}
                     />
-                    Include a price
+                    Show {b.occasion === "combo" ? "offer " : ""}price
                   </label>
                   {b.showPrice && (
                     <Field label={`Price (${state.restaurant.currency})`}>
                       <input
                         type="number"
                         min="0"
-                        step="0.01"
+                        step=".01"
                         value={b.price}
                         onChange={(e) => update({ price: e.target.value })}
                       />
                     </Field>
                   )}
-                </div>
-                <Field label="Offer dates or hours (optional)">
-                  <input
-                    value={b.validity}
-                    maxLength={100}
-                    placeholder="Friday · 5–9 pm"
-                    onChange={(e) => update({ validity: e.target.value })}
-                  />
-                </Field>
-              </div>
-              <div className="cx-button-row">
-                <button
-                  className="cx-link"
-                  onClick={() => change({ quickStart: false, step: 3 })}
-                >
-                  Customize the design
-                </button>
-                <button
-                  className="cx-link"
-                  onClick={() => change({ quickStart: false, step: 1 })}
-                >
-                  Change dish or promotion type
-                </button>
-              </div>
-            </div>
-          )}
-          <div className="cx-share-layout">
-            <div>
-              <div className="cx-channel-previews">
-                {b.channels.map((c: string) => (
-                  <div key={c}>
-                    <PostCanvas
-                      draft={b}
-                      restaurant={state.restaurant}
-                      channel={c}
+                  <Field
+                    label={
+                      b.occasion === "event"
+                        ? "Event date & time"
+                        : "Date or availability (optional)"
+                    }
+                  >
+                    <input
+                      value={b.validity}
+                      maxLength={100}
+                      onChange={(e) => update({ validity: e.target.value })}
                     />
-                    <b>
-                      {c === "feed"
-                        ? "Feed post"
-                        : c === "story"
-                          ? "Story"
-                          : `Carousel · ${items.length} slides`}
-                    </b>
-                  </div>
-                ))}
-              </div>
-              <div className="cx-caption-preview">
-                <h3>Your caption</h3>
-                {b.captionNeedsReview && (
-                  <p className="cx-feedback" role="status">
-                    Your offer details changed. Check that your custom caption
-                    still matches the price and dates before sharing.
-                  </p>
-                )}
-                <p>{b.caption}</p>
-                <button className="cx-link" onClick={() => change({ step: 4 })}>
-                  Edit caption
-                </button>
-              </div>
-            </div>
-            <aside className="cx-panel">
-              <span className="cx-pill">Saved in your workspace</span>
-              <h2>Your next post is ready.</h2>
-              <label className="cx-check">
-                <input
-                  type="checkbox"
-                  checked={b.reviewed}
-                  disabled={
-                    !!postDetailError(b, state.assets) || !b.channels.length
-                  }
-                  onChange={(e) =>
-                    change({
-                      reviewed: e.target.checked,
-                      captionNeedsReview: false,
-                    })
-                  }
-                />
-                I’ve checked the images, text, prices and dates.
-              </label>
-              {postDetailError(b, state.assets) && (
-                <p className="cx-feedback" role="alert">
-                  {postDetailError(b, state.assets)}
-                </p>
+                  </Field>
+                  {items.length > 1 && (
+                    <details className="mm-divider">
+                      <summary>Carousel structure</summary>
+                      <label className="cx-check">
+                        <input
+                          type="checkbox"
+                          checked={!!b.carouselCover}
+                          onChange={(e) =>
+                            update({ carouselCover: e.target.checked })
+                          }
+                        />
+                        Start with a cover
+                      </label>
+                      <Field label="Closing invitation (optional)">
+                        <input
+                          maxLength={90}
+                          value={b.carouselClosing || ""}
+                          onChange={(e) =>
+                            update({ carouselClosing: e.target.value })
+                          }
+                        />
+                      </Field>
+                      <p className="mm-muted">
+                        Each dish gets its own slide. Select a slide to edit its
+                        headline and framing.
+                      </p>
+                    </details>
+                  )}
+                </>
               )}
-              <PostSharing
-                draft={b}
-                restaurant={state.restaurant}
-                busy={!!busy}
-                notice={setNotice}
-              />
-              <button
-                className="cx-btn cx-secondary cx-full"
-                disabled={
-                  !b.reviewed || !!busy || !!postDetailError(b, state.assets)
-                }
-                onClick={() =>
-                  act("Preparing your campaign files", async () => {
-                    await save();
-                    const error = postDetailError(b, state.assets);
-                    if (error) throw Error(error);
-                    const blob = await campaignZip(b, state.restaurant);
-                    downloadBlob(blob, `${state.restaurant.slug}-campaign.zip`);
-                    track("export_complete", undefined, {
-                      format: "campaign-zip",
-                    });
-                    setNotice(
-                      "Your images and caption are downloaded together, ready to upload.",
-                    );
-                  })
-                }
-              >
-                <Download size={17} />
-                {b.channels.includes("feed") && b.channels.includes("story")
-                  ? "Download post, Story & caption"
-                  : "Download selected images & caption"}
-              </button>
-              <p className="cx-hint">
-                Saving or sharing opens your files or apps. It does not
-                automatically publish a social post.
-              </p>
-            </aside>
+              {panel === "design" && (
+                <>
+                  <h2>Your restaurant, in every detail.</h2>
+                  <p className="mm-muted">
+                    Your saved colors and typography are applied. The photo and
+                    layout adapt to each format.
+                  </p>
+                  {b.compositionVersion !== 2 && (
+                    <button
+                      className="cx-btn cx-secondary"
+                      onClick={() => applyDesign(b.template)}
+                    >
+                      Use the improved composition
+                    </button>
+                  )}
+                  <Field label="Text on the image">
+                    <select
+                      value={b.textMode || "minimal"}
+                      onChange={(e) => update({ textMode: e.target.value })}
+                    >
+                      <option value="photo">Photo only</option>
+                      <option value="minimal">Headline & essentials</option>
+                      <option value="full">Include a short description</option>
+                    </select>
+                  </Field>
+                  <label className="cx-check">
+                    <input
+                      type="checkbox"
+                      checked={b.showBrand ?? true}
+                      onChange={(e) => update({ showBrand: e.target.checked })}
+                    />
+                    Restaurant name & logo
+                  </label>
+                  <Field label="Text placement">
+                    <select
+                      value={b.textPlacement || "auto"}
+                      onChange={(e) =>
+                        update({
+                          textPlacement: e.target.value,
+                          compositionVersion: 2,
+                        })
+                      }
+                    >
+                      <option value="auto">Recommended for this photo</option>
+                      <option value="top">Above the photo</option>
+                      <option value="bottom">Below the photo</option>
+                    </select>
+                  </Field>
+                  <Field label="Small heading (optional)">
+                    <input
+                      value={b.kicker || ""}
+                      maxLength={45}
+                      onChange={(e) => update({ kicker: e.target.value })}
+                    />
+                  </Field>
+                  <Field label="Call to action (optional)">
+                    <input
+                      value={b.cta || ""}
+                      maxLength={80}
+                      onChange={(e) => update({ cta: e.target.value })}
+                    />
+                  </Field>
+                  <details className="mm-divider">
+                    <summary>Fine-tune this design</summary>
+                    <Field label="Brand color">
+                      <input
+                        type="color"
+                        value={b.color}
+                        onChange={(e) =>
+                          update({ color: e.target.value, brandMode: "custom" })
+                        }
+                      />
+                    </Field>
+                    <Field label="Accent color">
+                      <input
+                        type="color"
+                        value={b.accent}
+                        onChange={(e) =>
+                          update({
+                            accent: e.target.value,
+                            brandMode: "custom",
+                          })
+                        }
+                      />
+                    </Field>
+                    <Field label="Typography">
+                      <select
+                        value={b.typography || "template"}
+                        onChange={(e) =>
+                          update({
+                            typography: e.target.value,
+                            brandMode: "custom",
+                          })
+                        }
+                      >
+                        <option value="template">
+                          This design’s typography
+                        </option>
+                        {brandTypefaces.map((f) => (
+                          <option key={f.id} value={f.id}>
+                            {f.name}
+                          </option>
+                        ))}
+                      </select>
+                    </Field>
+                    <button
+                      className="cx-link"
+                      onClick={() =>
+                        update({
+                          ...brandPostFields(state.restaurant.style),
+                          voice:
+                            state.restaurant.style?.tone ||
+                            "Warm and welcoming",
+                        })
+                      }
+                    >
+                      Apply current restaurant look
+                    </button>
+                  </details>
+                </>
+              )}
+              {panel === "photo" && (
+                <>
+                  <h2>
+                    {channel === "carousel" && selectedSlide?.kind === "dish"
+                      ? selectedItem.name
+                      : "Photo framing"}
+                  </h2>
+                  {items.length > 1 && channel !== "carousel" && (
+                    <Field label="Photo to adjust">
+                      <select
+                        value={editingIndex}
+                        onChange={(e) => {
+                          setPhotoIndex(Number(e.target.value));
+                        }}
+                      >
+                        {items.map((i, n) => (
+                          <option key={i.photoId} value={n}>
+                            {i.name}
+                          </option>
+                        ))}
+                      </select>
+                    </Field>
+                  )}
+                  {selectedSlide?.kind === "dish" && (
+                    <Field label="Slide headline">
+                      <input
+                        value={selectedItem.headline ?? selectedItem.name}
+                        maxLength={90}
+                        onChange={(e) =>
+                          updateItem(editingIndex, { headline: e.target.value })
+                        }
+                      />
+                    </Field>
+                  )}
+                  <p className="mm-muted">
+                    Fit keeps the whole photo. Each format and carousel slide
+                    keeps its own framing.
+                  </p>
+                  <CropControls
+                    value={edits}
+                    onChange={(p) => {
+                      if (selectedItem)
+                        updateItem(editingIndex, {
+                          layouts: {
+                            ...selectedItem.layouts,
+                            [channel]: { ...edits, ...p, autoFrame: false },
+                          },
+                        });
+                      else
+                        update({
+                          layouts: {
+                            ...b.layouts,
+                            [channel]: { ...edits, ...p, autoFrame: false },
+                          },
+                        });
+                    }}
+                  />
+                  <button
+                    className="cx-link"
+                    onClick={() => {
+                      if (selectedItem)
+                        updateItem(editingIndex, {
+                          layouts: {
+                            ...selectedItem.layouts,
+                            [channel]: { ...emptyAdjustments, fit: true },
+                          },
+                        });
+                      else
+                        update({
+                          layouts: {
+                            ...b.layouts,
+                            [channel]: { ...emptyAdjustments, fit: true },
+                          },
+                        });
+                    }}
+                  >
+                    Reset to whole photo
+                  </button>
+                </>
+              )}
+              {panel === "caption" && (
+                <>
+                  <h2>In your own voice.</h2>
+                  <Field label="Writing voice">
+                    <input
+                      maxLength={150}
+                      value={
+                        b.voice ||
+                        state.restaurant.style?.tone ||
+                        "Warm and welcoming"
+                      }
+                      onChange={(e) => change({ voice: e.target.value })}
+                    />
+                  </Field>
+                  <Field label="Caption">
+                    <textarea
+                      rows={10}
+                      maxLength={2200}
+                      value={b.caption || ""}
+                      onChange={(e) => update({ caption: e.target.value })}
+                    />
+                  </Field>
+                  {b.captionNeedsReview && (
+                    <div className="mm-fact-notice">
+                      Your dish or offer details changed.
+                      <button
+                        className="cx-link"
+                        onClick={() => change({ captionNeedsReview: false })}
+                      >
+                        I’ve checked the caption
+                      </button>
+                    </div>
+                  )}
+                  <div className="mm-inline">
+                    <button
+                      className="cx-link"
+                      disabled={!!busy || !state.aiConnected}
+                      onClick={() => act("Writing caption", () => caption())}
+                    >
+                      Write with AI
+                    </button>
+                    <button
+                      className="cx-link"
+                      disabled={!!busy || !state.aiConnected || !b.caption}
+                      onClick={() =>
+                        act("Shortening caption", () => caption("shorter"))
+                      }
+                    >
+                      Shorter
+                    </button>
+                    <button
+                      className="cx-link"
+                      disabled={!!busy || !state.aiConnected || !b.caption}
+                      onClick={() =>
+                        act("Refining caption", () => caption("inviting"))
+                      }
+                    >
+                      More inviting
+                    </button>
+                  </div>
+                  {!state.aiConnected && (
+                    <p className="mm-muted">
+                      AI writing is currently unavailable. Your editable factual
+                      caption is ready.
+                    </p>
+                  )}
+                  <button
+                    className="cx-link mm-divider"
+                    onClick={() =>
+                      update({
+                        caption: postCaption(b, state.restaurant),
+                        captionMode: "auto",
+                      })
+                    }
+                  >
+                    Restore factual caption
+                  </button>
+                </>
+              )}
+              <details className="mm-divider">
+                <summary>Export formats</summary>
+                {availableChannels.map((c) => (
+                  <label key={c} className="cx-check">
+                    <input
+                      type="checkbox"
+                      checked={b.channels.includes(c)}
+                      onChange={(e) =>
+                        update({
+                          channels: e.target.checked
+                            ? [...b.channels, c]
+                            : b.channels.filter((v: string) => v !== c),
+                        })
+                      }
+                    />
+                    {c === "feed"
+                      ? "Post"
+                      : c === "story"
+                        ? "Story"
+                        : "Carousel"}
+                  </label>
+                ))}
+              </details>
+            </WorkspaceControls>
           </div>
-          <Footer
-            back={() => change({ step: 4 })}
-            label="Save this post"
-            next={() =>
-              act("Saving your post", async () => {
-                await save();
-                track("post_saved", store.id);
-                setNotice(
-                  "Your post is saved. Find it anytime under Saved posts.",
-                );
-              })
-            }
-            busy={!!busy}
-          />
         </>
       )}
+      <Dialog open={picker} onOpenChange={setPicker}>
+        <DialogContent
+          className="cx-app mm-dialog mm-photo-picker"
+          aria-describedby={undefined}
+        >
+          <DialogTitle>Choose a dish photo</DialogTitle>
+          <input
+            type="search"
+            aria-label="Search approved dishes"
+            placeholder="Find a dish…"
+            value={query}
+            onChange={(e) => setQuery(e.target.value)}
+          />
+          <div className="mm-picker-grid">
+            {approved
+              .filter((d) =>
+                `${d.name} ${d.category}`
+                  .toLowerCase()
+                  .includes(query.toLowerCase()),
+              )
+              .map((d) => {
+                const photo =
+                  dishPhotos(d, state.assets).find(
+                    (a) => a.id === versions[d.id] && a.approved_at,
+                  ) || d.photo;
+                const options = dishPhotos(d, state.assets).filter(
+                  (a) => a.approved_at,
+                );
+                return (
+                  <div key={d.id}>
+                    <button onClick={() => choose(d)}>
+                      <img src={`/api/assets/${photo.id}`} alt={d.name} />
+                      <strong>{d.name}</strong>
+                    </button>
+                    {options.length > 1 && (
+                      <select
+                        aria-label={`Photo version for ${d.name}`}
+                        value={photo.id}
+                        onChange={(e) =>
+                          setVersions({ ...versions, [d.id]: e.target.value })
+                        }
+                      >
+                        {options.map((a, n) => (
+                          <option key={a.id} value={a.id}>
+                            {a.id === d.preferred_photo_id
+                              ? "Main photo"
+                              : a.kind === "source"
+                                ? "Original"
+                                : `Approved version ${n + 1}`}
+                          </option>
+                        ))}
+                      </select>
+                    )}
+                  </div>
+                );
+              })}
+          </div>
+          {!approved.length && (
+            <>
+              <p className="mm-muted">
+                Approve a dish photo in My Dishes or Photo Studio to use it
+                here.
+              </p>
+              <button
+                className="cx-btn"
+                onClick={() => {
+                  setPicker(false);
+                  onPhoto();
+                }}
+              >
+                Open Photo Studio
+              </button>
+            </>
+          )}
+        </DialogContent>
+      </Dialog>
+      <Dialog open={exporting} onOpenChange={setExporting}>
+        <DialogContent
+          className="cx-app mm-dialog mm-export-post"
+          aria-describedby={undefined}
+        >
+          <DialogTitle>Ready to share</DialogTitle>
+          <div className="mm-proof-strip">
+            {b.channels.flatMap((c: string) =>
+              Array.from({ length: postSlideCount(b, c) }, (_, n) => (
+                <div key={c + n}>
+                  <PostCanvas
+                    draft={b}
+                    restaurant={state.restaurant}
+                    channel={c}
+                    slide={n}
+                  />
+                  <small>
+                    {c === "feed"
+                      ? "Post"
+                      : c === "story"
+                        ? "Story"
+                        : `Slide ${n + 1}`}
+                  </small>
+                </div>
+              )),
+            )}
+          </div>
+          {proofIssues.length > 0 && (
+            <div className="mm-output-notes">
+              {proofIssues.map((i) => (
+                <p key={i}>{i}</p>
+              ))}
+            </div>
+          )}
+          <Field label="Caption">
+            <textarea
+              value={b.caption || ""}
+              rows={3}
+              maxLength={2200}
+              onChange={(e) => update({ caption: e.target.value })}
+            />
+          </Field>
+          <label className="cx-check">
+            <input
+              type="checkbox"
+              checked={b.reviewed}
+              onChange={(e) => change({ reviewed: e.target.checked })}
+            />
+            I’ve checked every image, price, and date.
+          </label>
+          <PostSharing
+            draft={b}
+            restaurant={state.restaurant}
+            busy={!!busy}
+            notice={action.setNotice}
+          />
+          <button
+            className="cx-link"
+            disabled={!b.reviewed || !!busy}
+            onClick={() =>
+              act("Preparing downloads", async () => {
+                await save();
+                downloadBlob(
+                  await campaignZip(b, state.restaurant),
+                  `${state.restaurant.slug}-post-pack.zip`,
+                );
+                action.setNotice("Your post pack download has started.");
+              })
+            }
+          >
+            Download all formats & caption
+          </button>
+          <p className="mm-muted">
+            Design saved automatically. You choose when to publish in your
+            social app.
+          </p>
+          <Feedback {...action} />
+        </DialogContent>
+      </Dialog>
     </section>
   );
 }

@@ -3,32 +3,38 @@ import { workspacePreferenceKey } from "@/lib/workspace-navigation";
 import { useEffect, useRef, useState } from "react";
 import {
   Upload,
-  Images,
+  ArrowUp,
+  ArrowDown,
   Plus,
   ArrowRight,
   BookOpen,
   Check,
-  Trash2,
   Smartphone,
   Printer,
-  Download,
   Sparkles,
 } from "lucide-react";
-import { api, downloadBlob, type Row } from "@/lib/client";
+import { api, downloadBlob, money, type Row } from "@/lib/client";
 import { looks, styleFor } from "@/lib/studio";
 import { menuPdf } from "@/lib/creation-export";
 import MenuView from "./menu-view";
+import MenuPhoto from "./menu-photo";
+import CreativeHeader from "./creative-header";
+import WorkspaceControls from "./workspace-controls";
+import { preferredPhoto } from "@/lib/dish-library";
+import {
+  menuCrop,
+  menuDesigns,
+  menuChanges,
+  duplicateMenuRows,
+} from "@/lib/menu-design";
+import { Dialog, DialogContent, DialogTitle } from "@/components/ui/dialog";
 import PrintPreview from "./print-preview";
 import MenuSharing from "./menu-sharing";
-import { brandTypeface } from "@/lib/restaurant-look";
 import {
   Feedback,
   Field,
-  Footer,
-  ToolHeader,
   DraftRecovery,
   SavedDrafts,
-  Steps,
   track,
   useAction,
   useCreationDraft,
@@ -95,6 +101,11 @@ function fromMenu(state: Row) {
               price: d.price / 100,
               available: !!d.available,
               photoId: i.photoId || "",
+              featured:
+                i.featured ??
+                (state.restaurant.menuDraft.layout === "featured" &&
+                  s.items[0] === i),
+              crop: i.crop,
               rowId: d.id,
             }
           : null;
@@ -120,6 +131,7 @@ function menuContent(
   layout: string,
   appearance: string,
   paper: string,
+  options: Row = {},
 ) {
   const sections: Row[] = [];
   for (const row of rows) {
@@ -135,13 +147,20 @@ function menuContent(
     s.items.push({
       ...row,
       id: row.id || row.rowId,
-      price: Math.round(Number(row.price) * 100),
+      price:
+        row.price === "" || row.price == null
+          ? NaN
+          : Math.round(Number(row.price) * 100),
       photoId: row.photoId || null,
     });
   }
   return {
     restaurant: { ...restaurant, logoId: restaurant.logo_id },
     sections,
+    design: options.design || "bistro",
+    density: options.density || "comfortable",
+    printProfile: options.printProfile || "home",
+    title: options.title || "",
     layout,
     appearance,
     paper,
@@ -168,6 +187,10 @@ export default function MenuBuilder({
         layout: state.restaurant.menuDraft.layout || "classic",
         appearance: state.restaurant.menuDraft.appearance || "light",
         paper: state.restaurant.menuDraft.paper || "letter",
+        design: state.restaurant.menuDraft.design || "bistro",
+        density: state.restaurant.menuDraft.density || "comfortable",
+        printProfile: state.restaurant.menuDraft.printProfile || "home",
+        title: state.restaurant.menuDraft.title || "",
         reviewed: false,
         importId: "",
         batchId: "",
@@ -181,6 +204,20 @@ export default function MenuBuilder({
   const root = useStepFocus(b.step, ready);
   const action = useAction(),
     { act, busy, setNotice } = action;
+  const [selected, setSelected] = useState(""),
+    [panel, setPanel] = useState("dishes"),
+    [mobileControls, setMobileControls] = useState(false),
+    [query, setQuery] = useState(""),
+    [importOpen, setImportOpen] = useState(false),
+    [batchOpen, setBatchOpen] = useState(false),
+    [completion, setCompletion] = useState(false),
+    [destination, setDestination] = useState("publish"),
+    [sharing, setSharing] = useState(false),
+    [bulkOpen, setBulkOpen] = useState(false),
+    [bulkSection, setBulkSection] = useState(""),
+    [bulkName, setBulkName] = useState(""),
+    [bulkPercent, setBulkPercent] = useState(""),
+    [removed, setRemoved] = useState<{ row: Row; index: number } | null>(null);
   const [chooseDishes, setChooseDishes] = useState(false),
     [preview, setPreview] = useState("phone"),
     [pdf, setPdf] = useState<{
@@ -194,7 +231,14 @@ export default function MenuBuilder({
     pdfUrl = useRef(""),
     batchKey = useRef("");
   const rows: Row[] = b.rows || [],
-    menu = menuContent(rows, state.restaurant, b.layout, b.appearance, b.paper),
+    menu = menuContent(
+      rows,
+      state.restaurant,
+      b.layout,
+      b.appearance,
+      b.paper,
+      b,
+    ),
     sampleJob =
       b.batch && state.jobs.find((j: Row) => j.id === b.batch.sampleJobId),
     sampleOutput =
@@ -209,6 +253,11 @@ export default function MenuBuilder({
     if (!ready || !seed || seedHandled.current === seed.token) return;
     seedHandled.current = seed.token;
     void act("Adding your dish", async () => {
+      if (seed.openImport) {
+        setImportOpen(true);
+        onSeedUsed();
+        return;
+      }
       if (seed.draftId) {
         await store.resume(seed.draftId);
         onSeedUsed();
@@ -249,11 +298,15 @@ export default function MenuBuilder({
     });
   }, [seed, ready]);
   useEffect(() => {
-    if (!ready || b.step !== 5) return;
+    if (
+      !ready ||
+      (preview !== "print" && !(completion && destination === "print"))
+    )
+      return;
     let active = true;
-    setPdfError("");
-    setPdf(null);
     const timer = setTimeout(() => {
+      setPdfError("");
+      setPdf(null);
       menuPdf({
         ...menu,
         qrUrl: state.restaurant.published
@@ -277,12 +330,21 @@ export default function MenuBuilder({
     };
   }, [
     ready,
-    b.step,
+    preview,
+    completion,
+    destination,
+    b.design,
+    b.density,
+    b.printProfile,
+    b.title,
     b.rows,
     b.layout,
     b.appearance,
     b.paper,
     state.restaurant.published_at,
+    state.restaurant.style,
+    state.restaurant.name,
+    state.restaurant.logo_id,
   ]);
   useEffect(
     () => () => {
@@ -291,6 +353,8 @@ export default function MenuBuilder({
     [],
   );
   async function saveRows() {
+    if (b.importId && rows.some((r) => !r.importReviewed))
+      throw Error("Check each imported dish against the original first.");
     if (
       rows.some(
         (r) =>
@@ -299,6 +363,7 @@ export default function MenuBuilder({
           r.price === "" ||
           r.price === null ||
           !Number.isFinite(Number(r.price)) ||
+          Number(r.price) > 1000000 ||
           Number(r.price) < 0,
       )
     )
@@ -316,6 +381,7 @@ export default function MenuBuilder({
     if (b.importId) {
       await api(`imports/${b.importId}/review`, {
         confirmed: true,
+        replace: true,
         items: rows.map((r) => ({ ...r, price: Number(r.price) })),
       });
       const s = await api("state");
@@ -334,6 +400,7 @@ export default function MenuBuilder({
         next.push({
           ...r,
           id: saved.id,
+          revision: saved.revision,
           rowId: r.rowId || saved.id,
           _synced: dishFacts({
             ...r,
@@ -350,8 +417,13 @@ export default function MenuBuilder({
       b.layout,
       b.appearance,
       b.paper,
+      b,
     );
     await api("menu", {
+      design: b.design,
+      density: b.density,
+      printProfile: b.printProfile,
+      title: b.title,
       layout: b.layout,
       appearance: b.appearance,
       paper: b.paper,
@@ -360,6 +432,8 @@ export default function MenuBuilder({
         items: s.items.map((i: Row) => ({
           dishId: i.id,
           photoId: i.photoId || null,
+          featured: i.featured,
+          crop: i.crop,
         })),
       })),
     });
@@ -372,7 +446,16 @@ export default function MenuBuilder({
     const form = new FormData();
     form.set("file", file);
     const imp = await api("imports", form);
-    change({ importId: imp.id, rows: [], step: 2, reviewed: false });
+    await store.start({
+      ...b,
+      importId: imp.id,
+      rows: [],
+      step: 2,
+      reviewed: false,
+      batch: null,
+      batchId: "",
+      batchSelected: [],
+    });
     await save();
     await refresh();
     if (!state.aiConnected) {
@@ -384,7 +467,7 @@ export default function MenuBuilder({
     await readImport(imp.id);
   }
   async function readImport(id: string) {
-    await api(`imports/${id}/read`, {});
+    await api(`imports/${id}/extract`, {});
     const s = await api("state");
     const imp = s.imports.find((i: Row) => i.id === id);
     change({
@@ -394,6 +477,7 @@ export default function MenuBuilder({
         id: "",
         photoId: "",
         available: true,
+        importReviewed: false,
       })),
       reviewed: false,
     });
@@ -402,14 +486,22 @@ export default function MenuBuilder({
   }
   function edit(index: number, patch: Row) {
     change({
-      rows: rows.map((r, i) => (i === index ? { ...r, ...patch } : r)),
+      rows: rows.map((r, i) =>
+        i === index
+          ? {
+              ...r,
+              ...patch,
+              ...(b.importId && !("importReviewed" in patch)
+                ? { importReviewed: false }
+                : {}),
+            }
+          : r,
+      ),
       reviewed: false,
     });
   }
   function addDish(d: Row) {
-    const photo = state.assets.find(
-      (a: Row) => a.dish_id === d.id && a.approved_at,
-    );
+    const photo = preferredPhoto(d, state.assets);
     change({
       rows: [
         ...rows,
@@ -418,7 +510,7 @@ export default function MenuBuilder({
           rowId: d.id,
           price: d.price / 100,
           available: !!d.available,
-          photoId: photo?.id || "",
+          photoId: photo?.approved_at ? photo.id : "",
         },
       ],
       reviewed: false,
@@ -445,384 +537,1180 @@ export default function MenuBuilder({
       .catch(() => {});
   }
   if (!ready) return <DraftRecovery store={store} />;
+  const selectedIndex = rows.findIndex((r) => r.rowId === selected),
+    row = rows[selectedIndex];
+  const sections = [...new Set(rows.map((r) => r.category || "Dishes"))];
+  const changes = menuChanges(menu, state.restaurant.published);
+  const duplicates = duplicateMenuRows(rows);
+  const imported = state.imports.find((i: Row) => i.id === b.importId);
+  const outstanding = rows.filter((r) => !r.importReviewed).length;
+  function patch(patch: Row) {
+    change({ ...patch, reviewed: false });
+  }
+  function move(index: number, delta: number) {
+    const group = rows
+      .map((r, i) => ({ r, i }))
+      .filter(({ r }) => r.category === rows[index].category);
+    const position = group.findIndex(({ i }) => i === index),
+      target = group[position + delta]?.i;
+    if (target === undefined) return;
+    const next = [...rows];
+    [next[index], next[target]] = [next[target], next[index]];
+    patch({ rows: next });
+  }
+  function moveSection(section: string, delta: number) {
+    const order = [...sections],
+      index = order.indexOf(section),
+      target = index + delta;
+    if (target < 0 || target >= order.length) return;
+    [order[index], order[target]] = [order[target], order[index]];
+    patch({
+      rows: order.flatMap((s) =>
+        rows.filter((r) => (r.category || "Dishes") === s),
+      ),
+    });
+  }
+  function addBlank() {
+    const next = blank();
+    patch({ rows: [...rows, next] });
+    setSelected(next.rowId);
+    setPanel("dishes");
+    setMobileControls(true);
+  }
+  function syncFacts() {
+    const changed = new Set(newerRows(rows, state.dishes).map((r) => r.id));
+    patch({
+      rows: rows.map((r) => {
+        const d = state.dishes.find((d: Row) => d.id === r.id);
+        return changed.has(r.id) && d
+          ? {
+              ...r,
+              ...withBaseline(d),
+              rowId: r.rowId,
+              price: d.price / 100,
+              available: !!d.available,
+            }
+          : r;
+      }),
+    });
+  }
+  async function reviewMenu() {
+    if (!rows.length) throw Error("Add a dish to your menu first.");
+    if (b.importId && outstanding) {
+      setImportOpen(true);
+      throw Error(
+        "Review every imported dish against your original menu first.",
+      );
+    }
+    await saveRows();
+    change({ reviewed: false });
+    setCompletion(true);
+    setDestination(preview === "print" ? "print" : "publish");
+  }
   return (
-    <section className="cx-tool cx-feature-page" ref={root}>
-      <ToolHeader title="Menu Builder" status={status}>
+    <section className="mm-workspace mm-menu-workspace" ref={root}>
+      <CreativeHeader
+        title="Menus"
+        status={status}
+        action={
+          rows.length ? (
+            <button
+              className="cx-btn"
+              disabled={!!busy}
+              onClick={() => act("Checking your menu", reviewMenu)}
+            >
+              Review & use <ArrowRight size={16} />
+            </button>
+          ) : undefined
+        }
+      >
         <SavedDrafts kind="menu" store={store} disabled={!!busy} />
-        <span className="cx-pill">
-          {state.restaurant.published
-            ? "Published menu + private edits"
-            : "Private menu draft"}
-        </span>
-      </ToolHeader>
-      <DraftRecovery store={store} />
-      <Steps
-        labels={["Start", "Your dishes", "Design", "Photos", "Preview & use"]}
-        step={b.step}
-        onBack={(n) => change({ step: n })}
-      />
-      <Feedback {...action} />
-      {newerRows(rows, state.dishes).length > 0 && (
-        <div className="cx-panel cx-shared-update" role="status">
-          <h3>Newer details in My Dishes</h3>
-          <p>
-            A dish changed since you opened this menu. Bring in its latest
-            details before continuing.
-          </p>
-          <button
-            className="cx-btn cx-secondary"
-            onClick={() => {
-              const changed = new Set(
-                newerRows(rows, state.dishes).map((r) => r.id),
-              );
-              change({
-                rows: rows.map((r) => {
-                  const d = state.dishes.find((d: Row) => d.id === r.id);
-                  return d && changed.has(r.id)
-                    ? {
-                        ...r,
-                        ...withBaseline(d),
-                        price: d.price / 100,
-                        available: !!d.available,
-                      }
-                    : r;
-                }),
-                step: 2,
+        <button
+          className="cx-link"
+          disabled={!!busy}
+          onClick={() =>
+            act("Starting menu", async () => {
+              await store.start({
+                ...b,
+                rows: [],
+                importId: "",
                 reviewed: false,
+                batch: null,
+                batchId: "",
+                batchSelected: [],
               });
-            }}
-          >
-            Use latest dish details
+              setSelected("");
+            })
+          }
+        >
+          <Plus size={16} />
+          New
+        </button>
+        {state.restaurant.published && (
+          <button className="cx-link" onClick={() => setSharing(true)}>
+            Link & QR
+          </button>
+        )}
+      </CreativeHeader>
+      <DraftRecovery store={store} />
+      <Feedback {...action} />
+      {!!newerRows(rows, state.dishes).length && (
+        <div className="mm-fact-notice">
+          <strong>
+            {newerRows(rows, state.dishes).length} dishes have updated details
+            in My Dishes.
+          </strong>
+          <button className="cx-link" onClick={syncFacts}>
+            Review latest details
           </button>
         </div>
       )}
-
-      {b.step === 1 && (
-        <>
-          <div className="cx-start-cards">
-            <label className="cx-start-card">
-              <Upload size={28} />
-              <h2>Upload an existing menu</h2>
-              <p>
-                Bring a clear photo or PDF. Check the extracted details before
-                using them.
-              </p>
-              <span>
-                Choose a file <ArrowRight size={16} />
-              </span>
-              <input
-                type="file"
-                accept="application/pdf,image/jpeg,image/png"
-                hidden
-                disabled={!!busy}
-                onChange={(e) => {
-                  if (e.target.files?.[0])
-                    void act("Reading your menu", () =>
-                      importFile(e.target.files![0]),
-                    );
-                }}
-              />
-            </label>
-            <button
-              className="cx-start-card"
-              onClick={() => {
-                setChooseDishes(true);
-                change({ step: 2 });
-              }}
-            >
-              <Images size={28} />
-              <h2>Use My Dishes</h2>
-              <p>
-                Your saved dishes, prices and approved photos, ready to arrange.
-              </p>
-              <span>
-                Choose your dishes <ArrowRight size={16} />
-              </span>
-            </button>
-            <button
-              className="cx-start-card"
-              onClick={() =>
-                change({ step: 2, rows: rows.length ? rows : [blank()] })
-              }
-            >
-              <Plus size={28} />
-              <h2>Start simple</h2>
-              <p>
-                Add a few dishes. A beautiful text menu is a great place to
-                begin.
-              </p>
-              <span>
-                Build your menu <ArrowRight size={16} />
-              </span>
-            </button>
-          </div>
-          {rows.length > 0 && (
-            <button
-              className="cx-btn cx-secondary"
-              onClick={() => change({ step: 2 })}
-            >
-              Continue your saved menu · {rows.length} dishes{" "}
-              <ArrowRight size={16} />
-            </button>
-          )}
-        </>
+      {!!b.importId && (
+        <div className="mm-fact-notice">
+          <span>
+            {outstanding
+              ? `${outstanding} imported dishes to check`
+              : "Imported dishes checked"}
+          </span>
+          <button className="cx-link" onClick={() => setImportOpen(true)}>
+            Compare with original
+          </button>
+        </div>
       )}
-      {b.step === 2 && (
-        <>
-          <div className="cx-section-line">
-            <span>
-              {rows.length} dishes · prices in {state.restaurant.currency}
-            </span>
-            <button
-              className="cx-link"
-              onClick={() => setChooseDishes((v) => !v)}
-            >
-              <Images size={16} />
-              Add from My Dishes
+      {!rows.length && !b.importId ? (
+        <div className="mm-menu-start">
+          <span className="mm-kicker">
+            A MENU THAT FEELS LIKE YOUR RESTAURANT
+          </span>
+          <h2>Bring your dishes to the table.</h2>
+          <p className="mm-muted">
+            One menu, beautifully prepared for phones and print.
+          </p>
+          <button className="cx-btn" onClick={() => setChooseDishes(true)}>
+            Choose from My Dishes
+          </button>
+          <div className="mm-inline">
+            <button className="cx-link" onClick={() => setImportOpen(true)}>
+              Import an existing menu
+            </button>
+            <button className="cx-link" onClick={addBlank}>
+              Add your first dish
             </button>
           </div>
-          {chooseDishes && (
-            <div className="cx-panel cx-library-picker">
-              {state.dishes.length === 0 ? (
-                <p>Your dish library is empty. Add a dish below.</p>
-              ) : (
-                state.dishes
-                  .filter((d: Row) => !rows.some((r) => r.id === d.id))
-                  .map((d: Row) => (
-                    <button
-                      className="cx-btn cx-secondary"
-                      key={d.id}
-                      onClick={() => addDish(d)}
-                    >
-                      <Plus size={15} />
-                      {d.name}
-                    </button>
-                  ))
-              )}
-            </div>
-          )}
-          {b.importId && (
-            <div className="cx-hint">
-              <b>Review required.</b> Check the wording and every price against
-              your original menu. Missing prices are highlighted.
-              {!rows.length && (
+        </div>
+      ) : (
+        <div className="mm-menu-grid">
+          <WorkspaceControls
+            className="mm-menu-controls"
+            open={mobileControls}
+            onOpenChange={setMobileControls}
+            title="Edit menu"
+          >
+            <button
+              className="cx-link mm-mobile-edit"
+              onClick={() => setMobileControls(false)}
+            >
+              Done editing
+            </button>
+            <div
+              className="mm-inspector-tabs"
+              role="group"
+              aria-label="Menu controls"
+            >
+              {["dishes", "design"].map((p) => (
                 <button
-                  className="cx-link"
-                  disabled={!!busy || !state.aiConnected}
-                  onClick={() =>
-                    act("Reading your saved menu", () => readImport(b.importId))
-                  }
+                  key={p}
+                  aria-pressed={panel === p}
+                  onClick={() => setPanel(p)}
                 >
-                  Read saved menu
+                  {p === "dishes" ? "Dishes" : "Design"}
                 </button>
-              )}
+              ))}
             </div>
-          )}
-          <div className="cx-menu-rows">
-            {rows.map((r, i) => (
-              <article key={r.rowId} className="cx-menu-row">
-                <div className="cx-menu-row-heading">
-                  <span className="cx-row-number">
-                    {String(i + 1).padStart(2, "0")}
-                  </span>
-                  <b>{r.name || "New dish"}</b>
+            {panel === "dishes" ? (
+              <>
+                <div className="mm-menu-outline">
+                  {sections.map((section, sectionIndex) => (
+                    <details key={section} open className="mm-outline-section">
+                      <summary>
+                        {section}{" "}
+                        <small>
+                          {
+                            rows.filter(
+                              (r) => (r.category || "Dishes") === section,
+                            ).length
+                          }
+                        </small>
+                      </summary>
+                      <div className="mm-section-order">
+                        <button
+                          className="cx-link"
+                          aria-label={`Move ${section} section earlier`}
+                          disabled={!sectionIndex}
+                          onClick={() => moveSection(section, -1)}
+                        >
+                          <ArrowUp size={13} />
+                        </button>
+                        <button
+                          className="cx-link"
+                          aria-label={`Move ${section} section later`}
+                          disabled={sectionIndex === sections.length - 1}
+                          onClick={() => moveSection(section, 1)}
+                        >
+                          <ArrowDown size={13} />
+                        </button>
+                      </div>
+                      {rows
+                        .filter((r) => (r.category || "Dishes") === section)
+                        .map((r) => (
+                          <button
+                            key={r.rowId}
+                            aria-pressed={selected === r.rowId}
+                            onClick={() => setSelected(r.rowId)}
+                          >
+                            <span>{r.name || "Untitled dish"}</span>
+                            <small>
+                              {r.price === "" || r.price == null
+                                ? "Set price"
+                                : money(
+                                    Math.round(Number(r.price) * 100),
+                                    state.restaurant.currency,
+                                  )}
+                            </small>
+                          </button>
+                        ))}
+                    </details>
+                  ))}
+                </div>
+                <div className="mm-inline">
                   <button
-                    className="cx-icon"
-                    aria-label={`Remove ${r.name || "dish " + (i + 1)} from this menu`}
-                    onClick={() =>
-                      change({
-                        rows: rows.filter((_, j) => i !== j),
-                        reviewed: false,
-                      })
-                    }
+                    className="cx-link"
+                    onClick={() => setChooseDishes(true)}
                   >
-                    <Trash2 size={16} />
+                    <Plus size={15} />
+                    From My Dishes
+                  </button>
+                  <button className="cx-link" onClick={addBlank}>
+                    New dish
                   </button>
                 </div>
-                <div className="cx-menu-fields">
-                  <Field label="Dish name">
-                    <input
-                      value={r.name}
-                      maxLength={100}
-                      onChange={(e) => edit(i, { name: e.target.value })}
-                      placeholder="Roasted tomato pasta"
-                    />
-                  </Field>
-                  <Field label="Section">
-                    <input
-                      value={r.category}
-                      maxLength={100}
-                      onChange={(e) => edit(i, { category: e.target.value })}
-                      placeholder="Mains"
-                    />
-                  </Field>
-                  <Field label="Price">
-                    <input
-                      className={
-                        r.price === null || r.price === "" ? "cx-uncertain" : ""
-                      }
-                      type="number"
-                      min="0"
-                      step="0.01"
-                      value={r.price ?? ""}
-                      onChange={(e) => edit(i, { price: e.target.value })}
-                      placeholder="Check price"
-                    />
-                  </Field>
-                </div>
-                <Field label="Description (optional)">
-                  <input
-                    value={r.description}
-                    maxLength={2000}
-                    onChange={(e) => edit(i, { description: e.target.value })}
-                    placeholder="Use your own confirmed ingredients and description"
-                  />
-                </Field>
-                <div className="cx-section-line">
-                  <label className="cx-check">
-                    <input
-                      type="checkbox"
-                      checked={r.available}
-                      onChange={(e) => edit(i, { available: e.target.checked })}
-                    />
-                    Available to order
-                  </label>
-                  {r.id && (
+                {row ? (
+                  <div className="mm-selected-dish">
+                    <div className="mm-inline">
+                      <h2>{row.name || "New dish"}</h2>
+                      <button
+                        className="cx-link"
+                        aria-label="Move dish up"
+                        disabled={
+                          !rows
+                            .slice(0, selectedIndex)
+                            .some((r) => r.category === row.category)
+                        }
+                        onClick={() => move(selectedIndex, -1)}
+                      >
+                        <ArrowUp size={15} />
+                      </button>
+                      <button
+                        className="cx-link"
+                        aria-label="Move dish down"
+                        disabled={
+                          !rows
+                            .slice(selectedIndex + 1)
+                            .some((r) => r.category === row.category)
+                        }
+                        onClick={() => move(selectedIndex, 1)}
+                      >
+                        <ArrowDown size={15} />
+                      </button>
+                    </div>
+                    <Field label="Dish name">
+                      <input
+                        maxLength={100}
+                        value={row.name}
+                        onChange={(e) =>
+                          edit(selectedIndex, { name: e.target.value })
+                        }
+                      />
+                    </Field>
+                    <Field label="Description">
+                      <textarea
+                        rows={3}
+                        maxLength={2000}
+                        value={row.description || ""}
+                        onChange={(e) =>
+                          edit(selectedIndex, { description: e.target.value })
+                        }
+                      />
+                    </Field>
+                    <div className="mm-field-pair">
+                      <Field label="Section">
+                        <input
+                          list="mm-menu-sections"
+                          maxLength={100}
+                          value={row.category}
+                          onChange={(e) =>
+                            edit(selectedIndex, { category: e.target.value })
+                          }
+                        />
+                        <datalist id="mm-menu-sections">
+                          {sections.map((s) => (
+                            <option key={s} value={s} />
+                          ))}
+                        </datalist>
+                      </Field>
+                      <Field label={`Price (${state.restaurant.currency})`}>
+                        <input
+                          type="number"
+                          min="0"
+                          max="1000000"
+                          step=".01"
+                          value={row.price ?? ""}
+                          onChange={(e) =>
+                            edit(selectedIndex, { price: e.target.value })
+                          }
+                        />
+                      </Field>
+                    </div>
+                    <label className="cx-check">
+                      <input
+                        type="checkbox"
+                        checked={row.available}
+                        onChange={(e) =>
+                          edit(selectedIndex, { available: e.target.checked })
+                        }
+                      />
+                      Available
+                    </label>
                     <Field label="Menu photo">
                       <select
-                        value={r.photoId || ""}
-                        onChange={(e) => edit(i, { photoId: e.target.value })}
+                        value={row.photoId || ""}
+                        onChange={(e) =>
+                          edit(selectedIndex, { photoId: e.target.value })
+                        }
                       >
                         <option value="">Text only</option>
                         {state.assets
                           .filter(
-                            (a: Row) => a.dish_id === r.id && a.approved_at,
+                            (a: Row) =>
+                              a.dish_id === row.id &&
+                              a.approved_at &&
+                              !a.deleted_at,
                           )
-                          .map((a: Row, j: number) => (
-                            <option value={a.id} key={a.id}>
-                              Approved photo {j + 1}
+                          .map((a: Row, n: number) => (
+                            <option key={a.id} value={a.id}>
+                              {state.dishes.find((d: Row) => d.id === row.id)
+                                ?.preferred_photo_id === a.id
+                                ? "Main photo"
+                                : a.kind === "source"
+                                  ? "Original"
+                                  : `Approved photo ${n + 1}`}
                             </option>
                           ))}
                       </select>
                     </Field>
+                    {row.photoId && b.layout === "featured" && (
+                      <label className="cx-check">
+                        <input
+                          type="checkbox"
+                          checked={!!row.featured}
+                          onChange={(e) =>
+                            patch({
+                              rows: rows.map((r) =>
+                                r.category === row.category
+                                  ? {
+                                      ...r,
+                                      featured:
+                                        r.rowId === row.rowId &&
+                                        e.target.checked,
+                                    }
+                                  : r,
+                              ),
+                            })
+                          }
+                        />
+                        Feature this photo for {row.category}
+                      </label>
+                    )}
+                    {row.photoId && b.layout !== "classic" && (
+                      <details>
+                        <summary>Photo framing</summary>
+                        <MenuPhoto
+                          photoId={row.photoId}
+                          crop={row.crop}
+                          featured={b.layout === "featured"}
+                        />
+                        <div className="mm-segments">
+                          <button
+                            aria-pressed={row.crop?.fit !== false}
+                            onClick={() =>
+                              edit(selectedIndex, {
+                                crop: {
+                                  ...menuCrop(row.crop),
+                                  fit: true,
+                                  zoom: 1,
+                                },
+                              })
+                            }
+                          >
+                            Whole photo
+                          </button>
+                          <button
+                            aria-pressed={row.crop?.fit === false}
+                            onClick={() =>
+                              edit(selectedIndex, {
+                                crop: { ...menuCrop(row.crop), fit: false },
+                              })
+                            }
+                          >
+                            Fill frame
+                          </button>
+                        </div>
+                        {row.crop?.fit === false &&
+                          ["x", "y", "zoom"].map((k) => (
+                            <label className="cx-range" key={k}>
+                              <span>
+                                {k === "x"
+                                  ? "Horizontal"
+                                  : k === "y"
+                                    ? "Vertical"
+                                    : "Zoom"}
+                              </span>
+                              <input
+                                type="range"
+                                min={k === "zoom" ? 1 : 0}
+                                max={k === "zoom" ? 2 : 100}
+                                step={k === "zoom" ? 0.01 : 1}
+                                value={
+                                  menuCrop(row.crop)[k as "x" | "y" | "zoom"]
+                                }
+                                onChange={(e) =>
+                                  edit(selectedIndex, {
+                                    crop: {
+                                      ...menuCrop(row.crop),
+                                      [k]: Number(e.target.value),
+                                    },
+                                  })
+                                }
+                              />
+                            </label>
+                          ))}
+                      </details>
+                    )}
+                    <button
+                      className="cx-link mm-divider"
+                      onClick={() => {
+                        const removed = row;
+                        patch({
+                          rows: rows.filter((r) => r.rowId !== row.rowId),
+                        });
+                        setSelected("");
+                        setRemoved({ row: removed, index: selectedIndex });
+                      }}
+                    >
+                      Remove from this menu
+                    </button>
+                  </div>
+                ) : (
+                  <p className="mm-muted mm-divider">
+                    Select a dish in the menu to edit its details.
+                  </p>
+                )}
+                <details className="mm-divider">
+                  <summary>More menu tools</summary>
+                  <button
+                    className="cx-link"
+                    onClick={() => setImportOpen(true)}
+                  >
+                    Import another menu
+                  </button>
+                  <button className="cx-link" onClick={() => setBulkOpen(true)}>
+                    Edit a section or prices
+                  </button>
+                  <button
+                    className="cx-link"
+                    disabled={!!busy}
+                    onClick={() =>
+                      act("Saving dishes", async () => {
+                        await saveRows();
+                        setBatchOpen(true);
+                      })
+                    }
+                  >
+                    Prepare photos as a group
+                  </button>
+                </details>
+              </>
+            ) : (
+              <>
+                <div className="mm-menu-designs">
+                  {menuDesigns.map((d) => (
+                    <button
+                      key={d.id}
+                      aria-pressed={(b.design || "bistro") === d.id}
+                      onClick={() => patch({ design: d.id })}
+                    >
+                      <span
+                        className={`mm-menu-swatch swatch-${d.id}`}
+                        aria-hidden="true"
+                      >
+                        <b>Menu</b>
+                        <i />
+                        <i />
+                        <i />
+                      </span>
+                      <strong>{d.name}</strong>
+                      <small>{d.note}</small>
+                    </button>
+                  ))}
+                </div>
+                <Field label="Menu title (optional)">
+                  <input
+                    maxLength={100}
+                    value={b.title || ""}
+                    placeholder="Dinner, brunch, drinks…"
+                    onChange={(e) => patch({ title: e.target.value })}
+                  />
+                </Field>
+                <Field label="Photography">
+                  <select
+                    value={b.layout}
+                    onChange={(e) =>
+                      patch({
+                        layout: e.target.value,
+                        ...(e.target.value === "featured"
+                          ? {
+                              rows: rows.map((r) => ({
+                                ...r,
+                                featured: !!r.featured,
+                              })),
+                            }
+                          : {}),
+                      })
+                    }
+                  >
+                    <option value="classic">Beautiful type, no photos</option>
+                    <option value="grid">A photo for each dish</option>
+                    <option value="featured">Selected featured photos</option>
+                  </select>
+                </Field>
+                {b.layout === "featured" && !rows.some((r) => r.featured) && (
+                  <p className="mm-muted">
+                    Select a dish, then choose “Feature this photo” to place a
+                    section’s hero image.
+                  </p>
+                )}
+                <Field label="Spacing">
+                  <select
+                    value={b.density || "comfortable"}
+                    onChange={(e) => patch({ density: e.target.value })}
+                  >
+                    <option value="spacious">Generous</option>
+                    <option value="comfortable">Comfortable</option>
+                    <option value="compact">Compact</option>
+                  </select>
+                </Field>
+                <Field label="Background">
+                  <select
+                    value={b.appearance}
+                    onChange={(e) => patch({ appearance: e.target.value })}
+                  >
+                    <option value="light">Light</option>
+                    <option value="dark">Dark</option>
+                  </select>
+                </Field>
+                <details className="mm-divider" open={preview === "print"}>
+                  <summary>Print setup</summary>
+                  <Field label="Paper">
+                    <select
+                      value={b.paper}
+                      onChange={(e) => patch({ paper: e.target.value })}
+                    >
+                      <option value="letter">US Letter</option>
+                      <option value="a4">A4</option>
+                    </select>
+                  </Field>
+                  <Field label="Print destination">
+                    <select
+                      value={b.printProfile || "home"}
+                      onChange={(e) => patch({ printProfile: e.target.value })}
+                    >
+                      <option value="home">
+                        Home or office · finished page size
+                      </option>
+                      <option value="press">
+                        Print shop · bleed & crop marks
+                      </option>
+                    </select>
+                  </Field>
+                  <p className="mm-muted">
+                    Print shop files include ⅛-inch bleed. Color is RGB; ask
+                    your printer if they require a specific color profile.
+                  </p>
+                </details>
+                <p className="mm-muted">
+                  Uses your saved restaurant colors, logo, and typography.
+                </p>
+              </>
+            )}
+          </WorkspaceControls>
+          <main className="mm-menu-stage">
+            <div className="mm-stage-toolbar">
+              <div className="mm-segments" aria-label="Menu preview format">
+                {["phone", "print"].map((p) => (
+                  <button
+                    key={p}
+                    aria-pressed={preview === p}
+                    onClick={() => setPreview(p)}
+                  >
+                    {p === "phone" ? (
+                      <Smartphone size={16} />
+                    ) : (
+                      <Printer size={16} />
+                    )}{" "}
+                    {p === "phone" ? "Phone" : "Print"}
+                  </button>
+                ))}
+              </div>
+              <button
+                className="cx-link mm-mobile-edit"
+                onClick={() => setMobileControls(true)}
+              >
+                Edit menu
+              </button>
+              <span className="mm-muted">
+                {preview === "phone"
+                  ? "390 px · guest view"
+                  : pdf
+                    ? `${pdf.pages} pages · ${b.paper === "a4" ? "A4" : "US Letter"}`
+                    : "Preparing print…"}
+              </span>
+            </div>
+            {removed && (
+              <div className="mm-fact-notice">
+                {removed.row.name} removed.
+                <button
+                  className="cx-link"
+                  onClick={() => {
+                    const next = [...rows];
+                    next.splice(removed.index, 0, removed.row);
+                    patch({ rows: next });
+                    setRemoved(null);
+                  }}
+                >
+                  Undo
+                </button>
+              </div>
+            )}
+            {preview === "phone" ? (
+              <div className="mm-phone-preview">
+                <MenuView
+                  preview
+                  menu={menu}
+                  onSelect={(id) => {
+                    const r = rows.find((r) => (r.id || r.rowId) === id);
+                    if (r) {
+                      setSelected(r.rowId);
+                      setPanel("dishes");
+                      setMobileControls(true);
+                    }
+                  }}
+                />
+              </div>
+            ) : (
+              <div className="mm-print-preview">
+                {pdf ? (
+                  <PrintPreview blob={pdf.blob} pages={pdf.pages} />
+                ) : (
+                  <p role={pdfError ? "alert" : "status"}>
+                    {pdfError || "Preparing the actual print file…"}
+                  </p>
+                )}
+                {pdf?.warnings.map((w) => (
+                  <p className="mm-output-notes" key={w}>
+                    {w}
+                  </p>
+                ))}
+              </div>
+            )}
+            <p className="mm-preview-caption">
+              {state.restaurant.published
+                ? `${changes.length} unpublished ${changes.length === 1 ? "change" : "changes"}. Your live menu stays as it is until you publish.`
+                : "Private draft. Publish when it is ready for guests."}
+            </p>
+          </main>
+        </div>
+      )}
+      <Dialog open={chooseDishes} onOpenChange={setChooseDishes}>
+        <DialogContent
+          className="cx-app mm-dialog"
+          aria-describedby={undefined}
+        >
+          <DialogTitle>Add dishes to your menu</DialogTitle>
+          <input
+            type="search"
+            aria-label="Search your dishes"
+            placeholder="Find a dish…"
+            value={query}
+            onChange={(e) => setQuery(e.target.value)}
+          />
+          <div className="mm-menu-dish-picker">
+            {state.dishes
+              .filter(
+                (d: Row) =>
+                  !d.archived_at &&
+                  `${d.name} ${d.category}`
+                    .toLowerCase()
+                    .includes(query.toLowerCase()),
+              )
+              .map((d: Row) => {
+                const photo = preferredPhoto(d, state.assets),
+                  exists = rows.some((r) => r.id === d.id);
+                return (
+                  <button
+                    key={d.id}
+                    disabled={exists}
+                    onClick={() => {
+                      addDish(d);
+                      setSelected(d.id);
+                    }}
+                  >
+                    {photo && <img src={`/api/assets/${photo.id}`} alt="" />}
+                    <span>
+                      <b>{d.name}</b>
+                      <small>
+                        {d.category} ·{" "}
+                        {money(d.price, state.restaurant.currency)}
+                      </small>
+                    </span>
+                    {exists ? <Check size={17} /> : <Plus size={17} />}
+                  </button>
+                );
+              })}
+          </div>
+          <button className="cx-btn" onClick={() => setChooseDishes(false)}>
+            Done
+          </button>
+        </DialogContent>
+      </Dialog>
+      <Dialog
+        open={importOpen}
+        onOpenChange={(v) => {
+          if (!busy) setImportOpen(v);
+        }}
+      >
+        <DialogContent
+          className="cx-app mm-dialog mm-import-dialog"
+          aria-describedby={undefined}
+        >
+          <DialogTitle>
+            {b.importId ? "Check your imported menu" : "Import a menu"}
+          </DialogTitle>
+          {!b.importId ? (
+            <>
+              <p className="mm-muted">
+                Upload a photo or PDF. Your current menu will stay saved as a
+                separate draft.
+              </p>
+              <label className="cx-btn">
+                <Upload size={16} />
+                Choose menu file
+                <input
+                  hidden
+                  type="file"
+                  accept="application/pdf,image/jpeg,image/png,image/webp"
+                  disabled={!!busy}
+                  onChange={(e) => {
+                    const file = e.target.files?.[0];
+                    if (file)
+                      void act("Reading your menu", () => importFile(file));
+                    e.target.value = "";
+                  }}
+                />
+              </label>
+            </>
+          ) : (
+            <>
+              <div className="mm-import-compare">
+                <div className="mm-import-source">
+                  {imported?.mime === "application/pdf" ? (
+                    <iframe
+                      title="Original menu"
+                      src={`/api/imports/${b.importId}/original`}
+                    />
+                  ) : (
+                    <img
+                      alt="Original uploaded menu"
+                      src={`/api/imports/${b.importId}/original`}
+                    />
                   )}
                 </div>
-              </article>
-            ))}
-          </div>
-          <button
-            className="cx-btn cx-secondary"
-            disabled={rows.length >= 60}
-            onClick={() =>
-              change({ rows: [...rows, blank()], reviewed: false })
-            }
-          >
-            <Plus size={17} />
-            Add a dish
-          </button>
-          <label className="cx-check cx-confirm">
+                <div className="mm-import-rows">
+                  {!rows.length && (
+                    <>
+                      <p>
+                        {imported?.error ||
+                          "Your file is saved. Read it automatically or add dishes alongside the original."}
+                      </p>
+                      <button
+                        className="cx-btn"
+                        disabled={!!busy || !state.aiConnected}
+                        onClick={() =>
+                          act("Reading your menu", () => readImport(b.importId))
+                        }
+                      >
+                        Read menu
+                      </button>
+                      <button className="cx-link" onClick={addBlank}>
+                        Add a dish
+                      </button>
+                    </>
+                  )}
+                  {rows.map((r, index) => (
+                    <div
+                      key={r.rowId}
+                      className={`mm-import-row ${r.importReviewed ? "is-reviewed" : ""}`}
+                    >
+                      <div className="mm-inline">
+                        <strong>Dish {index + 1}</strong>
+                        {duplicates.has(index) && (
+                          <span className="mm-warning">
+                            Repeated name — check both
+                          </span>
+                        )}
+                        {r.uncertain?.length > 0 && (
+                          <span className="mm-warning">
+                            Check {r.uncertain.join(", ")}
+                          </span>
+                        )}
+                      </div>
+                      <Field label="Name">
+                        <input
+                          value={r.name}
+                          maxLength={100}
+                          onChange={(e) =>
+                            edit(index, {
+                              name: e.target.value,
+                              importReviewed: false,
+                            })
+                          }
+                        />
+                      </Field>
+                      <div className="mm-field-pair">
+                        <Field label="Section">
+                          <input
+                            maxLength={100}
+                            value={r.category}
+                            onChange={(e) =>
+                              edit(index, {
+                                category: e.target.value,
+                                importReviewed: false,
+                              })
+                            }
+                          />
+                        </Field>
+                        <Field label="Price">
+                          <input
+                            type="number"
+                            min="0"
+                            step=".01"
+                            value={r.price ?? ""}
+                            placeholder="Unreadable"
+                            onChange={(e) =>
+                              edit(index, {
+                                price: e.target.value,
+                                importReviewed: false,
+                              })
+                            }
+                          />
+                        </Field>
+                      </div>
+                      <Field label="Description">
+                        <textarea
+                          rows={2}
+                          maxLength={2000}
+                          value={r.description}
+                          onChange={(e) =>
+                            edit(index, {
+                              description: e.target.value,
+                              importReviewed: false,
+                            })
+                          }
+                        />
+                      </Field>
+                      <div className="mm-inline">
+                        <label className="cx-check">
+                          <input
+                            type="checkbox"
+                            checked={!!r.importReviewed}
+                            disabled={
+                              !r.name?.trim() ||
+                              r.price == null ||
+                              r.price === "" ||
+                              Number(r.price) < 0 ||
+                              !r.category?.trim()
+                            }
+                            onChange={(e) =>
+                              edit(index, { importReviewed: e.target.checked })
+                            }
+                          />
+                          Checked against original
+                        </label>
+                        <button
+                          className="cx-link"
+                          onClick={() =>
+                            patch({ rows: rows.filter((_, i) => i !== index) })
+                          }
+                        >
+                          Remove
+                        </button>
+                      </div>
+                    </div>
+                  ))}
+                </div>
+              </div>
+              {rows.length > 0 && (
+                <div className="mm-import-footer">
+                  <span>
+                    {rows.length - outstanding} of {rows.length} checked
+                  </span>
+                  <button className="cx-link" onClick={() => setBulkOpen(true)}>
+                    Edit a section or prices
+                  </button>
+                  <button
+                    className="cx-btn"
+                    disabled={!!busy || !!outstanding}
+                    onClick={() =>
+                      act("Saving checked dishes", async () => {
+                        await saveRows();
+                        setImportOpen(false);
+                      })
+                    }
+                  >
+                    Use checked dishes
+                  </button>
+                </div>
+              )}
+            </>
+          )}
+          <Feedback {...action} />
+        </DialogContent>
+      </Dialog>
+      <Dialog open={bulkOpen} onOpenChange={setBulkOpen}>
+        <DialogContent
+          className="cx-app mm-dialog"
+          aria-describedby={undefined}
+        >
+          <DialogTitle>Edit a section</DialogTitle>
+          <Field label="Section to edit">
+            <select
+              value={bulkSection}
+              onChange={(e) => setBulkSection(e.target.value)}
+            >
+              <option value="">Choose a section</option>
+              {sections.map((s) => (
+                <option key={s} value={s}>
+                  {s}
+                </option>
+              ))}
+            </select>
+          </Field>
+          <Field label="New section name (optional)">
             <input
-              type="checkbox"
-              checked={b.reviewed}
-              onChange={(e) => change({ reviewed: e.target.checked })}
+              maxLength={100}
+              value={bulkName}
+              onChange={(e) => setBulkName(e.target.value)}
             />
-            I’ve checked the names, descriptions, availability and prices.
-          </label>
-          <Footer
-            back={() => change({ step: 1 })}
-            label="Choose a design"
-            next={() =>
-              act("Saving your menu content", async () => {
-                await saveRows();
-                change({ step: 3 });
-                await save();
-              })
-            }
-            disabled={!rows.length || !b.reviewed}
-            busy={!!busy}
-          />
-        </>
-      )}
-      {b.step === 3 && (
-        <>
-          <div className="cx-menu-templates">
-            {[
-              [
-                "classic",
-                "Classic text",
-                "Beautifully simple. Every dish gets its moment.",
-              ],
-              [
-                "grid",
-                "Photo grid",
-                "Put your approved food photos front and center.",
-              ],
-              [
-                "featured",
-                "Featured dish",
-                "Lead with a signature dish in each section.",
-              ],
-            ].map(([id, title, desc]) => (
-              <button
-                key={id}
-                className="cx-template-card"
-                aria-pressed={b.layout === id}
-                onClick={() => change({ layout: id })}
-              >
-                <div className="cx-mini-menu" aria-hidden="true" inert>
-                  <MenuView menu={{ ...menu, layout: id }} preview />
-                </div>
-                <div>
-                  <b>{title}</b>
-                  <small>{desc}</small>
-                  {b.layout === id && <Check size={18} />}
-                </div>
-              </button>
-            ))}
-          </div>
-          <p className="cx-hint">
-            {rows.filter((r) => r.photoId).length < rows.length / 2
-              ? "Classic text works beautifully while you build up your photo library."
-              : "Your menu already has approved photos. Try Photo grid to make them stand out."}
+          </Field>
+          <Field label="Price change (%) · optional">
+            <input
+              type="number"
+              min="-100"
+              max="1000"
+              placeholder="For example, 5 or -10"
+              value={bulkPercent}
+              onChange={(e) => setBulkPercent(e.target.value)}
+            />
+          </Field>
+          <p className="mm-muted">
+            Applies to {rows.filter((r) => r.category === bulkSection).length}{" "}
+            dishes. Prices round to the nearest cent. Imported dishes must be
+            checked again.
           </p>
-          <div className="cx-panel cx-design-settings">
-            <Field label="Paper size">
-              <select
-                value={b.paper}
-                onChange={(e) => change({ paper: e.target.value })}
-              >
-                <option value="letter">US Letter</option>
-                <option value="a4">A4</option>
-              </select>
-            </Field>
-            <Field label="Appearance">
-              <select
-                value={b.appearance}
-                onChange={(e) => change({ appearance: e.target.value })}
-              >
-                <option value="light">Light & fresh</option>
-                <option value="dark">Dark & elegant</option>
-              </select>
-            </Field>
-            <p>Restaurant colors and logo carry through automatically.</p>
-          </div>
-          <Footer
-            back={() => change({ step: 2 })}
-            label="Check your photos"
-            next={() =>
-              act("Saving your design", async () => {
-                await saveRows();
-                change({ step: 4 });
-                await save();
-              })
+          <button
+            className="cx-btn"
+            disabled={
+              !bulkSection ||
+              (!bulkName.trim() && bulkPercent === "") ||
+              !Number.isFinite(Number(bulkPercent)) ||
+              Number(bulkPercent) < -100 ||
+              Number(bulkPercent) > 1000
             }
+            onClick={() => {
+              patch({
+                rows: rows.map((r) =>
+                  r.category === bulkSection
+                    ? {
+                        ...r,
+                        category: bulkName.trim() || r.category,
+                        price:
+                          r.price === "" || r.price == null
+                            ? r.price
+                            : Math.round(
+                                Number(r.price) *
+                                  (1 + Number(bulkPercent) / 100) *
+                                  100,
+                              ) / 100,
+                        importReviewed: false,
+                      }
+                    : r,
+                ),
+              });
+              setBulkOpen(false);
+              setBulkName("");
+              setBulkPercent("");
+            }}
+          >
+            Apply to section
+          </button>
+        </DialogContent>
+      </Dialog>
+      <Dialog open={completion} onOpenChange={setCompletion}>
+        <DialogContent
+          className="cx-app mm-dialog mm-menu-completion"
+          aria-describedby={undefined}
+        >
+          <DialogTitle>Ready for your guests</DialogTitle>
+          <div className="mm-segments">
+            <button
+              aria-pressed={destination === "publish"}
+              onClick={() => setDestination("publish")}
+            >
+              Digital menu
+            </button>
+            <button
+              aria-pressed={destination === "print"}
+              onClick={() => setDestination("print")}
+            >
+              Print PDF
+            </button>
+          </div>
+          {destination === "publish" ? (
+            <>
+              <p>Your existing link and QR code will keep working.</p>
+              <div className="mm-publish-diff">
+                <strong>
+                  {changes.length
+                    ? "Changes guests will see"
+                    : "Your live menu is up to date"}
+                </strong>
+                {changes.map((c, n) => (
+                  <p key={n}>{c}</p>
+                ))}
+              </div>
+              <label className="cx-check">
+                <input
+                  type="checkbox"
+                  checked={b.reviewed}
+                  onChange={(e) => change({ reviewed: e.target.checked })}
+                />
+                I’ve checked the dishes, prices, photos, and availability.
+              </label>
+              <button
+                className="cx-btn"
+                disabled={!!busy || !b.reviewed || !changes.length}
+                onClick={() =>
+                  act("Publishing your menu", async () => {
+                    await saveRows();
+                    await api("menu/publish", {});
+                    await refresh();
+                    setCompletion(false);
+                    setSharing(true);
+                    setNotice(
+                      "Your menu is live. The same link and QR code now show these changes.",
+                    );
+                  })
+                }
+              >
+                {state.restaurant.published
+                  ? "Publish changes"
+                  : "Publish menu"}
+              </button>
+            </>
+          ) : (
+            <>
+              {pdf ? (
+                <>
+                  <PrintPreview blob={pdf.blob} pages={pdf.pages} />
+                  <p className="mm-muted">
+                    {pdf.pages} {pdf.pages === 1 ? "page" : "pages"} ·{" "}
+                    {b.paper === "a4" ? "A4" : "US Letter"} ·{" "}
+                    {b.printProfile === "press"
+                      ? "⅛-inch bleed and crop marks"
+                      : "Finished page size"}
+                  </p>
+                  {pdf.warnings.map((w) => (
+                    <p className="mm-output-notes" key={w}>
+                      {w}
+                    </p>
+                  ))}
+                  <label className="cx-check">
+                    <input
+                      type="checkbox"
+                      checked={b.reviewed}
+                      onChange={(e) => change({ reviewed: e.target.checked })}
+                    />
+                    I’ve checked each page and the print notes.
+                  </label>
+                  <button
+                    className="cx-btn"
+                    disabled={!!busy || !b.reviewed}
+                    onClick={() => {
+                      downloadBlob(
+                        pdf.blob,
+                        `${state.restaurant.slug}-menu-${b.paper}${b.printProfile === "press" ? "-print-shop" : ""}.pdf`,
+                      );
+                      setNotice("Your menu PDF download has started.");
+                      track("export_complete", undefined, {
+                        tool: "menu",
+                        format: "pdf",
+                      });
+                    }}
+                  >
+                    Download print PDF
+                  </button>
+                </>
+              ) : (
+                <p role={pdfError ? "alert" : "status"}>
+                  {pdfError || "Preparing your print file…"}
+                </p>
+              )}
+            </>
+          )}
+          <Feedback {...action} />
+        </DialogContent>
+      </Dialog>
+      <Dialog open={sharing} onOpenChange={setSharing}>
+        <DialogContent
+          className="cx-app mm-dialog mm-sharing-dialog"
+          aria-describedby={undefined}
+        >
+          <DialogTitle>Your published menu</DialogTitle>
+          <MenuSharing
+            restaurant={state.restaurant}
             busy={!!busy}
-            note="Design changes use no images"
+            act={act}
+            refresh={refresh}
+            notice={setNotice}
           />
-        </>
-      )}
-      {b.step === 4 && (
-        <>
+          <Feedback {...action} />
+        </DialogContent>
+      </Dialog>
+      <Dialog open={batchOpen} onOpenChange={setBatchOpen}>
+        <DialogContent
+          className="cx-app mm-dialog mm-batch-dialog"
+          aria-describedby={undefined}
+        >
+          <DialogTitle>Prepare a consistent set of photos</DialogTitle>
           <div className="cx-batch-layout">
             <div className="cx-menu-photo-list">
               {rows.map((r) => {
@@ -1093,164 +1981,10 @@ export default function MenuBuilder({
               )}
             </aside>
           </div>
-          <Footer
-            back={() => change({ step: 3 })}
-            label="Preview my menu"
-            next={() =>
-              act("Preparing your menu preview", async () => {
-                await saveRows();
-                change({ step: 5 });
-                await save();
-              })
-            }
-            busy={!!busy}
-            note="Photo improvements are optional"
-          />
-        </>
-      )}
-      {b.step === 5 && (
-        <>
-          <div className="cx-studio-grid">
-            <div>
-              <div className="cx-segment cx-preview-switch">
-                <button
-                  aria-pressed={preview === "phone"}
-                  onClick={() => setPreview("phone")}
-                >
-                  <Smartphone size={17} />
-                  Phone menu
-                </button>
-                <button
-                  aria-pressed={preview === "print"}
-                  onClick={() => setPreview("print")}
-                >
-                  <Printer size={17} />
-                  Print pages
-                </button>
-              </div>
-              {preview === "phone" ? (
-                <div className="cx-phone-menu">
-                  <MenuView menu={menu} preview />
-                </div>
-              ) : (
-                <div className="cx-print-preview">
-                  {pdf ? (
-                    <>
-                      <PrintPreview blob={pdf.blob} pages={pdf.pages} />
-                      <p>
-                        {pdf.pages} {pdf.pages === 1 ? "page" : "pages"} ·{" "}
-                        {b.paper === "a4" ? "A4" : "US Letter"} · sharp text ·
-                        home-print margins
-                      </p>
-                    </>
-                  ) : (
-                    <p role="status">
-                      {pdfError || "Preparing your print pages…"}
-                    </p>
-                  )}
-                </div>
-              )}
-            </div>
-            <aside className="cx-panel">
-              <h2>Ready for your guests.</h2>
-              <p>
-                Publish your digital menu when the details look right. Its link
-                stays the same as your menu changes.
-              </p>
-              <button
-                className="cx-btn cx-full"
-                disabled={!!busy || !b.reviewed}
-                onClick={() =>
-                  act("Publishing your menu", async () => {
-                    await saveRows();
-                    await api("menu/publish", {});
-                    await refresh();
-                    setNotice("Your menu is published at its stable link.");
-                  })
-                }
-              >
-                <BookOpen size={17} />
-                {state.restaurant.published
-                  ? "Publish menu updates"
-                  : "Publish menu"}
-              </button>
-              <MenuSharing
-                restaurant={state.restaurant}
-                busy={!!busy}
-                act={act}
-                refresh={refresh}
-                notice={setNotice}
-              />
-              <div className="cx-rule" />
-              <h3>Make it print-ready.</h3>
-              <p className="cx-brand-applied">
-                Your restaurant colors ·{" "}
-                {brandTypeface(state.restaurant.style).name}
-              </p>
-              <Field label="Paper size">
-                <select
-                  value={b.paper}
-                  onChange={(e) => change({ paper: e.target.value })}
-                >
-                  <option value="letter">US Letter</option>
-                  <option value="a4">A4</option>
-                </select>
-              </Field>
-              {pdf?.warnings.map((w) => (
-                <p className="cx-hint" key={w}>
-                  {w}
-                </p>
-              ))}
-              {pdfError && (
-                <p role="alert" className="cx-feedback cx-error">
-                  {pdfError}
-                </p>
-              )}
-              <button
-                className="cx-btn cx-secondary cx-full"
-                disabled={!pdf || !!busy}
-                onClick={() => {
-                  if (pdf) {
-                    downloadBlob(
-                      pdf.blob,
-                      `${state.restaurant.slug}-menu-${new Date().toISOString().slice(0, 10)}.pdf`,
-                    );
-                    track("export_complete", undefined, {
-                      format: "menu-pdf",
-                      pages: pdf.pages,
-                    });
-                  }
-                }}
-              >
-                <Download size={17} />
-                Download print PDF
-              </button>
-              <p className="cx-hint">
-                Price edits change your draft. Publish to update the digital
-                menu, and download a fresh PDF for new printed copies.
-              </p>
-              {!b.reviewed && (
-                <button className="cx-link" onClick={() => change({ step: 2 })}>
-                  Review your updated details before publishing
-                </button>
-              )}
-            </aside>
-          </div>
-          <Footer
-            back={() => change({ step: 4 })}
-            label="Save my menu draft"
-            next={() =>
-              act("Saving your draft", async () => {
-                await saveRows();
-                setNotice(
-                  "Your menu draft is saved. Publish when you’re ready.",
-                );
-              })
-            }
-            busy={!!busy}
-          />
-        </>
-      )}
+
+          <Feedback {...action} />
+        </DialogContent>
+      </Dialog>
     </section>
   );
 }

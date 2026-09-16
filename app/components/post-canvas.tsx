@@ -9,13 +9,21 @@ export function PostCanvas({
   channel = "feed",
   slide = 0,
   example = false,
+  onQuality,
+  thumbnail = false,
 }: {
   draft: Row;
   restaurant: Row;
   channel?: string;
   slide?: number;
   example?: boolean;
+  onQuality?: (issues: string[]) => void;
+  thumbnail?: boolean;
 }) {
+  const quality = useRef(onQuality);
+  useEffect(() => {
+    quality.current = onQuality;
+  }, [onQuality]);
   const ref = useRef<HTMLCanvasElement>(null),
     [rendered, setRendered] = useState({ key: "", error: "" });
   const renderKey = JSON.stringify(
@@ -34,23 +42,29 @@ export function PostCanvas({
       preview.channel,
       preview.slide,
     )
-      .then(() => {
+      .then((result) => {
         if (live && ref.current) {
-          ref.current.width = temp.width;
-          ref.current.height = temp.height;
-          ref.current.getContext("2d")!.drawImage(temp, 0, 0);
+          ref.current.width = thumbnail ? 324 : temp.width;
+          ref.current.height = thumbnail
+            ? Math.round((temp.height * 324) / temp.width)
+            : temp.height;
+          ref.current
+            .getContext("2d")!
+            .drawImage(temp, 0, 0, ref.current.width, ref.current.height);
           setRendered({ key: renderKey, error: "" });
+          quality.current?.(result.warnings || []);
         }
       })
       .catch((e) => {
         if (live) {
           setRendered({ key: renderKey, error: e.message });
+          quality.current?.([e.message]);
         }
       });
     return () => {
       live = false;
     };
-  }, [renderKey]);
+  }, [renderKey, thumbnail]);
   return (
     <div
       className="cx-post-canvas"
@@ -58,6 +72,7 @@ export function PostCanvas({
     >
       <canvas
         ref={ref}
+        style={{ visibility: error ? "hidden" : "visible" }}
         role="img"
         aria-label={
           example

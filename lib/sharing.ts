@@ -41,6 +41,10 @@ export function postVisualState(
     "cta",
     "typography",
     "brandMode",
+    "compositionVersion",
+    "textPlacement",
+    "carouselCover",
+    "carouselClosing",
   ];
   return {
     draft: {

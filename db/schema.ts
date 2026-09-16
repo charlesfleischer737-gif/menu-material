@@ -95,6 +95,10 @@ export const dishes = sqliteTable(
     restaurantId: text("restaurant_id")
       .notNull()
       .references(() => restaurants.id),
+    preferredPhotoId: text("preferred_photo_id"),
+    archivedAt: integer("archived_at"),
+    updatedAt: integer("updated_at").notNull().default(0),
+    revision: integer().notNull().default(1),
     name: text().notNull(),
     description: text().notNull(),
     category: text().notNull().default("Dishes"),

@@ -1,3 +1,4 @@
+import { renderComposedPost } from "./post-composition";
 import { drawPhoto, imageBitmap } from "./creation-export";
 import { money, type Row } from "./client";
 import { getPostTemplate } from "./post-templates";
@@ -12,6 +13,8 @@ export async function renderPost(
   channel = "feed",
   slide = 0,
 ) {
+  if (draft.compositionVersion === 2)
+    return renderComposedPost(canvas, draft, restaurant, channel, slide);
   await loadPostFonts();
   const W = 1080,
     H = channel === "story" ? 1920 : 1350,
@@ -508,6 +511,7 @@ export async function renderPost(
     return {
       renderedText,
       textBoxes,
+      warnings: [] as string[],
       template: template.id,
       width: W,
       height: H,

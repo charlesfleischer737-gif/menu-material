@@ -41,6 +41,7 @@ import {
 } from "./core";
 import { enqueue, updateJob, generateCaption, tick } from "./generation";
 import { creationRoute } from "./creation";
+import { libraryRoute } from "./library";
 import {
   advanceBatches,
   menuTools,
@@ -65,6 +66,7 @@ const passwordSchema = z
   .min(12, "Use at least 12 characters for your password.")
   .max(128);
 const dishSchema = z.object({
+  revision: z.number().int().min(1).optional(),
   name: z.string().trim().min(1).max(100),
   description: z.string().trim().max(2000).default(""),
   category: z.string().trim().max(100).default("Dishes"),
@@ -77,6 +79,12 @@ const dishSchema = z.object({
   confirmed: z.boolean().default(false),
 });
 const menuSchema = z.object({
+  design: z.enum(["bistro", "cafe", "fine", "casual"]).default("bistro"),
+  density: z
+    .enum(["spacious", "comfortable", "compact"])
+    .default("comfortable"),
+  printProfile: z.enum(["home", "press"]).default("home"),
+  title: z.string().max(100).default(""),
   layout: z.enum(["classic", "grid", "featured"]).default("classic"),
   appearance: z.enum(["light", "dark"]).default("light"),
   paper: z.enum(["letter", "a4"]).default("letter"),
@@ -90,6 +98,15 @@ const menuSchema = z.object({
             z.object({
               dishId: z.string().uuid(),
               photoId: z.string().uuid().nullable().optional(),
+              featured: z.boolean().optional(),
+              crop: z
+                .object({
+                  fit: z.boolean().default(true),
+                  x: z.number().min(0).max(100).default(50),
+                  y: z.number().min(0).max(100).default(50),
+                  zoom: z.number().min(1).max(2).default(1),
+                })
+                .optional(),
             }),
           )
           .max(100),
@@ -259,6 +276,8 @@ async function snapshot(r: Row, draft: Row) {
         price: d.price,
         available: !!d.available,
         photoId,
+        featured: item.featured,
+        crop: item.crop,
       });
     }
     sections.push({ id: section.id, name: section.name, items });
@@ -293,6 +312,10 @@ async function snapshot(r: Row, draft: Row) {
       logoId,
     },
     sections,
+    design: draft.design,
+    density: draft.density,
+    printProfile: draft.printProfile,
+    title: draft.title,
     layout: draft.layout,
     appearance: draft.appearance,
     paper: draft.paper,
@@ -798,6 +821,8 @@ export async function handle(req: Request) {
       throw new AppError(404, "Not found.");
     }
     const { r } = await owner(req);
+    const libraryResponse = await libraryRoute(req, p, r);
+    if (libraryResponse) return libraryResponse;
     const creationResponse = await creationRoute(req, p, r);
     if (creationResponse) return creationResponse;
     const toolsResponse = await menuTools(req, p, r);
@@ -898,8 +923,8 @@ export async function handle(req: Request) {
           404,
           "Dish not found.",
         );
-        await run(
-          "UPDATE dishes SET name=?,description=?,portion=?,plating=?,setting=?,price=?,available=?,confirmed_at=?,category=?,preserve=? WHERE id=? AND restaurant_id=?",
+        const changed = await run(
+          "UPDATE dishes SET name=?,description=?,portion=?,plating=?,setting=?,price=?,available=?,confirmed_at=?,category=?,preserve=?,updated_at=?,revision=revision+1 WHERE id=? AND restaurant_id=? AND (? IS NULL OR revision=?)",
           b.name,
           b.description,
           b.portion,
@@ -910,8 +935,16 @@ export async function handle(req: Request) {
           b.confirmed ? now() : null,
           b.category,
           b.preserve,
+          now(),
           did,
           r.id,
+          b.revision ?? null,
+          b.revision ?? null,
+        );
+        assert(
+          changed.meta.changes,
+          409,
+          "This dish changed in another window. Reopen it to keep the latest details.",
         );
       } else
         await run(
@@ -930,7 +963,11 @@ export async function handle(req: Request) {
           b.category,
           b.preserve,
         );
-      return response({ id: did });
+      return response({
+        id: did,
+        revision: (await one("SELECT revision FROM dishes WHERE id=?", did))
+          ?.revision,
+      });
     }
     if (p[0] === "assets") {
       if (method === "POST" && !p[1]) return await upload(req, r);

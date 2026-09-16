@@ -219,7 +219,7 @@ export function applyPostTemplate(draft: Row, id: string) {
             contrast: 100,
             warmth: 0,
           }),
-          fit: false,
+          fit: draft.compositionVersion === 2,
         },
       ]),
     ),
