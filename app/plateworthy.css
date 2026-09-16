@@ -12,6 +12,17 @@
 .plateworthy-wordmark > span {
   color: #79923f;
 }
+.menu-material-wordmark {
+  letter-spacing: -0.055em;
+}
+.menu-material-wordmark > .menu-material-name {
+  margin-left: 0.2em;
+  color: inherit;
+  font-weight: 400;
+}
+.cx-brand .menu-material-wordmark {
+  font-size: 1.55rem;
+}
 .pw-site {
   --pw-ink: #202820;
   --pw-muted: #657064;

@@ -16,21 +16,21 @@ export default function PublicInformation({
         Skip to content
       </a>
       <header className="pw-header">
-        <Link href="/" aria-label="Plateworthy home">
+        <Link href="/" aria-label="Menu Material home">
           <Brand />
         </Link>
         <Link className="pw-info-back" href="/">
-          Back to Plateworthy
+          Back to Menu Material
         </Link>
       </header>
       <main id="main" className="pw-information">
-        <p className="pw-eyebrow">Plateworthy</p>
+        <p className="pw-eyebrow">Menu Material</p>
         <h1>{title}</h1>
         <p className="pw-information-intro">{intro}</p>
         {children}
       </main>
       <footer className="pw-footer">
-        <Link href="/">Plateworthy</Link>
+        <Link href="/">Menu Material</Link>
         <nav className="pw-footer-links" aria-label="Help and information">
           <a href="/pricing">Plans & pricing</a>
           <a href="/privacy">Photo privacy</a>

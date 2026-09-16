@@ -164,7 +164,7 @@ export default function HomepageSections() {
         </div>
         <Carousel
           className="pw-use-case-carousel"
-          aria-label="Ways to use Plateworthy"
+          aria-label="Ways to use Menu Material"
           tabIndex={0}
           opts={{
             align: "start",

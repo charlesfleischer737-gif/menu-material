@@ -17,24 +17,24 @@ export async function generateMetadata(): Promise<Metadata> {
     ? [
         {
           url: new URL("/plateworthy-burger.png", origin).href,
-          alt: "Plateworthy — illustrative AI food photography edit",
+          alt: "Menu Material — illustrative AI food photography edit",
         },
       ]
     : [];
   return {
-    title: "Plateworthy — Food photos worth ordering from.",
+    title: "Menu Material — Food photos worth ordering from.",
     description:
       "Turn real dish photos into professional images and matching posts for Toast, delivery apps, your website, and Instagram. Start with 5 free image generations. Pro is $9.99/month for 100 images.",
     icons: { icon: "/favicon.svg", shortcut: "/favicon.svg" },
     openGraph: {
-      title: "Plateworthy — Food photos worth ordering from.",
+      title: "Menu Material — Food photos worth ordering from.",
       description:
         "Better food photos for menus, delivery apps, and social media. Made from your actual dish.",
       images,
     },
     twitter: {
       card: "summary_large_image",
-      title: "Plateworthy",
+      title: "Menu Material",
       description: "Food photos worth ordering from.",
       images: images.map((i) => i.url),
     },

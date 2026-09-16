@@ -155,7 +155,7 @@ export default function CoreWorkspace({
           <button
             className="cx-brand"
             onClick={() => navigate("studio")}
-            aria-label="Plateworthy Photo Studio"
+            aria-label="Menu Material Photo Studio"
           >
             <Brand />
           </button>
@@ -626,7 +626,7 @@ function DishLibrary({
                         onDestination("menu", detail.id, current.id)
                       }
                     >
-                      Use in a Plateworthy menu
+                      Use in a Menu Material menu
                     </button>
                   </>
                 )}
@@ -644,7 +644,7 @@ function DishLibrary({
             <div>
               <h3>Details for your creative projects</h3>
               <p className="cx-hint">
-                Optional prices and availability stay in Plateworthy. Manage
+                Optional prices and availability stay in Menu Material. Manage
                 your live menu in your ordering platform.
               </p>
               <Field label="Dish name">
@@ -693,7 +693,7 @@ function DishLibrary({
                     setDetail({ ...detail, available: e.target.checked })
                   }
                 />
-                Available on my Plateworthy menu
+                Available on my Menu Material menu
               </label>
               <button
                 className="cx-btn cx-secondary"
@@ -707,7 +707,7 @@ function DishLibrary({
                     });
                     await refresh();
                     setNotice(
-                      "Details saved for your Plateworthy projects. Your external menu stays managed in its own platform.",
+                      "Details saved for your Menu Material projects. Your external menu stays managed in its own platform.",
                     );
                   })
                 }

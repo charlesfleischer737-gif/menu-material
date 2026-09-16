@@ -1047,7 +1047,7 @@ export default function PhotoStudio({
                   className="cx-link"
                   onClick={() => onDestination("menu", b.dishId, resultId)}
                 >
-                  Add to a Plateworthy menu
+                  Add to a Menu Material menu
                 </button>
                 <button
                   className="cx-link"

@@ -1,6 +1,6 @@
 import PublicInformation from "../components/public-information";
 export const metadata = {
-  title: "Usage guidelines · Plateworthy",
+  title: "Usage guidelines · Menu Material",
   description:
     "Use your own photos, review AI changes and publish accurate restaurant information.",
 };
@@ -8,7 +8,7 @@ export default function Guidelines() {
   return (
     <PublicInformation
       title="Make work you can stand behind."
-      intro="Practical guidelines for using Plateworthy."
+      intro="Practical guidelines for using Menu Material."
     >
       <section>
         <h2>Use photos you have permission to use</h2>
@@ -43,7 +43,7 @@ export default function Guidelines() {
         <p>
           The tools are intended to prepare restaurant menus and promotional
           materials. Your rights to the source material, any third-party rights,
-          and the destination platform’s policies still apply. Plateworthy does
+          and the destination platform’s policies still apply. Menu Material does
           not verify ownership, guarantee that AI output is exclusive, or
           guarantee acceptance by a delivery or social platform.
         </p>

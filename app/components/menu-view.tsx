@@ -224,7 +224,7 @@ export default function MenuView({
           ))}
         </section>
       ))}
-      <footer>Made with Plateworthy</footer>
+      <footer>Made with Menu Material</footer>
     </article>
   );
 }

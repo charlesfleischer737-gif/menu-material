@@ -1,19 +1,19 @@
 import PublicInformation from "../components/public-information";
 export const metadata = {
-  title: "Photo & account privacy · Plateworthy",
+  title: "Photo & account privacy · Menu Material",
   description:
-    "How the Plateworthy handles private photos, drafts, public menus and AI processing.",
+    "How Menu Material handles private photos, drafts, public menus and AI processing.",
 };
 export default function Privacy() {
   return (
     <PublicInformation
       title="Your photos, drafts and public menu."
-      intro="This page explains Plateworthy’s current data handling. Updated September 16, 2026."
+      intro="This page explains Menu Material’s current data handling. Updated September 16, 2026."
     >
       <section>
-        <h2>Information used by Plateworthy</h2>
+        <h2>Information used by Menu Material</h2>
         <p>
-          Plateworthy stores your account email, protected password record,
+          Menu Material stores your account email, protected password record,
           restaurant details, uploaded photos, menu files, drafts, generated
           images and usage records. Photos chosen before signup stay in the
           current browser tab until you create an account or sign in and
@@ -39,7 +39,7 @@ export default function Privacy() {
           Unpublishing removes access through the public menu. Deleting a photo
           removes its stored original and working version and stops it being
           served by the site. Copies already downloaded or shared outside
-          Plateworthy cannot be recalled.
+          Menu Material cannot be recalled.
         </p>
       </section>
       <section>
@@ -61,16 +61,16 @@ export default function Privacy() {
             OpenAI’s API data controls
           </a>
           . This page does not promise a provider retention period that
-          Plateworthy cannot control.
+          Menu Material cannot control.
         </p>
       </section>
       <section>
         <h2>Payments</h2>
         <p>
           When subscriptions are available, Stripe handles checkout and billing.
-          Plateworthy stores customer and subscription identifiers, subscription
+          Menu Material stores customer and subscription identifiers, subscription
           status, paid billing periods and image usage. Payment-card details are
-          entered on Stripe’s hosted pages and are not stored by Plateworthy.
+          entered on Stripe’s hosted pages and are not stored by Menu Material.
         </p>
       </section>
       <section>

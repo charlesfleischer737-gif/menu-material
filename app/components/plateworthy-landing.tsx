@@ -66,7 +66,7 @@ export default function Landing({
         Skip to content
       </a>
       <header className="pw-header">
-        <Link href="/" aria-label="Plateworthy home">
+        <Link href="/" aria-label="Menu Material home">
           <Brand />
         </Link>
         <nav aria-label="Main navigation">
@@ -197,7 +197,7 @@ export default function Landing({
         </section>
       </main>
       <footer className="pw-footer">
-        <Link href="/" aria-label="Plateworthy home">
+        <Link href="/" aria-label="Menu Material home">
           <Brand />
         </Link>
         <nav className="pw-footer-links" aria-label="Help and information">
@@ -205,7 +205,7 @@ export default function Landing({
           <a href="/privacy">Photo privacy</a>
           <a href="/guidelines">Usage guidelines</a>
         </nav>
-        <p>© {new Date().getFullYear()} Plateworthy</p>
+        <p>© {new Date().getFullYear()} Menu Material</p>
         <p className="pw-image-credit">
           Original photos and their AI edits:{" "}
           <a

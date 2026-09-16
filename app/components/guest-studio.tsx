@@ -131,7 +131,7 @@ export default function GuestStudio({
           className="cx-brand"
           onClick={onBack}
           disabled={!!busy}
-          aria-label="Plateworthy home"
+          aria-label="Menu Material home"
         >
           <Brand />
         </button>

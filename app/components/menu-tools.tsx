@@ -148,7 +148,7 @@ function ImportMenu({ state, refresh, act, busy, setNotice }: Row) {
       <p className="muted">
         Upload a clear photo or PDF, up to 4 MB and 60 dishes. Check every price
         and dish before adding it to your library. Your live menu stays in your
-        existing ordering platform; publishing a Plateworthy menu is optional.
+        existing ordering platform; publishing a Menu Material menu is optional.
       </p>
       <div className="button-row">
         <label className="upload-button">
@@ -798,7 +798,7 @@ function Insights() {
         </Button>
       </div>
       <p className="muted">
-        See what you create and reuse in Plateworthy. Downloads record your
+        See what you create and reuse in Menu Material. Downloads record your
         export actions; publication and orders happen in your existing channels.
       </p>
       <div className="metric-grid">

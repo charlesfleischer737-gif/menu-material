@@ -3,9 +3,9 @@ import PlanCards from "../components/plan-cards";
 import { billingEnabled } from "@/lib/server/billing";
 export const dynamic = "force-dynamic";
 export const metadata = {
-  title: "Free & Pro plans · Plateworthy",
+  title: "Free & Pro plans · Menu Material",
   description:
-    "Start with 5 free image generations. Plateworthy Pro is $9.99/month for 100 full-quality image generations per month.",
+    "Start with 5 free image generations. Menu Material Pro is $9.99/month for 100 full-quality image generations per month.",
 };
 export default function Pricing() {
   return (
