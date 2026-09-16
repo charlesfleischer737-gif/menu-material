@@ -3658,8 +3658,18 @@
     display: none;
   }
   .cx-app .cx-sidebar nav button {
-    font-size: 10px;
-    min-height: 48px;
+    font-size: 14px;
+    min-height: 72px;
+    min-width: 0;
+    padding-inline: 4px;
+    white-space: normal;
+    line-height: 1.25;
+  }
+  .cx-sidebar nav .cx-nav-label {
+    min-height: 2.5em;
+    display: flex;
+    align-items: center;
+    justify-content: center;
   }
   .cx-app .cx-sidebar nav button svg {
     width: 19px;

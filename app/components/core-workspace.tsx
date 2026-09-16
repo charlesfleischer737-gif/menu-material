@@ -143,6 +143,7 @@ export default function CoreWorkspace({
     ["studio", "Photo Studio", Camera],
     ["library", "My Dishes", Images],
     ["post", "Post Maker", Megaphone],
+    ["menu", "Menus & Print", BookOpen],
   ] as const;
   return (
     <div className="cx-app">
@@ -178,7 +179,6 @@ export default function CoreWorkspace({
                   : "Free · View plans"}
               </button>
               <button onClick={onSettings}>Restaurant look & settings</button>
-              <button onClick={() => navigate("menu")}>Menus & print</button>
               <button onClick={() => navigate("tools")}>More tools</button>
               {state.user.role === "admin" && (
                 <button onClick={() => navigate("admin")}>
@@ -199,7 +199,7 @@ export default function CoreWorkspace({
               onClick={() => navigate(id)}
             >
               <Icon size={19} />
-              {label}
+              <span className="cx-nav-label">{label}</span>
               {id === "studio" && active.length > 0 && (
                 <span className="cx-nav-dot" />
               )}
@@ -207,14 +207,6 @@ export default function CoreWorkspace({
           ))}
         </nav>
         <div className="cx-sidebar-bottom">
-          <button
-            className={view === "menu" ? "active" : ""}
-            aria-current={view === "menu" ? "page" : undefined}
-            onClick={() => navigate("menu")}
-          >
-            <BookOpen size={18} />
-            Menus & print
-          </button>
           <div className="cx-pilot">
             <Sparkles size={17} />
             <b>{state.remaining} images remaining</b>

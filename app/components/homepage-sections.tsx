@@ -8,7 +8,7 @@ import {
   useState,
   type CSSProperties,
 } from "react";
-import { ArrowRight, Check, Download } from "lucide-react";
+import { ArrowRight, Check } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import {
   Carousel,
@@ -136,6 +136,7 @@ export default function HomepageSections({
 }) {
   const [price, setPrice] = useState("18");
   const [palette, setPalette] = useState("wine");
+  const [preview, setPreview] = useState("post");
   const amount = Number(price);
   const displayPrice =
     price !== "" && Number.isFinite(amount) && amount >= 0 && amount <= 9999
@@ -213,172 +214,141 @@ export default function HomepageSections({
         </Carousel>
       </section>
       <section
-        className="pw-features"
+        className="pw-features pw-features-compact"
         id="features"
         aria-labelledby="features-title"
         tabIndex={-1}
       >
-        <div className="pw-section-heading">
-          <span className="pw-eyebrow">
-            FROM A GREAT DISH TO A FINISHED PROMOTION
-          </span>
-          <h2 id="features-title">A better photo is just the start.</h2>
-          <p>
-            Your food, your look, and everything you need to put it out there.
-          </p>
-        </div>
-        <article className="pw-feature-main" style={theme}>
-          <div className="pw-feature-main-copy">
-            <span className="pw-feature-kicker">TRY IT FOR YOURSELF</span>
-            <h3>
-              One special.
-              <br />
-              Every way to share it.
-            </h3>
+        <article className="pw-showcase" style={theme}>
+          <div className="pw-showcase-copy">
+            <span className="pw-eyebrow">ONE DISH. EVERY CHANNEL.</span>
+            <h2 id="features-title">
+              A great photo.
+              <br /> So many possibilities.
+            </h2>
             <p>
-              Start with a photo for your existing menu. Make a matching post
-              and Story with your colors, then download for the channels you
-              use.
+              Your menu photo, a matching post, and a Story. Download for the
+              places you already sell and share.
             </p>
-            <ul className="pw-feature-benefits">
-              <li>
-                <Check size={17} aria-hidden="true" />
-                One photo, a consistent look
-              </li>
-              <li>
-                <Check size={17} aria-hidden="true" />
-                Ready to review, download, and share
-              </li>
-            </ul>
+            <Button onClick={onStart}>
+              {signedIn ? "Open my studio" : "Try it with your dish"}
+              <ArrowRight size={17} />
+            </Button>
           </div>
           <Tabs
-            defaultValue="photo"
-            className="pw-promotion-demo"
-            aria-label="Interactive example promotion package"
+            value={preview}
+            onValueChange={setPreview}
+            className="pw-showcase-demo"
+            aria-label="Preview a dish in different formats"
           >
             <TabsList aria-label="Preview format">
               <TabsTrigger value="photo">Menu photo</TabsTrigger>
               <TabsTrigger value="post">Post</TabsTrigger>
               <TabsTrigger value="story">Story</TabsTrigger>
             </TabsList>
-            <div className="pw-demo-controls">
-              <label htmlFor="demo-offer-price">
-                Try your own price
-                <span className="pw-demo-price-field">
-                  <span aria-hidden="true">$</span>
-                  <input
-                    id="demo-offer-price"
-                    type="number"
-                    inputMode="decimal"
-                    min="0"
-                    max="9999"
-                    step="0.01"
-                    value={price}
-                    onChange={(event) => setPrice(event.target.value)}
-                    aria-describedby="demo-price-hint"
-                    aria-invalid={price !== "" && displayPrice === "$—"}
-                  />
-                </span>
-              </label>
-              <fieldset>
-                <legend>Make it your color</legend>
-                <div className="pw-demo-swatches">
-                  <button
-                    type="button"
-                    className="pw-demo-swatch is-wine"
-                    aria-label="Use wine brand color"
-                    aria-pressed={palette === "wine"}
-                    onClick={() => setPalette("wine")}
-                  >
-                    {palette === "wine" && (
-                      <Check size={17} aria-hidden="true" />
-                    )}
-                  </button>
-                  <button
-                    type="button"
-                    className="pw-demo-swatch is-green"
-                    aria-label="Use forest brand color"
-                    aria-pressed={palette === "green"}
-                    onClick={() => setPalette("green")}
-                  >
-                    {palette === "green" && (
-                      <Check size={17} aria-hidden="true" />
-                    )}
-                  </button>
-                </div>
-              </fieldset>
-            </div>
-            <p id="demo-price-hint" className="pw-demo-hint">
-              {price !== "" && displayPrice === "$—"
-                ? "Enter a price from $0 to $9,999."
-                : "Change the price or color in your matching post and Story."}
-            </p>
-            <TabsContent value="post" className="pw-format-panel">
-              <div className="pw-preview-stage">
-                <PromotionGraphic price={displayPrice} palette={palette} />
-              </div>
-              <div className="pw-demo-caption">
-                <span className="pw-output-label">
-                  Your caption, ready to edit
-                </span>
-                <p>
-                  Tonight calls for a little comfort. Rigatoni, tomato, fresh
-                  basil. <strong data-demo-price>{displayPrice}</strong>{" "}
-                  tonight, 5–9 pm. See you at the table.
-                </p>
+            <TabsContent value="photo" className="pw-showcase-panel">
+              <div className="pw-showcase-stage">
+                <img
+                  className="pw-showcase-photo"
+                  src="/homepage/menus.webp"
+                  alt="Rigatoni photo ready for an existing menu or ordering platform"
+                  width="1024"
+                  height="1024"
+                  loading="lazy"
+                  decoding="async"
+                />
               </div>
             </TabsContent>
-            <TabsContent value="story" className="pw-format-panel">
-              <div className="pw-preview-stage">
+            <TabsContent value="post" className="pw-showcase-panel">
+              <div className="pw-showcase-stage">
+                <PromotionGraphic price={displayPrice} palette={palette} />
+              </div>
+            </TabsContent>
+            <TabsContent value="story" className="pw-showcase-panel">
+              <div className="pw-showcase-stage">
                 <PromotionGraphic
                   price={displayPrice}
                   palette={palette}
                   story
                 />
               </div>
-              <p className="pw-format-note">
-                A matching vertical design, ready for your Story.
-              </p>
             </TabsContent>
-            <TabsContent value="photo" className="pw-format-panel">
-              <div className="pw-preview-stage pw-export-example">
-                <img
-                  src="/homepage/menus.webp"
-                  alt="The same rigatoni photo, ready to crop for an existing menu or ordering platform"
-                  width="1024"
-                  height="1024"
-                  loading="lazy"
-                  decoding="async"
-                />
-                <div>
-                  <Download size={20} aria-hidden="true" />
-                  <strong>Your dish. Your existing menu.</strong>
-                  <span>
-                    Download a clean photo for Toast, delivery apps, or your
-                    website.
-                  </span>
-                </div>
+            {preview === "photo" ? (
+              <div
+                className="pw-showcase-destinations"
+                aria-label="Example photo destinations"
+              >
+                <span>Toast</span>
+                <span>Delivery apps</span>
+                <span>Your website</span>
               </div>
-              <p className="pw-format-note">
-                Choose a destination, check the crop, and upload through the
-                platform you already use.
-              </p>
-            </TabsContent>
-            <p className="pw-demo-disclosure">
-              Example previews. Download files to upload yourself; no platform
-              connection required.
+            ) : (
+              <div className="pw-demo-controls pw-showcase-controls">
+                <label htmlFor="demo-offer-price">
+                  Price
+                  <span className="pw-demo-price-field">
+                    <span aria-hidden="true">$</span>
+                    <input
+                      id="demo-offer-price"
+                      type="number"
+                      inputMode="decimal"
+                      min="0"
+                      max="9999"
+                      step="0.01"
+                      value={price}
+                      onChange={(event) => setPrice(event.target.value)}
+                      aria-describedby="demo-price-hint"
+                      aria-invalid={displayPrice === "$—"}
+                    />
+                  </span>
+                </label>
+                <fieldset>
+                  <legend className="sr-only">Choose a brand color</legend>
+                  <span className="pw-showcase-color-label" aria-hidden="true">
+                    Color
+                  </span>
+                  <div className="pw-demo-swatches">
+                    <button
+                      type="button"
+                      className="pw-demo-swatch is-wine"
+                      aria-label="Use wine brand color"
+                      aria-pressed={palette === "wine"}
+                      onClick={() => setPalette("wine")}
+                    >
+                      {palette === "wine" && (
+                        <Check size={16} aria-hidden="true" />
+                      )}
+                    </button>
+                    <button
+                      type="button"
+                      className="pw-demo-swatch is-green"
+                      aria-label="Use forest brand color"
+                      aria-pressed={palette === "green"}
+                      onClick={() => setPalette("green")}
+                    >
+                      {palette === "green" && (
+                        <Check size={16} aria-hidden="true" />
+                      )}
+                    </button>
+                  </div>
+                </fieldset>
+              </div>
+            )}
+            <p
+              id="demo-price-hint"
+              className="pw-showcase-note"
+              aria-live="polite"
+            >
+              {preview === "photo"
+                ? "Download, then upload through your existing platform."
+                : displayPrice === "$—"
+                  ? "Enter a price from $0 to $9,999."
+                  : preview === "post"
+                    ? `Caption starter: Pasta night. ${displayPrice} tonight, 5–9 pm.`
+                    : "Same dish. Same colors. Ready for your Story."}
             </p>
           </Tabs>
         </article>
-        <div className="pw-features-end">
-          <p>
-            Start with a photo. Finish with something you’re proud to share.
-          </p>
-          <Button onClick={onStart}>
-            {signedIn ? "Open my studio" : "Try it with your dish"}
-            <ArrowRight size={17} />
-          </Button>
-        </div>
       </section>
     </>
   );
