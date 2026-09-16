@@ -23,6 +23,7 @@ import {
 } from "@/lib/post-flow";
 import { emptyAdjustments } from "@/lib/studio";
 import PostSharing from "./post-sharing";
+import { postVisualState } from "@/lib/sharing";
 import { brandPostFields, brandTypefaces } from "@/lib/restaurant-look";
 import {
   postTemplates,
@@ -87,38 +88,9 @@ export function PostCanvas({
   const ref = useRef<HTMLCanvasElement>(null),
     [error, setError] = useState(""),
     [loading, setLoading] = useState(true);
-  const renderKey = JSON.stringify({
-    draft: {
-      items: draft.items,
-      color: draft.color,
-      template: draft.template,
-      layouts: { [channel]: draft.layouts?.[channel] },
-      title: draft.title,
-      description: draft.description,
-      showPrice: draft.showPrice,
-      price: draft.price,
-      validity: draft.validity,
-      textY: draft.textY,
-      textMode: draft.textMode,
-      showBrand: draft.showBrand,
-      accent: draft.accent,
-      kicker: draft.kicker,
-      cta: draft.cta,
-      typography: draft.typography,
-      brandMode: draft.brandMode,
-    },
-    restaurant: {
-      name: restaurant.name,
-      currency: restaurant.currency,
-      logo_id: restaurant.logo_id,
-      style: {
-        primary: restaurant.style?.primary,
-        accent: restaurant.style?.accent,
-      },
-    },
-    channel,
-    slide,
-  });
+  const renderKey = JSON.stringify(
+    postVisualState(draft, restaurant, channel, slide),
+  );
   useEffect(() => {
     let live = true;
     setError("");

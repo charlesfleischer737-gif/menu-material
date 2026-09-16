@@ -571,3 +571,78 @@ try {
 } finally {
   rmSync(root, { recursive: true, force: true });
 }
+
+// Brand bundles and print/share metadata must preserve a restaurant's actual saved choices.
+const {
+  restaurantLooks,
+  restaurantLookFields,
+  normalizeBrandColor,
+  readableBrandInk,
+} = await import("../lib/restaurant-look.ts");
+const { styleSchema } = await import("../lib/server/promotions.ts");
+const { postVisualState, publishedRestaurant } =
+  await import("../lib/sharing.ts");
+for (const look of restaurantLooks) {
+  const fields = restaurantLookFields(look.id);
+  const valid = styleSchema.parse(fields);
+  assert.equal(valid.photoPreset, look.photoPreset);
+  assert.equal(valid.autoApply, true);
+  assert(valid.photoStyle.length > 30);
+}
+assert.equal(normalizeBrandColor(" ABC "), "#aabbcc");
+assert.equal(normalizeBrandColor("#244638"), "#244638");
+assert.equal(normalizeBrandColor("hello"), null);
+assert.equal(readableBrandInk("#ffffff"), "#000000");
+assert.equal(readableBrandInk("#000000"), "#ffffff");
+const visualDraft = {
+  items: [{ name: "Pasta", photoId: "approved" }],
+  template: "chef",
+  typography: "editorial",
+  caption: "First caption",
+  reviewed: true,
+  layouts: { feed: { x: 25 }, story: { x: 75 } },
+};
+const visualRestaurant = {
+  name: "The Kitchen",
+  slug: "kitchen",
+  currency: "USD",
+};
+assert.deepEqual(
+  postVisualState(visualDraft, visualRestaurant),
+  postVisualState(
+    { ...visualDraft, caption: "Another caption", reviewed: false },
+    visualRestaurant,
+  ),
+  "caption and review changes do not rerender the image",
+);
+assert.notDeepEqual(
+  postVisualState(visualDraft, visualRestaurant, "feed"),
+  postVisualState(visualDraft, visualRestaurant, "story"),
+  "each format preserves its own crop",
+);
+assert.notDeepEqual(
+  postVisualState(visualDraft, visualRestaurant),
+  postVisualState({ ...visualDraft, typography: "bold" }, visualRestaurant),
+  "visual style changes invalidate exports",
+);
+const savedBrand = publishedRestaurant({
+  name: "Private rename",
+  style: { primary: "#123456" },
+  published: JSON.stringify({
+    restaurant: {
+      name: "Published name",
+      style: {
+        primary: "#244638",
+        photoStyle: "private prompt",
+        referenceIds: ["private"],
+      },
+    },
+  }),
+});
+assert.equal(savedBrand.name, "Published name");
+assert.equal(savedBrand.style.primary, "#244638");
+assert.equal(savedBrand.style.photoStyle, undefined);
+assert.equal(savedBrand.style.referenceIds, undefined);
+console.log(
+  "PASS: coordinated restaurant looks, visual export identity, and published-only sharing metadata.",
+);

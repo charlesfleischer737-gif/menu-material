@@ -48,6 +48,8 @@ globalThis.createImageBitmap = async (blob) => {
 };
 globalThis.fetch = async (url) => {
   const path = String(url);
+  if (path.startsWith("data:image/png;base64,"))
+    return new Response(Buffer.from(path.split(",")[1], "base64"));
   if (path.startsWith("/studio/styles/"))
     return new Response(readFileSync("public" + path));
   if (path.startsWith("/fonts/"))
@@ -302,6 +304,70 @@ for (const [name, bytes] of Object.entries(files)) {
 const delivery = await photoExport("burger", "uber");
 assert.equal(delivery.blob.type, "image/jpeg");
 assert(delivery.width >= 550 && delivery.height >= 440);
+checks++;
+const { menuQrCard } = await import("../lib/qr-card.ts");
+const { default: QR } = await import("qrcode");
+const qrLink = "https://example.test/m/orchard";
+const qr = await QR.toDataURL(qrLink, { width: 1000, margin: 4 });
+for (const typography of ["modern", "editorial", "bold"]) {
+  const card = await menuQrCard(
+    { ...restaurant, style: { ...restaurant.style, typography } },
+    qrLink,
+    qr,
+  );
+  assert.equal(card.type, "application/pdf");
+  const bytes = new Uint8Array(await card.arrayBuffer());
+  writeFileSync(`${root}/qr-card-${typography}.pdf`, bytes);
+  const task = pdfjs.getDocument({ data: bytes, useSystemFonts: true });
+  const doc = await task.promise;
+  const page = await doc.getPage(1);
+  assert.deepEqual(page.view, [0, 0, 288, 432]);
+  const content = await page.getTextContent();
+  const text = content.items.map((item) => item.str).join(" ");
+  assert(text.includes(restaurant.name));
+  assert(text.includes("example.test/m/orchard"));
+  assert(text.includes("Scan to explore our menu"));
+  for (const item of content.items)
+    if (item.str.trim()) {
+      assert(
+        item.transform[4] >= 0 && item.transform[4] + item.width <= 288.1,
+        "card text stays inside its paper",
+      );
+      assert(
+        item.transform[5] > 0 && item.transform[5] < 432,
+        "card text stays inside its paper",
+      );
+    }
+  const viewport = page.getViewport({ scale: 2 });
+  const out = createCanvas(viewport.width, viewport.height);
+  await page.render({
+    canvas: out,
+    canvasContext: out.getContext("2d"),
+    viewport,
+  }).promise;
+  writeFileSync(`${root}/qr-card-${typography}.png`, out.toBuffer("image/png"));
+  await task.destroy();
+  checks++;
+}
+const longCard = await menuQrCard(
+  {
+    ...restaurant,
+    name: "THE NEIGHBORHOOD RESTAURANT & BAKERY — BREAKFAST, LUNCH AND SUPPER AROUND OUR TABLE",
+    style: { ...restaurant.style, typography: "bold" },
+  },
+  qrLink,
+  qr,
+);
+const longTask = pdfjs.getDocument({
+  data: new Uint8Array(await longCard.arrayBuffer()),
+  useSystemFonts: true,
+});
+const longDoc = await longTask.promise;
+const longPage = await longDoc.getPage(1);
+for (const item of (await longPage.getTextContent()).items)
+  if (item.str.trim())
+    assert(item.transform[4] >= 0 && item.transform[4] + item.width <= 288.1);
+await longTask.destroy();
 checks++;
 console.log(
   `PASS: ${checks} exported PDF/image checks, embedded-text prices, US Letter/A4, all ten new post templates and legacy draft mappings, independent feed/story dimensions, carousel ZIP and clean delivery JPEG. Artifacts: ${root}`,

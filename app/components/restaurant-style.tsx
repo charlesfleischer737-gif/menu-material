@@ -27,7 +27,7 @@ export default function RestaurantStyle({
         }));
   return (
     <>
-      <RestaurantLookEditor {...{ profile, setProfile, style }} />
+      <RestaurantLookEditor {...{ profile, setProfile, style, state }} />
       <label className="field">
         Caption tone
         <input

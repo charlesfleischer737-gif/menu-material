@@ -1,18 +1,94 @@
 "use client";
-import { Check, Palette, Sparkles } from "lucide-react";
-import { brandTypefaces, brandTypeface } from "@/lib/restaurant-look";
+import { useEffect, useState } from "react";
+import { Check, Palette, RotateCcw, Sparkles } from "lucide-react";
+import {
+  brandTypefaces,
+  brandTypeface,
+  brandPostFields,
+  restaurantLooks,
+  restaurantLookFields,
+  photoPresetFields,
+  normalizeBrandColor,
+} from "@/lib/restaurant-look";
 import { photoStyles, styleCategories } from "@/lib/photo-styles";
+import { emptyAdjustments } from "@/lib/studio";
 import type { Row } from "@/lib/client";
+import { PostCanvas } from "./post-maker";
+import MenuView from "./menu-view";
+
+function BrandColor({
+  label,
+  value,
+  onChange,
+}: {
+  label: string;
+  value: string;
+  onChange: (value: string) => void;
+}) {
+  const [text, setText] = useState(value);
+  const [error, setError] = useState("");
+  useEffect(() => {
+    setText(value);
+    setError("");
+  }, [value]);
+  return (
+    <div className="cx-look-color-field">
+      <span>{label}</span>
+      <div className="cx-look-color-input">
+        <input
+          type="color"
+          aria-label={`${label} picker`}
+          value={value}
+          onChange={(e) => onChange(e.target.value)}
+        />
+        <input
+          aria-label={`${label} hex code`}
+          value={text}
+          maxLength={7}
+          spellCheck={false}
+          onChange={(e) => {
+            setText(e.target.value);
+            setError("");
+            const color = normalizeBrandColor(e.target.value);
+            if (color && e.target.value.replace("#", "").length === 6)
+              onChange(color);
+          }}
+          onBlur={() => {
+            const color = normalizeBrandColor(text);
+            if (color) {
+              onChange(color);
+              setText(color);
+            } else {
+              setText(value);
+              setError(
+                `Kept ${value.toUpperCase()}. Use a color code such as #244638.`,
+              );
+            }
+          }}
+        />
+      </div>
+      {error && <small role="status">{error}</small>}
+    </div>
+  );
+}
 
 export default function RestaurantLookEditor({
   profile,
   setProfile,
   style,
+  state,
 }: {
   profile: Row;
   setProfile: (p: Row) => void;
   style: Row;
+  state: Row;
 }) {
+  const [preview, setPreview] = useState("photo");
+  const [category, setCategory] = useState(
+    photoStyles.find((p) => p.id === style.photoPreset)?.category || "menu",
+  );
+  const [previous, setPrevious] = useState<Row | null>(null);
+  const [message, setMessage] = useState("");
   const change = (patch: Row) =>
     setProfile({ ...profile, style: { ...style, ...patch } });
   const preset = photoStyles.find((p) => p.id === style.photoPreset);
@@ -20,15 +96,310 @@ export default function RestaurantLookEditor({
     ? `/api/assets/${style.referenceIds[0]}`
     : preset?.image || "/studio/styles/menu-wood.webp";
   const font = brandTypeface(style);
+  const activeLook = restaurantLooks.find(
+    (l) =>
+      l.photoPreset === style.photoPreset &&
+      l.primary === style.primary &&
+      l.accent === style.accent &&
+      l.typography === style.typography &&
+      !style.referenceIds?.length,
+  );
+  const approved = state.assets?.find(
+    (a: Row) => a.approved_at && a.dish_id && !a.deleted_at,
+  );
+  const dish = state.dishes?.find((d: Row) => d.id === approved?.dish_id);
+  const previewRestaurant = {
+    ...profile,
+    style,
+    logo_id: state.restaurant?.logo_id,
+  };
+  const sampleItems = state.dishes?.length
+    ? state.dishes
+        .slice(0, 2)
+        .map((d: Row) => ({ ...d, available: !!d.available }))
+    : [
+        {
+          id: "sample-1",
+          name: "Your signature dish",
+          description: "A short description of what makes it special.",
+          price: 1800,
+          available: true,
+        },
+        {
+          id: "sample-2",
+          name: "A seasonal favorite",
+          description: "Fresh ingredients, made your way.",
+          price: 1400,
+          available: true,
+        },
+      ];
+  const post = {
+    ...brandPostFields(style),
+    template: "chef",
+    title: dish?.name || "From our kitchen",
+    description: "",
+    textMode: "minimal",
+    showBrand: true,
+    items: [
+      {
+        name: dish?.name || "Style example",
+        photoId: approved?.id,
+        ...(approved ? {} : { photoUrl: image }),
+        quantity: 1,
+      },
+    ],
+    layouts: { feed: { ...emptyAdjustments, fit: false } },
+  };
   return (
-    <section className="cx-brand-editor">
+    <section className="cx-brand-editor cx-look-studio">
       <div className="cx-brand-heading">
-        <Palette size={21} />
+        <Palette size={22} />
         <div>
-          <h3>My restaurant look</h3>
-          <p>Set it once. Make every photo, menu and post feel like you.</p>
+          <h3>One look. Everything you make.</h3>
+          <p>Start with a complete look, then make it your own.</p>
         </div>
       </div>
+      <div
+        className="cx-look-presets"
+        role="group"
+        aria-label="Complete restaurant looks"
+      >
+        {restaurantLooks.map((look) => {
+          const photo = photoStyles.find((p) => p.id === look.photoPreset)!;
+          return (
+            <button
+              type="button"
+              key={look.id}
+              aria-pressed={activeLook?.id === look.id}
+              onClick={() => {
+                setPrevious({ ...style });
+                change(restaurantLookFields(look.id));
+                setCategory(photo.category || "menu");
+                setMessage(
+                  `${look.name} applied to your preview. Save your restaurant when you’re happy.`,
+                );
+              }}
+            >
+              <div className="cx-look-preset-photo">
+                <img src={photo.image} alt="" loading="lazy" />
+                <span className="cx-look-swatches" aria-hidden="true">
+                  <i style={{ background: look.primary }} />
+                  <i style={{ background: look.accent }} />
+                </span>
+                {activeLook?.id === look.id && (
+                  <span className="cx-look-selected">
+                    <Check size={16} />
+                  </span>
+                )}
+              </div>
+              <strong>{look.name}</strong>
+              <small>{look.note}</small>
+            </button>
+          );
+        })}
+      </div>
+      {message && (
+        <div className="cx-look-notice" role="status">
+          <span>{message}</span>
+          {previous && (
+            <button
+              type="button"
+              className="cx-link"
+              onClick={() => {
+                setProfile({ ...profile, style: previous });
+                setPrevious(null);
+                setMessage("Your previous look is restored.");
+              }}
+            >
+              <RotateCcw size={14} /> Undo
+            </button>
+          )}
+        </div>
+      )}
+      <div className="cx-look-live">
+        <div className="cx-look-live-heading">
+          <div>
+            <span className="eyebrow">YOUR LOOK, IN CONTEXT</span>
+            <h4>{profile.name || "Your restaurant"}</h4>
+          </div>
+          <span className="cx-look-preview-tag">Preview</span>
+        </div>
+        <div
+          className="cx-look-preview-tabs"
+          role="group"
+          aria-label="Preview restaurant branding"
+        >
+          {[
+            ["photo", "Photo style"],
+            ["menu", "Menu"],
+            ["post", "Instagram"],
+          ].map(([id, label]) => (
+            <button
+              type="button"
+              key={id}
+              aria-pressed={preview === id}
+              onClick={() => setPreview(id)}
+            >
+              {label}
+            </button>
+          ))}
+        </div>
+        <div className="cx-look-preview-stage">
+          {preview === "photo" && (
+            <figure className="cx-look-photo-preview">
+              <img
+                src={image}
+                alt={
+                  style.referenceIds?.length
+                    ? "Your saved photographic reference"
+                    : `${preset?.name || "Neighborhood table"} photo style example`
+                }
+              />
+              <figcaption>
+                <strong>
+                  {style.referenceIds?.length
+                    ? "Your saved photo reference"
+                    : preset?.name || "Neighborhood table"}
+                </strong>
+                <span>
+                  {style.referenceIds?.length
+                    ? "Lighting and atmosphere for your next photo."
+                    : "Style inspiration. Your dishes keep their own ingredients."}
+                </span>
+              </figcaption>
+            </figure>
+          )}
+          {preview === "menu" && (
+            <div className="cx-look-menu-preview">
+              <MenuView
+                preview
+                menu={{
+                  restaurant: {
+                    ...previewRestaurant,
+                    logoId: state.restaurant?.logo_id,
+                  },
+                  sections: [
+                    {
+                      id: "preview",
+                      name: "From our kitchen",
+                      items: sampleItems,
+                    },
+                  ],
+                  layout: "classic",
+                }}
+              />
+            </div>
+          )}
+          {preview === "post" && (
+            <div className="cx-look-social-preview">
+              <PostCanvas
+                draft={post}
+                restaurant={previewRestaurant}
+                example={!approved}
+              />
+              <p>
+                {approved
+                  ? "Your approved photo, in an example post."
+                  : "Example photo with your colors and typography."}
+              </p>
+            </div>
+          )}
+        </div>
+        <p className="cx-look-live-note">
+          {preview === "menu"
+            ? `${state.dishes?.length ? "Your dishes" : "Sample dishes"} · Your published menu changes only when you republish.`
+            : preview === "post"
+              ? "The same design tools used in Post Maker. No image credits used."
+              : "New photos use this look. Each image is yours to review before sharing."}
+        </p>
+      </div>
+      <details className="cx-look-customize">
+        <summary>
+          Fine-tune colors, type & photography <span>Optional</span>
+        </summary>
+        <div className="cx-look-color-grid">
+          <BrandColor
+            label="Brand color"
+            value={style.primary}
+            onChange={(primary) => change({ primary })}
+          />
+          <BrandColor
+            label="Accent color"
+            value={style.accent}
+            onChange={(accent) => change({ accent })}
+          />
+        </div>
+        <fieldset className="cx-brand-fonts">
+          <legend>Your typography</legend>
+          <div>
+            {brandTypefaces.map((f) => (
+              <button
+                key={f.id}
+                type="button"
+                aria-pressed={font.id === f.id}
+                onClick={() => change({ typography: f.id })}
+              >
+                <span>
+                  {f.name}
+                  {font.id === f.id && <Check size={14} />}
+                </span>
+                <strong style={{ fontFamily: `"${f.family}"` }}>
+                  {f.sample}
+                </strong>
+              </button>
+            ))}
+          </div>
+        </fieldset>
+        <h4>Your photography</h4>
+        <p className="cx-look-help">
+          Choose a style to replace the current photographic reference. Your
+          uploaded references stay saved.
+        </p>
+        <div
+          className="cx-look-categories"
+          role="group"
+          aria-label="Photo style categories"
+        >
+          {styleCategories.map((c) => (
+            <button
+              type="button"
+              key={c.id}
+              aria-pressed={category === c.id}
+              onClick={() => setCategory(c.id)}
+            >
+              {c.name}
+            </button>
+          ))}
+        </div>
+        <div className="cx-look-photo-options">
+          {photoStyles
+            .filter((p) => p.category === category)
+            .map((p) => (
+              <button
+                type="button"
+                key={p.id}
+                aria-pressed={
+                  style.photoPreset === p.id && !style.referenceIds?.length
+                }
+                onClick={() => {
+                  setPrevious({ ...style });
+                  change(photoPresetFields(p.id));
+                  setMessage(
+                    `${p.name} selected. Your colors and typography stay the same.`,
+                  );
+                  setPreview("photo");
+                }}
+              >
+                <img src={p.image} alt="" loading="lazy" />
+                <span>
+                  {p.name}
+                  {style.photoPreset === p.id &&
+                    !style.referenceIds?.length && <Check size={14} />}
+                </span>
+              </button>
+            ))}
+        </div>
+      </details>
       <label className="cx-brand-auto">
         <input
           type="checkbox"
@@ -36,122 +407,17 @@ export default function RestaurantLookEditor({
           onChange={(e) => change({ autoApply: e.target.checked })}
         />
         <span>
-          <strong>Use my look automatically</strong>
+          <strong>Start new creations with this look</strong>
           <small>
-            Start new photos and posts with these choices. Existing posts keep
-            their saved design.
+            Photos and posts start here. You can change the look for any
+            individual creation.
           </small>
         </span>
       </label>
-      <div
-        className="cx-brand-preview"
-        aria-label="Restaurant look preview"
-        style={
-          {
-            "--brand-primary": style.primary,
-            "--brand-accent": style.accent,
-            "--brand-font": `"${font.family}"`,
-          } as React.CSSProperties
-        }
-      >
-        <figure>
-          <img src={image} alt="Photo style reference" />
-          <figcaption>Photo inspiration</figcaption>
-        </figure>
-        <div className="cx-brand-menu-example">
-          <span>THE MENU</span>
-          <strong>{profile.name || "Your restaurant"}</strong>
-          <i />
-          <b>From our kitchen</b>
-          <p>Seasonal favorites, made with care.</p>
-          <small>Menu preview</small>
-        </div>
-        <div className="cx-brand-post-example">
-          <img src={image} alt="Example post background" />
-          <strong>{profile.name || "Your restaurant"}</strong>
-          <small>Post preview</small>
-        </div>
-      </div>
-      <div className="two-fields">
-        {[
-          ["primary", "Brand color"],
-          ["accent", "Accent color"],
-        ].map(([key, label]) => (
-          <label className="field" key={key}>
-            {label}
-            <div className="cx-brand-color">
-              <input
-                type="color"
-                value={style[key]}
-                onChange={(e) => change({ [key]: e.target.value })}
-              />
-              <span>{style[key].toUpperCase()}</span>
-            </div>
-          </label>
-        ))}
-      </div>
-      <fieldset className="cx-brand-fonts">
-        <legend>Your typography</legend>
-        <div>
-          {brandTypefaces.map((f) => (
-            <button
-              key={f.id}
-              type="button"
-              aria-pressed={font.id === f.id}
-              onClick={() => change({ typography: f.id })}
-            >
-              <span>
-                {f.name}
-                {font.id === f.id && <Check size={14} />}
-              </span>
-              <strong style={{ fontFamily: `"${f.family}"` }}>
-                {f.sample}
-              </strong>
-            </button>
-          ))}
-        </div>
-      </fieldset>
-      <label className="field">
-        Your photo style
-        <select
-          value={style.photoPreset || "custom"}
-          onChange={(e) => {
-            const p = photoStyles.find((s) => s.id === e.target.value);
-            if (p)
-              change({
-                photoPreset: p.id,
-                photoStyle: p.prompt,
-                referenceIds: [],
-                photoDefaults: {
-                  surface: "As shown",
-                  lighting: "As shown",
-                  plate: "keep",
-                  angle: "keep",
-                  composition: "Full dish",
-                },
-              });
-          }}
-        >
-          <option value="custom" disabled>
-            Saved lighting & references
-          </option>
-          {styleCategories.map((category) => (
-            <optgroup key={category.id} label={category.name}>
-              {photoStyles
-                .filter((p) => p.category === category.id)
-                .map((p) => (
-                  <option key={p.id} value={p.id}>
-                    {p.name}
-                  </option>
-                ))}
-            </optgroup>
-          ))}
-        </select>
-        <small>
-          <Sparkles size={13} /> You can also save a finished Photo Studio
-          result as your look.
-        </small>
-      </label>
+      <p className="cx-look-help">
+        <Sparkles size={14} /> Save your restaurant to keep these choices.
+        Existing posts keep their saved design.
+      </p>
     </section>
   );
 }

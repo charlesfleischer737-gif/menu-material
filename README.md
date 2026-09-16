@@ -64,7 +64,7 @@ Pilot admin controls are at the bottom of the workspace. Administrators can crea
 
 ## One restaurant look
 
-In **Restaurant settings → My restaurant look**, choose colors, typography and a photographic style, then enable **Use my look automatically**. New photos use the saved look as their first recommendation. New posts inherit the palette and typography across template changes, with individual overrides available. Digital and printed menus use the same branding. Existing post drafts keep their saved design; published menus update only on republish. Saving a finished Photo Studio result as the restaurant look also stores its lighting, surface, plate, angle and composition choices.
+In **Restaurant settings**, choose one of six complete restaurant looks, preview it across photos, menus and Instagram designs, and fine-tune its colors, typography or photographic style. **Start new creations with this look** controls automatic use. New photos use the saved look as their first recommendation. New posts inherit the palette and typography across template changes, with individual overrides available. Digital and printed menus use the same branding. Existing post drafts keep their saved design; published menus update only on republish. Saving a finished Photo Studio result as the restaurant look also stores its lighting, surface, plate, angle and composition choices.
 
 ## Menus and privacy
 
@@ -72,7 +72,7 @@ Save dishes, including prices and availability, then organize them into menu sec
 
 Published menus read a snapshot; updates to shared dish records do not change a live menu until republishing. Public asset routes only serve assets referenced by the current published snapshot, backed by a separate `public/` object copy. Source uploads, normalized references, generated versions, drafts, and captions require the restaurant's authenticated session. Deleting an image removes its menu references and denies further delivery. Previously downloaded customer copies cannot be recalled.
 
-Anonymous customer access requires **public** access at the hosting boundary; the app still enforces invitation-only workspace authentication. The sharing panel checks the published JSON endpoint without owner credentials and confirms whether guests can open it. It offers a stable link, high-resolution QR download, native link sharing, and an explicit take-offline action. Public menu responses exclude private photographic prompts, reference IDs and restaurant brand notes.
+Anonymous customer access requires **public** access at the hosting boundary; the app still enforces invitation-only workspace authentication. The sharing panel checks the published JSON endpoint without owner credentials and confirms whether guests can open it. It offers a stable link, high-resolution QR download, a branded 4 × 6 inch table-card PDF, native link sharing, and an explicit take-offline action. Table cards use the published restaurant look. Public menu responses exclude private photographic prompts, reference IDs and restaurant brand notes.
 
 Post Maker prepares reviewed PNG files before the Share tap to preserve mobile share-sheet activation. Choose a post, Story or carousel, copy the caption, then share files or download individual images. Unsupported sharing falls back to saving. HEIC uploads try the device decoder first and then the bundled converter; originals are retained. Physical iPhone/Android camera capture, HEIC variants and Instagram handoff remain device-validation tasks.
 

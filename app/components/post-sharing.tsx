@@ -1,9 +1,32 @@
 "use client";
-import { useEffect, useState } from "react";
-import { Copy, Download, LoaderCircle, Share2, Smartphone } from "lucide-react";
+import { useEffect, useRef, useState } from "react";
+import {
+  Check,
+  Copy,
+  Download,
+  Images,
+  LoaderCircle,
+  Share2,
+  Smartphone,
+} from "lucide-react";
 import { canvasBlob, renderPost } from "@/lib/creation-export";
 import { downloadBlob, type Row } from "@/lib/client";
+import { postShareFormats, postVisualState } from "@/lib/sharing";
 import { track } from "./creation-shared";
+
+function FileThumbnail({ file, index }: { file: File; index: number }) {
+  const [url, setUrl] = useState("");
+  useEffect(() => {
+    const value = URL.createObjectURL(file);
+    setUrl(value);
+    return () => URL.revokeObjectURL(value);
+  }, [file]);
+  return url ? (
+    <img src={url} alt={`Finished image ${index + 1}`} />
+  ) : (
+    <span className="cx-share-thumb-loading" />
+  );
+}
 
 export default function PostSharing({
   draft,
@@ -21,140 +44,280 @@ export default function PostSharing({
     key: string;
     files: File[];
   } | null>(null);
-  const [error, setError] = useState("");
+  const [renderError, setRenderError] = useState("");
+  const [actionError, setActionError] = useState("");
   const [sharing, setSharing] = useState(false);
   const [attempt, setAttempt] = useState(0);
-  const key = JSON.stringify({
-    draft,
-    restaurant: {
-      name: restaurant.name,
-      slug: restaurant.slug,
-      currency: restaurant.currency,
-      logo_id: restaurant.logo_id,
-    },
-    selected,
+  const [completed, setCompleted] = useState(0);
+  const [copiedCaption, setCopiedCaption] = useState<string | null>(null);
+  const [manualCopy, setManualCopy] = useState(false);
+  const [saved, setSaved] = useState<Record<string, boolean>>({});
+  const [handedOff, setHandedOff] = useState("");
+  const cache = useRef(new Map<string, File[]>());
+  const imageKey = JSON.stringify(postVisualState(draft, restaurant, selected));
+  const contentKey = JSON.stringify({
+    ...postVisualState(draft, restaurant),
+    layouts: draft.layouts,
   });
-  const files = prepared?.key === key ? prepared.files : [];
+  const files =
+    prepared?.key === imageKey && draft.reviewed ? prepared.files : [];
   const ready = draft.reviewed && files.length > 0 && !busy && !sharing;
+  const caption = draft.caption || "";
+  const copied = copiedCaption === caption && !!caption;
+  const count = selected === "carousel" ? draft.items.length : 1;
+  useEffect(() => {
+    cache.current.clear();
+    setSaved({});
+    setHandedOff("");
+  }, [contentKey]);
   useEffect(() => {
     if (!draft.channels.includes(selected))
       setSelected(draft.channels[0] || "feed");
   }, [draft.channels, selected]);
   useEffect(() => {
     let active = true;
-    setError("");
+    setRenderError("");
+    setActionError("");
+    setCompleted(0);
     setPrepared(null);
     if (!draft.reviewed) return;
-    const data = JSON.parse(key);
+    const hit = cache.current.get(imageKey);
+    if (hit) {
+      setPrepared({ key: imageKey, files: hit });
+      return;
+    }
+    const data = JSON.parse(imageKey);
     void (async () => {
       const outputs: File[] = [];
-      const count = data.selected === "carousel" ? data.draft.items.length : 1;
-      for (let i = 0; i < count; i++) {
-        const c = document.createElement("canvas");
-        await renderPost(c, data.draft, data.restaurant, data.selected, i);
+      const length = data.channel === "carousel" ? data.draft.items.length : 1;
+      for (let i = 0; i < length; i++) {
+        const canvas = document.createElement("canvas");
+        await renderPost(canvas, data.draft, data.restaurant, data.channel, i);
         outputs.push(
           new File(
-            [await canvasBlob(c, "image/png")],
-            `${data.restaurant.slug}-${data.selected}${count > 1 ? "-" + (i + 1) : ""}.png`,
+            [await canvasBlob(canvas, "image/png")],
+            `${data.restaurant.slug}-${data.channel}${length > 1 ? "-" + (i + 1) : ""}.png`,
             { type: "image/png" },
           ),
         );
         if (!active) return;
+        setCompleted(i + 1);
       }
-      setPrepared({ key, files: outputs });
+      cache.current.set(imageKey, outputs);
+      setPrepared({ key: imageKey, files: outputs });
     })().catch((e) => {
       if (active)
-        setError(e.message || "Your image couldn’t be prepared. Try again.");
+        setRenderError(
+          e.message || "Your image couldn’t be prepared. Try again.",
+        );
     });
     return () => {
       active = false;
     };
-  }, [key, attempt]);
-  const canShare =
-    typeof navigator !== "undefined" &&
-    !!navigator.share &&
-    files.length > 0 &&
-    !!navigator.canShare?.({ files });
+  }, [imageKey, draft.reviewed, attempt]);
+  let canShare = false;
+  try {
+    canShare =
+      typeof navigator !== "undefined" &&
+      !!navigator.share &&
+      !!files.length &&
+      !!navigator.canShare?.({ files });
+  } catch {}
+  const exported =
+    !!files.length &&
+    (handedOff === imageKey || files.every((f) => saved[imageKey + f.name]));
   function share() {
     if (!ready || !canShare) return;
-    // Files are prepared before the tap so the device share sheet retains user activation.
     setSharing(true);
+    setActionError("");
+    // Do not await rendering or clipboard access here: the tap must open the share sheet directly.
     void navigator
       .share({ files })
       .then(() => {
+        setHandedOff(imageKey);
         track("export_complete", undefined, {
           tool: "post",
           channel: selected,
           method: "share",
         });
         notice(
-          "Returned from sharing. Paste your copied caption in Instagram before posting.",
+          "Files handed to your share sheet. Finish your post in Instagram.",
         );
       })
       .catch((e) => {
         if (e.name !== "AbortError")
-          setError(
-            "Your phone couldn’t open sharing. Save the image below, then choose it in Instagram.",
+          setActionError(
+            "Sharing couldn’t open. Save the image below, then choose it from your photo library in Instagram.",
           );
       })
       .finally(() => setSharing(false));
   }
+  function save(file: File) {
+    downloadBlob(file, file.name);
+    setSaved((current) => ({ ...current, [imageKey + file.name]: true }));
+    track("export_complete", undefined, {
+      tool: "post",
+      channel: selected,
+      method: "download",
+    });
+    notice(
+      "Download started. On a phone, save the image to Photos or your gallery before opening Instagram.",
+    );
+  }
   return (
-    <section className="cx-post-sharing">
+    <section className="cx-post-sharing cx-post-handoff">
       <div className="cx-sharing-heading">
-        <Smartphone size={21} />
+        <Smartphone size={22} />
         <div>
-          <h3>From here to Instagram.</h3>
-          <p>Your photo, ready for the app you use.</p>
+          <h3>Your next post, ready to go.</h3>
+          <p>Choose a format. Take your image and caption with you.</p>
         </div>
       </div>
-      <label className="cx-field">
-        <span>What are you posting?</span>
-        <select
-          disabled={busy || sharing}
-          value={selected}
-          onChange={(e) => setSelected(e.target.value)}
-        >
-          {draft.channels.map((channel: string) => (
-            <option key={channel} value={channel}>
-              {channel === "feed"
-                ? "Instagram post · 4:5"
-                : channel === "story"
-                  ? "Instagram story · 9:16"
-                  : `Carousel · ${draft.items.length} slides`}
-            </option>
-          ))}
-        </select>
-      </label>
-      <button
-        className="cx-btn cx-secondary cx-full"
-        disabled={!draft.reviewed || busy || sharing}
-        onClick={() => {
-          void navigator.clipboard
-            .writeText(draft.caption || "")
-            .then(() =>
-              notice(
-                "Caption copied. Paste it into Instagram after choosing your image.",
-              ),
-            )
-            .catch(() =>
-              setError(
-                "Copy the caption from the preview, then paste it into Instagram.",
-              ),
-            );
-        }}
+      <div
+        className="cx-share-formats"
+        role="group"
+        aria-label="Choose an Instagram export format"
       >
-        <Copy size={16} /> 1. Copy caption
-      </button>
-      {draft.reviewed && !files.length && !error && (
-        <p className="cx-share-preparing" role="status">
-          <LoaderCircle size={16} className="cx-spin" /> Preparing your{" "}
-          {selected === "carousel" ? "slides" : "image"}…
+        {draft.channels.map((channel: string) => (
+          <button
+            key={channel}
+            type="button"
+            disabled={busy || sharing}
+            aria-pressed={selected === channel}
+            onClick={() => setSelected(channel)}
+          >
+            <span
+              className={`cx-format-outline is-${channel}`}
+              aria-hidden="true"
+            />
+            <strong>{postShareFormats[channel]?.label || channel}</strong>
+            <small>
+              {channel === "carousel"
+                ? `${draft.items.length} slides`
+                : postShareFormats[channel]?.detail}
+            </small>
+          </button>
+        ))}
+      </div>
+      {!draft.reviewed && (
+        <p className="cx-share-review-note">
+          Check the images and details above to prepare your files.
         </p>
       )}
+      {draft.reviewed && !files.length && !renderError && (
+        <p className="cx-share-preparing" role="status">
+          <LoaderCircle size={16} className="cx-spin" />
+          {count > 1
+            ? `Preparing slide ${Math.min(completed + 1, count)} of ${count}…`
+            : "Preparing your full-size image…"}
+        </p>
+      )}
+      {files.length > 0 && (
+        <div className="cx-share-file-preview">
+          <div
+            className={`cx-share-thumbnails ${selected === "story" ? "is-story" : ""}`}
+          >
+            {files.map((file, i) => (
+              <FileThumbnail key={file.name + imageKey} file={file} index={i} />
+            ))}
+          </div>
+          <div>
+            <strong>
+              {selected === "story"
+                ? "Your Story"
+                : count > 1
+                  ? `${count} finished slides`
+                  : "Your post"}
+            </strong>
+            <span>{postShareFormats[selected]?.detail} · PNG</span>
+            <small>
+              {(
+                files.reduce((total, f) => total + f.size, 0) /
+                1024 /
+                1024
+              ).toFixed(1)}{" "}
+              MB · Ready to save
+            </small>
+          </div>
+          <Check size={17} />
+        </div>
+      )}
+      <div className={`cx-share-step ${copied ? "is-done" : ""}`}>
+        <span className="cx-share-step-number">
+          {copied ? <Check size={16} /> : "1"}
+        </span>
+        <div>
+          <h4>Take your caption</h4>
+          <p>
+            {copied
+              ? "Copied. Paste it into your Instagram post."
+              : caption
+                ? "Copy it now, then paste it when you post."
+                : "Your image can be shared without a caption."}
+          </p>
+        </div>
+      </div>
+      {!!caption && (
+        <button
+          className="cx-btn cx-secondary cx-full"
+          disabled={!draft.reviewed || busy || sharing}
+          onClick={() => {
+            if (!navigator.clipboard?.writeText) {
+              setManualCopy(true);
+              return;
+            }
+            void navigator.clipboard
+              .writeText(caption)
+              .then(() => {
+                setCopiedCaption(caption);
+                setManualCopy(false);
+                setActionError("");
+              })
+              .catch(() => setManualCopy(true));
+          }}
+        >
+          {copied ? <Check size={16} /> : <Copy size={16} />}
+          {copied ? "Caption copied · copy again" : "Copy caption"}
+        </button>
+      )}
+      {manualCopy && (
+        <label className="cx-manual-caption">
+          Select and copy your caption
+          <textarea
+            readOnly
+            value={caption}
+            onFocus={(e) => e.target.select()}
+          />
+          <small>Press and hold the text on a phone, then choose Copy.</small>
+        </label>
+      )}
+      <div className={`cx-share-step ${exported ? "is-done" : ""}`}>
+        <span className="cx-share-step-number">
+          {exported ? <Check size={16} /> : "2"}
+        </span>
+        <div>
+          <h4>
+            {canShare ? "Send your image to Instagram" : "Save your image"}
+          </h4>
+          <p>
+            {exported
+              ? "Finish in Instagram whenever you’re ready."
+              : canShare
+                ? "Choose Instagram if it appears, or save to your photo library."
+                : "Download, then choose it from your photo library in Instagram."}
+          </p>
+        </div>
+      </div>
       {canShare && (
         <button className="cx-btn cx-full" disabled={!ready} onClick={share}>
-          <Share2 size={17} /> 2. Share {files.length > 1 ? "slides" : "image"}
+          <Share2 size={17} />
+          {sharing
+            ? "Sharing…"
+            : files.length > 1
+              ? `Share ${files.length} slides`
+              : selected === "story"
+                ? "Share Story image"
+                : "Share post image"}
         </button>
       )}
       {files.map((file, index) => (
@@ -162,41 +325,87 @@ export default function PostSharing({
           className={`cx-btn ${canShare || files.length > 1 ? "cx-secondary" : ""} cx-full`}
           key={file.name}
           disabled={!ready}
-          onClick={() => {
-            downloadBlob(file, file.name);
-            track("export_complete", undefined, {
-              tool: "post",
-              channel: selected,
-              method: "download",
-            });
-            notice(
-              "Image downloaded. On a phone, save it to Photos or your gallery, then choose it in Instagram.",
-            );
-          }}
+          onClick={() => save(file)}
         >
-          <Download size={17} />{" "}
+          {saved[imageKey + file.name] ? (
+            <Check size={16} />
+          ) : (
+            <Download size={16} />
+          )}
           {files.length > 1
             ? `Save slide ${index + 1}`
-            : canShare
-              ? "Save image to device"
-              : "2. Save image"}
+            : "Save image to device"}
         </button>
       ))}
-      {error && (
+      {files.length > 1 && (
+        <button
+          className="cx-link"
+          disabled={!ready}
+          onClick={() => {
+            setSharing(true);
+            setActionError("");
+            void (async () => {
+              const { zipSync, strToU8 } = await import("fflate");
+              const entries: Record<string, Uint8Array> = {
+                "caption.txt": strToU8(caption),
+              };
+              for (const file of files)
+                entries[file.name] = new Uint8Array(await file.arrayBuffer());
+              downloadBlob(
+                new Blob([new Uint8Array(zipSync(entries, { level: 0 }))], {
+                  type: "application/zip",
+                }),
+                `${restaurant.slug}-carousel.zip`,
+              );
+              setSaved((current) => ({
+                ...current,
+                ...Object.fromEntries(
+                  files.map((file) => [imageKey + file.name, true]),
+                ),
+              }));
+              notice(
+                "Carousel saved as a ZIP. Unzip it, then select the numbered images in Instagram.",
+              );
+            })()
+              .catch(() =>
+                setActionError(
+                  "The ZIP couldn’t be prepared. Save each slide individually.",
+                ),
+              )
+              .finally(() => setSharing(false));
+          }}
+        >
+          <Images size={16} /> Download all slides & caption
+        </button>
+      )}
+      {renderError && (
         <div className="cx-feedback cx-error" role="alert">
-          {error}
-          <button className="cx-link" onClick={() => setAttempt((v) => v + 1)}>
-            Try again
+          {renderError}
+          <button
+            className="cx-link"
+            disabled={busy}
+            onClick={() => setAttempt((v) => v + 1)}
+          >
+            Prepare image again
           </button>
         </div>
       )}
-      <p className="cx-sharing-instructions">
-        {canShare
-          ? "Choose Instagram if it appears in your share sheet, or save to your photo library. "
-          : "Save the image to Photos or your gallery, then open Instagram and choose Post or Story. "}
-        Paste your caption before posting.
-      </p>
-      <small>You choose when to publish in Instagram.</small>
+      {actionError && (
+        <p className="cx-feedback cx-error" role="alert">
+          {actionError}
+        </p>
+      )}
+      <div className="cx-instagram-tip">
+        <strong>When you’re in Instagram</strong>
+        <p>
+          {selected === "story"
+            ? "Choose Story, add this image and adjust it to fill the screen. Add any links or stickers in Instagram."
+            : selected === "carousel"
+              ? "Choose Post → Select multiple. Pick the numbered images in order, then paste your caption."
+              : "Choose Post, select your image and keep the portrait crop. Paste your caption before publishing."}
+        </p>
+      </div>
+      <small>Sharing hands off your files. You choose when to publish.</small>
     </section>
   );
 }

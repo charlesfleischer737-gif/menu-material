@@ -31,6 +31,14 @@ Published menus have a stable guest URL, downloadable 1,000 px QR code, native l
 
 Post Maker's final step prepares reviewed PNG files before the share tap, offers feed/Story/carousel selection, caption copying and native sharing where supported, and keeps individual image downloads as the fallback. It never automatically posts to social accounts. Upload normalization tries native HEIC decoding before conversion and retains the original. Download object URLs remain available long enough for mobile save dialogs.
 
+### Restaurant look and sharing refinement
+
+The look editor offers six complete, editable brand starting points. Each combines a distinct photographic style, palette and typography. The preview switches between the style reference, actual menu layout and actual social renderer; approved customer photos are used when available and sample content is labeled. A categorized photo gallery, editable hex colors, and one-step undo replace the text-only photo picker. Bright brand colors get readable heading ink on light menus.
+
+Menu sharing separates links for online use from a branded 4 × 6 inch table-card PDF and a standalone QR PNG. Cards use the published restaurant name and style, keeping private draft changes out of printed materials. Guest checks can be repeated and show their check time. Post sharing uses format cards, prepared-file thumbnails and sizes, caption-copy completion, a selectable-text fallback, separate rendering/action errors, and format-specific Instagram guidance. Carousel slides can also be saved with the caption as a ZIP. Prepared files are cached by visual content; caption edits do not rerender images.
+
+Validation includes the existing API/privacy suites, brand-bundle schema checks, export identity checks, published-snapshot isolation, and 124 PDF/image export checks. All three branded QR card PDFs were rendered; dimensions, text, links, and long-name bounds were checked. A rendering defect in variable-font PDF embedding was fixed with bundled static print-font instances, also used for printed menus. No new physical-phone or Instagram-app validation was performed.
+
 ## Persistence and generation
 
 Creation drafts are stored per restaurant with revision checks. Originals and successful outputs remain private and immutable. Quick edits create new asset records and preserve original identity through an asset lineage table. Browsing looks, adjusting crops, editing layouts/text and exporting do not invoke the image model.
@@ -45,7 +53,7 @@ New migrations `0003` and `0004` only add creation drafts, edit lineage and batc
 
 - `npm run typecheck`: passed.
 - `npm test`: 240 API/timezone checks (89 original, 89 expansion, 62 creation), 18 post-flow assertions, plus assertions for one-result default, duplicate submissions, allowance, cache, private approvals, draft conflicts, photo lineage, no-model quick edits, sample failure retry, approved continuation, immutable batch settings, analysis cache/usage and tenant isolation.
-- `npm run test:exports`: 120 export checks, including all three menu layouts at A4 and US Letter, embedded-text prices, all ten new post designs and legacy mappings, feed/story dimensions, carousel ZIP contents, and clean delivery JPEG.
+- `npm run test:exports`: 124 export checks, including all three menu layouts at A4 and US Letter, embedded-text prices, all ten new post designs and legacy mappings, feed/story dimensions, carousel ZIP contents, and clean delivery JPEG.
 - Browser review in an isolated local restaurant: opening saved drafts, original/quick-edit history, visual look and crop steps, keyboard adjustment, photo-to-menu reuse, menu content review/layouts/optional photos, actual PDF canvas preview, publication, factual special caption, channel crop independence, sharing approval and ZIP creation. Phone-width DOM checks found no horizontal overflow. Desktop screenshots and rendered export artifacts were inspected.
 - Additional browser checks: restaurant-look settings save with blank opening hours; JPG upload selects the saved look; menu publication confirms anonymous access; template changes retain restaurant typography and colors; reviewed post download works; Story files prepare independently. Menu and post sharing fit a 390 px viewport without horizontal overflow or broken preview images. Physical phone camera and Instagram handoff were not available for this validation.
 - Export fixtures and QA restaurant records are isolated from production. New style images are explicitly labeled reference examples, never presented as generated customer results. Asset prompts are in `STUDIO_IMAGE_PROMPTS.json`.

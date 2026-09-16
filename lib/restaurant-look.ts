@@ -6,6 +6,7 @@ export const brandTypefaces = [
     name: "Clean & modern",
     family: "Post Sans",
     file: "DMSans-Variable.ttf",
+    printFile: "/fonts/print/DMSans-Semibold.ttf",
     sample: "Fresh from our kitchen",
   },
   {
@@ -13,6 +14,7 @@ export const brandTypefaces = [
     name: "Warm & editorial",
     family: "Post Serif",
     file: "CormorantGaramond-Variable.ttf",
+    printFile: "/fonts/print/CormorantGaramond-Semibold.ttf",
     sample: "A taste of something special",
   },
   {
@@ -20,10 +22,121 @@ export const brandTypefaces = [
     name: "Bold & expressive",
     family: "Post Condensed",
     file: "BarlowCondensed-Bold.ttf",
+    printFile: "/fonts/social/BarlowCondensed-Bold.ttf",
     sample: "Made to be craved",
   },
 ] as const;
 export type BrandTypography = (typeof brandTypefaces)[number]["id"];
+
+export const restaurantLooks = [
+  {
+    id: "neighborhood",
+    name: "The neighborhood table",
+    note: "Warm wood, familiar favorites",
+    photoPreset: "menu-wood",
+    primary: "#244638",
+    accent: "#f4e8c8",
+    typography: "editorial",
+  },
+  {
+    id: "modern",
+    name: "Fresh & modern",
+    note: "Bright light, clean presentation",
+    photoPreset: "menu-stone",
+    primary: "#174e55",
+    accent: "#e1f2e7",
+    typography: "modern",
+  },
+  {
+    id: "evening",
+    name: "After hours",
+    note: "Low light, a little drama",
+    photoPreset: "bar-velvet",
+    primary: "#3f2039",
+    accent: "#f5dcae",
+    typography: "editorial",
+  },
+  {
+    id: "bakery",
+    name: "The morning bake",
+    note: "Soft light, golden pastry",
+    photoPreset: "bakery-morning",
+    primary: "#643827",
+    accent: "#ffe6bb",
+    typography: "editorial",
+  },
+  {
+    id: "bold",
+    name: "Big appetite",
+    note: "Colorful, confident, full of flavor",
+    photoPreset: "studio-color",
+    primary: "#932d25",
+    accent: "#fff1c5",
+    typography: "bold",
+  },
+  {
+    id: "fine",
+    name: "Evening service",
+    note: "Considered plating, elegant type",
+    photoPreset: "fine-linen",
+    primary: "#242b39",
+    accent: "#eee6d3",
+    typography: "editorial",
+  },
+] as const;
+
+export function photoPresetFields(id: string) {
+  const preset = photoStyles.find((p) => p.id === id);
+  if (!preset) throw Error("Choose an available photo style.");
+  return {
+    photoPreset: preset.id,
+    photoStyle: preset.prompt,
+    referenceIds: [],
+    photoDefaults: {
+      surface: "As shown",
+      lighting: "As shown",
+      plate: "keep",
+      angle: "keep",
+      composition: "Full dish",
+    },
+  };
+}
+
+export function restaurantLookFields(id: string) {
+  const look = restaurantLooks.find((l) => l.id === id);
+  if (!look) throw Error("Choose an available restaurant look.");
+  return {
+    ...photoPresetFields(look.photoPreset),
+    primary: look.primary,
+    accent: look.accent,
+    typography: look.typography,
+    autoApply: true,
+  };
+}
+
+export function normalizeBrandColor(value: string) {
+  const hex = value.trim().replace(/^#/, "");
+  if (/^[\da-f]{3}$/i.test(hex))
+    return (
+      "#" +
+      [...hex]
+        .map((c) => c + c)
+        .join("")
+        .toLowerCase()
+    );
+  return /^[\da-f]{6}$/i.test(hex) ? "#" + hex.toLowerCase() : null;
+}
+
+export function readableBrandInk(color: string) {
+  const hex = normalizeBrandColor(color) || "#ffffff";
+  const values = [1, 3, 5].map((i) => {
+    const c = parseInt(hex.slice(i, i + 2), 16) / 255;
+    return c <= 0.04045 ? c / 12.92 : ((c + 0.055) / 1.055) ** 2.4;
+  });
+  const luminance =
+    values[0] * 0.2126 + values[1] * 0.7152 + values[2] * 0.0722;
+  return luminance > 0.179 ? "#000000" : "#ffffff";
+}
 export function brandTypeface(style: Record<string, any> = {}) {
   return (
     brandTypefaces.find((font) => font.id === style.typography) ||

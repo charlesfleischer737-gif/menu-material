@@ -173,8 +173,12 @@ export async function menuPdf(menu: Row) {
   const { brandTypeface } = await import("./restaurant-look");
   const typeface = brandTypeface(menu.restaurant.style);
   const heading = await doc.embedFont(
-    await (await fetch(`/fonts/social/${typeface.file}`)).arrayBuffer(),
-    { subset: true },
+    await (await fetch(typeface.printFile)).arrayBuffer(),
+    // Full static font avoids dropped compound glyphs; separate letters preserve searchable text.
+    {
+      subset: false,
+      features: { liga: false, clig: false, dlig: false, hlig: false },
+    },
   );
   const size: [number, number] =
     menu.paper === "a4" ? [595.28, 841.89] : [612, 792];
