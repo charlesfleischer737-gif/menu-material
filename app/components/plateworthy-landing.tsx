@@ -12,6 +12,7 @@ import {
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import Brand from "./brand";
 import HomepageSections from "./homepage-sections";
+import HomepageStyleGallery from "./homepage-style-gallery";
 
 const beforePhoto = "/burger-phone-original.jpg";
 const afterPhoto = "/burger-studio-transformation.png";
@@ -244,30 +245,8 @@ export default function Landing({
             </li>
           </ol>
         </section>
+        <HomepageStyleGallery />
         <HomepageSections onStart={onStart} signedIn={signedIn} />
-        <section className="pw-plan-facts" aria-labelledby="plan-facts-title">
-          <div>
-            <p className="pw-eyebrow">FREE TO START. MORE ROOM TO CREATE.</p>
-            <h2 id="plan-facts-title">Start with 5 free images.</h2>
-            <p>
-              No credit card. Full-quality photos and exports for your next menu
-              refresh, new dish, or weekly special.
-            </p>
-          </div>
-          <div className="pw-pro-offer">
-            <span className="pw-eyebrow">WHEN YOU NEED MORE, GO PRO</span>
-            <p className="pw-pro-price">
-              <strong>$9.99</strong>
-              <span>/month</span>
-            </p>
-            <p className="pw-pro-allowance">
-              100 image generations every month
-            </p>
-            <a href="/pricing">
-              Compare Free and Pro <ArrowRight size={16} />
-            </a>
-          </div>
-        </section>
         <section className="pw-start">
           <div>
             <h2>Start with one dish. See the difference.</h2>

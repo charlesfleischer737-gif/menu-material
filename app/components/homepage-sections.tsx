@@ -223,8 +223,8 @@ export default function HomepageSections({
           <div className="pw-showcase-copy">
             <span className="pw-eyebrow">ONE DISH. EVERY CHANNEL.</span>
             <h2 id="features-title">
-              A great photo.
-              <br /> So many possibilities.
+              One great photo.
+              <br /> Ready for every channel.
             </h2>
             <p>
               Your menu photo, a matching post, and a Story. Download for the

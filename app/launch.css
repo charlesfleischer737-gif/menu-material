@@ -21,33 +21,6 @@
 .pw-footer-links a {
   padding-block: 12px;
 }
-.pw-plan-facts {
-  width: min(1180px, calc(100% - 96px));
-  margin: 65px auto;
-  padding: 38px;
-  border: 1px solid #cbd7c5;
-  border-radius: 24px;
-  display: grid;
-  grid-template-columns: 1fr 1fr;
-  gap: 40px;
-  background: #f0f4e8;
-}
-.pw-plan-facts h2 {
-  font-size: clamp(1.65rem, 3vw, 2.4rem);
-  line-height: 1.1;
-  margin: 8px 0 16px;
-}
-.pw-plan-facts p {
-  line-height: 1.65;
-  margin-bottom: 16px;
-}
-.pw-plan-facts a {
-  display: inline-flex;
-  align-items: center;
-  gap: 10px;
-  text-decoration: underline;
-  text-underline-offset: 4px;
-}
 .pw-information {
   width: min(800px, calc(100% - 40px));
   margin: 65px auto 90px;
@@ -256,12 +229,6 @@
   .pw-header .pw-login {
     padding-inline: 8px;
     white-space: nowrap;
-  }
-  .pw-plan-facts {
-    width: calc(100% - 40px);
-    grid-template-columns: 1fr;
-    padding: 24px;
-    gap: 12px;
   }
   .cx-draft-filters {
     grid-template-columns: 1fr;

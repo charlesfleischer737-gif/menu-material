@@ -1,0 +1,119 @@
+{
+  "tool": "Built-in image_gen",
+  "editTarget": "public/burger-phone-original.jpg",
+  "originalSource": "https://commons.wikimedia.org/wiki/File:Hamburger_(5).jpg",
+  "attribution": "cyclonebill",
+  "license": "CC BY-SA 2.0",
+  "licenseUrl": "https://creativecommons.org/licenses/by-sa/2.0/",
+  "notes": "Illustrative AI edits. Full-size WebP files preserve every decoded source pixel; responsive sizes use Lanczos3 resizing and lossless WebP encoding. Existing homepage attribution applies to these derivatives.",
+  "assets": [
+    {
+      "style": "dark",
+      "name": "dark-editorial",
+      "prompt": "Use case: precise-object-edit.\nAsset type: square 1024x1024 commercial food photograph for Plateworthy's compact homepage style gallery.\nInput images: Image 1 is the edit target, an actual phone photo. Edit that exact burger photograph, never substitute a different burger.\nPrimary request: Improve presentation, professional lighting and environment only while preserving the exact recognizable food identity.\nSubject invariants: Keep the same broad flattened sesame bun with its recognizable geometry and sesame seed placement, same single beef patty, same tomato, same lettuce, same single white cheese slice, same ingredient count, portion, orientation and assembly. Preserve the visible tomato in front, the white cheese corner toward front-right, and the lettuce arrangement. Maintain the source's elevated three-quarter camera angle and recognizable framing relationships. Preserve the same white round ceramic plate. Retain natural imperfect food details.\nComposition/framing: Square 1024x1024 image. Entire burger and complete plate centered within the central 85% of the image; extend the surrounding scene as needed to include the complete plate. No cropped food. Do not rebuild, rotate, rearrange or restyle the food itself.\nConstraints: Remove the source's drinking glass, cutlery, colorful napkin and background clutter. Tidy stray plate crumbs and food smears only. No added garnish, extra cheese, extra ingredients, fries, side dishes, props, text, watermark, logo, collage, borders or split screen. Produce exactly one image.\nScene/backdrop: Matte charcoal tabletop and deep charcoal studio background, dark editorial food photography.\nLighting/mood: Dramatic soft side lighting with luminous natural bun texture, rich shadows that still show the patty and existing ingredients; premium moody editorial finish.",
+      "files": [
+        {
+          "path": "public/homepage/styles/burger-dark-320.webp",
+          "width": 320,
+          "bytes": 127168
+        },
+        {
+          "path": "public/homepage/styles/burger-dark-480.webp",
+          "width": 480,
+          "bytes": 264364
+        },
+        {
+          "path": "public/homepage/styles/burger-dark-640.webp",
+          "width": 640,
+          "bytes": 483684
+        },
+        {
+          "path": "public/homepage/styles/burger-dark.webp",
+          "width": 1254,
+          "bytes": 1689436
+        }
+      ]
+    },
+    {
+      "style": "color",
+      "name": "cobalt-studio",
+      "prompt": "Use case: precise-object-edit.\nAsset type: square 1024x1024 commercial food photograph for Plateworthy's compact homepage style gallery.\nInput images: Image 1 is the edit target, an actual phone photo. Edit that exact burger photograph, never substitute a different burger.\nPrimary request: Improve presentation, professional lighting and environment only while preserving the exact recognizable food identity.\nSubject invariants: Keep the same broad flattened sesame bun with its recognizable geometry and sesame seed placement, same single beef patty, same tomato, same lettuce, same single white cheese slice, same ingredient count, portion, orientation and assembly. Preserve the visible tomato in front, the white cheese corner toward front-right, and the lettuce arrangement. Maintain the source's elevated three-quarter camera angle and recognizable framing relationships. Preserve the same white round ceramic plate. Retain natural imperfect food details.\nComposition/framing: Square 1024x1024 image. Entire burger and complete plate centered within the central 85% of the image; extend the surrounding scene as needed to include the complete plate. No cropped food. Do not rebuild, rotate, rearrange or restyle the food itself.\nConstraints: Remove the source's drinking glass, cutlery, colorful napkin and background clutter. Tidy stray plate crumbs and food smears only. No added garnish, extra cheese, extra ingredients, fries, side dishes, props, text, watermark, logo, collage, borders or split screen. Produce exactly one image.\nScene/backdrop: Vivid saturated cobalt-blue seamless studio tabletop and backdrop, clean and entirely uncluttered.\nLighting/mood: Soft clean commercial studio light, true appetizing food colors and gentle natural contact shadow under the white plate; bright graphic modern studio finish.",
+      "files": [
+        {
+          "path": "public/homepage/styles/burger-color-320.webp",
+          "width": 320,
+          "bytes": 122056
+        },
+        {
+          "path": "public/homepage/styles/burger-color-480.webp",
+          "width": 480,
+          "bytes": 252124
+        },
+        {
+          "path": "public/homepage/styles/burger-color-640.webp",
+          "width": 640,
+          "bytes": 458996
+        },
+        {
+          "path": "public/homepage/styles/burger-color.webp",
+          "width": 1254,
+          "bytes": 1638546
+        }
+      ]
+    },
+    {
+      "style": "rustic",
+      "name": "rustic-oak",
+      "prompt": "Use case: precise-object-edit.\nAsset type: square 1024x1024 commercial food photograph for Plateworthy's compact homepage style gallery.\nInput images: Image 1 is the edit target, an actual phone photo. Edit that exact burger photograph, never substitute a different burger.\nPrimary request: Improve presentation, professional lighting and environment only while preserving the exact recognizable food identity.\nSubject invariants: Keep the same broad flattened sesame bun with its recognizable geometry and sesame seed placement, same single beef patty, same tomato, same lettuce, same single white cheese slice, same ingredient count, portion, orientation and assembly. Preserve the visible tomato in front, the white cheese corner toward front-right, and the lettuce arrangement. Maintain the source's elevated three-quarter camera angle and recognizable framing relationships. Preserve the same white round ceramic plate. Retain natural imperfect food details.\nComposition/framing: Square 1024x1024 image. Entire burger and complete plate centered within the central 85% of the image; extend the surrounding scene as needed to include the complete plate. No cropped food. Do not rebuild, rotate, rearrange or restyle the food itself.\nConstraints: Remove the source's drinking glass, cutlery, colorful napkin and background clutter. Tidy stray plate crumbs and food smears only. No added garnish, extra cheese, extra ingredients, fries, side dishes, props, text, watermark, logo, collage, borders or split screen. Produce exactly one image.\nScene/backdrop: Rustic warm dark oak tabletop with authentic subtle wood grain; soft dark warm restaurant background, no visible props or objects.\nLighting/mood: Warm natural restaurant light, softly modeled bun, inviting amber warmth with believable natural food colors; rustic commercial food photography.",
+      "files": [
+        {
+          "path": "public/homepage/styles/burger-rustic-320.webp",
+          "width": 320,
+          "bytes": 131170
+        },
+        {
+          "path": "public/homepage/styles/burger-rustic-480.webp",
+          "width": 480,
+          "bytes": 266306
+        },
+        {
+          "path": "public/homepage/styles/burger-rustic-640.webp",
+          "width": 640,
+          "bytes": 473952
+        },
+        {
+          "path": "public/homepage/styles/burger-rustic.webp",
+          "width": 1254,
+          "bytes": 1615880
+        }
+      ]
+    },
+    {
+      "style": "daylight",
+      "name": "sunny-cafe",
+      "prompt": "Use case: precise-object-edit.\nAsset type: square 1024x1024 commercial food photograph for Plateworthy's compact homepage style gallery.\nInput images: Image 1 is the edit target, an actual phone photo. Edit that exact burger photograph, never substitute a different burger.\nPrimary request: Improve presentation, professional lighting and environment only while preserving the exact recognizable food identity.\nSubject invariants: Keep the same broad flattened sesame bun with its recognizable geometry and sesame seed placement, same single beef patty, same tomato, same lettuce, same single white cheese slice, same ingredient count, portion, orientation and assembly. Preserve the visible tomato in front, the white cheese corner toward front-right, and the lettuce arrangement. Maintain the source's elevated three-quarter camera angle and recognizable framing relationships. Preserve the same white round ceramic plate. Retain natural imperfect food details.\nComposition/framing: Square 1024x1024 image. Entire burger and complete plate centered within the central 85% of the image; extend the surrounding scene as needed to include the complete plate. No cropped food. Do not rebuild, rotate, rearrange or restyle the food itself.\nConstraints: Remove the source's drinking glass, cutlery, colorful napkin and background clutter. Tidy stray plate crumbs and food smears only. No added garnish, extra cheese, extra ingredients, fries, side dishes, props, text, watermark, logo, collage, borders or split screen. Produce exactly one image.\nScene/backdrop: Pale stone cafe tabletop with a gently blurred bright cafe interior behind it, no distinct objects, no people, no clutter.\nLighting/mood: Sunny cafe atmosphere, gentle natural window light and soft airy shadows; fresh luminous commercial food photography with believable food colors.",
+      "files": [
+        {
+          "path": "public/homepage/styles/burger-daylight-320.webp",
+          "width": 320,
+          "bytes": 125604
+        },
+        {
+          "path": "public/homepage/styles/burger-daylight-480.webp",
+          "width": 480,
+          "bytes": 257926
+        },
+        {
+          "path": "public/homepage/styles/burger-daylight-640.webp",
+          "width": 640,
+          "bytes": 442200
+        },
+        {
+          "path": "public/homepage/styles/burger-daylight.webp",
+          "width": 1254,
+          "bytes": 1483600
+        }
+      ]
+    }
+  ]
+}
