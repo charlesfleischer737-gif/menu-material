@@ -62,13 +62,19 @@ The command prints a private one-use invitation. Open it, choose a password, and
 
 Pilot admin controls are at the bottom of the workspace. Administrators can create email-bound invitations, set total image allowances, pause generation, log support minutes, and issue one-use password-reset invitations. Invitations expire in seven days. Share them directly with the intended owner. Password resets revoke existing sessions. Passwords are salted with scrypt; sessions and invitation tokens are stored as hashes. Session cookies are HttpOnly, SameSite=Lax, and Secure on HTTPS.
 
+## One restaurant look
+
+In **Restaurant settings → My restaurant look**, choose colors, typography and a photographic style, then enable **Use my look automatically**. New photos use the saved look as their first recommendation. New posts inherit the palette and typography across template changes, with individual overrides available. Digital and printed menus use the same branding. Existing post drafts keep their saved design; published menus update only on republish. Saving a finished Photo Studio result as the restaurant look also stores its lighting, surface, plate, angle and composition choices.
+
 ## Menus and privacy
 
 Save dishes, including prices and availability, then organize them into menu sections. Save draft, preview, publish, republish, or unpublish. Copy the menu link or download its QR code after publishing. Photos are optional and must be approved for the corresponding dish. Menu prices are stored as integer hundredths of the selected currency.
 
 Published menus read a snapshot; updates to shared dish records do not change a live menu until republishing. Public asset routes only serve assets referenced by the current published snapshot, backed by a separate `public/` object copy. Source uploads, normalized references, generated versions, drafts, and captions require the restaurant's authenticated session. Deleting an image removes its menu references and denies further delivery. Previously downloaded customer copies cannot be recalled.
 
-**Current hosting access is private.** Anonymous customer access requires public access at the hosting boundary while the app continues to enforce invitation-only workspace authentication. Automatic approval review blocked that hosting audience expansion, so it remains pending user approval. Until then, customer-facing QR codes and links still encounter the hosting platform's private-site gate.
+Anonymous customer access requires **public** access at the hosting boundary; the app still enforces invitation-only workspace authentication. The sharing panel checks the published JSON endpoint without owner credentials and confirms whether guests can open it. It offers a stable link, high-resolution QR download, native link sharing, and an explicit take-offline action. Public menu responses exclude private photographic prompts, reference IDs and restaurant brand notes.
+
+Post Maker prepares reviewed PNG files before the Share tap to preserve mobile share-sheet activation. Choose a post, Story or carousel, copy the caption, then share files or download individual images. Unsupported sharing falls back to saving. HEIC uploads try the device decoder first and then the bundled converter; originals are retained. Physical iPhone/Android camera capture, HEIC variants and Instagram handoff remain device-validation tasks.
 
 ## Checks
 
@@ -78,7 +84,7 @@ npm test
 npm run build
 ```
 
-The integration suites pass 231 API/timezone checks and 18 post-flow assertions, plus explicit persistence and flow assertions. The original suite contains 80 API assertions and creates and removes its own temporary database and object store. It checks invitation reuse and email matching, password reset/session revocation, tenant isolation, upload privacy, photo approval, atomic allowance reservations, concurrent idempotency, partial-success refunds, revisions, editable captions, immutable published menus, republishing, unpublishing, deletion from menus, and cross-origin write rejection.
+The integration suites pass 240 API/timezone checks and 18 post-flow assertions, plus explicit persistence and flow assertions. The original suite contains 89 API assertions and creates and removes its own temporary database and object store. It checks invitation reuse and email matching, password reset/session revocation, tenant isolation, upload privacy, photo approval, atomic allowance reservations, concurrent idempotency, partial-success refunds, revisions, editable captions, immutable published menus, republishing, unpublishing, deletion from menus, and cross-origin write rejection.
 
 Provider HTTP calls are deterministic test fixtures in the test process only. Live API calls, real image quality, HEIC conversion across iPhone variants, phone download behavior, background job latency, and actual provider billing require connected-device pilot testing. The expansion’s core browser flow and representative phone/desktop/export views are verified in isolated local tests. The older WebMCP helper has not been fully verified. See `docs/PILOT_VALIDATION.md` for the launch checks.
 

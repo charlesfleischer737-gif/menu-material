@@ -11,6 +11,16 @@ export type Style = {
   tone: string;
   photoStyle: string;
   referenceIds: string[];
+  typography?: "modern" | "editorial" | "bold";
+  autoApply?: boolean;
+  photoPreset?: string;
+  photoDefaults?: {
+    surface: string;
+    lighting: string;
+    plate: string;
+    angle: string;
+    composition: string;
+  };
 };
 export const defaultStyle: Style = {
   primary: "#202820",
@@ -18,6 +28,9 @@ export const defaultStyle: Style = {
   tone: "Warm and welcoming",
   photoStyle: "Natural daylight",
   referenceIds: [],
+  typography: "modern",
+  autoApply: false,
+  photoPreset: "",
 };
 export const offerTypes = {
   special: "Tonight’s special",

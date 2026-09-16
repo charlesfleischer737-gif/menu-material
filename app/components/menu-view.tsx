@@ -3,6 +3,7 @@ import { useCallback, useEffect, useRef, useState } from "react";
 import { UtensilsCrossed } from "lucide-react";
 import { scheduleLabel } from "@/lib/promotions";
 import { money, Row } from "@/lib/client";
+import { brandTypeface } from "@/lib/restaurant-look";
 export default function MenuView({
   menu: initialMenu,
   slug,
@@ -107,6 +108,8 @@ export default function MenuView({
       style={
         {
           "--menu-brand": menu.restaurant.style?.primary || "#235b48",
+          "--menu-accent": menu.restaurant.style?.accent || "#f0e3c3",
+          "--menu-heading-font": `"${brandTypeface(menu.restaurant.style).family}"`,
         } as React.CSSProperties
       }
       ref={article}

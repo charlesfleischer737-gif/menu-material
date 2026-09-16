@@ -1,5 +1,6 @@
 import type { Row } from "./core";
 import { z } from "zod";
+import { checkMenuSharing } from "./menu-sharing";
 import {
   all,
   admin,
@@ -699,6 +700,8 @@ export async function handle(req: Request) {
     if (toolsResponse) return toolsResponse;
     const promotionResponse = await promotionRoute(req, p, r);
     if (promotionResponse) return promotionResponse;
+    if (p[0] === "sharing" && p[1] === "check" && method === "POST")
+      return await checkMenuSharing(req, r);
     if (p[0] === "restaurant" && method === "POST") {
       const b = z
         .object({
@@ -741,12 +744,15 @@ export async function handle(req: Request) {
                 closed: z.boolean(),
               }),
             )
-            .length(7)
+            .refine(
+              (hours) => hours.length === 0 || hours.length === 7,
+              "Set all seven days or leave opening hours empty.",
+            )
             .optional(),
         })
         .parse(await body(req));
       if (b.style) await validateStyle(r, b.style);
-      if (b.hours)
+      if (b.hours?.length)
         assert(
           new Set(b.hours.map((h) => h.day)).size === 7,
           400,

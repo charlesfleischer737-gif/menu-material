@@ -13,6 +13,42 @@ const { all, one, run } = await import("../lib/server/core.ts");
 const { recommendedPhotoStyles, photoAnalysisRecommendation } =
   await import("../lib/studio-onboarding.ts");
 const { foodFamilies, photoBrief } = await import("../lib/studio.ts");
+const { restaurantPhotoDefaults, brandPostFields } =
+  await import("../lib/restaurant-look.ts");
+const { applyPostTemplate } = await import("../lib/post-templates.ts");
+const brand = {
+  autoApply: true,
+  primary: "#235b48",
+  accent: "#eddcc0",
+  typography: "editorial",
+  photoPreset: "menu-stone",
+  photoDefaults: { lighting: "Soft daylight", surface: "Pale stone" },
+};
+const automatic = restaurantPhotoDefaults({ style: brand });
+assert.equal(automatic.look, "restaurant");
+assert.equal(automatic.lighting, "Soft daylight");
+assert.deepEqual(
+  photoAnalysisRecommendation({ ...automatic, step: 2 }, "Drinks"),
+  {},
+  "automatic restaurant look survives late image analysis",
+);
+assert.deepEqual(
+  restaurantPhotoDefaults({ style: { ...brand, autoApply: false } }),
+  {},
+  "owners can turn automatic styling off",
+);
+const brandedPost = { ...brandPostFields(brand), items: [] };
+assert.equal(
+  applyPostTemplate(brandedPost, "editorial").color,
+  brand.primary,
+  "changing layouts keeps the restaurant palette",
+);
+assert.equal(applyPostTemplate(brandedPost, "editorial").accent, brand.accent);
+assert.notEqual(
+  applyPostTemplate({ items: [] }, "editorial").accent,
+  brand.accent,
+  "legacy posts keep template behavior",
+);
 for (const family of foodFamilies) {
   for (const destination of ["menu", "delivery", "social", "print"]) {
     const recommended = recommendedPhotoStyles(family, destination);

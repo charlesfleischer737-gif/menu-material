@@ -39,6 +39,7 @@ import {
   photoExport,
 } from "@/lib/creation-export";
 import { photoAdvice } from "@/lib/photo-advice";
+import { restaurantPhotoDefaults } from "@/lib/restaurant-look";
 import {
   recommendedPhotoStyles,
   photoAnalysisRecommendation,
@@ -83,9 +84,7 @@ export default function PhotoStudio({
 }) {
   const draftStore = useCreationDraft("studio", {
       ...photoBrief(),
-      look: state.assets.some((a: Row) => a.approved_at)
-        ? "restaurant"
-        : "menu-stone",
+      ...restaurantPhotoDefaults(state.restaurant),
     }),
     { draft: b, change, save, start, ready, status, read } = draftStore;
   const root = useStepFocus(b.step, ready);
@@ -125,10 +124,27 @@ export default function PhotoStudio({
     styleCategories.find(
       (c) => c.id === (b.lookCategory || selected.category),
     ) || styleCategories[2];
-  const recommendations = recommendedPhotoStyles(
+  const suggested = recommendedPhotoStyles(
     b.recommendationFamily || b.family,
     b.destination,
   );
+  const restaurantLook = {
+    ...looks.find((l) => l.id === "restaurant")!,
+    image: state.restaurant.style?.referenceIds?.[0]
+      ? `/api/assets/${state.restaurant.style.referenceIds[0]}`
+      : photoStyles.find((l) => l.id === state.restaurant.style?.photoPreset)
+          ?.image || "/studio/styles/menu-wood.webp",
+    cue: "Your saved lighting, setting and photographic style",
+    group: "SAVED FOR YOUR RESTAURANT",
+  };
+  const recommendations = state.restaurant.style?.autoApply
+    ? [
+        restaurantLook,
+        ...suggested
+          .filter((s) => s.id !== state.restaurant.style?.photoPreset)
+          .slice(0, 2),
+      ]
+    : suggested;
   const firstImage = !state.assets.some(
     (a: Row) => a.kind === "generated" && a.approved_at,
   );
@@ -146,6 +162,13 @@ export default function PhotoStudio({
       plate: "keep",
       angle: preset.angle || "keep",
       composition: "Full dish",
+      ...(id === "restaurant"
+        ? {
+            ...restaurantPhotoDefaults({
+              style: { ...state.restaurant.style, autoApply: true },
+            }),
+          }
+        : {}),
     });
     track("style_selected", b.dishId, { look: id, category: preset.category });
   }
@@ -154,8 +177,8 @@ export default function PhotoStudio({
       ? source
       : b.look === "reference" && b.referenceId
         ? `/api/assets/${b.referenceId}`
-        : b.look === "restaurant" && state.restaurant.style?.referenceIds?.[0]
-          ? `/api/assets/${state.restaurant.style.referenceIds[0]}`
+        : b.look === "restaurant"
+          ? restaurantLook.image
           : selected.image;
   useEffect(() => {
     if (!ready || !seed || seedHandled.current === seed.token) return;
@@ -206,11 +229,11 @@ export default function PhotoStudio({
             ? 4
             : 1,
         look:
-          details.style?.photoStyle === state.restaurant.style?.photoStyle
+          details.style?.photoStyle &&
+          details.style.photoStyle === state.restaurant.style?.photoStyle
             ? "restaurant"
-            : state.assets.some((a: Row) => a.approved_at)
-              ? "restaurant"
-              : "menu-stone",
+            : "menu-stone",
+        ...(!prior ? restaurantPhotoDefaults(state.restaurant) : {}),
       });
       setAccurate(false);
       setAdjust("");
@@ -252,6 +275,7 @@ export default function PhotoStudio({
       angle: "keep",
       surface: "As shown",
       lighting: "As shown",
+      ...restaurantPhotoDefaults(state.restaurant),
     });
   }
   async function openQuickEdits() {
@@ -325,6 +349,7 @@ export default function PhotoStudio({
         look: recommended.id,
         lookCategory: recommended.category,
         angle: "keep",
+        ...restaurantPhotoDefaults(state.restaurant),
       });
       setCatalog(false);
       setFine(false);
@@ -489,12 +514,28 @@ export default function PhotoStudio({
       cuisine: state.restaurant.cuisine,
       brand: state.restaurant.brand,
       currency: state.restaurant.currency,
-      style: { ...styleFor(b, state.restaurant), referenceIds: [ref.id] },
+      style: {
+        ...styleFor(b, state.restaurant),
+        referenceIds: [ref.id],
+        autoApply: true,
+        photoPreset: photoStyles.some((s) => s.id === b.look)
+          ? b.look
+          : state.restaurant.style?.photoPreset || "",
+        photoDefaults: {
+          surface: b.surface,
+          lighting: b.lighting,
+          plate: b.plate,
+          angle: b.angle,
+          composition: b.composition,
+        },
+      },
     });
     change({ savedLook: true });
     await save();
     await refresh();
-    setNotice("Your restaurant look is saved for your next dish.");
+    setNotice(
+      "Your restaurant look is saved and will be used automatically for new photos and posts. Adjust colors and typography in Your restaurant.",
+    );
   }
   if (!ready)
     return (
@@ -525,9 +566,7 @@ export default function PhotoStudio({
               analysisSource.current = "";
               await start({
                 ...photoBrief(b.destination),
-                look: state.assets.some((a: Row) => a.approved_at)
-                  ? "restaurant"
-                  : "menu-stone",
+                ...restaurantPhotoDefaults(state.restaurant),
               });
               setAdjust("");
               setAccurate(false);

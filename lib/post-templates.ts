@@ -198,8 +198,9 @@ export function applyPostTemplate(draft: Row, id: string) {
     ...(!draft.title || retiredHeadlines.includes(draft.title)
       ? { title: draft.items?.[0]?.name || "" }
       : {}),
-    color: t.color,
-    accent: t.accent,
+    color: draft.brandMode === "restaurant" ? draft.color : t.color,
+    accent: draft.brandMode === "restaurant" ? draft.accent : t.accent,
+    ...(draft.brandMode === "restaurant" ? { brandMode: "restaurant" } : {}),
     kicker: t.kicker,
     cta: t.cta,
     textMode: t.textMode,

@@ -4,8 +4,6 @@ import {
   Camera,
   Check,
   Download,
-  Copy,
-  Share2,
   ImagePlus,
   Sparkles,
   Plus,
@@ -16,7 +14,7 @@ import {
   PartyPopper,
 } from "lucide-react";
 import { api, downloadBlob, money, type Row } from "@/lib/client";
-import { campaignZip, canvasBlob, renderPost } from "@/lib/creation-export";
+import { campaignZip, renderPost } from "@/lib/creation-export";
 import {
   postPage,
   postCaption,
@@ -24,6 +22,8 @@ import {
   postDetailError,
 } from "@/lib/post-flow";
 import { emptyAdjustments } from "@/lib/studio";
+import PostSharing from "./post-sharing";
+import { brandPostFields, brandTypefaces } from "@/lib/restaurant-look";
 import {
   postTemplates,
   postTemplateGroups,
@@ -68,6 +68,7 @@ function initial(restaurant: Row) {
     caption: "",
     captionMode: "",
     reviewed: false,
+    ...(restaurant.style?.autoApply ? brandPostFields(restaurant.style) : {}),
   };
 }
 export function PostCanvas({
@@ -103,6 +104,8 @@ export function PostCanvas({
       accent: draft.accent,
       kicker: draft.kicker,
       cta: draft.cta,
+      typography: draft.typography,
+      brandMode: draft.brandMode,
     },
     restaurant: {
       name: restaurant.name,
@@ -195,7 +198,6 @@ export default function PostMaker({
     [slide, setSlide] = useState(0),
     [saved, setSaved] = useState<Row[]>([]),
     [showSaved, setShowSaved] = useState(false),
-    [canShare, setCanShare] = useState(false),
     seedHandled = useRef("");
   const approved = state.dishes
       .map((d: Row) => ({
@@ -207,7 +209,15 @@ export default function PostMaker({
       .filter((d: Row) => d.photo),
     items: Row[] = b.items || [];
   function update(p: Row) {
-    change(updatePost(b, p, state.restaurant));
+    const customized =
+      !p.brandMode && ("color" in p || "accent" in p || "typography" in p);
+    change(
+      updatePost(
+        b,
+        { ...(customized ? { brandMode: "custom" } : {}), ...p },
+        state.restaurant,
+      ),
+    );
   }
   function selectTemplate(id: string) {
     update(applyPostTemplate(b, id));
@@ -258,9 +268,6 @@ export default function PostMaker({
     setShowPicker(false);
   }
   useEffect(() => {
-    setCanShare(typeof navigator.share === "function");
-  }, []);
-  useEffect(() => {
     if (!ready || !seed || seedHandled.current === seed.token) return;
     seedHandled.current = seed.token;
     void act("Opening your post", async () => {
@@ -286,16 +293,6 @@ export default function PostMaker({
   }, [ready, seed]);
   function captionStarter(short = false) {
     return postCaption(b, state.restaurant, short);
-  }
-  async function exportOne(format: string, index = 0) {
-    const c = document.createElement("canvas");
-    await renderPost(c, b, state.restaurant, format, index);
-    const blob = await canvasBlob(c, "image/png");
-    const filename = `${state.restaurant.slug}-${format}${format === "carousel" ? "-" + (index + 1) : ""}.png`;
-    downloadBlob(blob, filename);
-    track("export_complete", undefined, { format: "post-" + format });
-    setNotice("Image saved. You can upload it to your social account.");
-    return { blob, filename };
   }
   async function continueStep() {
     const error = postDetailError(b, state.assets);
@@ -847,16 +844,28 @@ export default function PostMaker({
                       />
                     </Field>
                   </div>
+                  <Field label="Typography">
+                    <select
+                      value={b.typography || "template"}
+                      onChange={(e) => update({ typography: e.target.value })}
+                    >
+                      <option value="template">This design’s typography</option>
+                      {brandTypefaces.map((font) => (
+                        <option key={font.id} value={font.id}>
+                          {font.name}
+                        </option>
+                      ))}
+                    </select>
+                  </Field>
                   <button
                     className="cx-link"
                     onClick={() =>
-                      update({
-                        color: state.restaurant.style?.primary || b.color,
-                        accent: state.restaurant.style?.accent || b.accent,
-                      })
+                      update(brandPostFields(state.restaurant.style))
                     }
                   >
-                    Use my restaurant colors
+                    {b.brandMode === "restaurant"
+                      ? "Restaurant look applied · refresh"
+                      : "Use my restaurant look"}
                   </button>
                 </div>
               )}
@@ -1101,56 +1110,14 @@ export default function PostMaker({
                 />
                 I’ve checked the images, text, prices and dates.
               </label>
-              {b.channels.map((c: string) =>
-                c === "carousel" ? (
-                  items.map((i, n) => (
-                    <button
-                      className="cx-btn cx-secondary cx-full"
-                      key={i.dishId}
-                      disabled={!b.reviewed || !!busy}
-                      onClick={() =>
-                        act("Saving your slide", async () => {
-                          await exportOne(c, n);
-                        })
-                      }
-                    >
-                      <Download size={17} />
-                      Save carousel slide {n + 1}
-                    </button>
-                  ))
-                ) : (
-                  <button
-                    className="cx-btn cx-secondary cx-full"
-                    key={c}
-                    disabled={!b.reviewed || !!busy}
-                    onClick={() =>
-                      act("Saving your image", async () => {
-                        await exportOne(c);
-                      })
-                    }
-                  >
-                    <Download size={17} />
-                    Save {c === "feed" ? "feed image" : "story image"}
-                  </button>
-                ),
-              )}
+              <PostSharing
+                draft={b}
+                restaurant={state.restaurant}
+                busy={!!busy}
+                notice={setNotice}
+              />
               <button
                 className="cx-btn cx-secondary cx-full"
-                disabled={!b.reviewed || !!busy}
-                onClick={() =>
-                  act("Copying your caption", async () => {
-                    await navigator.clipboard.writeText(b.caption);
-                    setNotice(
-                      "Caption copied. Paste it into your social post.",
-                    );
-                  })
-                }
-              >
-                <Copy size={17} />
-                Copy caption
-              </button>
-              <button
-                className="cx-btn cx-full"
                 disabled={!b.reviewed || !!busy}
                 onClick={() =>
                   act("Preparing your campaign files", async () => {
@@ -1169,35 +1136,6 @@ export default function PostMaker({
                 <Download size={17} />
                 Download campaign ZIP
               </button>
-              {canShare && (
-                <button
-                  className="cx-btn cx-secondary cx-full"
-                  disabled={!b.reviewed || !!busy}
-                  onClick={() =>
-                    act("Opening your share sheet", async () => {
-                      const c = document.createElement("canvas");
-                      await renderPost(c, b, state.restaurant, b.channels[0]);
-                      const file = new File(
-                        [await canvasBlob(c, "image/png")],
-                        `${state.restaurant.slug}-post.png`,
-                        { type: "image/png" },
-                      );
-                      if (navigator.canShare?.({ files: [file] }))
-                        await navigator.share({
-                          files: [file],
-                          text: b.caption,
-                        });
-                      else
-                        throw Error(
-                          "Sharing images isn’t supported here. Save the image and copy the caption instead.",
-                        );
-                    })
-                  }
-                >
-                  <Share2 size={17} />
-                  Share image & caption
-                </button>
-              )}
               <p className="cx-hint">
                 Saving or sharing opens your files or apps. It does not
                 automatically publish a social post.

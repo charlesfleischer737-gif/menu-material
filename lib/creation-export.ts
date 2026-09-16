@@ -166,13 +166,15 @@ export async function menuPdf(menu: Row) {
   const fontkit = await import("@pdf-lib/fontkit");
   const doc = await PDFDocument.create();
   doc.registerFontkit(fontkit.default);
-  const [regular, bold] = await Promise.all(
-    ["Regular", "Bold"].map(async (name) =>
-      doc.embedFont(
-        await (await fetch(`/fonts/MenuSans-${name}.ttf`)).arrayBuffer(),
-        { subset: true },
-      ),
-    ),
+  const regular = await doc.embedFont(
+    await (await fetch("/fonts/MenuSans-Regular.ttf")).arrayBuffer(),
+    { subset: true },
+  );
+  const { brandTypeface } = await import("./restaurant-look");
+  const typeface = brandTypeface(menu.restaurant.style);
+  const heading = await doc.embedFont(
+    await (await fetch(`/fonts/social/${typeface.file}`)).arrayBuffer(),
+    { subset: true },
   );
   const size: [number, number] =
     menu.paper === "a4" ? [595.28, 841.89] : [612, 792];
@@ -230,6 +232,17 @@ export async function menuPdf(menu: Row) {
         )
       : ink;
   const supported = new Set(regular.getCharacterSet());
+  const headingSupported = new Set(heading.getCharacterSet());
+  const headingText = [
+    menu.restaurant.name,
+    ...menu.sections.flatMap((s: Row) => [
+      s.name,
+      ...s.items.flatMap((i: Row) => [
+        i.name,
+        money(i.price, menu.restaurant.currency),
+      ]),
+    ]),
+  ].join(" ");
   const fullText = [
     menu.restaurant.name,
     ...menu.sections.flatMap((s: Row) => [
@@ -242,7 +255,12 @@ export async function menuPdf(menu: Row) {
     ]),
   ].join(" ");
   if (
-    [...fullText].some((ch) => ch.trim() && !supported.has(ch.codePointAt(0)!))
+    [...fullText].some(
+      (ch) => ch.trim() && !supported.has(ch.codePointAt(0)!),
+    ) ||
+    [...headingText].some(
+      (ch) => ch.trim() && !headingSupported.has(ch.codePointAt(0)!),
+    )
   )
     throw Error(
       "Our print font cannot display every character in this menu yet. Your digital menu keeps the original text.",
@@ -269,7 +287,7 @@ export async function menuPdf(menu: Row) {
     const title = lineWrap(
       menu.restaurant.name,
       width - (logo ? 60 : 0),
-      bold,
+      heading,
       24,
     );
     for (const line of title) {
@@ -277,11 +295,22 @@ export async function menuPdf(menu: Row) {
         x: titleX,
         y: y - 24,
         size: 24,
-        font: bold,
+        font: heading,
         color: headingColor,
       });
       y -= 30;
     }
+    const accent = menu.restaurant.style?.accent || "#f0e3c3";
+    page.drawLine({
+      start: { x: margin, y: y - 5 },
+      end: { x: margin + 45, y: y - 5 },
+      thickness: 3,
+      color: rgb(
+        ...([0, 2, 4].map(
+          (i) => parseInt(accent.slice(1 + i, 3 + i), 16) / 255,
+        ) as [number, number, number]),
+      ),
+    });
     y -= 16;
   };
   setup();
@@ -323,7 +352,7 @@ export async function menuPdf(menu: Row) {
     page.drawText(section.name, {
       x: margin,
       y: y - 16,
-      font: bold,
+      font: heading,
       size: 15,
       color: ink,
     });
@@ -334,7 +363,7 @@ export async function menuPdf(menu: Row) {
       for (let i = 0; i < section.items.length; i += 2) {
         const cards = section.items.slice(i, i + 2).map((item: Row) => ({
           item,
-          names: lineWrap(item.name, cw, bold, 12),
+          names: lineWrap(item.name, cw, heading, 12),
           descs: lineWrap(item.description || "", cw, regular, 10),
         }));
         const photoH = cards.some((c: Row) => c.item.photoId) ? 145 : 0;
@@ -357,7 +386,7 @@ export async function menuPdf(menu: Row) {
           page.drawText(section.name + " (continued)", {
             x: margin,
             y: y - 16,
-            font: bold,
+            font: heading,
             size: 15,
             color: ink,
           });
@@ -370,7 +399,13 @@ export async function menuPdf(menu: Row) {
             await putPhoto(item.photoId, x, y - photoH, cw, photoH, item.name);
           let ty = y - photoH - 18;
           for (const line of names) {
-            page.drawText(line, { x, y: ty, size: 12, font: bold, color: ink });
+            page.drawText(line, {
+              x,
+              y: ty,
+              size: 12,
+              font: heading,
+              color: ink,
+            });
             ty -= 15;
           }
           ty -= 4;
@@ -389,7 +424,7 @@ export async function menuPdf(menu: Row) {
             x,
             y: ty,
             size: 11,
-            font: bold,
+            font: heading,
             color: ink,
           });
           if (!item.available)
@@ -414,7 +449,7 @@ export async function menuPdf(menu: Row) {
       const pw = featured ? width : 100,
         ph = featured ? 180 : 90;
       const tw = photo && !featured ? width - 118 : width;
-      const names = lineWrap(item.name, tw - 75, bold, 12),
+      const names = lineWrap(item.name, tw - 75, heading, 12),
         descs = lineWrap(item.description || "", tw, regular, 10);
       const textH =
           names.length * 15 +
@@ -431,7 +466,7 @@ export async function menuPdf(menu: Row) {
         page.drawText(section.name + " (continued)", {
           x: margin,
           y: y - 16,
-          font: bold,
+          font: heading,
           size: 15,
           color: ink,
         });
@@ -452,16 +487,16 @@ export async function menuPdf(menu: Row) {
           x: margin,
           y: y - 13 - j * 15,
           size: 12,
-          font: bold,
+          font: heading,
           color: ink,
         }),
       );
       const price = money(item.price, menu.restaurant.currency);
       page.drawText(price, {
-        x: margin + tw - bold.widthOfTextAtSize(price, 11),
+        x: margin + tw - heading.widthOfTextAtSize(price, 11),
         y: y - 13,
         size: 11,
-        font: bold,
+        font: heading,
         color: ink,
       });
       const dy = y - names.length * 15 - 12;

@@ -3,6 +3,7 @@ import { money, type Row } from "./client";
 import { getPostTemplate } from "./post-templates";
 import { emptyAdjustments } from "./studio";
 import { loadPostFonts } from "./post-fonts";
+import { brandTypeface } from "./restaurant-look";
 
 export async function renderPost(
   canvas: HTMLCanvasElement,
@@ -97,15 +98,17 @@ export async function renderPost(
       options.family ||
       (options.italic ? "italic" : options.serif ? "serif" : "sans");
     const font =
-      '"' +
-      {
-        sans: "Post Sans",
-        serif: "Post Serif",
-        italic: "Post Italic",
-        condensed: "Post Condensed",
-        hand: "Post Hand",
-      }[family] +
-      '"';
+      draft.typography && draft.typography !== "template" && size >= 45
+        ? `"${brandTypeface({ typography: draft.typography }).family}"`
+        : '"' +
+          {
+            sans: "Post Sans",
+            serif: "Post Serif",
+            italic: "Post Italic",
+            condensed: "Post Condensed",
+            hand: "Post Hand",
+          }[family] +
+          '"';
     let lines: string[] = [],
       fs = size;
     const wrap = () => {

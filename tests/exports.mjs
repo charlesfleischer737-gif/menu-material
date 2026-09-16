@@ -143,6 +143,60 @@ const draft = {
 };
 const { postTemplates, applyPostTemplate, postTemplateExample } =
   await import("../lib/post-templates.ts");
+const { brandTypefaces, brandPostFields } =
+  await import("../lib/restaurant-look.ts");
+for (const font of brandTypefaces) {
+  const branded = {
+    ...restaurant,
+    style: { ...restaurant.style, typography: font.id, autoApply: true },
+  };
+  const pdf = await menuPdf({
+    restaurant: branded,
+    sections: [{ name: "Mains", items }],
+    layout: "featured",
+    paper: "letter",
+    appearance: "light",
+  });
+  const pdfTask = pdfjs.getDocument({
+    data: new Uint8Array(await pdf.blob.arrayBuffer()),
+    useSystemFonts: true,
+  });
+  const document = await pdfTask.promise;
+  const page = await document.getPage(1);
+  const text = (await page.getTextContent()).items
+    .map((item) => item.str)
+    .join(" ");
+  assert(
+    text.includes(restaurant.name) && text.includes("18.50"),
+    `${font.id} print menu preserves name and price`,
+  );
+  await pdfTask.destroy();
+  checks++;
+  for (const template of postTemplates) {
+    for (const channel of ["feed", "story"]) {
+      const styled = { ...draft, ...brandPostFields(branded.style) };
+      const design = {
+        ...styled,
+        ...applyPostTemplate(styled, template.id),
+        textMode: "full",
+      };
+      const c = canvas();
+      const rendered = await renderPost(c, design, branded, channel);
+      for (const box of rendered.textBoxes) {
+        assert(
+          box.x >= 35 && box.x + box.width <= 1045,
+          `${font.id}/${template.id}/${channel} fits horizontal margins`,
+        );
+        assert(
+          box.y >= (channel === "story" ? 150 : 40) &&
+            box.y + box.height <= (channel === "story" ? 1780 : 1320),
+          `${font.id}/${template.id}/${channel} fits vertical safe areas`,
+        );
+      }
+      checks++;
+    }
+  }
+}
 for (const template of [
   "photo",
   "price",

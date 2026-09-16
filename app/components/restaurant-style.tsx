@@ -3,6 +3,7 @@ import { useState } from "react";
 import { Button } from "@/components/ui/button";
 import { api, normalizePhoto, type Row } from "@/lib/client";
 import { defaultStyle } from "@/lib/promotions";
+import RestaurantLookEditor from "./restaurant-look-editor";
 export default function RestaurantStyle({
   profile,
   setProfile,
@@ -26,22 +27,7 @@ export default function RestaurantStyle({
         }));
   return (
     <>
-      <h3 className="style-heading">Your reusable style</h3>
-      <div className="two-fields">
-        {[
-          ["primary", "Brand color"],
-          ["accent", "Accent color"],
-        ].map(([key, label]) => (
-          <label className="field" key={key}>
-            {label}
-            <input
-              type="color"
-              value={style[key]}
-              onChange={(e) => change(key, e.target.value)}
-            />
-          </label>
-        ))}
-      </div>
+      <RestaurantLookEditor {...{ profile, setProfile, style }} />
       <label className="field">
         Caption tone
         <input
@@ -49,22 +35,6 @@ export default function RestaurantStyle({
           maxLength={150}
           onChange={(e) => change("tone", e.target.value)}
         />
-      </label>
-      <label className="field">
-        Preferred photo style
-        <select
-          value={style.photoStyle}
-          onChange={(e) => change("photoStyle", e.target.value)}
-        >
-          {[
-            "Natural daylight",
-            "Lighting and color cleanup",
-            "Background styling — simple tabletop",
-            "Warm restaurant lighting",
-          ].map((v) => (
-            <option key={v}>{v}</option>
-          ))}
-        </select>
       </label>
       <label className="field">
         Your tables, backgrounds or menu photos{" "}

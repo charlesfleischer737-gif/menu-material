@@ -11,15 +11,15 @@ import {
   Smartphone,
   Printer,
   Download,
-  QrCode,
   Sparkles,
-  ExternalLink,
 } from "lucide-react";
 import { api, downloadBlob, type Row } from "@/lib/client";
 import { looks, styleFor } from "@/lib/studio";
 import { menuPdf } from "@/lib/creation-export";
 import MenuView from "./menu-view";
 import PrintPreview from "./print-preview";
+import MenuSharing from "./menu-sharing";
+import { brandTypeface } from "@/lib/restaurant-look";
 import {
   Feedback,
   Field,
@@ -182,8 +182,7 @@ export default function MenuBuilder({
       warnings: string[];
       pages: number;
     } | null>(null),
-    [pdfError, setPdfError] = useState(""),
-    [qr, setQr] = useState("");
+    [pdfError, setPdfError] = useState("");
   const seedHandled = useRef(""),
     pdfUrl = useRef(""),
     batchKey = useRef("");
@@ -1190,18 +1189,19 @@ export default function MenuBuilder({
                   ? "Publish menu updates"
                   : "Publish menu"}
               </button>
-              {state.restaurant.published && (
-                <a
-                  className="cx-link"
-                  href={"/m/" + state.restaurant.slug}
-                  target="_blank"
-                  rel="noreferrer"
-                >
-                  Open published menu <ExternalLink size={15} />
-                </a>
-              )}
+              <MenuSharing
+                restaurant={state.restaurant}
+                busy={!!busy}
+                act={act}
+                refresh={refresh}
+                notice={setNotice}
+              />
               <div className="cx-rule" />
               <h3>Make it print-ready.</h3>
+              <p className="cx-brand-applied">
+                Your restaurant colors ·{" "}
+                {brandTypeface(state.restaurant.style).name}
+              </p>
               <Field label="Paper size">
                 <select
                   value={b.paper}
@@ -1240,34 +1240,6 @@ export default function MenuBuilder({
                 <Download size={17} />
                 Download print PDF
               </button>
-              <button
-                className="cx-btn cx-secondary cx-full"
-                disabled={!state.restaurant.published || !!busy}
-                onClick={() =>
-                  act("Preparing your QR code", async () => {
-                    const { default: QR } = await import("qrcode");
-                    const url = await QR.toDataURL(
-                      location.origin + "/m/" + state.restaurant.slug,
-                      { width: 1000, margin: 4, errorCorrectionLevel: "M" },
-                    );
-                    setQr(url);
-                    downloadBlob(
-                      await (await fetch(url)).blob(),
-                      `${state.restaurant.slug}-menu-qr.png`,
-                    );
-                  })
-                }
-              >
-                <QrCode size={17} />
-                Download menu QR
-              </button>
-              {qr && (
-                <img
-                  src={qr}
-                  alt="QR code for your published menu"
-                  className="cx-qr"
-                />
-              )}
               <p className="cx-hint">
                 Price edits change your draft. Publish to update the digital
                 menu, and download a fresh PDF for new printed copies.

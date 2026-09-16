@@ -23,6 +23,14 @@ The upload screen includes a labeled, interactive before/after example and simpl
 
 Creation shows the actual queue or processing state with the original and chosen style, without a simulated countdown. Result review opens with a draggable, keyboard-accessible comparison of the full original and edited images. Individual original/result views and zoom remain available. After naming and fidelity approval, “Save & download” saves the image and starts its download in one action; delivery exports still require the full-dish crop check. Quick adjustments must be saved as a new version first. If a download fails after approval, the approved photo remains in My Dishes and the download can be retried.
 
+## Restaurant look and customer sharing
+
+Restaurant settings now include a visual preview, brand and accent colors, three typography choices, all 28 photographic presets, and an explicit automatic-look setting. Saving a finished studio result stores its references and photographic controls and turns on automatic use. New uploads show that saved look first without later analysis overriding it. New posts preserve the saved palette when changing templates; custom typography and color overrides remain available. Restaurant look changes do not overwrite existing post drafts. Digital menus and embedded-font print PDFs use the selected typography, primary color and accent.
+
+Published menus have a stable guest URL, downloadable 1,000 px QR code, native link sharing and a take-offline action. A server check requests the public menu endpoint with no owner credentials or redirect following; a failed check never claims guest access. Public menu data excludes photo-style prompts, private reference IDs and brand notes. Drafts, source images, settings and publishing actions remain authenticated. Guest access also requires the Sites audience to be public.
+
+Post Maker's final step prepares reviewed PNG files before the share tap, offers feed/Story/carousel selection, caption copying and native sharing where supported, and keeps individual image downloads as the fallback. It never automatically posts to social accounts. Upload normalization tries native HEIC decoding before conversion and retains the original. Download object URLs remain available long enough for mobile save dialogs.
+
 ## Persistence and generation
 
 Creation drafts are stored per restaurant with revision checks. Originals and successful outputs remain private and immutable. Quick edits create new asset records and preserve original identity through an asset lineage table. Browsing looks, adjusting crops, editing layouts/text and exporting do not invoke the image model.
@@ -36,9 +44,10 @@ New migrations `0003` and `0004` only add creation drafts, edit lineage and batc
 ## Validation
 
 - `npm run typecheck`: passed.
-- `npm test`: 231 API/timezone checks (80 original, 89 expansion, 62 creation), 18 post-flow assertions, plus assertions for one-result default, duplicate submissions, allowance, cache, private approvals, draft conflicts, photo lineage, no-model quick edits, sample failure retry, approved continuation, immutable batch settings, analysis cache/usage and tenant isolation.
-- `npm run test:exports`: 57 export checks, including all three menu layouts at A4 and US Letter, embedded-text prices, all ten new post designs and legacy mappings, feed/story dimensions, carousel ZIP contents, and clean delivery JPEG.
+- `npm test`: 240 API/timezone checks (89 original, 89 expansion, 62 creation), 18 post-flow assertions, plus assertions for one-result default, duplicate submissions, allowance, cache, private approvals, draft conflicts, photo lineage, no-model quick edits, sample failure retry, approved continuation, immutable batch settings, analysis cache/usage and tenant isolation.
+- `npm run test:exports`: 120 export checks, including all three menu layouts at A4 and US Letter, embedded-text prices, all ten new post designs and legacy mappings, feed/story dimensions, carousel ZIP contents, and clean delivery JPEG.
 - Browser review in an isolated local restaurant: opening saved drafts, original/quick-edit history, visual look and crop steps, keyboard adjustment, photo-to-menu reuse, menu content review/layouts/optional photos, actual PDF canvas preview, publication, factual special caption, channel crop independence, sharing approval and ZIP creation. Phone-width DOM checks found no horizontal overflow. Desktop screenshots and rendered export artifacts were inspected.
+- Additional browser checks: restaurant-look settings save with blank opening hours; JPG upload selects the saved look; menu publication confirms anonymous access; template changes retain restaurant typography and colors; reviewed post download works; Story files prepare independently. Menu and post sharing fit a 390 px viewport without horizontal overflow or broken preview images. Physical phone camera and Instagram handoff were not available for this validation.
 - Export fixtures and QA restaurant records are isolated from production. New style images are explicitly labeled reference examples, never presented as generated customer results. Asset prompts are in `STUDIO_IMAGE_PROMPTS.json`.
 
 ## Service connection and practical limits
@@ -47,7 +56,7 @@ OpenAI Developers is installed, and the owner's existing API key is stored as a 
 
 Fixture tests do not measure live image quality or billing. Wider food-fidelity, latency and cost testing remains a pilot task. The existing protected job runner also needs its secret and an external persistent scheduler for reliable dispatch and archival while all browsers are closed. The creation screen asks users to keep the tab open; persisted response IDs support reopening work. Hosting does not automatically provision the external runner.
 
-HEIC conversion and native save/share still require physical phone checks across supported devices. The bundled print font covers its supported scripts; unsupported characters produce a clear print warning rather than silently losing original text. PDFs use safe home-print margins; professional full-bleed printer profiles are not supplied. Social accounts are not connected for automatic publishing. Private Sites access still applies to hosted menu links and QR destinations until the site audience is intentionally changed.
+HEIC conversion and native save/share still require physical phone checks across supported devices. The bundled print font covers its supported scripts; unsupported characters produce a clear print warning rather than silently losing original text. PDFs use safe home-print margins; professional full-bleed printer profiles are not supplied. Social accounts are not connected for automatic publishing. The sharing panel checks anonymous menu access; private hosting gates are reported instead of being mistaken for a working guest link.
 
 ## Delivery profiles
 

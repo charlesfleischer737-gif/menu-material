@@ -20,19 +20,37 @@ export async function api(path: string, body?: unknown, method?: string) {
   return data;
 }
 export async function normalizePhoto(file: File): Promise<Blob> {
+  if (!file.size)
+    throw Error("This photo is empty. Please choose another photo.");
   if (file.size > 20 * 1024 * 1024)
     throw Error("Please choose a photo smaller than 20 MB.");
-  let source: Blob = file;
-  if (/\.hei[cf]$/i.test(file.name) || /hei[cf]/.test(file.type)) {
-    const { default: heic2any } = await import("heic2any");
-    const result = await heic2any({
-      blob: file,
-      toType: "image/jpeg",
-      quality: 0.9,
-    });
-    source = Array.isArray(result) ? result[0] : result;
+  let bitmap: ImageBitmap;
+  try {
+    // Let devices with native HEIC support keep orientation and avoid conversion.
+    bitmap = await createImageBitmap(file, { imageOrientation: "from-image" });
+  } catch {
+    if (/\.hei[cf]$/i.test(file.name) || /hei[cf]/i.test(file.type)) {
+      try {
+        const { default: heic2any } = await import("heic2any");
+        const result = await heic2any({
+          blob: file,
+          toType: "image/jpeg",
+          quality: 0.9,
+        });
+        bitmap = await createImageBitmap(
+          Array.isArray(result) ? result[0] : result,
+          { imageOrientation: "from-image" },
+        );
+      } catch {
+        throw Error(
+          "This HEIC photo couldn’t be opened. Choose a JPEG version, or use Take a photo.",
+        );
+      }
+    } else
+      throw Error(
+        "This photo couldn’t be opened. Choose a JPG, PNG or HEIC photo and try again.",
+      );
   }
-  const bitmap = await createImageBitmap(source);
   if (bitmap.width * bitmap.height > 80_000_000) {
     bitmap.close();
     throw Error(
@@ -85,7 +103,10 @@ export async function exportImage(asset: Row, format: string, ratio: string) {
       0.94,
     ),
   );
-  downloadBlob(blob, `plateworthy-${ratio}.${format === "jpeg" ? "jpg" : "png"}`);
+  downloadBlob(
+    blob,
+    `plateworthy-${ratio}.${format === "jpeg" ? "jpg" : "png"}`,
+  );
   await api("events", { kind: "image_downloaded", entityId: asset.id });
 }
 export function downloadBlob(blob: Blob, name: string) {
@@ -93,8 +114,11 @@ export function downloadBlob(blob: Blob, name: string) {
   const a = document.createElement("a");
   a.href = url;
   a.download = name;
+  document.body.appendChild(a);
   a.click();
-  setTimeout(() => URL.revokeObjectURL(url), 1000);
+  a.remove();
+  // Mobile save sheets may continue reading after the click handler finishes.
+  setTimeout(() => URL.revokeObjectURL(url), 60000);
 }
 export function money(price: number, currency = "USD") {
   return new Intl.NumberFormat(undefined, {

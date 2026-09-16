@@ -8,6 +8,7 @@ process.env.DISHLIGHT_DATA_DIR = root;
 process.env.OPENAI_API_KEY = "test-only-not-a-real-key";
 process.env.IMAGE_COST_ESTIMATE_USD = "0.12";
 process.env.BOOTSTRAP_OWNER_EMAIL = "bootstrap@example.test";
+process.env.APP_ORIGIN = "http://localhost";
 const { handle } = await import("../lib/server/api.ts");
 const { one, all, run } = await import("../lib/server/core.ts");
 const photos = readFileSync("public/pasta.jpg");
@@ -18,7 +19,20 @@ let cookie = "",
   promptSeen = "",
   phase = "partial";
 const responses = new Map();
+let publicCheckMode = "open";
 globalThis.fetch = async (url, init = {}) => {
+  if (String(url).startsWith("http://localhost/api/public/")) {
+    assert.equal(init.credentials, "omit");
+    assert.equal(init.redirect, "manual");
+    assert(!new Headers(init.headers).has("cookie"));
+    assert(!new Headers(init.headers).has("authorization"));
+    return publicCheckMode === "open"
+      ? handle(new Request(url, { headers: init.headers }))
+      : new Response(null, {
+          status: 302,
+          headers: { location: "/signin-with-chatgpt" },
+        });
+  }
   assert(String(url).startsWith("https://api.openai.com/v1/"));
   if (init.method === "POST") {
     const b = JSON.parse(init.body);
@@ -171,6 +185,34 @@ try {
   fd.set("dishId", dishId);
   const asset = await call("assets", fd, 201);
   const sourceId = asset.id;
+  const profile = (await call("state")).restaurant;
+  const savedLook = {
+    primary: "#183e31",
+    accent: "#e4cc92",
+    tone: "Warm and welcoming",
+    typography: "editorial",
+    autoApply: true,
+    photoPreset: "menu-stone",
+    photoStyle: "Private photographic instructions",
+    referenceIds: [],
+    photoDefaults: {
+      surface: "Pale stone",
+      lighting: "Soft daylight",
+      plate: "keep",
+      angle: "keep",
+      composition: "Room around the plate",
+    },
+  };
+  await call("restaurant", {
+    ...profile,
+    brand: "Private preferences",
+    style: savedLook,
+  });
+  assert.deepEqual(
+    (await call("state")).restaurant.style,
+    savedLook,
+    "restaurant look settings persist together",
+  );
   const menu = {
     sections: [
       { id: "mains", name: "Mains", items: [{ dishId, photoId: sourceId }] },
@@ -180,12 +222,36 @@ try {
   await call("menu/publish", {}, 400);
   await call(`assets/${sourceId}/approve`, { accurate: true });
   await call("menu/publish", {});
+  assert.equal((await call("sharing/check", {})).accessible, true);
+  publicCheckMode = "locked";
+  assert.equal(
+    (await call("sharing/check", {})).accessible,
+    false,
+    "a sign-in redirect is not a working guest link",
+  );
+  publicCheckMode = "open";
   let state = await call("state");
   const slug = state.restaurant.slug;
   cookie = "";
+  await call("sharing/check", {}, 401);
+  await call("restaurant", { ...profile, style: savedLook }, 401);
+  await call("menu/publish", {}, 401);
+  await call("creation-drafts", undefined, 401);
   await call("assets/" + sourceId, undefined, 401);
   let pub = await call("public/" + slug);
   assert.equal(pub.menu.sections[0].items[0].name, "Tomato pasta");
+  assert.deepEqual(pub.menu.restaurant.style, {
+    primary: savedLook.primary,
+    accent: savedLook.accent,
+    typography: "editorial",
+  });
+  assert.equal(
+    pub.menu.restaurant.brand,
+    undefined,
+    "private brand notes never appear in the diner payload",
+  );
+  assert.equal(pub.menu.restaurant.style.photoStyle, undefined);
+  assert.equal(pub.menu.restaurant.style.referenceIds, undefined);
   await call(`public/${slug}/assets/${sourceId}`);
   cookie = ownerCookie;
   await call("dishes/" + dishId, {

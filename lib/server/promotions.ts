@@ -15,6 +15,8 @@ import {
   type Row,
 } from "./core";
 import { defaultStyle, localToInstant, promotionStatus } from "../promotions";
+import { publicBrandStyle } from "../restaurant-look";
+import { photoStyles } from "../photo-styles";
 
 export const styleSchema = z.object({
   primary: z
@@ -28,6 +30,34 @@ export const styleSchema = z.object({
   tone: z.string().max(150).default(defaultStyle.tone),
   photoStyle: z.string().max(300).default(defaultStyle.photoStyle),
   referenceIds: z.array(z.string().uuid()).max(3).default([]),
+  typography: z.enum(["modern", "editorial", "bold"]).default("modern"),
+  autoApply: z.boolean().default(false),
+  photoPreset: z
+    .string()
+    .refine(
+      (v) => !v || photoStyles.some((s) => s.id === v),
+      "Choose an available photo style.",
+    )
+    .default(""),
+  photoDefaults: z
+    .object({
+      surface: z
+        .enum(["As shown", "Warm wood", "Pale stone", "White seamless"])
+        .default("As shown"),
+      lighting: z
+        .enum(["As shown", "Soft daylight", "Warm & cozy"])
+        .default("As shown"),
+      plate: z.enum(["keep", "white"]).default("keep"),
+      angle: z.enum(["keep", "overhead", "three-quarter"]).default("keep"),
+      composition: z
+        .enum([
+          "Full dish",
+          "Room around the plate",
+          "Space above for a headline",
+        ])
+        .default("Full dish"),
+    })
+    .optional(),
 });
 export async function validateStyle(
   r: Row,
@@ -180,7 +210,25 @@ export async function publicMenu(r: Row, t = now()) {
         endsAt: p.ends_at,
       });
   }
-  return { ...menu, specials, serverNow: t };
+  const { brand: _privatePreferences, ...restaurant } = menu.restaurant;
+  return {
+    ...menu,
+    restaurant: { ...restaurant, style: publicBrandStyle(restaurant.style) },
+    specials: specials.map((special) => ({
+      ...special,
+      style: publicBrandStyle(special.style),
+      ...(special.restaurant
+        ? {
+            restaurant: {
+              ...special.restaurant,
+              style: publicBrandStyle(special.restaurant.style),
+              brand: undefined,
+            },
+          }
+        : {}),
+    })),
+    serverNow: t,
+  };
 }
 export async function promotionRoute(req: Request, p: string[], r: Row) {
   if (p[0] !== "promotions") return null;
