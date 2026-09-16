@@ -53,6 +53,7 @@ export default function MenuView({
       1000,
     );
     const refresh = async () => {
+      if (document.hidden) return;
       try {
         const res = await fetch("/api/public/" + slug, { cache: "no-store" });
         if (res.status === 404) {
@@ -104,6 +105,8 @@ export default function MenuView({
     );
   return (
     <article
+      role={preview ? undefined : "main"}
+      aria-label={preview ? undefined : `${menu.restaurant.name} menu`}
       className={`customer-menu menu-layout-${menu.layout || "classic"} menu-appearance-${menu.appearance || "light"}`}
       style={
         {
@@ -166,6 +169,8 @@ export default function MenuView({
                         : `/api/public/${slug}/assets/${item.photoId}`
                     }
                     alt={item.name}
+                    loading="lazy"
+                    decoding="async"
                   />
                   <figcaption>
                     {item.quantity} × {item.name}
@@ -201,16 +206,20 @@ export default function MenuView({
                   <span className="tag">Currently unavailable</span>
                 )}
               </div>
-              {dish.photoId && (
-                <img
-                  src={
-                    preview
-                      ? `/api/assets/${dish.photoId}`
-                      : `/api/public/${slug}/assets/${dish.photoId}`
-                  }
-                  alt={dish.name}
-                />
-              )}
+              {dish.photoId &&
+                (menu.layout === "grid" ||
+                  (menu.layout === "featured" && index === 0)) && (
+                  <img
+                    src={
+                      preview
+                        ? `/api/assets/${dish.photoId}`
+                        : `/api/public/${slug}/assets/${dish.photoId}`
+                    }
+                    alt={dish.name}
+                    loading="lazy"
+                    decoding="async"
+                  />
+                )}
             </div>
           ))}
         </section>

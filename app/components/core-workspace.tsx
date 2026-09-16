@@ -27,6 +27,7 @@ import {
   workspacePreferenceKey,
 } from "@/lib/workspace-navigation";
 import Brand from "./brand";
+import { ConfirmDelete } from "./controls";
 import PhotoStudio from "./photo-studio";
 import MenuBuilder from "./menu-builder";
 import PostMaker from "./post-maker";
@@ -55,7 +56,8 @@ export default function CoreWorkspace({
     [menuSeed, setMenuSeed] = useState<Row | null>(null),
     [postSeed, setPostSeed] = useState<Row | null>(null),
     [legacySeed, setLegacySeed] = useState<Row | null>(null),
-    [visited, setVisited] = useState<string[]>([]);
+    [visited, setVisited] = useState<string[]>([]),
+    [moreOpen, setMoreOpen] = useState(false);
   useEffect(() => {
     let live = true;
     let request = 0;
@@ -153,8 +155,15 @@ export default function CoreWorkspace({
           >
             <Brand />
           </button>
-          <details className="cx-mobile-tools">
-            <summary aria-label="More workspace options">
+          <details
+            className="cx-mobile-tools"
+            onToggle={(e) => setMoreOpen(e.currentTarget.open)}
+          >
+            <summary
+              role="button"
+              aria-expanded={moreOpen}
+              aria-label="More workspace options"
+            >
               <SlidersHorizontal size={20} />
             </summary>
             <div>
@@ -325,7 +334,8 @@ function DishLibrary({
     [selected, setSelected] = useState<string[]>([]),
     [format, setFormat] = useState<PhotoFormat>("menu"),
     [detail, setDetail] = useState<Row | null>(null),
-    [chosen, setChosen] = useState("");
+    [chosen, setChosen] = useState(""),
+    [deleting, setDeleting] = useState("");
   const action = useAction(),
     { act, busy, setNotice } = action;
   const dishes = state.dishes.filter((d: Row) =>
@@ -450,7 +460,12 @@ function DishLibrary({
                   }}
                 >
                   {a ? (
-                    <img src={`/api/assets/${a.id}`} alt={d.name} />
+                    <img
+                      src={`/api/assets/${a.id}`}
+                      alt={d.name}
+                      loading="lazy"
+                      decoding="async"
+                    />
                   ) : (
                     <div className="cx-dish-empty">
                       <UtensilsCrossed size={30} />
@@ -508,6 +523,8 @@ function DishLibrary({
                     onClick={() => setChosen(a.id)}
                   >
                     <img
+                      loading="lazy"
+                      decoding="async"
                       src={`/api/assets/${a.id}`}
                       alt={
                         a.kind === "source"
@@ -533,6 +550,15 @@ function DishLibrary({
                   {current ? "Review & adjust" : "Add a photo"}{" "}
                   <ArrowRight size={16} />
                 </button>
+                {current && (
+                  <button
+                    className="cx-link"
+                    disabled={!!busy}
+                    onClick={() => setDeleting(current.id)}
+                  >
+                    Delete this photo
+                  </button>
+                )}
                 {current?.approved_at && (
                   <>
                     <button
@@ -651,6 +677,22 @@ function DishLibrary({
           </div>
         </div>
       )}
+      <ConfirmDelete
+        open={!!deleting}
+        onClose={() => setDeleting("")}
+        onConfirm={() => {
+          const photoId = deleting;
+          setDeleting("");
+          void act("Deleting photo", async () => {
+            await api(`assets/${photoId}`, undefined, "DELETE");
+            await refresh();
+            setChosen("");
+            setNotice(
+              "Photo deleted. Any published menu using it has been updated.",
+            );
+          });
+        }}
+      />
     </section>
   );
 }

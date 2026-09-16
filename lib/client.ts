@@ -16,7 +16,10 @@ export async function api(path: string, body?: unknown, method?: string) {
           : JSON.stringify(body),
   });
   const data = (await res.json()) as Row;
-  if (!res.ok) throw Error(data.error || "Please try again.");
+  if (!res.ok)
+    throw Object.assign(new Error(data.error || "Please try again."), {
+      status: res.status,
+    });
   return data;
 }
 export async function normalizePhoto(file: File): Promise<Blob> {

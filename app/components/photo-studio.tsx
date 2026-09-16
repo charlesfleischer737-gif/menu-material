@@ -48,6 +48,7 @@ import {
   Feedback,
   Field,
   ToolHeader,
+  DraftRecovery,
   SavedDrafts,
   PhotoFrame,
   track,
@@ -533,12 +534,7 @@ export default function PhotoStudio({
       "Your restaurant look is saved and will be used automatically for new photos and posts. Adjust colors and typography in Your restaurant.",
     );
   }
-  if (!ready)
-    return (
-      <p role="status" className="cx-feedback">
-        {status}
-      </p>
-    );
+  if (!ready) return <DraftRecovery store={draftStore} />;
   return (
     <section className="cx-tool cx-feature-page cx-guided-studio" ref={root}>
       <ToolHeader title="Photo Studio" status={status}>
@@ -587,7 +583,34 @@ export default function PhotoStudio({
           </button>
         </div>
       </ToolHeader>
+      <DraftRecovery store={draftStore} />
       <Feedback {...action} />
+      {b.step <= 3 &&
+        b.analysisStatus === "unavailable" &&
+        state.aiConnected && (
+          <div className="cx-analysis-retry">
+            <p>
+              Automatic photo guidance is unavailable. You can keep choosing a
+              style yourself.
+            </p>
+            <button
+              className="cx-link"
+              disabled={!!busy}
+              onClick={() =>
+                void act("Checking your photo", async () => {
+                  const sourceId = read().sourceId;
+                  const result = await api("photo-analysis", { sourceId });
+                  if (read().sourceId === sourceId)
+                    change(
+                      photoAnalysisRecommendation(read(), result, sourceId),
+                    );
+                })
+              }
+            >
+              Retry photo guidance
+            </button>
+          </div>
+        )}
       {b.step <= 3 && (
         <>
           <StudioWorkbench
@@ -628,13 +651,36 @@ export default function PhotoStudio({
         <>
           {!resultId ? (
             creating ? (
-              <StudioCreating
-                source={source}
-                style={{ ...selected, image: styleImage }}
-                queued={!job || job.status === "queued"}
-                startedAt={job?.created_at || b.generationStartedAt}
-                jobId={b.jobId}
-              />
+              <>
+                <StudioCreating
+                  source={source}
+                  style={{ ...selected, image: styleImage }}
+                  queued={!job || job.status === "queued"}
+                  startedAt={job?.created_at || b.generationStartedAt}
+                  jobId={b.jobId}
+                />
+                {state.outputs
+                  .filter((o: Row) => o.job_id === b.jobId && o.error)
+                  .map((o: Row) => (
+                    <p className="cx-feedback" role="status" key={o.id}>
+                      {o.error}
+                    </p>
+                  ))}
+                {job?.status === "queued" && (
+                  <button
+                    className="cx-link"
+                    disabled={!!busy}
+                    onClick={() =>
+                      void act("Cancelling queued image", async () => {
+                        await api(`jobs/${job.id}/cancel`, {});
+                        await refresh();
+                      })
+                    }
+                  >
+                    Cancel queued image
+                  </button>
+                )}
+              </>
             ) : (
               <div className="cx-generating">
                 {source && <img src={source} alt="Your saved original" />}

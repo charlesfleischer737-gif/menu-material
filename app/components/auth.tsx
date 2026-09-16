@@ -32,10 +32,14 @@ export default function Auth({
     [invite, setInvite] = useState(""),
     [restaurant, setRestaurant] = useState(""),
     [error, setError] = useState(""),
-    [busy, setBusy] = useState(false);
+    [busy, setBusy] = useState(false),
+    [requested, setRequested] = useState(false),
+    [website, setWebsite] = useState(""),
+    [resetting, setResetting] = useState(false);
   useEffect(() => {
     if (open && !new URLSearchParams(location.search).get("invite")) {
-      setMode(initialMode);
+      setMode(initialMode === "signup" ? "request" : "login");
+      setRequested(false);
       setError("");
     }
   }, [open, initialMode]);
@@ -43,6 +47,7 @@ export default function Auth({
     const q = new URLSearchParams(location.search);
     if (q.get("invite")) {
       setMode("signup");
+      setResetting(q.get("reset") === "1");
       setInvite(q.get("invite")!);
       setEmail(q.get("email") || "");
       setOpen(true);
@@ -53,6 +58,11 @@ export default function Auth({
     setBusy(true);
     setError("");
     try {
+      if (mode === "request") {
+        await api("access-requests", { email, restaurant, website });
+        setRequested(true);
+        return;
+      }
       await api("auth/" + mode, { email, password, invite, restaurant });
       await onDone();
       setOpen(false);
@@ -72,18 +82,34 @@ export default function Auth({
           <DialogTitle>
             {mode === "login"
               ? "Welcome back."
-              : "Let’s make your food stand out."}
+              : mode === "request"
+                ? "Request early access."
+                : resetting
+                  ? "Choose a new password."
+                  : "Let’s make your food stand out."}
           </DialogTitle>
           <DialogDescription>
             {mode === "login"
               ? "Sign in to your restaurant workspace."
-              : "Create professional food images, build your menu, and get your next post ready. Join free with your pilot invitation. No credit card needed."}
+              : mode === "request"
+                ? "Join the free restaurant pilot. Places are limited; requesting access does not create an account or guarantee a place."
+                : resetting
+                  ? "Use your secure reset invitation to restore access. Your previous sign-ins will be closed."
+                  : "Use your invitation to join the free pilot. Your included image allowance is shown in your workspace. No credit card needed."}
           </DialogDescription>
         </DialogHeader>
-        <Tabs value={mode} onValueChange={setMode}>
+        <Tabs
+          value={mode}
+          onValueChange={(value) => {
+            setMode(value);
+            setError("");
+            setRequested(false);
+          }}
+        >
           <TabsList className="mode-tabs">
             <TabsTrigger value="login">Sign in</TabsTrigger>
-            <TabsTrigger value="signup">Sign up free</TabsTrigger>
+            <TabsTrigger value="request">Request access</TabsTrigger>
+            <TabsTrigger value="signup">Use invitation</TabsTrigger>
           </TabsList>
         </Tabs>
         {ownerSetup && !invite && (
@@ -108,67 +134,103 @@ export default function Auth({
             Set up your pilot administrator account
           </Button>
         )}
-        <form onSubmit={submit}>
-          {mode === "signup" && (
-            <>
+        {requested ? (
+          <div className="pw-access-success" role="status">
+            <h2>Your request is saved.</h2>
+            <p>
+              You’re on our early-access list. Invitations are reviewed manually
+              as places become available. No confirmation email has been sent.
+            </p>
+            <Button onClick={() => setOpen(false)}>Done</Button>
+          </div>
+        ) : (
+          <form onSubmit={submit}>
+            {(mode === "request" || (mode === "signup" && !resetting)) && (
+              <>
+                <label className="field">
+                  Restaurant name
+                  <input
+                    required
+                    value={restaurant}
+                    onChange={(e) => setRestaurant(e.target.value)}
+                    autoComplete="organization"
+                  />
+                </label>
+                {mode === "signup" && (
+                  <label className="field">
+                    Invitation code
+                    <input
+                      required
+                      value={invite}
+                      onChange={(e) => setInvite(e.target.value)}
+                      autoComplete="off"
+                    />
+                  </label>
+                )}
+              </>
+            )}
+            <label className="field">
+              Email address
+              <input
+                required
+                type="email"
+                value={email}
+                onChange={(e) => setEmail(e.target.value)}
+                autoComplete="email"
+              />
+            </label>
+            {mode !== "request" && (
               <label className="field">
-                Restaurant name
+                Password
+                {mode === "signup" && <small>At least 12 characters.</small>}
                 <input
                   required
-                  value={restaurant}
-                  onChange={(e) => setRestaurant(e.target.value)}
-                  autoComplete="organization"
+                  minLength={mode === "signup" ? 12 : 1}
+                  maxLength={128}
+                  type="password"
+                  value={password}
+                  onChange={(e) => setPassword(e.target.value)}
+                  autoComplete={
+                    mode === "signup" ? "new-password" : "current-password"
+                  }
                 />
               </label>
-              <label className="field">
-                Invitation code
+            )}
+            {mode === "request" && (
+              <label className="pw-honeypot" aria-hidden="true">
+                Website
                 <input
-                  required
-                  value={invite}
-                  onChange={(e) => setInvite(e.target.value)}
+                  value={website}
+                  onChange={(e) => setWebsite(e.target.value)}
+                  tabIndex={-1}
                   autoComplete="off"
                 />
               </label>
-            </>
-          )}
-          <label className="field">
-            Email address
-            <input
-              required
-              type="email"
-              value={email}
-              onChange={(e) => setEmail(e.target.value)}
-              autoComplete="email"
-            />
-          </label>
-          <label className="field">
-            Password
-            {mode === "signup" && <small>At least 12 characters.</small>}
-            <input
-              required
-              minLength={mode === "signup" ? 12 : 1}
-              maxLength={128}
-              type="password"
-              value={password}
-              onChange={(e) => setPassword(e.target.value)}
-              autoComplete={
-                mode === "signup" ? "new-password" : "current-password"
-              }
-            />
-          </label>
-          {error && (
-            <p className="error" role="alert">
-              {error}
-            </p>
-          )}
-          <Button className="wide mt-5" disabled={busy}>
-            {busy
-              ? "Opening your workspace…"
-              : mode === "login"
-                ? "Sign in"
-                : "Create my free account"}
-          </Button>
-        </form>
+            )}
+            {error && (
+              <p className="error" role="alert">
+                {error}
+              </p>
+            )}
+            <Button className="wide mt-5" disabled={busy}>
+              {busy
+                ? mode === "request"
+                  ? "Saving your request…"
+                  : "Opening your workspace…"
+                : mode === "login"
+                  ? "Sign in"
+                  : mode === "request"
+                    ? "Request free pilot access"
+                    : resetting
+                      ? "Save new password"
+                      : "Create my free account"}
+            </Button>
+          </form>
+        )}
+        <p className="fine">
+          <a href="/pilot">What’s included</a> ·{" "}
+          <a href="/privacy">Photo & account privacy</a>
+        </p>
         {mode === "login" && (
           <p className="fine">
             Forgot your password? Your pilot coordinator can give you a secure

@@ -3,6 +3,10 @@ import { mkdtempSync, readFileSync, rmSync } from "node:fs";
 import { tmpdir } from "node:os";
 import { join } from "node:path";
 import { DatabaseSync } from "node:sqlite";
+// Deterministic time advance for the persisted polling backoff; no real sleeps.
+const realNow = Date.now;
+let clockAdvance = 0;
+Date.now = () => realNow() + clockAdvance;
 const root = mkdtempSync(join(tmpdir(), "plated-expansion-"));
 process.env.DISHLIGHT_DATA_DIR = root;
 process.env.OPENAI_API_KEY = "fixture-only";
@@ -69,8 +73,9 @@ globalThis.fetch = async (url, init = {}) => {
   );
 };
 async function call(path, b, expected = 200, opts = {}) {
+  if (path === "jobs/tick") clockAdvance += 31000;
   // Keep the original two-candidate regression cases explicit; the studio default is now one.
-  if (path === "jobs" && b) b = {candidateCount: 2, ...b};
+  if (path === "jobs" && b) b = { candidateCount: 2, ...b };
   const req = new Request("http://localhost/api/" + path, {
     method: opts.method || (b === undefined ? "GET" : "POST"),
     headers: {

@@ -47,6 +47,7 @@ export const restaurants = sqliteTable("restaurants", {
   currency: text().notNull().default("USD"),
   allowance: integer().notNull().default(20),
   paused: integer().notNull().default(0),
+  dailyBudgetCents: integer("daily_budget_cents").notNull().default(2000),
   menuDraft: text("menu_draft").notNull().default('{"sections":[]}'),
   published: text(),
   publishedAt: integer("published_at"),
@@ -102,9 +103,20 @@ export const creationDrafts = sqliteTable(
     kind: text().notNull(),
     draft: text().notNull(),
     revision: integer().notNull().default(1),
+    name: text().notNull().default(""),
+    archivedAt: integer("archived_at"),
+    favorite: integer().notNull().default(0),
     updatedAt: integer("updated_at").notNull(),
   },
-  (t) => [index("idx_creation_drafts_restaurant").on(t.restaurantId)],
+  (t) => [
+    index("idx_creation_drafts_restaurant").on(t.restaurantId),
+    index("idx_drafts_kind_archive_updated").on(
+      t.restaurantId,
+      t.kind,
+      t.archivedAt,
+      t.updatedAt,
+    ),
+  ],
 );
 export const assetEdits = sqliteTable("asset_edits", {
   assetId: text("asset_id")
@@ -156,6 +168,9 @@ export const outputs = sqliteTable(
     attempts: integer().notNull().default(0),
     leaseUntil: integer("lease_until").notNull().default(0),
     leaseToken: text("lease_token"),
+    nextPollAt: integer("next_poll_at").notNull().default(0),
+    submittedAt: integer("submitted_at"),
+    pollCount: integer("poll_count").notNull().default(0),
     error: text(),
     usage: text(),
     costEstimate: real("cost_estimate"),
@@ -164,6 +179,8 @@ export const outputs = sqliteTable(
   (t) => [
     uniqueIndex("idx_outputs_slot").on(t.jobId, t.slot),
     index("idx_outputs_restaurant_status").on(t.restaurantId, t.status),
+    index("idx_outputs_poll").on(t.status, t.nextPollAt, t.leaseUntil),
+    index("idx_outputs_restaurant_submitted").on(t.restaurantId, t.submittedAt),
   ],
 );
 export const captions = sqliteTable(
@@ -197,6 +214,47 @@ export const rateLimits = sqliteTable("rate_limits", {
   count: integer().notNull(),
   expiresAt: integer("expires_at").notNull(),
 });
+export const launchRequests = sqliteTable(
+  "launch_requests",
+  {
+    id: text().primaryKey(),
+    kind: text().notNull(),
+    email: text().notNull(),
+    restaurant: text().notNull().default(""),
+    message: text().notNull().default(""),
+    status: text().notNull().default("new"),
+    createdAt: integer("created_at").notNull(),
+  },
+  (t) => [uniqueIndex("idx_launch_request_email").on(t.kind, t.email)],
+);
+export const appSettings = sqliteTable("app_settings", {
+  key: text().primaryKey(),
+  value: text().notNull(),
+});
+export const aiSpend = sqliteTable(
+  "ai_spend",
+  {
+    id: text().primaryKey(),
+    restaurantId: text("restaurant_id").notNull(),
+    kind: text().notNull(),
+    budgetDay: text("budget_day").notNull(),
+    reservedCents: integer("reserved_cents").notNull(),
+    status: text().notNull().default("reserved"),
+    usage: text(),
+    createdAt: integer("created_at").notNull(),
+  },
+  (t) => [index("idx_spend_day_restaurant").on(t.budgetDay, t.restaurantId)],
+);
+export const storageReservations = sqliteTable(
+  "storage_reservations",
+  {
+    id: text().primaryKey(),
+    restaurantId: text("restaurant_id").notNull(),
+    bytes: integer().notNull(),
+    createdAt: integer("created_at").notNull(),
+  },
+  (t) => [index("idx_storage_restaurant").on(t.restaurantId)],
+);
 export const promotions = sqliteTable(
   "promotions",
   {

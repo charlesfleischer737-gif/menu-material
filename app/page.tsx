@@ -1,54 +1,24 @@
 "use client";
-import { useCallback, useEffect, useRef, useState } from "react";
 import {
-  Camera,
-  Sparkles,
-  ArrowRight,
-  ImagePlus,
-  UtensilsCrossed,
-  Images,
-  BookOpen,
-  Check,
-  Plus,
-  Settings,
-  LogOut,
-  Download,
-  RefreshCw,
-  Trash2,
-  Copy,
-  ShieldCheck,
-  ArrowUp,
-  ArrowDown,
-  ExternalLink,
-  Save,
-} from "lucide-react";
-import { Button } from "@/components/ui/button";
-import { Tabs, TabsList, TabsTrigger, TabsContent } from "@/components/ui/tabs";
-import {
-  Dialog,
-  DialogContent,
-  DialogHeader,
-  DialogTitle,
-  DialogDescription,
-} from "@/components/ui/dialog";
-import { Pick, ConfirmDelete } from "./components/controls";
-import MenuTools from "./components/menu-tools";
-import { clearExportImages } from "@/lib/offer-export";
-import PromotionWorkspace from "./components/promotion-workspace";
-import RestaurantStyle from "./components/restaurant-style";
+  lazy,
+  Suspense,
+  useCallback,
+  useEffect,
+  useRef,
+  useState,
+} from "react";
 import Auth from "./components/auth";
 import Landing from "./components/plateworthy-landing";
-import Brand from "./components/brand";
-import CoreWorkspace from "./components/core-workspace";
-import MenuView from "./components/menu-view";
-import {
-  api,
-  downloadBlob,
-  exportImage,
-  money,
-  normalizePhoto,
-  Row,
-} from "@/lib/client";
+import { api, type Row } from "@/lib/client";
+const CoreWorkspace = lazy(() => import("./components/core-workspace"));
+const SettingsPanel = lazy(() =>
+  import("./components/account-panels").then((m) => ({
+    default: m.SettingsPanel,
+  })),
+);
+const Admin = lazy(() =>
+  import("./components/account-panels").then((m) => ({ default: m.Admin })),
+);
 export default function Home() {
   const [state, setState] = useState<Row>({
     user: null,
@@ -131,25 +101,43 @@ export default function Home() {
           }}
         />
       ) : (
-        <CoreWorkspace
-          state={state}
-          refresh={refresh}
-          key={`${state.user.id}:${state.restaurant.id}`}
-          onSettings={() => setSettings(true)}
-          onLogout={() =>
-            act("Signing out", async () => {
-              await api("auth/logout", {});
-              clearExportImages();
-              history.replaceState(
-                null,
-                "",
-                location.pathname + location.search,
-              );
-              await refresh();
-            })
+        <Suspense
+          fallback={
+            <p className="cx-feedback" role="status">
+              Opening your workspace…
+            </p>
           }
-          adminContent={<Admin act={act} refresh={refresh} busy={busy} />}
-        />
+        >
+          <CoreWorkspace
+            state={state}
+            refresh={refresh}
+            key={`${state.user.id}:${state.restaurant.id}`}
+            onSettings={() => setSettings(true)}
+            onLogout={() =>
+              act("Signing out", async () => {
+                await api("auth/logout", {});
+                const { clearExportImages } =
+                  await import("@/lib/offer-export");
+                clearExportImages();
+                history.replaceState(
+                  null,
+                  "",
+                  location.pathname + location.search,
+                );
+                await refresh();
+              })
+            }
+            adminContent={
+              state.user.role === "admin" ? (
+                <Suspense
+                  fallback={<p role="status">Opening administration…</p>}
+                >
+                  <Admin act={act} refresh={refresh} busy={busy} />
+                </Suspense>
+              ) : null
+            }
+          />
+        </Suspense>
       )}
       {error && (
         <div className="landing-error error" role="alert">
@@ -169,322 +157,23 @@ export default function Home() {
           await refresh();
         }}
       />
-      <SettingsPanel
-        open={settings}
-        close={() => setSettings(false)}
-        state={state}
-        act={act}
-        refresh={refresh}
-        busy={busy}
-      />
+      {settings && (
+        <Suspense fallback={<p role="status">Opening settings…</p>}>
+          <SettingsPanel
+            open={settings}
+            close={() => setSettings(false)}
+            state={state}
+            act={act}
+            refresh={refresh}
+            busy={busy}
+          />
+        </Suspense>
+      )}
       {!loaded && (
         <div className="loading-strip" role="status">
           Opening your workspace…
         </div>
       )}
     </>
-  );
-}
-function SettingsPanel({ open, close, state, act, refresh, busy }: any) {
-  const [profile, setProfile] = useState<Row>({
-    name: "",
-    cuisine: "",
-    brand: "",
-    currency: "USD",
-  });
-  useEffect(() => {
-    if (state.restaurant)
-      setProfile({
-        name: state.restaurant.name,
-        cuisine: state.restaurant.cuisine,
-        brand: state.restaurant.brand,
-        currency: state.restaurant.currency,
-        style: state.restaurant.style,
-        timezone: state.restaurant.timezone,
-        orderingUrl: state.restaurant.ordering_url,
-        hours: state.restaurant.hours,
-      });
-  }, [open]);
-  return (
-    <Dialog open={open} onOpenChange={(v) => !v && close()}>
-      <DialogContent className="restaurant-dialog">
-        <DialogHeader>
-          <DialogTitle>Your restaurant</DialogTitle>
-          <DialogDescription>
-            A few details to keep your workspace and menu consistent.
-          </DialogDescription>
-        </DialogHeader>
-        {["name", "cuisine", "brand"].map((k) => (
-          <label className="field" key={k}>
-            {k === "name"
-              ? "Restaurant name"
-              : k === "cuisine"
-                ? "Cuisine"
-                : "Brand preferences"}
-            <input
-              value={profile[k]}
-              onChange={(e) => setProfile({ ...profile, [k]: e.target.value })}
-            />
-          </label>
-        ))}
-        <label className="field">
-          Menu currency
-          <Pick
-            label="Currency"
-            value={profile.currency}
-            onChange={(v) => setProfile({ ...profile, currency: v })}
-            options={["USD", "GBP", "EUR", "JPY", "CAD", "AUD"].map((v) => ({
-              value: v,
-              label: v,
-            }))}
-          />
-        </label>
-        <label className="field">
-          Logo (optional)
-          <input
-            type="file"
-            accept="image/jpeg,image/png,image/heic,.heic"
-            onChange={(e) => {
-              const f = e.target.files?.[0];
-              if (f)
-                act("Saving logo", async () => {
-                  const form = new FormData();
-                  form.set("file", f);
-                  form.set("normalized", await normalizePhoto(f), "logo.jpg");
-                  form.set("kind", "logo");
-                  await api("assets", form);
-                  await refresh();
-                });
-            }}
-          />
-        </label>
-        <RestaurantStyle
-          {...{ profile, setProfile, state, act, refresh, busy }}
-        />
-        <Button
-          disabled={!!busy}
-          onClick={() =>
-            act("Saving restaurant", async () => {
-              await api("restaurant", profile);
-              await refresh();
-              close();
-            })
-          }
-        >
-          Save restaurant
-        </Button>
-        <p className="fine">
-          Your published menu changes only when you republish.
-        </p>
-      </DialogContent>
-    </Dialog>
-  );
-}
-function Admin({ act, refresh, busy }: any) {
-  const [data, setData] = useState<Row | null>(null),
-    [email, setEmail] = useState(""),
-    [allowance, setAllowance] = useState(20),
-    [link, setLink] = useState(""),
-    [reset, setReset] = useState(false);
-  const load = useCallback(async () => setData(await api("admin")), []);
-  useEffect(() => {
-    load().catch(() => {});
-  }, [load]);
-  return (
-    <section className="admin-panel">
-      <div className="section-toolbar">
-        <h2>Pilot administration</h2>
-        <Button variant="outline" onClick={() => act("Refreshing pilot", load)}>
-          Refresh
-        </Button>
-      </div>
-      <div className="admin-invite">
-        <label className="field">
-          Invite email
-          <input
-            value={email}
-            type="email"
-            onChange={(e) => setEmail(e.target.value)}
-            placeholder="owner@restaurant.com"
-          />
-        </label>
-        <label className="field">
-          Free image allowance
-          <input
-            value={allowance}
-            min={0}
-            max={10000}
-            type="number"
-            onChange={(e) => setAllowance(Number(e.target.value))}
-          />
-        </label>
-        <Button
-          disabled={!!busy}
-          onClick={() =>
-            act("Creating invitation", async () => {
-              const r = await api("admin/invite", { email, allowance, reset });
-              setLink(location.origin + r.path);
-              await load();
-            })
-          }
-        >
-          {reset ? "Create password reset" : "Create invitation"}
-        </Button>
-      </div>
-      <label className="check-label">
-        <input
-          type="checkbox"
-          checked={reset}
-          onChange={(e) => setReset(e.target.checked)}
-        />
-        Create a password reset for an existing account
-      </label>
-      {link && (
-        <div className="invitation-result">
-          <p>
-            Share this invitation directly with the restaurant owner. It expires
-            in 7 days.
-          </p>
-          <input aria-label="Invitation link" readOnly value={link} />
-          <Button
-            variant="outline"
-            onClick={() =>
-              act("Copying invite", async () =>
-                navigator.clipboard.writeText(link),
-              )
-            }
-          >
-            <Copy />
-            Copy invitation
-          </Button>
-        </div>
-      )}
-      <div className="admin-restaurants">
-        {data?.restaurants.map((r: Row) => (
-          <AdminRestaurant
-            key={r.id}
-            restaurant={r}
-            act={act}
-            refresh={async () => {
-              await load();
-              await refresh();
-            }}
-          />
-        ))}
-      </div>
-      <p className="fine">
-        Costs are estimates when a per-image estimate is configured. Provider
-        usage records are retained for invoice reconciliation, including
-        failures and retries.
-      </p>
-      {data && (
-        <details className="admin-details">
-          <summary>Recent quality and usage events</summary>
-          <div className="table-scroll">
-            <table>
-              <thead>
-                <tr>
-                  <th>Time</th>
-                  <th>Event</th>
-                  <th>Details</th>
-                </tr>
-              </thead>
-              <tbody>
-                {data.events.map((e: Row) => (
-                  <tr key={e.id}>
-                    <td>{new Date(e.created_at).toLocaleString()}</td>
-                    <td>{e.kind}</td>
-                    <td>{e.details}</td>
-                  </tr>
-                ))}
-              </tbody>
-            </table>
-          </div>
-        </details>
-      )}
-    </section>
-  );
-}
-function AdminRestaurant({ restaurant: r, act, refresh }: any) {
-  const [allowance, setAllowance] = useState(r.allowance),
-    [paused, setPaused] = useState(!!r.paused),
-    [minutes, setMinutes] = useState(15);
-  return (
-    <div className="admin-restaurant">
-      <div>
-        <h3>{r.name}</h3>
-        <p>{r.email}</p>
-        <p>
-          {r.completed} completed · {r.reserved} reserved · {r.failed} failed ·{" "}
-          {r.approved} approved
-        </p>
-        <small>
-          {r.approved > 0 && (
-            <span>
-              {Math.round((r.support_minutes || 0) / r.approved)} support min
-              per approved image ·{" "}
-            </span>
-          )}
-          {r.cost_estimate === null
-            ? "Cost estimate not configured"
-            : `Estimated provider cost: $${Number(r.cost_estimate).toFixed(2)}`}{" "}
-          · {r.support_minutes || 0} support minutes
-        </small>
-      </div>
-      <div className="admin-row-controls">
-        <label className="field">
-          Total allowance
-          <input
-            aria-label={`Allowance for ${r.name}`}
-            type="number"
-            min={0}
-            value={allowance}
-            onChange={(e) => setAllowance(Number(e.target.value))}
-          />
-        </label>
-        <label className="check-label">
-          <input
-            type="checkbox"
-            checked={paused}
-            onChange={(e) => setPaused(e.target.checked)}
-          />
-          Pause images
-        </label>
-        <Button
-          variant="outline"
-          onClick={() =>
-            act("Updating allowance", async () => {
-              await api("admin/restaurant", { id: r.id, allowance, paused });
-              await refresh();
-            })
-          }
-        >
-          Save
-        </Button>
-      </div>
-      <div className="support-entry">
-        <label className="field">
-          Support minutes
-          <input
-            type="number"
-            min={1}
-            max={600}
-            value={minutes}
-            onChange={(e) => setMinutes(Number(e.target.value))}
-          />
-        </label>
-        <Button
-          variant="outline"
-          onClick={() =>
-            act("Recording support time", async () => {
-              await api("admin/support", { restaurantId: r.id, minutes });
-              await refresh();
-            })
-          }
-        >
-          Log time
-        </Button>
-      </div>
-    </div>
   );
 }

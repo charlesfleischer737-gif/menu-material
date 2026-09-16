@@ -1,6 +1,13 @@
 "use client";
 
-import { useState, type CSSProperties } from "react";
+import {
+  lazy,
+  Suspense,
+  useEffect,
+  useRef,
+  useState,
+  type CSSProperties,
+} from "react";
 import {
   ArrowLeftRight,
   ArrowRight,
@@ -11,7 +18,9 @@ import {
   Play,
 } from "lucide-react";
 import { Button } from "@/components/ui/button";
-import { PostCanvas } from "./post-maker";
+const PostCanvas = lazy(() =>
+  import("./post-canvas").then((m) => ({ default: m.PostCanvas })),
+);
 
 const useCases = [
   {
@@ -61,36 +70,77 @@ function PromotionGraphic({
   story?: boolean;
   palette: string;
 }) {
+  const ref = useRef<HTMLDivElement>(null);
+  const [visible, setVisible] = useState(false);
+  useEffect(() => {
+    if (!ref.current) return;
+    if (!("IntersectionObserver" in window)) {
+      setVisible(true);
+      return;
+    }
+    const observer = new IntersectionObserver(
+      (entries) => {
+        if (entries.some((entry) => entry.isIntersecting)) {
+          setVisible(true);
+          observer.disconnect();
+        }
+      },
+      { rootMargin: "180px" },
+    );
+    observer.observe(ref.current);
+    return () => observer.disconnect();
+  }, []);
+  const placeholder = (
+    <div
+      className="pw-demo-placeholder"
+      style={{ aspectRatio: story ? "9 / 16" : "4 / 5" }}
+      aria-label="Interactive design preview"
+    >
+      <img
+        src="/homepage/menus.webp"
+        alt="Rigatoni al pomodoro"
+        loading="lazy"
+      />
+      <span>Pasta plans.</span>
+    </div>
+  );
   return (
     <div
+      ref={ref}
       className={`pw-demo-graphic pw-live-design ${story ? "is-story" : "is-feed"}`}
     >
-      <PostCanvas
-        channel={story ? "story" : "feed"}
-        example
-        restaurant={{ name: "THE NEIGHBORHOOD TABLE", currency: "USD" }}
-        draft={{
-          template: "special",
-          title: "Pasta\nplans.",
-          kicker: "",
-          cta: "",
-          textMode: "full",
-          showBrand: true,
-          color: palette === "wine" ? "#531f34" : "#214a36",
-          accent: palette === "wine" ? "#ffe9e4" : "#e8f5cf",
-          items: [
-            {
-              name: "Rigatoni al pomodoro",
-              quantity: 1,
-              photoUrl: "/homepage/menus.webp",
-            },
-          ],
-          price: price.replace(/[^0-9.]/g, ""),
-          showPrice: true,
-          validity: "Tonight · 5–9 pm",
-          layouts: {},
-        }}
-      />
+      {visible ? (
+        <Suspense fallback={placeholder}>
+          <PostCanvas
+            channel={story ? "story" : "feed"}
+            example
+            restaurant={{ name: "THE NEIGHBORHOOD TABLE", currency: "USD" }}
+            draft={{
+              template: "special",
+              title: "Pasta\nplans.",
+              kicker: "",
+              cta: "",
+              textMode: "full",
+              showBrand: true,
+              color: palette === "wine" ? "#531f34" : "#214a36",
+              accent: palette === "wine" ? "#ffe9e4" : "#e8f5cf",
+              items: [
+                {
+                  name: "Rigatoni al pomodoro",
+                  quantity: 1,
+                  photoUrl: "/homepage/menus.webp",
+                },
+              ],
+              price: price.replace(/[^0-9.]/g, ""),
+              showPrice: true,
+              validity: "Tonight · 5–9 pm",
+              layouts: {},
+            }}
+          />
+        </Suspense>
+      ) : (
+        placeholder
+      )}
     </div>
   );
 }

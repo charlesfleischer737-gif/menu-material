@@ -1,6 +1,17 @@
 import type { Row } from "./core";
 import { z } from "zod";
+import { validateImageDimensions } from "./image-validation";
 import { checkMenuSharing } from "./menu-sharing";
+import {
+  limitedForm,
+  reserveStorage,
+  releaseStorage,
+  loginLimit,
+  publicLimit,
+  housekeeping,
+  aiControls,
+  caller,
+} from "./safeguards";
 import {
   all,
   admin,
@@ -27,7 +38,7 @@ import {
   token,
   viewer,
 } from "./core";
-import { enqueue, generateCaption, tick } from "./generation";
+import { enqueue, updateJob, generateCaption, tick } from "./generation";
 import { creationRoute } from "./creation";
 import {
   advanceBatches,
@@ -95,7 +106,7 @@ async function signup(req: Request, b: Row) {
   const email = emailSchema.parse(b.email),
     password = passwordSchema.parse(b.password),
     hash = digest(String(b.invite || ""));
-  await limit("signup:" + email, 10);
+  await limit(`signup:${caller(req)}:${email}`, 10);
   const invite = await one(
     "SELECT * FROM invites WHERE hash=? AND email=? AND used_by IS NULL AND expires_at>?",
     hash,
@@ -205,7 +216,7 @@ async function issueInvite(email: string, allowance: number, role = "owner") {
   );
   return {
     invite: raw,
-    path: `/?invite=${encodeURIComponent(raw)}&email=${encodeURIComponent(email)}`,
+    path: `/?invite=${encodeURIComponent(raw)}&email=${encodeURIComponent(email)}${role === "reset" ? "&reset=1" : ""}`,
     expiresAt: now() + 7 * 86400000,
   };
 }
@@ -312,12 +323,13 @@ function imageMime(bytes: Uint8Array) {
   return null;
 }
 async function upload(req: Request, r: Row, forcedKind?: string) {
+  await limit("uploads:" + r.id, 100, 3600);
   assert(
     Number(req.headers.get("content-length") || 0) <= 30 * 1024 * 1024,
     413,
     "Photos must be 20 MB or smaller.",
   );
-  const f = await req.formData(),
+  const f = await limitedForm(req, 30 * 1024 * 1024),
     file = f.get("file"),
     normalized = f.get("normalized"),
     kind =
@@ -347,6 +359,8 @@ async function upload(req: Request, r: Row, forcedKind?: string) {
     400,
     "This file is not a supported photo.",
   );
+  validateImageDimensions(bytes, mime);
+  validateImageDimensions(working, "image/jpeg", true);
   const dishId =
     kind === "source" || kind === "staff"
       ? String(f.get("dishId") || "")
@@ -366,12 +380,12 @@ async function upload(req: Request, r: Row, forcedKind?: string) {
     400,
     "Save your dish first.",
   );
-  await limit("uploads:" + r.id, 100, 3600);
   const aid = id(),
     key = `private/${r.id}/source/${aid}`,
     workingKey = `private/${r.id}/working/${aid}.jpg`;
-  await bucket().put(key, bytes, { httpMetadata: { contentType: mime } });
+  await reserveStorage(r.id, aid, 2 * (bytes.byteLength + working.byteLength));
   try {
+    await bucket().put(key, bytes, { httpMetadata: { contentType: mime } });
     await bucket().put(workingKey, working, {
       httpMetadata: { contentType: "image/jpeg" },
     });
@@ -396,6 +410,7 @@ async function upload(req: Request, r: Row, forcedKind?: string) {
     }
   } catch (e) {
     await bucket().delete([key, workingKey]);
+    await releaseStorage(aid);
     throw e;
   }
   return response({ id: aid }, 201);
@@ -435,13 +450,38 @@ export async function handle(req: Request) {
     const staffResponse = await staffAccess(req, p, upload);
     if (staffResponse) return staffResponse;
     if (p[0] === "health") return response({ ok: true });
+    if (p[0] === "access-requests" && method === "POST") {
+      await publicLimit(req, "access-request", 5, 3600);
+      const b = z
+        .object({
+          email: emailSchema,
+          restaurant: z.string().trim().min(1).max(100),
+          website: z.string().max(200).optional(),
+        })
+        .parse(await body(req));
+      if (!b.website) {
+        await run(
+          "INSERT OR IGNORE INTO launch_requests (id,kind,email,restaurant,created_at) VALUES (?,'access',?,?,?)",
+          id(),
+          b.email,
+          b.restaurant,
+          now(),
+        );
+      }
+      // No account details, availability promise or email-delivery claim.
+      return response({ ok: true }, 202);
+    }
     if (p[0] === "public" && p[1]) {
       const r = await one(
         "SELECT * FROM restaurants WHERE slug=? AND published IS NOT NULL",
         p[1],
       );
       assert(r, 404, "This menu is not currently available.");
-      const menu = (await publicMenu(r))!;
+      const snapshot = JSON.parse(r.published);
+      const menu =
+        p[2] === "assets" && p[3] && assetIsPublished(snapshot, p[3])
+          ? snapshot
+          : (await publicMenu(r))!;
       const tracked = await publicEvent(req, p, r, menu);
       if (tracked) return tracked;
       assert(method === "GET", 405, "Method not allowed.");
@@ -468,9 +508,15 @@ export async function handle(req: Request) {
       );
       await advanceBatches();
       await tick();
+      await housekeeping();
       return response({ ok: true });
     }
     if (p[0] === "auth") {
+      if (
+        method === "POST" &&
+        ["signup", "bootstrap", "owner-invite"].includes(p[1])
+      )
+        await publicLimit(req, "registration", 20);
       if (p[1] === "logout" && method === "POST") {
         const s = req.headers
           .get("cookie")
@@ -531,7 +577,7 @@ export async function handle(req: Request) {
       if (p[1] === "signup" && method === "POST") return await signup(req, b);
       if (p[1] === "login" && method === "POST") {
         const email = emailSchema.parse(b.email);
-        await limit("login:" + email, 10);
+        await loginLimit(req, email);
         const password = z.string().max(128).parse(b.password);
         const u = await one("SELECT * FROM users WHERE email=?", email);
         assert(
@@ -636,7 +682,25 @@ export async function handle(req: Request) {
       if (method === "GET")
         return response({
           restaurants: await all(
-            "SELECT r.id,r.name,r.allowance,r.paused,r.created_at,u.email,(SELECT count(*) FROM outputs WHERE restaurant_id=r.id AND status='completed') AS completed,(SELECT count(*) FROM outputs WHERE restaurant_id=r.id AND status NOT IN ('completed','failed')) AS reserved,(SELECT count(*) FROM outputs WHERE restaurant_id=r.id AND status='failed') AS failed,(SELECT sum(cost_estimate) FROM outputs WHERE restaurant_id=r.id) AS cost_estimate,(SELECT count(*) FROM assets WHERE restaurant_id=r.id AND approved_at IS NOT NULL AND kind='generated') AS approved,(SELECT sum(CAST(json_extract(details,'$.minutes') AS INTEGER)) FROM events WHERE restaurant_id=r.id AND kind='support_time') AS support_minutes FROM restaurants r JOIN users u ON u.id=r.user_id ORDER BY r.created_at DESC",
+            "SELECT r.id,r.name,r.allowance,r.paused,r.daily_budget_cents,r.created_at,u.email,(SELECT count(*) FROM outputs WHERE restaurant_id=r.id AND status='completed') AS completed,(SELECT count(*) FROM outputs WHERE restaurant_id=r.id AND status NOT IN ('completed','failed')) AS reserved,(SELECT count(*) FROM outputs WHERE restaurant_id=r.id AND status='failed') AS failed,(SELECT sum(cost_estimate) FROM outputs WHERE restaurant_id=r.id) AS cost_estimate,(SELECT count(*) FROM assets WHERE restaurant_id=r.id AND approved_at IS NOT NULL AND kind='generated') AS approved,(SELECT sum(CAST(json_extract(details,'$.minutes') AS INTEGER)) FROM events WHERE restaurant_id=r.id AND kind='support_time') AS support_minutes FROM restaurants r JOIN users u ON u.id=r.user_id ORDER BY r.created_at DESC",
+          ),
+          controls: await aiControls(),
+          worker: {
+            configured: !!config("JOB_RUNNER_SECRET"),
+            lastSeen: Number(
+              (
+                await one(
+                  "SELECT value FROM app_settings WHERE key='worker-heartbeat'",
+                )
+              )?.value || 0,
+            ),
+          },
+          spend: await all(
+            "SELECT restaurant_id,kind,SUM(reserved_cents) AS cents FROM ai_spend WHERE budget_day=? AND status!='rejected' GROUP BY restaurant_id,kind",
+            new Date(now()).toISOString().slice(0, 10),
+          ),
+          requests: await all(
+            "SELECT id,email,restaurant,status,created_at FROM launch_requests WHERE kind='access' ORDER BY status='new' DESC,created_at DESC LIMIT 200",
           ),
           invites: await all(
             "SELECT email,role,allowance,expires_at,used_by FROM invites ORDER BY created_at DESC LIMIT 100",
@@ -649,6 +713,34 @@ export async function handle(req: Request) {
           ),
         });
       const b = await body(req);
+      if (p[1] === "ai-controls") {
+        const settings = z
+          .object({
+            paused: z.boolean(),
+            dailyBudgetCents: z.number().int().min(0).max(1000000),
+          })
+          .parse(b);
+        await run(
+          "INSERT INTO app_settings (key,value) VALUES ('ai-controls',?) ON CONFLICT(key) DO UPDATE SET value=excluded.value",
+          JSON.stringify(settings),
+        );
+        await event(null, "ai_controls_updated", null, settings);
+        return response({ ok: true });
+      }
+      if (p[1] === "access-request") {
+        const data = z
+          .object({
+            id: z.string().uuid(),
+            status: z.enum(["new", "reviewed"]),
+          })
+          .parse(b);
+        await run(
+          "UPDATE launch_requests SET status=? WHERE id=?",
+          data.status,
+          data.id,
+        );
+        return response({ ok: true });
+      }
       if (p[1] === "invite") {
         return response(
           await issueInvite(
@@ -671,9 +763,12 @@ export async function handle(req: Request) {
           "Restaurant not found.",
         );
         await run(
-          "UPDATE restaurants SET allowance=?,paused=? WHERE id=?",
+          "UPDATE restaurants SET allowance=?,paused=?,daily_budget_cents=COALESCE(?,daily_budget_cents) WHERE id=?",
           z.number().int().min(0).max(100000).parse(b.allowance),
           b.paused ? 1 : 0,
+          b.dailyBudgetCents === undefined
+            ? null
+            : z.number().int().min(0).max(1000000).parse(b.dailyBudgetCents),
           rid,
         );
         await event(rid, "allowance_updated", null, {
@@ -896,6 +991,7 @@ export async function handle(req: Request) {
           ...(a.working_key ? [a.working_key] : []),
           `public/${r.id}/${a.id}`,
         ]);
+        await releaseStorage(a.id);
         await event(r.id, "asset_deleted", a.id);
         return response({ ok: true });
       }
@@ -957,6 +1053,26 @@ export async function handle(req: Request) {
       if (p[1] === "tick") {
         await advanceBatches(r.id);
         await tick(r.id);
+        return response({ ok: true });
+      }
+      if (p[1] && p[2] === "cancel") {
+        const job = await one(
+          "SELECT id FROM jobs WHERE id=? AND restaurant_id=?",
+          z.string().uuid().parse(p[1]),
+          r.id,
+        );
+        assert(job, 404, "Generation not found.");
+        const cancelled = await run(
+          "UPDATE outputs SET status='failed',error='Cancelled before creation. No image allowance used.',lease_until=0 WHERE job_id=? AND status='queued' AND response_id IS NULL AND lease_until<?",
+          job.id,
+          now(),
+        );
+        assert(
+          cancelled.meta.changes,
+          409,
+          "This image has already started. We’ll keep recovering its result.",
+        );
+        await updateJob(job.id);
         return response({ ok: true });
       }
       const b = await body(req);

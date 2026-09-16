@@ -1,0 +1,19 @@
+services:
+  plateworthy-worker:
+    build:
+      context: .
+      dockerfile: Dockerfile.worker
+    restart: unless-stopped
+    environment:
+      APP_ORIGIN: ${APP_ORIGIN:?Set the deployed Plateworthy HTTPS origin}
+      JOB_RUNNER_SECRET: ${JOB_RUNNER_SECRET:?Set the same secret on the site and runner}
+    read_only: true
+    tmpfs:
+      - /tmp
+    security_opt:
+      - no-new-privileges:true
+    logging:
+      driver: json-file
+      options:
+        max-size: 10m
+        max-file: "3"

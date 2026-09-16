@@ -7,6 +7,7 @@ import {
   existsSync,
   readdirSync,
   unlinkSync,
+  statSync,
 } from "node:fs";
 import { join, resolve, dirname } from "node:path";
 const root = resolve(process.env.DISHLIGHT_DATA_DIR || ".local-data");
@@ -101,6 +102,10 @@ const BUCKET = {
     writeFileSync(p, Buffer.from(bytes));
     writeFileSync(p + ".meta", JSON.stringify(options));
     return { key };
+  },
+  async head(key: string) {
+    const p = objectPath(key);
+    return existsSync(p) ? { key, size: statSync(p).size } : null;
   },
   async get(key: string) {
     const p = objectPath(key);

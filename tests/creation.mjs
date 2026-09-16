@@ -2,6 +2,10 @@ import assert from "node:assert/strict";
 import { mkdtempSync, readFileSync, rmSync } from "node:fs";
 import { tmpdir } from "node:os";
 import { join } from "node:path";
+// Deterministic time advance for the persisted polling backoff; no real sleeps.
+const realNow = Date.now;
+let clockAdvance = 0;
+Date.now = () => realNow() + clockAdvance;
 const root = mkdtempSync(join(tmpdir(), "plateworthy-core-"));
 process.env.DISHLIGHT_DATA_DIR = root;
 process.env.LOCAL_DEVELOPMENT = "true";
@@ -389,6 +393,7 @@ globalThis.fetch = async (url, init = {}) => {
   );
 };
 async function call(path, b, expected = 200) {
+  if (path === "jobs/tick") clockAdvance += 31000;
   const res = await handle(
     new Request("http://localhost/api/" + path, {
       method: b === undefined ? "GET" : "POST",

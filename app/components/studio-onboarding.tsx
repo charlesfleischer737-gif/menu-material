@@ -153,7 +153,7 @@ export function StudioCreating({
               : "Your photo is saved. Waiting for the studio to start."
             : progress.takingLonger
               ? "Still creating your photo. Some images take a little longer."
-              : "Your photo is taking shape. This usually takes around 20–30 seconds."}
+              : "Your photo is taking shape. Creation time varies with the image and service demand."}
         </p>
         <div className="ps-render-progress">
           <div>

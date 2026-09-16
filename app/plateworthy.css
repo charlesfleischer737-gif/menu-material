@@ -636,7 +636,9 @@
 }
 @media (max-width: 600px) {
   .pw-header .pw-login {
-    display: none;
+    display: inline-flex;
+    min-height: 44px;
+    align-items: center;
   }
   .pw-header button.pw-header-cta {
     padding-inline: 14px;

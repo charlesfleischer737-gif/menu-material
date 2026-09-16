@@ -106,7 +106,8 @@ export async function body(req: Request) {
   );
   let v;
   try {
-    const text = await req.text();
+    const { limitedBytes } = await import("./safeguards");
+    const text = new TextDecoder().decode(await limitedBytes(req, 99999));
     assert(text.length < 100000, 413, "This request is too large.");
     v = JSON.parse(text);
   } catch (e) {

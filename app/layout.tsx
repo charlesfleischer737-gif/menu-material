@@ -8,6 +8,7 @@ import "./creative-collections.css";
 import "./studio-onboarding.css";
 import "./studio-workbench.css";
 import "./restaurant-look.css";
+import "./launch.css";
 export async function generateMetadata(): Promise<Metadata> {
   const origin = config("APP_ORIGIN");
   const images = origin
@@ -21,7 +22,7 @@ export async function generateMetadata(): Promise<Metadata> {
   return {
     title: "Plateworthy — Food photos worth ordering from.",
     description:
-      "Make hungry customers choose your food. Turn phone photos into professional images, polished menus, and content for DoorDash and Instagram. Try Plateworthy free.",
+      "Make hungry customers choose your food. Turn phone photos into professional images, polished menus, and content for DoorDash and Instagram. Request access to the free pilot.",
     icons: { icon: "/favicon.svg", shortcut: "/favicon.svg" },
     openGraph: {
       title: "Plateworthy — Food photos worth ordering from.",

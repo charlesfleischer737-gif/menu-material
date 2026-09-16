@@ -139,7 +139,18 @@ export default function RestaurantStyle({
           <div className="hours-row" key={h.day}>
             <b>{["Sun", "Mon", "Tue", "Wed", "Thu", "Fri", "Sat"][h.day]}</b>
             <input
-              aria-label={"Opens " + h.day}
+              aria-label={
+                "Opens " +
+                [
+                  "Sunday",
+                  "Monday",
+                  "Tuesday",
+                  "Wednesday",
+                  "Thursday",
+                  "Friday",
+                  "Saturday",
+                ][h.day]
+              }
               type="time"
               value={h.open}
               disabled={h.closed}
@@ -153,7 +164,18 @@ export default function RestaurantStyle({
               }
             />
             <input
-              aria-label={"Closes " + h.day}
+              aria-label={
+                "Closes " +
+                [
+                  "Sunday",
+                  "Monday",
+                  "Tuesday",
+                  "Wednesday",
+                  "Thursday",
+                  "Friday",
+                  "Saturday",
+                ][h.day]
+              }
               type="time"
               value={h.close}
               disabled={h.closed}
@@ -169,6 +191,17 @@ export default function RestaurantStyle({
             <label>
               <input
                 type="checkbox"
+                aria-label={
+                  [
+                    "Sunday",
+                    "Monday",
+                    "Tuesday",
+                    "Wednesday",
+                    "Thursday",
+                    "Friday",
+                    "Saturday",
+                  ][h.day] + " closed"
+                }
                 checked={h.closed}
                 onChange={(e) =>
                   setProfile({

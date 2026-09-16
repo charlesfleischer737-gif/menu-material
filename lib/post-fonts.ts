@@ -21,7 +21,7 @@ export function loadPostFonts() {
     postFonts.map(async (f) => {
       const face = new FontFace(
         f.family,
-        `url("/fonts/social/${encodeURIComponent(f.file)}")`,
+        `url("/fonts/social/${encodeURIComponent(f.file.replace(/\.ttf$/, ".woff2"))}")`,
         { weight: f.weight },
       );
       document.fonts.add(await face.load());

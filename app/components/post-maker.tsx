@@ -15,7 +15,7 @@ import {
   PartyPopper,
 } from "lucide-react";
 import { api, downloadBlob, money, type Row } from "@/lib/client";
-import { campaignZip, renderPost } from "@/lib/creation-export";
+import { campaignZip } from "@/lib/creation-export";
 import {
   postPage,
   postCaption,
@@ -24,7 +24,8 @@ import {
 } from "@/lib/post-flow";
 import { emptyAdjustments } from "@/lib/studio";
 import PostSharing from "./post-sharing";
-import { postVisualState } from "@/lib/sharing";
+import { PostCanvas } from "./post-canvas";
+export { PostCanvas } from "./post-canvas";
 import { brandPostFields, brandTypefaces } from "@/lib/restaurant-look";
 import {
   postTemplates,
@@ -39,6 +40,7 @@ import {
   Field,
   Footer,
   ToolHeader,
+  DraftRecovery,
   SavedDrafts,
   Steps,
   track,
@@ -73,79 +75,6 @@ function initial(restaurant: Row) {
     reviewed: false,
     ...(restaurant.style?.autoApply ? brandPostFields(restaurant.style) : {}),
   };
-}
-export function PostCanvas({
-  draft,
-  restaurant,
-  channel = "feed",
-  slide = 0,
-  example = false,
-}: {
-  draft: Row;
-  restaurant: Row;
-  channel?: string;
-  slide?: number;
-  example?: boolean;
-}) {
-  const ref = useRef<HTMLCanvasElement>(null),
-    [error, setError] = useState(""),
-    [loading, setLoading] = useState(true);
-  const renderKey = JSON.stringify(
-    postVisualState(draft, restaurant, channel, slide),
-  );
-  useEffect(() => {
-    let live = true;
-    setError("");
-    setLoading(true);
-    const temp = document.createElement("canvas");
-    const preview = JSON.parse(renderKey);
-    renderPost(
-      temp,
-      preview.draft,
-      preview.restaurant,
-      preview.channel,
-      preview.slide,
-    )
-      .then(() => {
-        if (live && ref.current) {
-          ref.current.width = temp.width;
-          ref.current.height = temp.height;
-          ref.current.getContext("2d")!.drawImage(temp, 0, 0);
-          setLoading(false);
-        }
-      })
-      .catch((e) => {
-        if (live) {
-          setError(e.message);
-          setLoading(false);
-        }
-      });
-    return () => {
-      live = false;
-    };
-  }, [renderKey]);
-  return (
-    <div
-      className="cx-post-canvas"
-      style={{ aspectRatio: channel === "story" ? 9 / 16 : 4 / 5 }}
-    >
-      <canvas
-        ref={ref}
-        role="img"
-        aria-label={
-          example
-            ? `Example Instagram ${channel} design`
-            : `${channel} design preview using your approved photo`
-        }
-      />
-      {loading && <span className="cx-canvas-status">Preparing preview…</span>}
-      {error && (
-        <p role="alert" className="cx-canvas-status">
-          {error}
-        </p>
-      )}
-    </div>
-  );
 }
 export default function PostMaker({
   state,
@@ -281,12 +210,7 @@ export default function PostMaker({
     });
     await save();
   }
-  if (!ready)
-    return (
-      <p role="status" className="cx-feedback">
-        {status}
-      </p>
-    );
+  if (!ready) return <DraftRecovery store={store} />;
   return (
     <section className="cx-tool cx-feature-page" ref={root}>
       <ToolHeader title="Post Maker" status={status}>
@@ -303,6 +227,7 @@ export default function PostMaker({
           </button>
         </div>
       </ToolHeader>
+      <DraftRecovery store={store} />
       <Steps
         labels={[
           "Dish & details",

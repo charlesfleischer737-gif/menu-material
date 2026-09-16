@@ -1,18 +1,18 @@
 @font-face {
   font-family: "Post Sans";
-  src: url("/fonts/social/DMSans-Variable.ttf") format("truetype");
+  src: url("/fonts/social/DMSans-Variable.woff2") format("woff2");
   font-weight: 100 900;
   font-display: swap;
 }
 @font-face {
   font-family: "Post Serif";
-  src: url("/fonts/social/CormorantGaramond-Variable.ttf") format("truetype");
+  src: url("/fonts/social/CormorantGaramond-Variable.woff2") format("woff2");
   font-weight: 300 700;
   font-display: swap;
 }
 @font-face {
   font-family: "Post Condensed";
-  src: url("/fonts/social/BarlowCondensed-Bold.ttf") format("truetype");
+  src: url("/fonts/social/BarlowCondensed-Bold.woff2") format("woff2");
   font-weight: 700;
   font-display: swap;
 }

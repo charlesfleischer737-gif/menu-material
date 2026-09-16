@@ -26,6 +26,7 @@ import {
   Field,
   Footer,
   ToolHeader,
+  DraftRecovery,
   SavedDrafts,
   Steps,
   track,
@@ -443,12 +444,7 @@ export default function MenuBuilder({
       .then(refresh)
       .catch(() => {});
   }
-  if (!ready)
-    return (
-      <p className="cx-feedback" role="status">
-        {status}
-      </p>
-    );
+  if (!ready) return <DraftRecovery store={store} />;
   return (
     <section className="cx-tool cx-feature-page" ref={root}>
       <ToolHeader title="Menu Builder" status={status}>
@@ -459,6 +455,7 @@ export default function MenuBuilder({
             : "Private menu draft"}
         </span>
       </ToolHeader>
+      <DraftRecovery store={store} />
       <Steps
         labels={["Start", "Your dishes", "Design", "Photos", "Preview & use"]}
         step={b.step}

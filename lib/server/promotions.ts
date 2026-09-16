@@ -181,34 +181,30 @@ export async function publicMenu(r: Row, t = now()) {
     t,
   );
   const specials = [];
-  for (const p of live) {
-    const content = JSON.parse(p.published);
-    let available = true;
-    for (const item of content.items) {
+  if (live.length) {
+    const [dishRows, assetRows] = await Promise.all([
+      all("SELECT id FROM dishes WHERE restaurant_id=? AND available=1", r.id),
+      all(
+        "SELECT id FROM assets WHERE restaurant_id=? AND approved_at IS NOT NULL AND deleted_at IS NULL",
+        r.id,
+      ),
+    ]);
+    const dishes = new Set(dishRows.map((row) => row.id)),
+      assets = new Set(assetRows.map((row) => row.id));
+    for (const p of live) {
+      const content = JSON.parse(p.published);
       if (
-        !(await one(
-          "SELECT id FROM dishes WHERE id=? AND restaurant_id=? AND available=1",
-          item.dishId,
-          r.id,
-        ))
+        content.items.every(
+          (item: Row) => dishes.has(item.dishId) && assets.has(item.photoId),
+        )
       )
-        available = false;
-      if (
-        !(await one(
-          "SELECT id FROM assets WHERE id=? AND restaurant_id=? AND approved_at IS NOT NULL AND deleted_at IS NULL",
-          item.photoId,
-          r.id,
-        ))
-      )
-        available = false;
+        specials.push({
+          ...content,
+          id: p.id,
+          startsAt: p.starts_at,
+          endsAt: p.ends_at,
+        });
     }
-    if (available)
-      specials.push({
-        ...content,
-        id: p.id,
-        startsAt: p.starts_at,
-        endsAt: p.ends_at,
-      });
   }
   const { brand: _privatePreferences, ...restaurant } = menu.restaurant;
   return {

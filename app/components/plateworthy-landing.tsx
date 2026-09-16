@@ -39,7 +39,7 @@ export default function Landing({
             </button>
           )}
           <Button className="pw-header-cta" onClick={onStart}>
-            {signedIn ? "My studio" : "Get started free"}
+            {signedIn ? "My studio" : "Request early access"}
           </Button>
         </nav>
       </header>
@@ -78,11 +78,11 @@ export default function Landing({
               No editing skills.
             </p>
             <Button onClick={onStart}>
-              {signedIn ? "Open my studio" : "Get started free"}
+              {signedIn ? "Open my studio" : "Request early access"}
               <ArrowRight size={17} />
             </Button>
             <span className="pw-pilot-note">
-              Free pilot · No credit card · Invitation required
+              Free pilot · No credit card · Limited places
             </span>
           </div>
           <div className="pw-comparison" id="the-difference">
@@ -94,6 +94,9 @@ export default function Landing({
               <div className="pw-photo-frame">
                 <img
                   src={beforePhoto}
+                  srcSet="/homepage/optimized/burger-before-640.webp 640w, /burger-phone-original.jpg 2592w"
+                  sizes="(max-width: 700px) 90vw, (max-width: 1200px) 46vw, 560px"
+                  decoding="async"
                   alt="Original, unstyled burger photograph"
                   width="2592"
                   height="1944"
@@ -109,6 +112,9 @@ export default function Landing({
               <div className="pw-photo-frame">
                 <img
                   src={afterPhoto}
+                  srcSet="/homepage/optimized/burger-after-640.webp 640w, /homepage/optimized/burger-after-960.webp 960w, /homepage/optimized/burger-after-1536.webp 1536w"
+                  sizes="(max-width: 700px) 90vw, (max-width: 1200px) 46vw, 560px"
+                  decoding="async"
                   alt="The same burger restyled with professional lighting and a clean background"
                   width="1536"
                   height="1024"
@@ -167,16 +173,41 @@ export default function Landing({
             </li>
           </ol>
         </section>
+        <section className="pw-pilot-facts" aria-labelledby="pilot-facts-title">
+          <div>
+            <p className="pw-eyebrow">A small, hands-on pilot</p>
+            <h2 id="pilot-facts-title">Know what you’re joining.</h2>
+            <p>
+              One restaurant workspace for your photos, menus and posts. Free
+              while you’re in the pilot, with a limited image allowance and no
+              credit card.
+            </p>
+          </div>
+          <div>
+            <p>
+              <strong>Keep your originals.</strong> AI versions are separate.
+              Review every result before approving it.
+            </p>
+            <p>
+              <strong>Publish when you’re ready.</strong> Your drafts are
+              private; you choose what appears on your public menu.
+            </p>
+            <a href="/pilot">
+              See what’s included and how the pilot works{" "}
+              <ArrowRight size={16} />
+            </a>
+          </div>
+        </section>
         <section className="pw-start">
           <div>
             <h2>Start with one dish. See the difference.</h2>
             <p>
-              Try Plateworthy free and give your food the presentation it
-              deserves.
+              Join the free Plateworthy pilot and give your food the
+              presentation it deserves.
             </p>
           </div>
           <Button onClick={onStart}>
-            {signedIn ? "Open my studio" : "Get started free"}
+            {signedIn ? "Open my studio" : "Request early access"}
             <ArrowRight size={17} />
           </Button>
         </section>
@@ -185,6 +216,11 @@ export default function Landing({
         <a href="/" aria-label="Plateworthy home">
           <Brand />
         </a>
+        <nav className="pw-footer-links" aria-label="Help and information">
+          <a href="/pilot">The free pilot</a>
+          <a href="/privacy">Photo privacy</a>
+          <a href="/guidelines">Usage guidelines</a>
+        </nav>
         <p>© {new Date().getFullYear()} Plateworthy</p>
         <p className="pw-image-credit">
           <a

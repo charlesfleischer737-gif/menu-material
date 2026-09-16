@@ -64,46 +64,106 @@ export function useCreationDraft(
   workspaceKey: string,
 ) {
   const preferenceKey = `${workspaceKey}:draft:${kind}`;
+  const recoveryKey = `${preferenceKey}:unsaved`;
   const [draft, setDraft] = useState<Row>(initial),
     [ready, setReady] = useState(false),
-    [status, setStatus] = useState("Opening saved work…");
+    [status, setStatus] = useState("Opening saved work…"),
+    [loadError, setLoadError] = useState(""),
+    [saveError, setSaveError] = useState("");
   const meta = useRef({ id: "", revision: 0 }),
     latest = useRef(draft),
     saved = useRef(""),
     saving = useRef<Promise<void> | null>(null),
-    live = useRef(true);
-  const initialRef = useRef(initial);
+    live = useRef(true),
+    loading = useRef(0),
+    initialRef = useRef(initial);
+  function backup() {
+    try {
+      sessionStorage.setItem(
+        recoveryKey,
+        JSON.stringify({
+          ...meta.current,
+          draft: latest.current,
+          saved: saved.current,
+        }),
+      );
+    } catch {
+      /* An unavailable browser backup must never prevent a server save. */
+    }
+  }
+  function forgetBackup() {
+    try {
+      sessionStorage.removeItem(recoveryKey);
+    } catch {}
+  }
+  const load = useCallback(async () => {
+    const request = ++loading.current;
+    setLoadError("");
+    setStatus("Opening saved work…");
+    try {
+      const data = await api(`creation-drafts?kind=${kind}`);
+      const remembered = readPreference(preferenceKey);
+      let row = data.drafts.find((d: Row) => d.id === remembered);
+      if (!row && remembered) {
+        try {
+          row = (await api(`creation-drafts/${remembered}`)).draft;
+        } catch (e) {
+          if ((e as { status?: number }).status !== 404) throw e;
+        }
+      }
+      if (row?.archived_at || row?.kind !== kind) row = undefined;
+      row ||= data.drafts.find(hasSavedContent) || data.drafts[0];
+      if (!live.current || request !== loading.current) return;
+      let value = row
+        ? { ...initialRef.current, ...row.draft }
+        : initialRef.current;
+      meta.current = {
+        id: row?.id || crypto.randomUUID(),
+        revision: row?.revision || 0,
+      };
+      saved.current = JSON.stringify(value);
+      let recovered = false;
+      try {
+        const pending = JSON.parse(
+          sessionStorage.getItem(recoveryKey) || "null",
+        );
+        if (
+          pending?.id &&
+          pending.draft &&
+          JSON.stringify(pending.draft) !== pending.saved
+        ) {
+          value = pending.draft;
+          meta.current = { id: pending.id, revision: pending.revision };
+          saved.current = pending.saved;
+          recovered = true;
+        }
+      } catch {}
+      latest.current = value;
+      setDraft(value);
+      setReady(true);
+      if (row) rememberPreference(preferenceKey, meta.current.id);
+      setStatus(
+        recovered
+          ? "Recovered unsaved changes. Saving…"
+          : row
+            ? "All changes saved"
+            : "Ready when you are",
+      );
+    } catch (e) {
+      if (live.current && request === loading.current) {
+        setLoadError((e as Error).message);
+        setStatus("Saved work could not be opened.");
+      }
+    }
+  }, [kind, preferenceKey, recoveryKey]);
   useEffect(() => {
     live.current = true;
-    api("creation-drafts")
-      .then((data) => {
-        if (!live.current) return;
-        const remembered = readPreference(preferenceKey);
-        const row =
-          data.drafts.find(
-            (d: Row) => d.kind === kind && d.id === remembered,
-          ) ||
-          data.drafts.find((d: Row) => d.kind === kind && hasSavedContent(d)) ||
-          data.drafts.find((d: Row) => d.kind === kind);
-        const value = row
-          ? { ...initialRef.current, ...row.draft }
-          : initialRef.current;
-        meta.current = {
-          id: row?.id || crypto.randomUUID(),
-          revision: row?.revision || 0,
-        };
-        if (row) rememberPreference(preferenceKey, row.id);
-        latest.current = value;
-        saved.current = JSON.stringify(value);
-        setDraft(value);
-        setReady(true);
-        setStatus(row ? "All changes saved" : "Ready when you are");
-      })
-      .catch((e) => setStatus(e.message));
+    void load();
     return () => {
       live.current = false;
+      loading.current++;
     };
-  }, [kind, preferenceKey]);
+  }, [load]);
   const save = useCallback(async () => {
     if (saving.current) return saving.current;
     const run = async () => {
@@ -111,6 +171,7 @@ export function useCreationDraft(
         meta.current.id &&
         JSON.stringify(latest.current) !== saved.current
       ) {
+        setStatus("Saving…");
         const content = JSON.stringify(latest.current);
         const data = await api("creation-drafts", {
           ...meta.current,
@@ -122,22 +183,27 @@ export function useCreationDraft(
         rememberPreference(preferenceKey, meta.current.id);
         window.dispatchEvent(new Event("plateworthy:draft-saved"));
       }
+      forgetBackup();
+      setSaveError("");
       setStatus("All changes saved");
     };
-    const p = run();
-    saving.current = p;
+    const pending = run();
+    saving.current = pending;
     try {
-      await p;
+      await pending;
     } catch (e) {
-      setStatus("Couldn’t save. " + (e as Error).message);
+      backup();
+      setSaveError((e as Error).message);
+      setStatus("Changes not saved yet");
       throw e;
     } finally {
-      if (saving.current === p) saving.current = null;
+      if (saving.current === pending) saving.current = null;
     }
-  }, [kind, preferenceKey]);
+  }, [kind, preferenceKey, recoveryKey]);
   function change(patch: Row) {
     const next = { ...latest.current, ...patch };
     latest.current = next;
+    backup();
     setDraft(next);
     setStatus("Saving…");
   }
@@ -148,14 +214,23 @@ export function useCreationDraft(
   }, [draft, ready, save]);
   useEffect(() => {
     const warn = (e: BeforeUnloadEvent) => {
-      if (JSON.stringify(latest.current) !== saved.current) {
+      if (meta.current.id && JSON.stringify(latest.current) !== saved.current) {
+        backup();
         e.preventDefault();
         e.returnValue = "";
       }
     };
+    const reconnect = () => {
+      if (meta.current.id && JSON.stringify(latest.current) !== saved.current)
+        void save().catch(() => {});
+    };
     window.addEventListener("beforeunload", warn);
-    return () => window.removeEventListener("beforeunload", warn);
-  }, []);
+    window.addEventListener("online", reconnect);
+    return () => {
+      window.removeEventListener("beforeunload", warn);
+      window.removeEventListener("online", reconnect);
+    };
+  }, [save]);
   async function start(value: Row, row?: Row) {
     await save();
     meta.current = {
@@ -166,15 +241,45 @@ export function useCreationDraft(
     saved.current = row ? JSON.stringify(value) : "";
     setDraft(value);
     setStatus("Saving…");
+    backup();
     await save();
     rememberPreference(preferenceKey, meta.current.id);
   }
   async function resume(id: string) {
     await save();
-    const data = await api("creation-drafts");
-    const row = data.drafts.find((d: Row) => d.id === id && d.kind === kind);
-    if (!row) throw Error("That saved work is no longer available.");
+    const row = (await api(`creation-drafts/${id}`)).draft;
+    if (row.kind !== kind || row.archived_at)
+      throw Error("Restore this saved work before opening it.");
     await start({ ...initialRef.current, ...row.draft }, row);
+  }
+  async function saveCopy() {
+    if (saving.current) await saving.current.catch(() => {});
+    meta.current = { id: crypto.randomUUID(), revision: 0 };
+    saved.current = "";
+    backup();
+    await save();
+    setDraft({ ...latest.current });
+  }
+  async function openLatest() {
+    const previous = meta.current.id;
+    // Preserve this window's work before replacing it with the server version.
+    if (JSON.stringify(latest.current) !== saved.current) await saveCopy();
+    try {
+      await resume(previous);
+    } catch (e) {
+      setSaveError("Your copy is saved. " + (e as Error).message);
+      throw e;
+    }
+  }
+  function clear() {
+    meta.current = { id: crypto.randomUUID(), revision: 0 };
+    latest.current = initialRef.current;
+    saved.current = JSON.stringify(latest.current);
+    forgetBackup();
+    setDraft(latest.current);
+    setSaveError("");
+    setStatus("Ready when you are");
+    rememberPreference(preferenceKey, "");
   }
   return {
     draft,
@@ -186,7 +291,84 @@ export function useCreationDraft(
     status,
     id: meta.current.id,
     read: () => latest.current,
+    loadError,
+    saveError,
+    retryLoad: load,
+    saveCopy,
+    openLatest,
+    clear,
   };
+}
+export function DraftRecovery({
+  store,
+}: {
+  store: ReturnType<typeof useCreationDraft>;
+}) {
+  const [busy, setBusy] = useState(false),
+    [error, setError] = useState("");
+  async function recover(action: () => Promise<void>) {
+    setBusy(true);
+    setError("");
+    try {
+      await action();
+    } catch (e) {
+      setError((e as Error).message);
+    } finally {
+      setBusy(false);
+    }
+  }
+  if (store.ready && !store.saveError) return null;
+  if (!store.ready && !store.loadError)
+    return (
+      <p className="cx-feedback" role="status">
+        {store.status}
+      </p>
+    );
+  return (
+    <div className="cx-panel cx-draft-recovery" role="alert">
+      <h2>
+        {store.ready
+          ? "Your changes are still here"
+          : "Let’s reopen your saved work"}
+      </h2>
+      <p>{error || store.saveError || store.loadError}</p>
+      {store.ready && (
+        <p>
+          Retry the save, keep this version as a new copy, or open the latest
+          version after saving this one as a copy.
+        </p>
+      )}
+      <div className="cx-button-row">
+        <button
+          className="cx-button"
+          disabled={busy}
+          onClick={() =>
+            void recover(store.ready ? store.save : store.retryLoad)
+          }
+        >
+          {busy ? "Working…" : store.ready ? "Retry save" : "Retry opening"}
+        </button>
+        {store.ready && (
+          <>
+            <button
+              className="cx-secondary"
+              disabled={busy}
+              onClick={() => void recover(store.saveCopy)}
+            >
+              Save my changes as a copy
+            </button>
+            <button
+              className="cx-secondary"
+              disabled={busy}
+              onClick={() => void recover(store.openLatest)}
+            >
+              Keep a copy & open latest
+            </button>
+          </>
+        )}
+      </div>
+    </div>
+  );
 }
 export function SavedDrafts({
   kind,
@@ -202,36 +384,82 @@ export function SavedDrafts({
   const [open, setOpen] = useState(false),
     [drafts, setDrafts] = useState<Row[] | null>(null),
     [error, setError] = useState(""),
-    [opening, setOpening] = useState("");
+    [working, setWorking] = useState(""),
+    [search, setSearch] = useState(""),
+    [filter, setFilter] = useState("active"),
+    [next, setNext] = useState<number | null>(null),
+    [rename, setRename] = useState(""),
+    [name, setName] = useState("");
+  const request = useRef(0);
   const label =
     kind === "studio"
       ? "Saved photos"
       : kind === "menu"
         ? "Saved menus"
         : "Saved posts";
+  const load = useCallback(
+    async (offset = 0) => {
+      const current = ++request.current;
+      const query = new URLSearchParams({
+        kind,
+        offset: String(offset),
+        search,
+        archived: String(filter === "archived"),
+        favorites: String(filter === "favorites"),
+      });
+      const data = await api(`creation-drafts?${query}`);
+      if (current !== request.current) return;
+      setDrafts((previous) =>
+        offset
+          ? [
+              ...(previous || []),
+              ...data.drafts.filter(
+                (d: Row) => !previous?.some((p) => p.id === d.id),
+              ),
+            ]
+          : data.drafts,
+      );
+      setNext(data.nextOffset);
+    },
+    [kind, search, filter],
+  );
   useEffect(() => {
     if (!open) return;
-    let live = true;
     setDrafts(null);
     setError("");
-    void store
-      .save()
-      .then(() => api("creation-drafts"))
-      .then((data) => {
-        if (live)
-          setDrafts(
-            data.drafts.filter(
-              (row: Row) => row.kind === kind && hasSavedContent(row),
-            ),
-          );
-      })
-      .catch((e) => {
-        if (live) setError(e.message);
-      });
+    const timer = setTimeout(
+      () => void load().catch((e) => setError(e.message)),
+      200,
+    );
     return () => {
-      live = false;
+      clearTimeout(timer);
+      request.current++;
     };
-  }, [open, kind, store.save]);
+  }, [open, load]);
+  useEffect(() => {
+    if (!open) return;
+    const refreshSaved = () => void load().catch((e) => setError(e.message));
+    window.addEventListener("plateworthy:draft-saved", refreshSaved);
+    return () =>
+      window.removeEventListener("plateworthy:draft-saved", refreshSaved);
+  }, [open, load]);
+  async function act(key: string, fn: () => Promise<void>) {
+    setWorking(key);
+    setError("");
+    try {
+      await fn();
+    } catch (e) {
+      setError((e as Error).message);
+    } finally {
+      setWorking("");
+    }
+  }
+  async function update(row: Row, patch: Row) {
+    if (patch.archived && row.id === store.id) await store.save();
+    await api(`creation-drafts/${row.id}/metadata`, patch);
+    if (patch.archived && row.id === store.id) store.clear();
+    await load();
+  }
   return (
     <Dialog open={open} onOpenChange={setOpen}>
       <DialogTrigger asChild>
@@ -242,68 +470,188 @@ export function SavedDrafts({
       <DialogContent className="cx-draft-dialog">
         <DialogHeader>
           <DialogTitle>{label}</DialogTitle>
-          <DialogDescription>Pick up where you left off.</DialogDescription>
+          <DialogDescription>
+            Find, name and reuse your work. Archiving a draft does not change
+            your published menu or delete its photos.
+          </DialogDescription>
         </DialogHeader>
+        <DraftRecovery store={store} />
+        <div className="cx-draft-filters">
+          <label className="field">
+            Search saved work
+            <input
+              type="search"
+              value={search}
+              onChange={(e) => setSearch(e.target.value)}
+              placeholder="Search by name"
+            />
+          </label>
+          <label className="field">
+            Show
+            <select value={filter} onChange={(e) => setFilter(e.target.value)}>
+              <option value="active">All active</option>
+              <option value="favorites">Favorites</option>
+              <option value="archived">Archived</option>
+            </select>
+          </label>
+        </div>
         {error && (
-          <p className="cx-feedback" role="alert">
-            {error}
-          </p>
+          <div role="alert">
+            <p className="cx-feedback">{error}</p>
+            <button
+              className="cx-link"
+              disabled={!!working}
+              onClick={() => void act("load", load)}
+            >
+              Retry loading
+            </button>
+          </div>
         )}
         {!drafts && !error && <p role="status">Opening saved work…</p>}
-        {drafts?.length === 0 && (
-          <p>Your saved work will appear here as you create.</p>
-        )}
+        {drafts?.length === 0 && <p>No saved work matches this view.</p>}
         <div className="cx-draft-list">
           {drafts?.map((row) => {
             const draft = row.draft;
             const title =
-              kind === "studio"
-                ? draft.name || "Untitled photo"
-                : kind === "post"
-                  ? draft.title || "Untitled post"
-                  : `${draft.rows?.length || 0} dishes · ${draft.layout === "grid" ? "Photo grid" : draft.layout === "featured" ? "Featured dish" : "Classic text"}`;
+              row.name ||
+              draft.name ||
+              draft.title ||
+              (kind === "menu"
+                ? `${draft.rows?.length || 0} dishes · Menu`
+                : `Untitled ${kind === "studio" ? "photo" : "post"}`);
             const photoId =
               kind === "studio"
                 ? draft.resultId || draft.sourceId
                 : kind === "post"
                   ? draft.items?.[0]?.photoId
-                  : draft.rows?.find((row: Row) => row.photoId)?.photoId;
+                  : draft.rows?.find((r: Row) => r.photoId)?.photoId;
             return (
-              <button
-                key={row.id}
-                className="cx-draft-item"
-                disabled={!!opening}
-                aria-current={row.id === store.id ? "true" : undefined}
-                onClick={async () => {
-                  setOpening(row.id);
-                  setError("");
-                  try {
-                    await store.resume(row.id);
-                    onResume?.();
-                    setOpen(false);
-                  } catch (e) {
-                    setError((e as Error).message);
-                  } finally {
-                    setOpening("");
+              <div key={row.id} className="cx-saved-card">
+                <button
+                  className="cx-draft-item"
+                  disabled={!!working || !!row.archived_at}
+                  aria-current={row.id === store.id ? "true" : undefined}
+                  onClick={() =>
+                    void act(row.id, async () => {
+                      await store.resume(row.id);
+                      onResume?.();
+                      setOpen(false);
+                    })
                   }
-                }}
-              >
-                {photoId && <img src={`/api/assets/${photoId}`} alt="" />}
-                <span>
-                  <b>{title}</b>
-                  <small>
-                    {opening === row.id
-                      ? "Opening…"
-                      : row.id === store.id
-                        ? "Currently open"
-                        : "Continue saved work"}
-                  </small>
-                </span>
-                <ArrowRight size={18} />
-              </button>
+                >
+                  {photoId && (
+                    <img
+                      src={`/api/assets/${photoId}`}
+                      alt=""
+                      loading="lazy"
+                      decoding="async"
+                    />
+                  )}
+                  <span>
+                    <b>
+                      {row.favorite ? "★ " : ""}
+                      {title}
+                    </b>
+                    <small>
+                      {row.id === store.id ? "Currently open · " : ""}Edited{" "}
+                      {new Date(row.updated_at).toLocaleString()}
+                    </small>
+                  </span>
+                  <ArrowRight size={18} />
+                </button>
+                {rename === row.id ? (
+                  <form
+                    className="cx-draft-rename"
+                    onSubmit={(e) => {
+                      e.preventDefault();
+                      void act(row.id, async () => {
+                        await update(row, { name });
+                        setRename("");
+                      });
+                    }}
+                  >
+                    <label className="field">
+                      Name
+                      <input
+                        autoFocus
+                        value={name}
+                        onChange={(e) => setName(e.target.value)}
+                        maxLength={100}
+                        required
+                      />
+                    </label>
+                    <button className="cx-link" disabled={!!working}>
+                      Save name
+                    </button>
+                    <button
+                      type="button"
+                      className="cx-link"
+                      onClick={() => setRename("")}
+                    >
+                      Cancel
+                    </button>
+                  </form>
+                ) : (
+                  <div className="cx-draft-actions">
+                    <button
+                      disabled={!!working}
+                      onClick={() => {
+                        setRename(row.id);
+                        setName(title);
+                      }}
+                    >
+                      Rename
+                    </button>
+                    <button
+                      disabled={!!working}
+                      aria-pressed={!!row.favorite}
+                      aria-label={`${row.favorite ? "Unfavorite" : "Favorite"} ${title}`}
+                      onClick={() =>
+                        void act(row.id, () =>
+                          update(row, { favorite: !row.favorite }),
+                        )
+                      }
+                    >
+                      {row.favorite ? "Unfavorite" : "Favorite"}
+                    </button>
+                    <button
+                      disabled={!!working}
+                      onClick={() =>
+                        void act(row.id, async () => {
+                          if (row.id === store.id) await store.save();
+                          await api(`creation-drafts/${row.id}/duplicate`, {});
+                          setFilter("active");
+                          await load();
+                        })
+                      }
+                    >
+                      Duplicate
+                    </button>
+                    <button
+                      disabled={!!working}
+                      onClick={() =>
+                        void act(row.id, () =>
+                          update(row, { archived: !row.archived_at }),
+                        )
+                      }
+                    >
+                      {row.archived_at ? "Restore" : "Archive"}
+                    </button>
+                  </div>
+                )}
+              </div>
             );
           })}
         </div>
+        {next !== null && (
+          <button
+            className="cx-secondary"
+            disabled={!!working}
+            onClick={() => void act("load", () => load(next))}
+          >
+            {working === "load" ? "Loading…" : "Load more"}
+          </button>
+        )}
       </DialogContent>
     </Dialog>
   );
@@ -363,7 +711,13 @@ export function ToolHeader({
     <header className="cx-feature-header">
       <h1 tabIndex={-1}>{title}</h1>
       <div className="cx-feature-actions">
-        <span className="cx-save cx-header-status">{status}</span>
+        <span
+          className="cx-save cx-header-status"
+          role="status"
+          aria-live="polite"
+        >
+          {status}
+        </span>
         {children}
       </div>
     </header>
