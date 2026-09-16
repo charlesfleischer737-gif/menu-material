@@ -3,7 +3,7 @@ export default function Brand({ className = "" }: { className?: string }) {
     <span className={`plateworthy-wordmark menu-material-wordmark ${className}`}>
       <img
         className="menu-material-logo"
-        src="/brand/menu-material-logo.svg"
+        src="/brand/menu-material-logo.svg?v=terracotta"
         alt="Menu Material"
         width={1264}
         height={240}

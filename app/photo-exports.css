@@ -25,16 +25,16 @@
   color: var(--cx-ink);
 }
 .cx-export-destinations button.is-selected {
-  border-color: var(--cx-green);
-  background: #edf2df;
-  box-shadow: inset 0 0 0 1px var(--cx-green);
+  border-color: var(--cx-primary);
+  background: var(--brand-tint);
+  box-shadow: inset 0 0 0 1px var(--cx-primary);
 }
 .cx-export-destinations b,
 .cx-export-destinations span {
   display: block;
 }
 .cx-export-destinations span {
-  color: #52604b;
+  color: var(--brand-muted);
   font-size: 0.875rem;
   margin-top: 3px;
 }
@@ -90,7 +90,7 @@
 .cx-reuse-next {
   margin-top: 28px;
   padding: 24px;
-  background: #edf2df;
+  background: var(--brand-tint);
   border-radius: 14px;
   display: flex;
   align-items: center;
@@ -112,15 +112,15 @@
   margin-bottom: 12px;
 }
 .cx-batch-review button[aria-pressed="true"] {
-  border-color: var(--cx-green);
-  background: #edf2df;
+  border-color: var(--cx-primary);
+  background: var(--brand-tint);
 }
 .cx-approved-summary {
   padding: 22px;
 }
 .cx-app .cx-approved-summary p {
   font-size: 1rem;
-  color: #52604b;
+  color: var(--brand-muted);
 }
 .cx-app .cx-approved-summary .cx-link {
   font-size: 0.875rem !important;
@@ -179,7 +179,7 @@
   padding-right: 28px;
 }
 .cx-sidebar-bottom > button.active {
-  background: #edf2df;
+  background: var(--brand-tint);
   color: var(--cx-ink);
   font-weight: 700;
 }
