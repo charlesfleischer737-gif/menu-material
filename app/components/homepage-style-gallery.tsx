@@ -83,7 +83,11 @@ function StylePicker({
           <img
             src={`/homepage/styles/cheesecake-${style.asset}-160.webp`}
             srcSet={`/homepage/styles/cheesecake-${style.asset}-160.webp 160w, /homepage/styles/cheesecake-${style.asset}-320.webp 320w`}
-            sizes="(max-width: 700px) 72px, 52px"
+            sizes={
+              compact
+                ? "(max-width: 700px) 72px, 40px"
+                : "(max-width: 700px) 40px, 52px"
+            }
             alt=""
             width={160}
             height={160}
@@ -115,7 +119,7 @@ function OriginalPhoto({ enlarged = false }: { enlarged?: boolean }) {
       sizes={
         enlarged
           ? "(max-width: 560px) 88px, (max-width: 860px) 42vw, 394px"
-          : "(max-width: 700px) 72px, (max-width: 1000px) 25vw, 290px"
+          : "(max-width: 700px) 50px, (max-width: 1000px) 25vw, 290px"
       }
       alt="Original strawberry cheesecake photograph before styling"
       width={2592}
@@ -153,7 +157,7 @@ function StyledPhoto({
           sizes={
             enlarged
               ? "(max-width: 560px) 86vw, (max-width: 860px) 42vw, 394px"
-              : "(max-width: 360px) 80vw, (max-width: 700px) 280px, (max-width: 1000px) 28vw, 320px"
+              : "(max-width: 700px) calc(100vw - 134px), (max-width: 1000px) 28vw, 320px"
           }
           alt={
             photo.id === style.id ? `Illustrative AI edit: ${photo.alt}` : ""
