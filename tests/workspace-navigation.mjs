@@ -11,6 +11,8 @@ import {
 assert.equal(resolveWorkspace("#post", "menu", false), "post");
 assert.equal(resolveWorkspace("#menu", "studio", false), "menu");
 assert.equal(resolveWorkspace("#library", "post", false), "library");
+assert.equal(resolveWorkspace("#explore", "studio", false), "explore");
+assert.equal(resolveWorkspace("", "explore", false), "explore");
 assert.equal(resolveWorkspace("#campaigns", "studio", false), "campaigns");
 assert.equal(resolveWorkspace("", "menu", false), "menu");
 assert.equal(resolveWorkspace("#unknown", "post", false), "post");

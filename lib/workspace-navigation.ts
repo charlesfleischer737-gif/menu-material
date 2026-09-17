@@ -24,7 +24,15 @@ export function resolveWorkspace(
   remembered: string,
   admin: boolean,
 ) {
-  const valid = ["studio", "menu", "post", "library", "tools", "campaigns"];
+  const valid = [
+    "studio",
+    "explore",
+    "menu",
+    "post",
+    "library",
+    "tools",
+    "campaigns",
+  ];
   const requested = hash.replace(/^#/, "");
   if (requested === "home") return "studio";
   if (requested === "admin" && admin) return "admin";

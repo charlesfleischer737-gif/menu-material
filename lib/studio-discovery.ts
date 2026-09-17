@@ -86,6 +86,30 @@ export function studioLookPatch(
     studioOverrides: overrides,
   };
 }
+export function exploreStyleSelection(
+  current: Draft,
+  id: string,
+  restaurant: Draft = {},
+) {
+  if (!photoStyles.some((style) => style.id === id && !style.legacy))
+    return null;
+  const startNew = !!(current.step >= 4 || current.resultId || current.jobId);
+  return {
+    startNew,
+    draft: {
+      ...current,
+      ...studioLookPatch(current, id, restaurant),
+      selectionOrigin: "explore",
+      studioDefaultResolved: true,
+      requestKey: "",
+      step: 1,
+      ...(startNew
+        ? { jobId: "", resultId: "", generationStartedAt: null }
+        : {}),
+    },
+  };
+}
+
 export function lookSummary(draft: Draft) {
   return [
     draft.surface === "As shown"

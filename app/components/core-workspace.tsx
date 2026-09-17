@@ -4,6 +4,7 @@ import {
   ArrowRight,
   BookOpen,
   Camera,
+  Compass,
   Images,
   Megaphone,
   Settings,
@@ -31,6 +32,10 @@ const DishLibrary = deferredWorkspace(
 const MenuBuilder = deferredWorkspace("Menus", () => import("./menu-builder"));
 const PostMaker = deferredWorkspace("Post Maker", () => import("./post-maker"));
 const MenuTools = deferredWorkspace("menu tools", () => import("./menu-tools"));
+const ExploreGallery = deferredWorkspace(
+  "Explore",
+  () => import("./explore-gallery"),
+);
 const PromotionWorkspace = deferredWorkspace(
   "campaigns",
   () => import("./promotion-workspace"),
@@ -143,6 +148,7 @@ export default function CoreWorkspace({
   );
   const nav = [
     ["studio", "Photo Studio", Camera],
+    ["explore", "Explore", Compass],
     ["library", "My Dishes", Images],
     ["post", "Post Maker", Megaphone],
     ["menu", "Menus", BookOpen],
@@ -262,6 +268,17 @@ export default function CoreWorkspace({
                 seed={photoSeed}
                 onSeedUsed={() => setPhotoSeed(null)}
                 onDestination={destination}
+              />
+            </div>
+          )}
+          {view === "explore" && (
+            <div aria-hidden={false}>
+              <ExploreGallery
+                disabledStyleIds={state.studioAvailability?.disabledStyleIds}
+                onTryStyle={(styleId) => {
+                  setPhotoSeed({ token: crypto.randomUUID(), styleId });
+                  navigate("studio");
+                }}
               />
             </div>
           )}

@@ -47,7 +47,7 @@ import {
   restaurantPhotoSelection,
 } from "@/lib/restaurant-look";
 import { photoAnalysisRecommendation } from "@/lib/studio-onboarding";
-import { studioLookPatch } from "@/lib/studio-discovery";
+import { exploreStyleSelection, studioLookPatch } from "@/lib/studio-discovery";
 import {
   activeInspirationIds,
   inspirationPatch,
@@ -211,8 +211,8 @@ export default function PhotoStudio({
     group: "SAVED FOR YOUR RESTAURANT",
   };
   useEffect(() => {
-    if (b.step === 5 && resultId) setFinishOpen(true);
-  }, [b.step, resultId]);
+    if (b.step === 5 && resultId && !seed?.styleId) setFinishOpen(true);
+  }, [b.step, resultId, seed?.styleId]);
   const canCompare = !!source && !!resultId && resultId !== b.sourceId;
   useEffect(() => {
     if (!ready || !draftStore.id) return;
@@ -292,9 +292,53 @@ export default function PhotoStudio({
           ? restaurantLook.image
           : selected.image;
   useEffect(() => {
-    if (!ready || !seed || seedHandled.current === seed.token) return;
+    if (
+      !ready ||
+      !active ||
+      busy ||
+      referenceBusy ||
+      !seed ||
+      seedHandled.current === seed.token
+    )
+      return;
     seedHandled.current = seed.token;
     void act("Opening your photo", async () => {
+      if (seed.styleId) {
+        const style = photoStyles.find((entry) => entry.id === seed.styleId);
+        if (
+          !style ||
+          state.studioAvailability?.disabledStyleIds?.includes(style.id)
+        ) {
+          onSeedUsed();
+          throw Error(
+            "This style is temporarily unavailable. Choose another style in Explore.",
+          );
+        }
+        const current = read();
+        const selection = exploreStyleSelection(
+          current,
+          style.id,
+          state.restaurant,
+        )!;
+        // Save completed/queued work separately before trying another look.
+        // An unfinished photo stays in place, with its deliberate adjustments.
+        if (selection.startNew) {
+          await start(selection.draft);
+        } else {
+          change(selection.draft);
+          await save();
+        }
+        setAccurate(false);
+        setAdjust("");
+        setBefore(false);
+        setCompare(false);
+        setFinishOpen(false);
+        setNotice(
+          `${style.name} selected. ${current.sourceId ? "Your photo is ready." : "Add your dish photo to get started."}`,
+        );
+        onSeedUsed();
+        return;
+      }
       if (seed.draftId) {
         await draftStore.resume(seed.draftId);
         setAccurate(false);
@@ -356,7 +400,7 @@ export default function PhotoStudio({
       setAdjust("");
       onSeedUsed();
     });
-  }, [seed, ready]);
+  }, [seed, ready, active, busy, referenceBusy]);
   useEffect(() => {
     if (b.jobId && output?.asset_id && !b.resultId) {
       change({ resultId: output.asset_id, step: 4 });
