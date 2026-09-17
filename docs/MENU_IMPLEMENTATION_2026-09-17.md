@@ -22,6 +22,7 @@ Examples use fictional restaurant content. They are layout proofs, not customer 
 - Reviewed publishing, named guest URLs, a stable restaurant entry point, menu switching, QR images, and table cards. Older guest renderers remain supported until republishing.
 - Optional shorter-wording suggestions through the existing OpenAI connection. Suggestions require an explicit Apply action; longer results retain the original. No new API key or model was configured.
 - Searchable vector PDF text, embedded fonts, Letter/A4, optional 1/8-inch bleed/crop marks, final cropped-photo resolution warnings, and RGB labeling.
+- Background PDF composition on supported browsers, a two-worker limit, shared requests and bounded result caching, full-proof priority, and termination of previews with no remaining viewers. Downloads reuse the exact reviewed PDF. Browsers without worker/canvas support retain the same renderer as a fallback.
 
 ## Validation completed
 
@@ -31,6 +32,7 @@ Examples use fictional restaurant content. They are layout proofs, not customer 
 | Print fixture matrix | 42 compositions passed: seven styles × 12/30/60 dishes × Letter/A4. Every visible dish appears exactly once. Text bounds, measured text collisions, heading placement, and the readability floor are checked. |
 | Longer content | Seven additional design cases passed with long restaurant names, section names, dish names, and fixed-price labels. |
 | Production output | Crop-adjusted low-resolution warnings, 300-PPI raster dimensions, transparent logo alpha, continuous masthead bleed, trim/bleed dimensions, price variants, add-ons, page breaks, and unsupported-character diagnostics passed. |
+| Preview work | Queue tests verify bounded work/cache, independent subscribers, cancellation, priority, and retry. A real worker-thread harness composes a 30-item photographic print-shop menu with identical layout, warnings, and page count; it checks worker reuse, termination, recovery, export reuse, fallback, and review gating. Browser checks cover all seven picker previews and download of the reviewed print-shop proof without console errors. |
 | Full existing regression suite | `npm test` passed, including restaurant isolation, imports, image/privacy controls, quota/idempotency, plans, saved work, and Photo Studio behavior. Provider responses in this suite are fixtures. |
 | Type checking and new-module lint | Type checking passed. New modules have no lint errors; the five existing-pattern native-image notices remain. |
 | Production build | Sites/vinext build passed. Existing large-chunk and route-classification advisories remain. |
@@ -44,11 +46,11 @@ The measured local PDF runs averaged about 178 ms, with a 558 ms maximum in the 
 
 Physical paper/color proofs, text-only browser enlargement, broader physical-device coverage, and the five-owner in-service pilot remain to be performed. No restaurant adoption, task-time target, or physical-print quality has been claimed as validated.
 
-AI reference interpretation, translations, scheduled publication, printer-specific CMYK/PDF-X output, and a dedicated preview worker are later work. Recommendations currently use deterministic content/purpose rules; layout and routine editing work without an AI call. Unsupported print characters are diagnosed instead of silently substituted. The preview cache shares prepared PDFs and ignores superseded results, but in-progress PDF computation itself is not cancelled.
+AI reference interpretation, translations, scheduled publication, and printer-specific CMYK/PDF-X output are later work. Recommendations currently use deterministic content/purpose rules; layout and routine editing work without an AI call. Unsupported print characters are diagnosed instead of silently substituted. Worker cancellation stops in-progress composition; the fallback checks cancellation between asynchronous stages but cannot interrupt synchronous JavaScript already running. The worker harness uses a canvas adapter and does not establish physical-device latency.
 
 The software is ready for review and the first owner pilot. Broader rollout should follow the pilot and physical-print checks described in the [original plan](MENU_FEATURE_PLAN_2026-09-17.md).
 
-## Requirement audit before public release
+## Requirement audit
 
 | Plan requirement | Current evidence and remaining gate |
 |---|---|
@@ -58,6 +60,6 @@ The software is ready for review and the first owner pilot. Broader rollout shou
 | Independent menus and safe migration/publication | API checks cover menu-specific edits, exact legacy public snapshots, atomic migration, named URLs, primary routing, recovery, privacy, and concurrent changes. These are automated/local results, not production usage observations. |
 | Phone accessibility and responsiveness | Street Kitchen passed the documented widths and readable-content checks. Text-only 200% enlargement, the full style/purpose/device matrix, and screen-reader review remain open. Local PDF timings do not establish browser/device latency. |
 | AI-assisted design and wording | Existing extraction and reviewed shortening use the configured connection. Deterministic recommendations work without AI. Optional visual-reference interpretation and translations remain unimplemented; no broader AI design capability is claimed. |
-| Efficient preview architecture | Shared prepared-PDF caching, debounce, and obsolete-result suppression are delivered. A dedicated worker and cancellation of already-running computation remain unimplemented. |
+| Efficient preview architecture | Shared prepared-PDF caching, debounce, a bounded worker queue, and cancellation of already-running worker computation are delivered. Browser checks and the worker harness pass; timing on an agreed ordinary device remains open. |
 | In-service validation | Five owner trials, physical print proofs, initial/repeat task timings, and evidence of return use remain external release gates. No owners have been recruited or contacted by this task. |
-| Public release | A reviewed build is prepared; public publishing still awaits the outstanding owner response required by the hosting skill. Preparing or saving a release does not publish it. |
+| Public release | The owner approved public publication and the seven-design release was confirmed live on September 17. Subsequent refinements follow the same validation and publishing process. |

@@ -22,19 +22,26 @@ export async function imageBitmap(src: string, signal?: AbortSignal) {
   return bitmap;
 }
 const photoTurn = (rotation: number) => ((rotation % 360) + 360) % 360;
+export type PhotoCanvas = HTMLCanvasElement | OffscreenCanvas;
+export function createPhotoCanvas(): PhotoCanvas {
+  return typeof document === "undefined"
+    ? new OffscreenCanvas(1, 1)
+    : document.createElement("canvas");
+}
 function rotatedPhoto(im: ImageBitmap, turn: number) {
-  const rotated = document.createElement("canvas");
+  const rotated = createPhotoCanvas();
   rotated.width = turn % 180 ? im.height : im.width;
   rotated.height = turn % 180 ? im.width : im.height;
-  const rc = rotated.getContext("2d")!;
+  const rc = rotated.getContext("2d") as
+    CanvasRenderingContext2D | OffscreenCanvasRenderingContext2D;
   rc.translate(rotated.width / 2, rotated.height / 2);
   rc.rotate((turn * Math.PI) / 180);
   rc.drawImage(im, -im.width / 2, -im.height / 2);
   return rotated;
 }
 function paintPhoto(
-  canvas: HTMLCanvasElement,
-  rotated: HTMLCanvasElement,
+  canvas: PhotoCanvas,
+  rotated: PhotoCanvas,
   width: number,
   height: number,
   e: Adjustments,
@@ -42,7 +49,8 @@ function paintPhoto(
 ) {
   canvas.width = width;
   canvas.height = height;
-  const ctx = canvas.getContext("2d")!;
+  const ctx = canvas.getContext("2d") as
+    CanvasRenderingContext2D | OffscreenCanvasRenderingContext2D;
   ctx.imageSmoothingEnabled = true;
   ctx.imageSmoothingQuality = "high";
   ctx.fillStyle = background;
@@ -76,7 +84,7 @@ function paintPhoto(
   }
 }
 export function drawPhoto(
-  canvas: HTMLCanvasElement,
+  canvas: PhotoCanvas,
   im: ImageBitmap,
   width: number,
   height: number,
@@ -94,7 +102,7 @@ export function drawPhoto(
 }
 export function createPhotoPreviewRenderer() {
   let source: ImageBitmap | null = null;
-  let rotated: HTMLCanvasElement | null = null;
+  let rotated: PhotoCanvas | null = null;
   let turn = 0;
   function clear() {
     if (rotated) {
@@ -127,10 +135,12 @@ export function createPhotoPreviewRenderer() {
   };
 }
 export function canvasBlob(
-  canvas: HTMLCanvasElement,
+  canvas: PhotoCanvas,
   mime = "image/jpeg",
   quality = 0.94,
 ) {
+  if (!("toBlob" in canvas) || typeof canvas.toBlob !== "function")
+    return (canvas as OffscreenCanvas).convertToBlob({ type: mime, quality });
   return new Promise<Blob>((resolve, reject) =>
     canvas.toBlob(
       (b) =>

@@ -30,7 +30,7 @@ export async function campaignZip(draft: Row, restaurant: Row) {
 }
 export async function menuPdf(menu: Row) {
   if (menu.version === 2)
-    return (await import("./menu-pdf-v2")).renderDesignedMenuPdf(
+    return (await import("./menu-proof-client")).exportDesignedMenuPdf(
       menu as import("./menu-document").DesignedMenu,
     );
   return (await import("./menu-print")).renderMenuPdf(menu);

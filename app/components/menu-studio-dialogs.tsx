@@ -30,7 +30,7 @@ import {
   recommendMenuDesigns,
 } from "@/lib/menu-design-system";
 import { parsePastedMenu } from "@/lib/menu-paste";
-import { renderDesignedMenuPdf, type MenuPdfResult } from "@/lib/menu-pdf-v2";
+import type { MenuPdfResult } from "@/lib/menu-pdf-v2";
 import type { SavedMenu } from "./use-menu-document";
 import { Field, MenuDialog, MoneyInput, Toggle } from "./menu-studio-controls";
 import MenuProof from "./menu-proof";
@@ -856,7 +856,10 @@ export function MenuDeliveryDialog({
     try {
       await save();
       if (isPrint) {
-        const result = await renderDesignedMenuPdf(menu);
+        if (issues.length) throw Error(issues[0].message);
+        if (!proof || proof.signature !== JSON.stringify(menu))
+          throw Error("Wait for the current menu preview before downloading.");
+        const result = proof;
         setExportNotes(result.warnings);
         downloadBlob(
           result.blob,

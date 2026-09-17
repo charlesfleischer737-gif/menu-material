@@ -1,7 +1,12 @@
 import { menuContentIssues, type DesignedMenu } from "./menu-document";
 import { composeMenu, type MenuLayout } from "./menu-layout";
 import type { MenuFont } from "./menu-design-system";
-import { imageBitmap, drawPhoto, canvasBlob } from "./photo-export";
+import {
+  imageBitmap,
+  drawPhoto,
+  canvasBlob,
+  createPhotoCanvas,
+} from "./photo-export";
 
 const fontPaths: Record<MenuFont, string> = {
   sans: "/fonts/MenuSans-Regular.ttf",
@@ -36,8 +41,10 @@ export type MenuPdfResult = {
 };
 export async function renderDesignedMenuPdf(
   menu: DesignedMenu,
-  options: { proof?: boolean } = {},
+  options: { proof?: boolean; signal?: AbortSignal } = {},
 ): Promise<MenuPdfResult> {
+  const signal = options.signal;
+  signal?.throwIfAborted();
   const issues = menuContentIssues(menu);
   if (!options.proof && issues.length) throw Error(issues[0].message);
   const { PDFDocument, rgb } = await import("pdf-lib"),
@@ -60,6 +67,7 @@ export async function renderDesignedMenuPdf(
     MenuFont,
     (typeof entries)[0][1]
   >;
+  signal?.throwIfAborted();
   const charsets = Object.fromEntries(
     entries.map(([key, font]) => [key, new Set(font.getCharacterSet())]),
   );
@@ -94,6 +102,7 @@ export async function renderDesignedMenuPdf(
     Awaited<ReturnType<typeof doc.embedJpg>>
   >();
   for (const page of layout.pages) {
+    signal?.throwIfAborted();
     const sheet = doc.addPage([
       layout.width + offset * 2,
       layout.height + offset * 2,
@@ -156,7 +165,7 @@ export async function renderDesignedMenuPdf(
         const key = JSON.stringify(el);
         let pic = preparedPhotos.get(key);
         if (!pic) {
-          const im = await imageBitmap(`/api/assets/${el.photoId}`);
+          const im = await imageBitmap(`/api/assets/${el.photoId}`, signal);
           try {
             const frame =
               el.kind === "logo"
@@ -177,7 +186,7 @@ export async function renderDesignedMenuPdf(
                 `${item?.name || "Photo"}: ${Math.round(ppi)} PPI at this printed size. Choose a larger photo or a smaller placement for ${floor} PPI.`,
               );
             }
-            const canvas = document.createElement("canvas"),
+            const canvas = createPhotoCanvas(),
               pixelScale = 300 / 72;
             drawPhoto(
               canvas,
@@ -234,8 +243,10 @@ export async function renderDesignedMenuPdf(
   doc.setTitle(`${menu.restaurant.name} — ${menu.title || menu.name}`);
   doc.setSubject("Restaurant menu");
   doc.setCreator("Menu Material");
+  const bytes = await doc.save();
+  signal?.throwIfAborted();
   return {
-    blob: new Blob([(await doc.save()) as Uint8Array<ArrayBuffer>], {
+    blob: new Blob([bytes as Uint8Array<ArrayBuffer>], {
       type: "application/pdf",
     }),
     pages: layout.pages.length,

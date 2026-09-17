@@ -2,23 +2,8 @@
 import { useEffect, useRef, useState } from "react";
 import { ChevronLeft, ChevronRight, Minus, Plus } from "lucide-react";
 import type { DesignedMenu } from "@/lib/menu-document";
-import { renderDesignedMenuPdf, type MenuPdfResult } from "@/lib/menu-pdf-v2";
-
-const cache = new Map<string, Promise<MenuPdfResult>>();
-export function prepareMenuProof(menu: DesignedMenu) {
-  const key = JSON.stringify(menu);
-  if (!cache.has(key)) {
-    cache.set(
-      key,
-      renderDesignedMenuPdf(menu, { proof: true }).catch((e) => {
-        cache.delete(key);
-        throw e;
-      }),
-    );
-    while (cache.size > 12) cache.delete(cache.keys().next().value!);
-  }
-  return cache.get(key)!;
-}
+import type { MenuPdfResult } from "@/lib/menu-pdf-v2";
+import { prepareMenuProof } from "@/lib/menu-proof-client";
 function ProofPage({
   result,
   page,
@@ -39,8 +24,11 @@ function ProofPage({
       destroy: (() => void) | undefined;
     void (async () => {
       const pdfjs = await import("pdfjs-dist");
+      if (!active) return;
       pdfjs.GlobalWorkerOptions.workerSrc = "/pdf.worker.min.mjs";
-      const task = pdfjs.getDocument({ data: await result.blob.arrayBuffer() });
+      const data = await result.blob.arrayBuffer();
+      if (!active) return;
+      const task = pdfjs.getDocument({ data });
       destroy = () => {
         void task.destroy();
       };
@@ -125,12 +113,16 @@ export default function MenuProof({
   }, [onResult]);
   useEffect(() => {
     let active = true;
+    const controller = new AbortController();
     const timer = setTimeout(
       () => {
         setBusy(true);
         setError("");
         resultCallback.current?.(null);
-        prepareMenuProof(JSON.parse(key))
+        prepareMenuProof(JSON.parse(key), {
+          signal: controller.signal,
+          priority: compact ? 0 : 1,
+        })
           .then((value) => {
             if (!active) return;
             setResult(value);
@@ -152,6 +144,7 @@ export default function MenuProof({
     return () => {
       active = false;
       clearTimeout(timer);
+      controller.abort();
     };
   }, [key, compact]);
   if (compact)
@@ -251,7 +244,9 @@ export default function MenuProof({
               <ProofPage
                 result={result}
                 page={page}
-                onSelect={busy ? undefined : onSelect}
+                onSelect={
+                  busy || result.signature !== key ? undefined : onSelect
+                }
                 selected={selected}
               />
             </div>
