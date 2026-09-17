@@ -1407,6 +1407,9 @@
     min-height: 44px;
   }
   .ps2-dialog {
+    /* Reset the primitive's individual translate, including in compiled CSS. */
+    --tw-translate-x: 0px;
+    --tw-translate-y: 0px;
     width: 100vw !important;
     max-height: 96dvh;
     border-radius: 22px 22px 0 0 !important;
@@ -1415,6 +1418,10 @@
     left: 0 !important;
     transform: none !important;
     translate: none !important;
+  }
+  .ps2-dialog.ps2-browser {
+    height: 96dvh;
+    padding-inline: env(safe-area-inset-left) env(safe-area-inset-right) !important;
   }
   .ps2-dialog-header {
     padding: 24px 20px 20px;
@@ -2421,6 +2428,14 @@
     position: sticky;
     bottom: 0;
     z-index: 2;
+  }
+  /* Keep Close and the action visible while the style list or detail scrolls. */
+  .ps2-dialog.ps2-browser {
+    display: flex !important;
+    overflow: hidden;
+  }
+  .ps2-browser .ps2-dialog-scroll {
+    overflow: auto;
   }
 }
 
