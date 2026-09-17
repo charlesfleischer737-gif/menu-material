@@ -29,7 +29,7 @@ const DishLibrary = deferredWorkspace(
   "My Dishes",
   () => import("./dish-library"),
 );
-const MenuBuilder = deferredWorkspace("Menus", () => import("./menu-builder"));
+const MenuBuilder = deferredWorkspace("Menus", () => import("./menu-studio"));
 const PostMaker = deferredWorkspace("Post Maker", () => import("./post-maker"));
 const MenuTools = deferredWorkspace("menu tools", () => import("./menu-tools"));
 const ExploreGallery = deferredWorkspace(

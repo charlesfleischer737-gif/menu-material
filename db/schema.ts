@@ -405,6 +405,27 @@ export const menuImports = sqliteTable(
   },
   (t) => [index("idx_imports_restaurant").on(t.restaurantId)],
 );
+export const menuDocuments = sqliteTable("menu_documents", {
+  id: text().primaryKey(),
+  restaurantId: text("restaurant_id").notNull().references(() => restaurants.id),
+  draft: text().notNull(),
+  revision: integer().notNull().default(1),
+  published: text(),
+  publishedRevision: integer("published_revision"),
+  publishedAt: integer("published_at"),
+  isPrimary: integer("is_primary").notNull().default(0),
+  archivedAt: integer("archived_at"),
+  createdAt: integer("created_at").notNull(),
+  updatedAt: integer("updated_at").notNull(),
+}, t => [index("idx_menu_documents_restaurant").on(t.restaurantId)]);
+export const menuPublicationHistory = sqliteTable("menu_publication_history", {
+  id: text().primaryKey(),
+  menuId: text("menu_id").notNull().references(() => menuDocuments.id),
+  restaurantId: text("restaurant_id").notNull().references(() => restaurants.id),
+  snapshot: text().notNull(),
+  revision: integer().notNull(),
+  createdAt: integer("created_at").notNull(),
+}, t => [index("idx_menu_history_document").on(t.menuId)]);
 export const staffLinks = sqliteTable(
   "staff_links",
   {

@@ -5,7 +5,41 @@ import { menuHero, menuAppearance } from "@/lib/menu-design";
 import { scheduleLabel } from "@/lib/promotions";
 import { money, Row } from "@/lib/client";
 import { brandTypeface, readableBrandInk } from "@/lib/restaurant-look";
+import MenuDocumentView from "./menu-document-view";
+import type { DesignedMenu } from "@/lib/menu-document";
 export default function MenuView({
+  menu,
+  slug,
+  preview = false,
+  serverNow = 0,
+  onSelect,
+}: {
+  menu: Row;
+  slug?: string;
+  preview?: boolean;
+  serverNow?: number;
+  onSelect?: (dishId: string) => void;
+}) {
+  if (menu.version === 2)
+    return (
+      <MenuDocumentView
+        menu={menu as DesignedMenu}
+        slug={slug}
+        preview={preview}
+        onSelect={onSelect}
+      />
+    );
+  return (
+    <LegacyMenuView
+      menu={menu}
+      slug={slug}
+      preview={preview}
+      serverNow={serverNow}
+      onSelect={onSelect}
+    />
+  );
+}
+function LegacyMenuView({
   menu: initialMenu,
   slug,
   preview = false,
@@ -40,7 +74,7 @@ export default function MenuView({
     [preview, slug],
   );
   useEffect(() => {
-    if (preview || !slug) return;
+    if (preview || !slug || menu.version === 2) return;
     try {
       session.current =
         sessionStorage.getItem("menu-session:" + slug) || crypto.randomUUID();
@@ -60,7 +94,13 @@ export default function MenuView({
     const refresh = async () => {
       if (document.hidden) return;
       try {
-        const res = await fetch("/api/public/" + slug, { cache: "no-store" });
+        const selected = new URLSearchParams(location.search).get("menu");
+        const res = await fetch(
+          "/api/public/" +
+            slug +
+            (selected ? `?menu=${encodeURIComponent(selected)}` : ""),
+          { cache: "no-store" },
+        );
         if (res.status === 404) {
           setUnavailable(true);
           return;
@@ -83,7 +123,7 @@ export default function MenuView({
       clearInterval(interval);
       document.removeEventListener("visibilitychange", visible);
     };
-  }, [slug, preview, track]);
+  }, [slug, preview, track, menu.version]);
   useEffect(() => {
     if (preview || !slug || !article.current) return;
     const observer = new IntersectionObserver(
@@ -107,6 +147,15 @@ export default function MenuView({
         <h1>This menu isn’t available right now.</h1>
         <p>Please check with the restaurant.</p>
       </main>
+    );
+  if (menu.version === 2)
+    return (
+      <MenuDocumentView
+        menu={menu as DesignedMenu}
+        slug={slug}
+        preview={preview}
+        onSelect={onSelect}
+      />
     );
   return (
     <article
@@ -195,6 +244,23 @@ export default function MenuView({
           </div>
         )}
       </header>
+      {!preview && menu.menus?.length > 1 && (
+        <nav className="menu-document-switcher" aria-label="Our menus">
+          {menu.menus.map((m: Row) => (
+            <a
+              key={m.id}
+              href={`/m/${slug}?menu=${m.id}`}
+              aria-current={
+                m.id === menu.documentId || (!menu.documentId && m.isPrimary)
+                  ? "page"
+                  : undefined
+              }
+            >
+              {m.name}
+            </a>
+          ))}
+        </nav>
+      )}
       {(menu.sections.length > 3 ||
         menu.sections.reduce((n: number, s: Row) => n + s.items.length, 0) >
           12) && (

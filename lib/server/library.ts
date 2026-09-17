@@ -13,31 +13,58 @@ export async function libraryRoute(req: Request, p: string[], r: Row) {
   assert(dish, 404, "Dish not found.");
   if (req.method === "GET" && p[2] === "usage") {
     const drafts = await all(
-      `SELECT id,kind,name,draft FROM creation_drafts WHERE restaurant_id=? AND archived_at IS NULL AND kind IN ('post','menu') AND (EXISTS (SELECT 1 FROM json_each(creation_drafts.draft,'$.items') j WHERE json_extract(j.value,'$.dishId')=?) OR EXISTS (SELECT 1 FROM json_each(creation_drafts.draft,'$.rows') j WHERE json_extract(j.value,'$.id')=?))`,
+      `SELECT id,kind,name,draft FROM creation_drafts WHERE restaurant_id=? AND archived_at IS NULL AND kind IN ('post','menu') AND NOT EXISTS (SELECT 1 FROM menu_documents WHERE id=creation_drafts.id) AND (EXISTS (SELECT 1 FROM json_each(creation_drafts.draft,'$.items') j WHERE json_extract(j.value,'$.dishId')=?) OR EXISTS (SELECT 1 FROM json_each(creation_drafts.draft,'$.rows') j WHERE json_extract(j.value,'$.id')=?))`,
       r.id,
       did,
       did,
     );
+    const menus = await all(
+      "SELECT id,draft FROM menu_documents WHERE restaurant_id=? AND archived_at IS NULL",
+      r.id,
+    );
     return response({
-      usage: drafts.map((row) => {
-        const draft = JSON.parse(row.draft);
-        const item = (row.kind === "post" ? draft.items : draft.rows)?.find(
-          (i: Row) => (i.dishId || i.id) === did,
-        );
-        const facts = item?.facts || item?._synced;
-        return {
-          id: row.id,
-          kind: row.kind,
-          title:
-            row.name ||
-            draft.title ||
-            draft.name ||
-            (row.kind === "post" ? "Untitled post" : "Untitled menu"),
-          changed: facts
-            ? changedDishFacts(facts, dish).length > 0
-            : item?.name !== dish.name,
-        };
-      }),
+      usage: [
+        ...menus.flatMap((row) => {
+          const draft = JSON.parse(row.draft);
+          const items = draft.sections
+            .flatMap((s: Row) => s.items)
+            .filter((i: Row) => i.dishId === did);
+          return items.length
+            ? [
+                {
+                  id: row.id,
+                  kind: "menu",
+                  title: draft.name,
+                  changed: items.some(
+                    (i: Row) =>
+                      i.name !== dish.name ||
+                      i.description !== dish.description ||
+                      (i.priceMode === "single" && i.price !== dish.price),
+                  ),
+                },
+              ]
+            : [];
+        }),
+        ...drafts.map((row) => {
+          const draft = JSON.parse(row.draft);
+          const item = (row.kind === "post" ? draft.items : draft.rows)?.find(
+            (i: Row) => (i.dishId || i.id) === did,
+          );
+          const facts = item?.facts || item?._synced;
+          return {
+            id: row.id,
+            kind: row.kind,
+            title:
+              row.name ||
+              draft.title ||
+              draft.name ||
+              (row.kind === "post" ? "Untitled post" : "Untitled menu"),
+            changed: facts
+              ? changedDishFacts(facts, dish).length > 0
+              : item?.name !== dish.name,
+          };
+        }),
+      ],
     });
   }
   assert(req.method === "POST" && !p[2], 405, "Method not allowed.");

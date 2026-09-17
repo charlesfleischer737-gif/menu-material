@@ -14,6 +14,12 @@ import { billingRoute, billingSummary, billingEnabled } from "./billing";
 import { validateImageDimensions } from "./image-validation";
 import { checkMenuSharing } from "./menu-sharing";
 import {
+  menuDocumentsRoute,
+  assetInPublishedDocuments,
+  pruneDocumentAsset,
+  publicDocumentSnapshot,
+} from "./menu-documents";
+import {
   limitedForm,
   reserveStorage,
   releaseStorage,
@@ -576,16 +582,32 @@ export async function handle(req: Request) {
         p[1],
       );
       assert(r, 404, "This menu is not currently available.");
-      const snapshot = JSON.parse(r.published);
+      const requestedMenu = url.searchParams.get("menu");
+      const selected = requestedMenu
+        ? await publicDocumentSnapshot(r.id, requestedMenu)
+        : null;
+      assert(
+        !requestedMenu || selected,
+        404,
+        "This menu is not currently available.",
+      );
+      const snapshot = selected || JSON.parse(r.published);
       const menu =
         p[2] === "assets" && p[3] && assetIsPublished(snapshot, p[3])
           ? snapshot
-          : (await publicMenu(r))!;
+          : (await publicMenu(
+              selected ? { ...r, published: JSON.stringify(selected) } : r,
+            ))!;
       const tracked = await publicEvent(req, p, r, menu);
       if (tracked) return tracked;
       assert(method === "GET", 405, "Method not allowed.");
       if (p[2] === "assets" && p[3]) {
-        assert(assetIsPublished(menu, p[3]), 404, "Image not found.");
+        assert(
+          assetIsPublished(menu, p[3]) ||
+            (await assetInPublishedDocuments(r.id, p[3])),
+          404,
+          "Image not found.",
+        );
         const a = await one(
           "SELECT * FROM assets WHERE id=? AND restaurant_id=? AND deleted_at IS NULL AND (approved_at IS NOT NULL OR kind=?)",
           p[3],
@@ -981,6 +1003,8 @@ export async function handle(req: Request) {
     }
     const libraryResponse = await libraryRoute(req, p, r);
     if (libraryResponse) return libraryResponse;
+    const menuDocumentResponse = await menuDocumentsRoute(req, p, r);
+    if (menuDocumentResponse) return menuDocumentResponse;
     const creationResponse = await creationRoute(req, p, r);
     if (creationResponse) return creationResponse;
     const toolsResponse = await menuTools(req, p, r);
@@ -1222,6 +1246,7 @@ export async function handle(req: Request) {
           ...(a.working_key ? [a.working_key] : []),
           `public/${r.id}/${a.id}`,
         ]);
+        await pruneDocumentAsset(r.id, a.id);
         await releaseStorage(a.id);
         await event(r.id, "asset_deleted", a.id);
         return response({ ok: true });
@@ -1344,6 +1369,14 @@ export async function handle(req: Request) {
       return response({ ok: true });
     }
     if (p[0] === "menu" && method === "POST") {
+      assert(
+        !(await one(
+          "SELECT id FROM menu_documents WHERE restaurant_id=? LIMIT 1",
+          r.id,
+        )),
+        409,
+        "Menu Studio has been upgraded. Reload the workspace to keep editing or publishing your saved menus.",
+      );
       if (p[1] === "unpublish") {
         await run(
           "UPDATE restaurants SET published=NULL,published_at=NULL WHERE id=?",

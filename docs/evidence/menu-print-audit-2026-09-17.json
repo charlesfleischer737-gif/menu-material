@@ -1,0 +1,48 @@
+{
+  "date": "2026-09-17",
+  "sourceRevision": "76ec8770f5d5956689598b210368aba529b3675b",
+  "scope": "Local source and fixture export review; no live provider calls or physical printing",
+  "fixture": {
+    "restaurant": "Cedar & Salt",
+    "design": "bistro",
+    "appearance": "light",
+    "layout": "featured",
+    "paper": "letter",
+    "printProfile": "press",
+    "items": 2,
+    "photo": "public/studio/styles/menu-stone.webp"
+  },
+  "export": {
+    "bytes": 679955,
+    "pages": 1,
+    "trimBoxPoints": {"x": 24, "y": 24, "width": 612, "height": 792},
+    "bleedBoxPoints": {"x": 15, "y": 15, "width": 630, "height": 810},
+    "imageObjects": [{"width": 1224, "height": 1584}, {"width": 1224, "height": 451}],
+    "mastheadWidthInches": 8.5,
+    "effectiveMastheadPpi": 144,
+    "warnings": ["Print shop file: RGB color, ⅛-inch bleed and crop marks. Confirm the printer’s color-profile and finishing requirements."]
+  },
+  "findings": [
+    {
+      "id": "final-raster-resolution",
+      "observation": "The hero is composited into a 1224-pixel masthead spanning 612 PDF points, or 8.5 inches. Source-resolution checking emitted no low-resolution warning for this fixture, although the exported composite is 144 PPI.",
+      "source": "lib/menu-print.ts:237"
+    },
+    {
+      "id": "bleed-continuity",
+      "observation": "The print-shop wrapper fills the bleed with a flat background color and places the original artwork at the trim rectangle. The masthead and paper textures stop at trim; the rendered proof visibly differs outside that boundary.",
+      "source": "lib/menu-print.ts:705"
+    }
+  ],
+  "validation": {
+    "existingTemplateQualitySuite": "passed",
+    "combinedCompositionExportCases": 48,
+    "menuPaginationProofs": 8,
+    "photographicMenuProofs": 4,
+    "pressProofRenderer": "Poppler pdftoppm",
+    "visualReview": ["Fresh four-design contact sheet", "Fresh photographic contact sheet", "Atelier continuation page", "Independent print-shop proof"],
+    "browserInteractionTested": false,
+    "physicalPrintingTested": false,
+    "aiProviderCalled": false
+  }
+}

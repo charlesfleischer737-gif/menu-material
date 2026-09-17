@@ -13,6 +13,7 @@ import "./homepage.css";
 import "./photo-exports.css";
 import "./creative-workspace.css";
 import "./menu-templates.css";
+import "./menu-studio.css";
 import "./studio-experience.css";
 import "./explore.css";
 export async function generateMetadata(): Promise<Metadata> {

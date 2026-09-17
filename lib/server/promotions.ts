@@ -17,6 +17,7 @@ import {
 import { defaultStyle, localToInstant, promotionStatus } from "../promotions";
 import { publicBrandStyle } from "../restaurant-look";
 import { photoStyles } from "../photo-styles";
+import { publicMenuDocuments } from "./menu-documents";
 
 export const styleSchema = z.object({
   primary: z
@@ -216,6 +217,7 @@ export async function publicMenu(r: Row, t = now()) {
   const { brand: _privatePreferences, ...restaurant } = menu.restaurant;
   return {
     ...menu,
+    menus: await publicMenuDocuments(r.id),
     restaurant: { ...restaurant, style: publicBrandStyle(restaurant.style) },
     specials: specials.map((special) => ({
       ...special,

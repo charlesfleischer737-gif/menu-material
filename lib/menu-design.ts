@@ -33,7 +33,7 @@ export function menuDesignPreset(menu: Row, design: string) {
   return {
     design: spec.id,
     appearance: spec.appearance,
-    layout: hasPhoto ? "featured" : menu.layout || "classic",
+    layout: menu.layout || (hasPhoto ? "featured" : "classic"),
   };
 }
 export function menuHero(menu: Row): Row | undefined {
