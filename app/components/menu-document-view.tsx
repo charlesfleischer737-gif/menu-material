@@ -1,5 +1,5 @@
 "use client";
-import { useCallback, useEffect, useRef, useState } from "react";
+import { useCallback, useEffect, useId, useRef, useState } from "react";
 import type { Row } from "@/lib/client";
 import { scheduleLabel } from "@/lib/promotions";
 import {
@@ -33,10 +33,12 @@ export default function MenuDocumentView({
 }) {
   const [live, setLive] = useState(initial),
     [search, setSearch] = useState(""),
+    [sectionTarget, setSectionTarget] = useState<{ id: string } | null>(null),
     [unavailable, setUnavailable] = useState(false),
     [time, setTime] = useState(initial.serverNow || 0);
   const root = useRef<HTMLElement>(null),
     session = useRef("");
+  const menuId = useId();
   const menu = preview ? initial : live,
     theme = menuTheme(menu),
     spec = menuDesignSpec(menu.design),
@@ -64,6 +66,20 @@ export default function MenuDocumentView({
     },
     [preview, slug, menu.documentId],
   );
+  useEffect(() => {
+    if (!sectionTarget) return;
+    // Wait for the cleared search to render before moving keyboard focus.
+    const heading = root.current?.querySelector<HTMLElement>(
+      `[data-section="${CSS.escape(sectionTarget.id)}"] h2`,
+    );
+    heading?.focus({ preventScroll: true });
+    heading?.scrollIntoView({
+      behavior: matchMedia("(prefers-reduced-motion: reduce)").matches
+        ? "instant"
+        : "smooth",
+      block: "start",
+    });
+  }, [sectionTarget]);
   useEffect(() => {
     if (preview || !live.specials?.length) return;
     const local = Date.now(),
@@ -134,18 +150,21 @@ export default function MenuDocumentView({
         {slug && <a href={`/m/${slug}`}>View the restaurant’s current menu</a>}
       </main>
     );
+  const query = search.trim();
   const filtered = sections
     .map((s) => ({
       ...s,
       items: s.items.filter((i) =>
         `${s.name} ${i.name} ${i.description} ${i.dietary.join(" ")}`
           .toLocaleLowerCase(menu.language)
-          .includes(search.toLocaleLowerCase(menu.language)),
+          .includes(query.toLocaleLowerCase(menu.language)),
       ),
     }))
     .filter((s) => s.items.length);
+  const resultCount = filtered.reduce((n, s) => n + s.items.length, 0);
+  const Surface = preview ? "article" : "main";
   return (
-    <article
+    <Surface
       ref={root}
       className={`md-guest md-design-${menu.design} md-density-${menu.density} ${onSelect ? "md-editable" : ""}`}
       lang={menu.language}
@@ -232,11 +251,12 @@ export default function MenuDocumentView({
       )}
       {(sections.length > 3 ||
         sections.reduce((n, s) => n + s.items.length, 0) > 12) && (
-        <nav className="md-guest-nav" aria-label="Find a dish">
+        <nav className="md-guest-nav" aria-label="Find a menu item">
           <input
             type="search"
             aria-label="Search this menu"
-            placeholder="Find a dish…"
+            placeholder="Search the menu…"
+            aria-controls={`${menuId}-items`}
             value={search}
             onChange={(e) => setSearch(e.target.value)}
           />
@@ -244,19 +264,29 @@ export default function MenuDocumentView({
             {sections.map((s) => (
               <button
                 key={s.id}
+                aria-controls={
+                  filtered.some((section) => section.id === s.id)
+                    ? `${menuId}-${s.id}`
+                    : undefined
+                }
                 onClick={() => {
                   setSearch("");
-                  requestAnimationFrame(() =>
-                    root.current
-                      ?.querySelector(`[data-section="${CSS.escape(s.id)}"]`)
-                      ?.scrollIntoView({ behavior: "smooth", block: "start" }),
-                  );
+                  setSectionTarget({ id: s.id });
                 }}
               >
                 {s.name}
               </button>
             ))}
           </div>
+          <p
+            className="md-guest-search-status"
+            role="status"
+            aria-atomic="true"
+          >
+            {query
+              ? `${resultCount} ${resultCount === 1 ? "item matches" : "items match"} “${query}”.`
+              : `All ${resultCount} items shown.`}
+          </p>
         </nav>
       )}
       {!preview && !!menu.specials?.length && (
@@ -298,11 +328,13 @@ export default function MenuDocumentView({
             ))}
         </div>
       )}
-      <div className="md-guest-sections">
+      <div className="md-guest-sections" id={`${menuId}-items`}>
         {filtered.map((section) => (
           <section key={section.id} data-section={section.id}>
             <header>
-              <h2>{section.name}</h2>
+              <h2 id={`${menuId}-${section.id}`} tabIndex={-1}>
+                {section.name}
+              </h2>
               {section.description && <p>{section.description}</p>}
             </header>
             <div>
@@ -324,7 +356,10 @@ export default function MenuDocumentView({
                         featured
                       />
                     )}
-                  <div className="md-guest-item-title">
+                  <div
+                    className="md-guest-item-title"
+                    data-price-mode={item.priceMode}
+                  >
                     <h3>{item.name || "Untitled dish"}</h3>
                     {entryPrice(item, menu) && (
                       <span>{entryPrice(item, menu)}</span>
@@ -393,8 +428,8 @@ export default function MenuDocumentView({
       </div>
       {!filtered.length && (
         <p className="md-guest-empty">
-          {search
-            ? `No dishes match “${search}”.`
+          {query
+            ? `No menu items match “${query}”.`
             : "Your dishes will appear here."}
         </p>
       )}
@@ -404,6 +439,6 @@ export default function MenuDocumentView({
       {!preview && (
         <div className="md-guest-credit">Made with Menu Material</div>
       )}
-    </article>
+    </Surface>
   );
 }

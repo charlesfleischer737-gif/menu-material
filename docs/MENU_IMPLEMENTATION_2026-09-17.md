@@ -9,6 +9,7 @@ The Menu workspace now composes editable restaurant content into ten distinct pr
 - [Drinks, café, wine, and tasting comparison](evidence/menu-purpose-collection-2026-09-17.jpg)
 - Drink-menu PDFs: [dive bar](evidence/menu-dive-bar-2026-09-17.pdf), [cocktail bar](evidence/menu-cocktail-bar-2026-09-17.pdf), [smoothie truck](evidence/menu-smoothie-truck-2026-09-17.pdf)
 - [Purpose-specific proof results](evidence/menu-purpose-validation-2026-09-17.json)
+- [Guest accessibility results](evidence/menu-accessibility-2026-09-17.json)
 
 Examples use fictional restaurant content. They are layout proofs, not customer menus or claims of customer adoption.
 
@@ -25,6 +26,7 @@ Examples use fictional restaurant content. They are layout proofs, not customer 
 - Explicit dish-library updates. Editing a saved menu never silently changes other menus or the shared dish facts.
 - Reviewed publishing, named guest URLs, a stable restaurant entry point, menu switching, QR images, and table cards. Older guest renderers remain supported until republishing.
 - Optional shorter-wording suggestions through the existing OpenAI connection. Suggestions require an explicit Apply action; longer results retain the original. No new API key or model was configured.
+- Guest text follows browser text-size preferences. Price labels and size groups reflow without hiding facts; unavailable items retain their contrast. Section navigation moves keyboard focus to the heading and respects reduced motion; search counts use a polite status region, and the published menu has a named main landmark.
 - Searchable vector PDF text, embedded fonts, Letter/A4, optional 1/8-inch bleed/crop marks, final cropped-photo resolution warnings, and RGB labeling.
 - Background PDF composition on supported browsers, a two-worker limit, shared requests and bounded result caching, full-proof priority, and termination of previews with no remaining viewers. Downloads reuse the exact reviewed PDF. Browsers without worker/canvas support retain the same renderer as a fallback.
 
@@ -43,13 +45,14 @@ Examples use fictional restaurant content. They are layout proofs, not customer 
 | Production build | Sites/vinext build passed. Existing large-chunk and route-classification advisories remain. |
 | Browser workflow | Pasted import review, full design selection, phone preview, decimal price editing, explicit library saving, wording Apply/Undo, local publication, guest access/QR, publication restoration, and PDF export exercised. |
 | Phone view | Street Kitchen and all three new drink designs inspected at 320, 390, and 430 CSS pixels with no page-width overflow; descriptions/prices are 16 px and section controls at least 44 px tall. Guest search and switching between the three locally published drink menus passed without console errors. |
+| Enlarged text and keyboard use | 200 browser compositions passed: ten designs × five widths (320/390/430/800/1280) × normal/200% root text size × light/dark. Measured names, descriptions, price groups and controls doubled in size without clipping, name/price overlap, page-width overflow, or missing items. Minimum measured text contrast was 4.63:1. Search retained input focus, announced counts/empty results in the accessibility tree, and keyboard activation of a section restored the full menu and focused its heading with a visible outline. |
 | Live AI connection | Two small synthetic wording requests succeeded using the already configured API key. No customer content was sent. |
 
 The measured local PDF runs averaged about 163 ms, with a 441 ms maximum in the recorded matrix. This measures local composition/export, not full phone-device interaction latency or a customer performance SLA.
 
 ## Remaining field validation and deliberate scope
 
-Physical paper/color proofs, text-only browser enlargement, broader physical-device coverage, and the five-owner in-service pilot remain to be performed. The owner confirmed that pilot participants are not available yet. No restaurant adoption, task-time target, or physical-print quality has been claimed as validated.
+Physical paper/color proofs, native browser text settings, screen-reader speech, broader physical-device coverage, and the five-owner in-service pilot remain to be performed. Text-only enlargement is now checked through a local fixture control that sets the document root font size to 200%, using the real guest component and styles. This is a layout and semantics check, not a claim of full accessibility conformance. The owner confirmed that pilot participants are not available yet. No restaurant adoption, task-time target, or physical-print quality has been claimed as validated.
 
 AI reference interpretation, translations, scheduled publication, and printer-specific CMYK/PDF-X output are later work. Recommendations currently use deterministic content/purpose rules; layout and routine editing work without an AI call. Unsupported print characters are diagnosed instead of silently substituted. Worker cancellation stops in-progress composition; the fallback checks cancellation between asynchronous stages but cannot interrupt synchronous JavaScript already running. The worker harness uses a canvas adapter and does not establish physical-device latency.
 
@@ -63,8 +66,12 @@ The software is ready for review and the first owner pilot. Broader rollout shou
 | Correct structured content and legible pagination | The 60-case print matrix, ten long-content cases, twelve purpose-specific proofs, and mixed-price/photo cases pass. The visual benchmark set includes café sizes, glass/bottle wines, a fixed-price tasting menu, beer pours, cocktails, and smoothie sizes/additions. |
 | Guided generation and routine editing | Import review, purpose/paper/page brief, three recommendations, full collection, all-page inspection, print/phone editing, undo, export, and reviewed publication are delivered and exercised. Owner task-time targets have not been measured. |
 | Independent menus and safe migration/publication | API checks cover menu-specific edits, exact legacy public snapshots, atomic migration, named URLs, primary routing, recovery, privacy, and concurrent changes. These are automated/local results, not production usage observations. |
-| Phone accessibility and responsiveness | Street Kitchen and the three drink designs passed the documented widths and readable-content checks. Text-only 200% enlargement, the full style/purpose/device matrix, and screen-reader review remain open. Local PDF timings do not establish browser/device latency. |
+| Phone accessibility and responsiveness | All ten designs passed the 200-case local text-size/width/appearance matrix and keyboard/search checks. Native browser preference testing, physical devices, and screen-reader speech review remain open. Local PDF timings do not establish browser/device latency. |
 | AI-assisted design and wording | Existing extraction and reviewed shortening use the configured connection. Deterministic recommendations work without AI. Optional visual-reference interpretation and translations remain unimplemented; no broader AI design capability is claimed. |
 | Efficient preview architecture | Shared prepared-PDF caching, debounce, a bounded worker queue, and cancellation of already-running worker computation are delivered. Browser checks and the worker harness pass; timing on an agreed ordinary device remains open. |
 | In-service validation | Five owner trials, physical print proofs, initial/repeat task timings, and evidence of return use remain external release gates. The owner reported no available pilot participants yet. No owners have been recruited or contacted by this task. |
 | Public release | The owner approved public publication and the seven-design release was confirmed live on September 17. Subsequent refinements follow the same validation and publishing process. |
+
+## Reproducing guest accessibility checks
+
+Run `node tests/menu-accessibility-server.mjs` and open its printed local URL. This harness mounts the production component and styles, uses fictional menu fixtures, makes no publication or provider requests, and is not a production route. Select content, design, light/dark appearance, and normal/200% text; resize to the documented widths. Inspect every item, long labels, price groups, and keyboard focus after searching and choosing a section. The text-size target follows [W3C resize-text guidance](https://www.w3.org/WAI/WCAG22/Understanding/resize-text.html). Native browser settings and screen-reader testing remain separate checks.

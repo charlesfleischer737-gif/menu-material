@@ -1,0 +1,70 @@
+{
+  "date": "2026-09-17",
+  "renderer": "MenuDocumentView with production guest styles, mounted by the local Vite accessibility harness",
+  "method": "CUA browser UI: select each actual design and appearance, set viewport, change root text size using the fixture control, then inspect rendered DOM geometry and computed styles.",
+  "fixture": "long-content: 11 items; long restaurant, section and item names; a long price label; unavailable item and dietary notes; two and three price variants, including 200.50.",
+  "matrix": {
+    "designs": [
+      "bistro",
+      "cafe",
+      "casual",
+      "truck",
+      "bar",
+      "cocktail",
+      "smoothie",
+      "fine",
+      "wine",
+      "special"
+    ],
+    "widths": [
+      320,
+      390,
+      430,
+      800,
+      1280
+    ],
+    "textPercent": [
+      100,
+      200
+    ],
+    "appearance": [
+      "light",
+      "dark"
+    ],
+    "cases": 200
+  },
+  "results": {
+    "pageWidthOverflowCases": 0,
+    "clippedPrimaryTextCases": 0,
+    "itemNamePriceCollisionCases": 0,
+    "variantLabelPriceCollisionCases": 0,
+    "missingItemCases": 0,
+    "fontDoublingMismatchCases": 0,
+    "minimumMeasuredTextContrast": 4.626938634742926
+  },
+  "interaction": {
+    "trimmedSearch": "  lager  ",
+    "matchingItems": [
+      "Lager tallboy",
+      "Alcohol-free lager"
+    ],
+    "matchingStatus": "2 items match “lager”.",
+    "noMatchStatus": "0 items match “No matching item”.",
+    "searchRetainsInputFocus": true,
+    "keyboardPath": "Search with no results → Tab → Enter on first section button",
+    "destinationTag": "H2",
+    "destinationName": "Seasonal favorites from our neighborhood producers",
+    "focusOutline": "solid",
+    "clearedSearchStatus": "All 11 items shown."
+  },
+  "reproducedDefects": [
+    "Atelier price overlapped a long item name at 800 and 1280 px with enlarged text.",
+    "Section navigation scrolled without moving keyboard focus.",
+    "Fixed pixel font sizes did not consistently follow root text enlargement."
+  ],
+  "limits": [
+    "Text enlargement was exercised through a local fixture control setting root font size to 200%, not through each browser's native text settings.",
+    "Computed text contrast and accessible roles do not establish full WCAG conformance.",
+    "Actual screen-reader speech, physical-device/browser coverage, physical print proofs and owner trials remain open."
+  ]
+}

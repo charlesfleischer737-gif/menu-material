@@ -1745,11 +1745,25 @@
   min-height: 100dvh;
   padding: 46px 38px 30px;
   line-height: 1.6;
-  font-size: 16px;
+  font-size: 1rem;
   overflow-wrap: anywhere;
 }
 .md-guest * {
   box-sizing: border-box;
+}
+.md-guest :is(a, button, input, [tabindex]):focus-visible {
+  outline: 2px solid var(--md-ink);
+  outline-offset: 3px;
+}
+.md-guest-search-status {
+  position: absolute;
+  width: 1px;
+  height: 1px;
+  padding: 0;
+  margin: -1px;
+  overflow: hidden;
+  clip-path: inset(50%);
+  white-space: nowrap;
 }
 .md-guest-header {
   position: relative;
@@ -1766,7 +1780,7 @@
 }
 .md-guest h1 {
   font-family: var(--md-heading);
-  font-size: 46px;
+  font-size: 2.875rem;
   font-weight: 600;
   line-height: 1.03;
   letter-spacing: -1.5px;
@@ -1775,7 +1789,7 @@
 }
 .md-guest-title {
   font:
-    600 11px/1.5 "Post Sans",
+    600 0.6875rem/1.5 "Post Sans",
     sans-serif;
   text-transform: uppercase;
   letter-spacing: 2px;
@@ -1784,7 +1798,7 @@
 }
 .md-guest-intro {
   color: var(--md-muted);
-  font-size: 13px;
+  font-size: 0.8125rem;
   line-height: 1.7;
   margin: 12px 0 0;
   max-width: 540px;
@@ -1792,12 +1806,12 @@
 }
 .md-guest-fixed {
   color: var(--md-accent);
-  font-size: 14px;
+  font-size: 0.875rem;
   margin: 16px 0 0;
   font-variant-numeric: tabular-nums;
 }
 .md-guest-fixed span {
-  font-size: 13px;
+  font-size: 0.8125rem;
 }
 .md-guest-hero {
   position: relative;
@@ -1813,7 +1827,7 @@
 .md-guest-hero > span {
   display: block;
   margin-top: 7px;
-  font-size: 12px;
+  font-size: 0.75rem;
   letter-spacing: 0.4px;
   color: var(--md-muted);
 }
@@ -1823,7 +1837,7 @@
   border: 1px solid var(--md-accent);
   border-radius: 4px;
   color: var(--md-accent);
-  font-size: 14px;
+  font-size: 0.875rem;
   text-decoration: none;
   margin-top: 20px;
 }
@@ -1838,7 +1852,7 @@
 .md-menu-switcher a {
   color: var(--md-accent);
   text-decoration: none;
-  font-size: 14px;
+  font-size: 0.875rem;
   border: 1px solid var(--md-rule);
   border-radius: 5px;
   padding: 6px 12px;
@@ -1861,7 +1875,7 @@
   color: var(--md-ink);
   padding: 11px;
   font:
-    13px "Post Sans",
+    0.8125rem "Post Sans",
     sans-serif;
 }
 .md-guest-nav > div {
@@ -1872,7 +1886,7 @@
 }
 .md-guest-nav button {
   font:
-    14px "Post Sans",
+    0.875rem "Post Sans",
     sans-serif;
   flex-shrink: 0;
   border: 1px solid var(--md-rule);
@@ -1882,6 +1896,9 @@
   color: var(--md-muted);
   cursor: pointer;
   min-height: 44px;
+  max-width: 100%;
+  overflow-wrap: anywhere;
+  text-align: left;
 }
 .md-guest-sections {
   display: grid;
@@ -1893,12 +1910,15 @@
   min-width: 0;
   scroll-margin-top: 24px;
 }
+.md-guest-sections h2 {
+  scroll-margin-top: 24px;
+}
 .md-guest-sections > section > header {
   margin-bottom: 22px;
 }
 .md-guest h2 {
   font:
-    650 12px/1.5 "Post Sans",
+    650 0.75rem/1.5 "Post Sans",
     sans-serif;
   text-transform: uppercase;
   letter-spacing: 1.2px;
@@ -1907,7 +1927,7 @@
   padding-bottom: 9px;
 }
 .md-guest-sections > section > header > p {
-  font-size: 13px;
+  font-size: 0.8125rem;
   color: var(--md-muted);
   line-height: 1.7;
   margin: 11px 0 0;
@@ -1919,45 +1939,55 @@
 }
 .md-guest-item-title {
   display: flex;
+  flex-wrap: wrap;
   align-items: baseline;
   justify-content: space-between;
   gap: 13px;
+  row-gap: 5px;
+}
+.md-guest-item-title > h3 {
+  flex: 1 1 12ch;
 }
 .md-guest-item h3 {
   font-family: var(--md-item);
-  font-size: 21px;
+  font-size: 1.3125rem;
   line-height: 1.16;
   letter-spacing: -0.3px;
   font-weight: 600;
 }
 .md-guest-item-title > span {
   font:
-    400 12px/1.4 "Post Sans",
+    400 0.75rem/1.4 "Post Sans",
     sans-serif;
   flex-shrink: 0;
   font-variant-numeric: tabular-nums;
-  max-width: 40%;
+  max-width: 100%;
   text-align: right;
 }
+.md-guest-item-title[data-price-mode="label"] > span {
+  flex-basis: 100%;
+  text-align: left;
+}
 .md-guest-item > p {
-  font-size: 13px;
+  font-size: 0.8125rem;
   color: var(--md-muted);
   line-height: 1.7;
   margin: 5px 0 0;
   white-space: pre-line;
 }
 .md-guest-item > p.md-guest-dietary {
-  font-size: 13px;
+  font-size: 0.8125rem;
   color: var(--md-accent);
   margin-top: 7px;
 }
 .md-guest-item > p.md-guest-unavailable {
-  font-size: 13px;
+  font-size: 0.8125rem;
   font-style: italic;
   margin-top: 8px;
 }
 .md-guest-item.is-unavailable {
-  opacity: 0.65;
+  /* Availability is conveyed in text without dimming the menu's facts. */
+  opacity: 1;
 }
 .md-guest-item > .mm-menu-photo {
   overflow: hidden;
@@ -1970,7 +2000,7 @@
 .md-guest-additions {
   display: grid;
   gap: 5px;
-  font-size: 14px;
+  font-size: 0.875rem;
   margin: 10px 0 0;
   color: var(--md-ink);
 }
@@ -1991,7 +2021,7 @@
   border-radius: 4px;
 }
 .md-guest-specials > section > span {
-  font-size: 12px;
+  font-size: 0.75rem;
   text-transform: uppercase;
   letter-spacing: 1px;
   color: var(--md-accent);
@@ -2004,18 +2034,18 @@
   margin-top: 8px;
 }
 .md-guest-specials h2 {
-  font: 600 24px/1.2 var(--md-heading);
+  font: 600 1.5rem/1.2 var(--md-heading);
   margin: 0;
 }
 .md-guest-specials p {
-  font-size: 16px;
+  font-size: 1rem;
   line-height: 1.5;
 }
 .md-guest-specials strong {
   white-space: nowrap;
 }
 .md-guest-specials small {
-  font-size: 12px;
+  font-size: 0.75rem;
   color: var(--md-muted);
 }
 .md-special-photos {
@@ -2035,7 +2065,7 @@
   border-radius: 3px;
 }
 .md-special-photos figcaption {
-  font-size: 14px;
+  font-size: 0.875rem;
   line-height: 1.4;
   margin-top: 6px;
 }
@@ -2050,9 +2080,10 @@
   margin: 0;
   flex-shrink: 0;
   font-variant-numeric: tabular-nums;
+  overflow-wrap: anywhere;
 }
 .md-guest-additions {
-  font-size: 13px;
+  font-size: 0.8125rem;
   color: var(--md-muted);
 }
 .md-item-select {
@@ -2072,7 +2103,7 @@
   padding-top: 22px;
   margin-top: 23px;
   border-top: 1px solid var(--md-rule);
-  font-size: 14px;
+  font-size: 0.875rem;
   color: var(--md-muted);
   line-height: 1.8;
   white-space: pre-line;
@@ -2080,14 +2111,13 @@
 .md-guest-credit {
   text-align: center;
   color: var(--md-muted);
-  opacity: 0.7;
-  font-size: 12px;
+  font-size: 0.75rem;
   margin: 45px 0 7px;
   letter-spacing: 0.3px;
 }
 .md-guest-empty {
   padding: 35px 0;
-  font-size: 14px;
+  font-size: 0.875rem;
   color: var(--md-muted);
   text-align: center;
 }
@@ -2105,11 +2135,11 @@
 }
 .md-design-cafe h1 {
   font-weight: 750;
-  font-size: 38px;
+  font-size: 2.375rem;
   letter-spacing: -1.5px;
 }
 .md-design-cafe h2 {
-  font-size: 17px;
+  font-size: 1.0625rem;
   text-transform: none;
   letter-spacing: -0.3px;
   background: var(--md-subtle);
@@ -2117,7 +2147,7 @@
   border: 0;
 }
 .md-design-cafe .md-guest-item h3 {
-  font-size: 16px;
+  font-size: 1rem;
   letter-spacing: -0.3px;
   font-weight: 600;
 }
@@ -2140,20 +2170,20 @@
   color: var(--md-on-accent);
 }
 .md-design-casual h1 {
-  font-size: 60px;
+  font-size: 3.75rem;
   text-transform: uppercase;
   letter-spacing: -0.8px;
 }
 .md-design-casual h2 {
   font-family: "Post Condensed", Impact, sans-serif;
-  font-size: 29px;
+  font-size: 1.8125rem;
   font-weight: 700;
   letter-spacing: 0.2px;
   line-height: 1.1;
   border-bottom-width: 2px;
 }
 .md-design-casual .md-guest-item h3 {
-  font-size: 16px;
+  font-size: 1rem;
   font-weight: 700;
 }
 .md-design-casual .md-order {
@@ -2185,7 +2215,7 @@
 .md-design-fine h2,
 .md-design-special h2 {
   border: 0;
-  font-size: 13px;
+  font-size: 0.8125rem;
   letter-spacing: 2px;
   padding: 0;
 }
@@ -2195,15 +2225,19 @@
 }
 .md-design-fine .md-guest-item-title {
   justify-content: center;
-  position: relative;
+  flex-direction: column;
+  align-items: center;
+  gap: 7px;
 }
 .md-design-fine .md-guest-item-title > span {
-  position: absolute;
-  right: 0;
+  position: static;
+  max-width: 100%;
+  text-align: center;
 }
 .md-design-fine .md-guest-item-title h3 {
-  padding: 0 55px;
-  font-size: 23px;
+  padding: 0;
+  flex: none;
+  font-size: 1.4375rem;
 }
 .md-design-fine .md-guest-item > p {
   max-width: 420px;
@@ -2216,14 +2250,14 @@
 }
 .md-design-special h1 {
   font-family: "Post Sans", sans-serif;
-  font-size: 15px;
+  font-size: 0.9375rem;
   letter-spacing: 2px;
   font-weight: 500;
   text-transform: uppercase;
 }
 .md-design-special .md-guest-title {
   font-family: "Post Serif Italic", Georgia, serif;
-  font-size: 47px;
+  font-size: 2.9375rem;
   text-transform: none;
   letter-spacing: -1.2px;
   font-weight: 600;
@@ -2231,7 +2265,7 @@
   margin: 14px 0;
 }
 .md-design-special .md-guest-item h3 {
-  font-size: 27px;
+  font-size: 1.6875rem;
 }
 .md-design-special .md-guest-sections {
   max-width: 570px;
@@ -2245,7 +2279,7 @@
 }
 .md-design-wine h2 {
   font-family: "Post Serif", Georgia, serif;
-  font-size: 26px;
+  font-size: 1.625rem;
   letter-spacing: -0.3px;
   text-transform: none;
   line-height: 1.1;
@@ -2256,7 +2290,7 @@
   margin-bottom: 18px;
 }
 .md-design-wine .md-guest-item h3 {
-  font-size: 17px;
+  font-size: 1.0625rem;
   font-weight: 600;
   letter-spacing: -0.2px;
 }
@@ -2267,7 +2301,7 @@
 }
 .md-phone-frame .md-guest {
   padding: 40px 25px 28px;
-  font-size: 15px;
+  font-size: 0.9375rem;
   min-height: 700px;
 }
 .md-phone-frame .md-guest-sections {
@@ -2275,23 +2309,23 @@
   gap: 30px;
 }
 .md-phone-frame .md-guest h1 {
-  font-size: 39px;
+  font-size: 2.4375rem;
 }
 .md-phone-frame .md-design-cafe h1 {
-  font-size: 31px;
+  font-size: 1.9375rem;
 }
 .md-phone-frame .md-design-casual .md-guest-header {
   margin: -40px -25px 30px;
   padding: 44px 25px 29px;
 }
 .md-phone-frame .md-design-casual h1 {
-  font-size: 51px;
+  font-size: 3.1875rem;
 }
 .md-phone-frame .md-design-special h1 {
-  font-size: 14px;
+  font-size: 0.875rem;
 }
 .md-phone-frame .md-design-special .md-guest-title {
-  font-size: 42px;
+  font-size: 2.625rem;
 }
 .md-phone-frame .md-design-fine .md-guest-item-title {
   flex-direction: column;
@@ -2831,14 +2865,14 @@
   }
   .md-guest {
     padding: 38px 26px 27px;
-    font-size: 15px;
+    font-size: 0.9375rem;
   }
   .md-guest-sections {
     grid-template-columns: 1fr;
     gap: 28px;
   }
   .md-guest h1 {
-    font-size: 40px;
+    font-size: 2.5rem;
   }
   .md-guest-header {
     margin-bottom: 28px;
@@ -2849,13 +2883,13 @@
     padding: 34px 26px 29px;
   }
   .md-design-casual h1 {
-    font-size: 52px;
+    font-size: 3.25rem;
   }
   .md-design-cafe h1 {
-    font-size: 34px;
+    font-size: 2.125rem;
   }
   .md-design-special h1 {
-    font-size: 13px;
+    font-size: 0.8125rem;
   }
   .md-design-fine .md-guest-item-title {
     flex-direction: column;
@@ -2869,32 +2903,32 @@
     padding: 0;
   }
   .md-guest-item h3 {
-    font-size: 23px;
+    font-size: 1.4375rem;
   }
   .md-guest-item > p {
-    font-size: 14px;
+    font-size: 0.875rem;
   }
   .md-guest-item-title > span {
-    font-size: 13px;
+    font-size: 0.8125rem;
   }
   .md-guest-item {
     margin-bottom: 24px;
   }
   .md-guest-prices {
-    font-size: 13px;
+    font-size: 0.8125rem;
   }
   .md-guest-additions {
-    font-size: 14px;
+    font-size: 0.875rem;
   }
   .md-guest-nav button,
   .md-menu-switcher a {
     min-height: 44px;
   }
   .md-guest-nav input {
-    font-size: 16px;
+    font-size: 1rem;
   }
   .md-guest-footer {
-    font-size: 14px;
+    font-size: 0.875rem;
   }
   .md-menu-switcher {
     gap: 8px;
@@ -2902,7 +2936,8 @@
 }
 @media (prefers-reduced-motion: reduce) {
   .md-studio *,
-  .md-dialog * {
+  .md-dialog *,
+  .md-guest * {
     transition: none !important;
     scroll-behavior: auto !important;
   }
@@ -2975,7 +3010,7 @@
 }
 .md-design-truck h1 {
   font-family: "Post Condensed", Impact, sans-serif;
-  font-size: 65px;
+  font-size: 4.0625rem;
   text-transform: uppercase;
   letter-spacing: -1px;
   line-height: 0.95;
@@ -2985,13 +3020,13 @@
   padding-bottom: 24px;
 }
 .md-design-truck .md-guest-title {
-  font-size: 13px;
+  font-size: 0.8125rem;
   font-weight: 700;
   letter-spacing: 1.5px;
 }
 .md-design-truck h2 {
   font-family: "Post Condensed", Impact, sans-serif;
-  font-size: 28px;
+  font-size: 1.75rem;
   letter-spacing: 0.3px;
   line-height: 1.05;
   background: var(--md-accent);
@@ -3001,7 +3036,7 @@
 }
 .md-design-truck .md-guest-item h3 {
   font-family: "Post Condensed", Impact, sans-serif;
-  font-size: 28px;
+  font-size: 1.75rem;
   font-weight: 700;
   line-height: 1.05;
   letter-spacing: 0;
@@ -3011,7 +3046,7 @@
   gap: 13px;
 }
 .md-design-truck .md-guest-item-title > span {
-  font-size: 17px;
+  font-size: 1.0625rem;
   font-weight: 700;
   background: var(--md-subtle);
   padding: 3px 7px;
@@ -3022,7 +3057,7 @@
   margin-bottom: 26px;
 }
 .md-design-truck .md-guest-item > p {
-  font-size: 14px;
+  font-size: 0.875rem;
   line-height: 1.65;
   margin-top: 8px;
 }
@@ -3035,11 +3070,11 @@
   font-weight: 500;
 }
 .md-phone-frame .md-design-truck h1 {
-  font-size: 55px;
+  font-size: 3.4375rem;
 }
 @media (max-width: 740px) {
   .md-design-truck h1 {
-    font-size: 54px;
+    font-size: 3.375rem;
   }
   .md-review-fields {
     max-height: 420px;
@@ -3172,16 +3207,16 @@
 .md-guest .md-guest-item > p,
 .md-guest .md-guest-intro,
 .md-guest .md-guest-sections > section > header > p {
-  font-size: 16px;
+  font-size: 1rem;
 }
 .md-guest .md-guest-item-title > span,
 .md-guest .md-guest-prices {
-  font-size: 16px;
+  font-size: 1rem;
 }
 .md-guest .md-guest-additions,
 .md-guest .md-guest-item > p.md-guest-dietary,
 .md-guest .md-guest-item > p.md-guest-unavailable {
-  font-size: 14px;
+  font-size: 0.875rem;
 }
 .md-guest .md-guest-item h3 {
   min-width: 0;
@@ -3199,7 +3234,7 @@
   align-items: center;
 }
 .md-guest .md-guest-nav input {
-  font-size: 16px;
+  font-size: 1rem;
 }
 .menu-document-switcher {
   display: flex;
@@ -3214,7 +3249,7 @@
 }
 .md-design-bar h1 {
   font-family: "Post Condensed", Impact, sans-serif;
-  font-size: clamp(2.5rem, 8vw, 4rem);
+  font-size: 4rem;
   text-transform: uppercase;
   line-height: 0.98;
   letter-spacing: -0.02em;
@@ -3238,7 +3273,7 @@
 }
 .md-design-cocktail .md-guest-title {
   font-family: "Post Serif Italic", Georgia, serif;
-  font-size: clamp(2.6rem, 8vw, 3.5rem);
+  font-size: 3.5rem;
   line-height: 1.1;
   text-transform: none;
   letter-spacing: -0.025em;
@@ -3263,7 +3298,7 @@
 }
 .md-design-smoothie h1 {
   font-family: "Post Sans", sans-serif;
-  font-size: clamp(2rem, 6vw, 2.8rem);
+  font-size: 2.8rem;
   font-weight: 700;
   line-height: 1.1;
   letter-spacing: -0.045em;
@@ -3292,13 +3327,32 @@
   border-bottom: 1px solid var(--md-rule);
   padding-bottom: 18px;
 }
-:is(.md-design-cafe, .md-design-wine, .md-design-bar, .md-design-smoothie)
-  .md-guest-prices[data-options="2"] {
-  grid-template-columns: repeat(2, minmax(0, 1fr));
+.md-phone-frame .md-design-bar h1 {
+  font-size: 2.5rem;
+}
+.md-phone-frame .md-design-cocktail h1 {
+  font-size: 1rem;
+}
+.md-phone-frame .md-design-cocktail .md-guest-title {
+  font-size: 2.6rem;
+}
+.md-phone-frame .md-design-smoothie h1 {
+  font-size: 2rem;
+}
+@media (max-width: 740px) {
+  .md-design-bar h1 {
+    font-size: 2.5rem;
+  }
+  .md-design-cocktail .md-guest-title {
+    font-size: 2.6rem;
+  }
+  .md-design-smoothie h1 {
+    font-size: 2rem;
+  }
 }
 :is(.md-design-cafe, .md-design-wine, .md-design-bar, .md-design-smoothie)
-  .md-guest-prices[data-options="3"] {
-  grid-template-columns: repeat(3, minmax(0, 1fr));
+  .md-guest-prices:is([data-options="2"], [data-options="3"]) {
+  grid-template-columns: repeat(auto-fit, minmax(min(100%, 5em), 1fr));
 }
 :is(.md-design-cafe, .md-design-wine, .md-design-bar, .md-design-smoothie)
   .md-guest-prices:is([data-options="2"], [data-options="3"])
