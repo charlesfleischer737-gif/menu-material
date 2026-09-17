@@ -206,11 +206,13 @@ export default function CoreWorkspace({
               aria-current={view === id ? "page" : undefined}
               onClick={() => navigate(id)}
             >
-              <Icon size={19} />
+              <span className="cx-nav-icon" aria-hidden="true">
+                <Icon size={20} />
+                {id === "studio" && active.length > 0 && (
+                  <span className="cx-nav-dot" />
+                )}
+              </span>
               <span className="cx-nav-label">{label}</span>
-              {id === "studio" && active.length > 0 && (
-                <span className="cx-nav-dot" />
-              )}
             </button>
           ))}
         </nav>

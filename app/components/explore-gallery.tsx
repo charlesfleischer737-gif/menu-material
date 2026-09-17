@@ -31,7 +31,7 @@ export default function ExploreGallery({
     <section className="ex-gallery" aria-labelledby="explore-title">
       <header className="ex-header">
         <h1 id="explore-title" tabIndex={-1}>
-          Explore
+          All Styles
         </h1>
       </header>
 

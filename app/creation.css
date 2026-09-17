@@ -238,12 +238,35 @@
   color: var(--workspace-surface);
   font-weight: 700;
 }
+.cx-sidebar nav button {
+  display: grid;
+  grid-template-columns: 20px minmax(0, 1fr);
+  font-size: 0.875rem;
+  line-height: 1.35;
+}
+.cx-nav-icon {
+  position: relative;
+  display: grid;
+  place-items: center;
+  width: 20px;
+  height: 20px;
+}
+.cx-nav-icon svg {
+  display: block;
+  width: 20px;
+  height: 20px;
+}
+.cx-nav-label {
+  min-width: 0;
+}
 .cx-nav-dot {
-  height: 7px;
-  width: 7px;
+  position: absolute;
+  top: -2px;
+  right: -3px;
+  height: 5px;
+  width: 5px;
   border-radius: 50%;
   background: currentColor;
-  margin-left: auto;
 }
 .cx-sidebar-bottom {
   margin-top: auto;
@@ -2510,39 +2533,40 @@
     display: none;
   }
   .cx-sidebar nav {
-    display: flex;
-    gap: 0;
-    justify-content: space-between;
+    display: grid;
+    grid-template-columns: repeat(5, minmax(4em, 1fr));
+    gap: 4px;
     margin: 0 -5px;
+    overflow-x: auto;
+    overscroll-behavior-x: contain;
+    font-size: 0.875rem;
   }
   .cx-sidebar nav button {
-    min-height: 56px;
+    grid-template-columns: minmax(0, 1fr);
+    grid-template-rows: 20px minmax(2.5em, auto);
+    align-content: start;
+    justify-items: center;
+    min-height: 76px;
     min-width: 0;
-    padding: 7px 5px 10px;
-    flex-direction: column;
-    gap: 5px;
+    padding: 10px 2px;
+    gap: 6px;
     border-radius: 8px 8px 0 0;
-    font-size: 14px;
-    flex: 1;
+    font-size: 0.875rem;
     white-space: normal;
     line-height: 1.25;
+    text-align: center;
   }
-  .cx-sidebar nav button svg {
-    width: 17px;
-    height: 17px;
+  .cx-sidebar nav .cx-nav-label {
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    min-height: 2.5em;
+    width: 100%;
+    text-align: center;
   }
   .cx-sidebar nav button.active {
     background: var(--workspace-action);
     color: var(--workspace-surface);
-  }
-  .cx-nav-dot {
-    position: absolute;
-    width: 4px;
-    height: 4px;
-    margin: 0;
-    top: 67px;
-    transform: translateX(13px);
-    background: currentColor;
   }
   .cx-body {
     margin-left: 0;
@@ -3786,24 +3810,6 @@
   }
   .cx-app .cx-flow-footer > span:empty {
     display: none;
-  }
-  .cx-app .cx-sidebar nav button {
-    font-size: 14px;
-    min-height: 72px;
-    min-width: 0;
-    padding-inline: 4px;
-    white-space: normal;
-    line-height: 1.25;
-  }
-  .cx-sidebar nav .cx-nav-label {
-    min-height: 2.5em;
-    display: flex;
-    align-items: center;
-    justify-content: center;
-  }
-  .cx-app .cx-sidebar nav button svg {
-    width: 19px;
-    height: 19px;
   }
   .cx-overview-intro {
     margin-bottom: 24px;
