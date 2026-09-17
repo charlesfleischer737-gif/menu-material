@@ -1,25 +1,29 @@
+.cx-explore-body {
+  background: #fff;
+}
+.cx-main.cx-explore-main {
+  max-width: 1600px;
+  padding: 52px clamp(28px, 4.5vw, 80px) 100px;
+}
 .ex-gallery {
   max-width: 1440px;
   margin-inline: auto;
 }
 .ex-header {
-  margin-bottom: 28px;
+  margin-bottom: 44px;
 }
 .ex-header h1 {
-  font-size: clamp(2rem, 3vw, 2.75rem);
-  font-weight: 600;
-  letter-spacing: -0.045em;
-  line-height: 1.15;
-}
-.ex-header p {
-  margin-top: 10px;
-  font-size: 1rem;
-  color: var(--workspace-muted);
+  font-family: Georgia, "Times New Roman", serif;
+  font-size: clamp(2.75rem, 4vw, 4rem);
+  font-weight: 400;
+  letter-spacing: -0.04em;
+  line-height: 1.1;
 }
 .ex-grid {
   display: grid;
   grid-template-columns: repeat(3, minmax(0, 1fr));
-  gap: 18px;
+  gap: clamp(24px, 2.75vw, 44px);
+  padding-bottom: 64px;
 }
 .ex-tile {
   position: relative;
@@ -29,70 +33,45 @@
   width: 100%;
   padding: 0;
   border: 0;
-  border-radius: 14px;
-  background: var(--workspace-stage);
+  border-radius: 2px;
+  background: #f4f4f2;
   text-align: left;
   isolation: isolate;
+  transition: box-shadow 400ms ease;
+}
+.cx-app .ex-tile {
+  cursor: zoom-in;
+}
+.ex-tile:nth-child(3n + 2) {
+  transform: translateY(64px);
 }
 .ex-tile img {
   display: block;
   width: 100%;
   height: 100%;
   object-fit: cover;
-  transition: transform 350ms ease;
-}
-.ex-tile-caption {
-  position: absolute;
-  inset: auto 0 0;
-  display: flex;
-  align-items: flex-end;
-  justify-content: space-between;
-  gap: 12px;
-  padding: 50px 20px 20px;
-  color: #fff;
-  background: linear-gradient(transparent, rgb(0 0 0 / 76%));
-}
-.ex-tile-caption strong,
-.ex-tile-caption small {
-  display: block;
-}
-.ex-tile-caption strong {
-  font-size: 1rem;
-  font-weight: 600;
-  line-height: 1.3;
-}
-.ex-tile-caption small {
-  margin-bottom: 5px;
-  font-size: 0.8125rem;
-  line-height: 1.35;
-}
-.ex-tile-caption > svg {
-  flex-shrink: 0;
+  transition: transform 650ms cubic-bezier(0.2, 0.65, 0.3, 1);
 }
 @media (hover: hover) and (pointer: fine) {
-  .ex-tile-caption {
-    opacity: 0;
-    transition: opacity 200ms ease;
-  }
-  .ex-tile:is(:hover, :focus-visible) .ex-tile-caption {
-    opacity: 1;
+  .ex-tile:hover {
+    box-shadow: 0 14px 30px -20px rgb(0 0 0 / 35%);
   }
   .ex-tile:hover img {
-    transform: scale(1.035);
+    transform: scale(1.018);
   }
 }
 .ex-detail[data-slot="dialog-content"] {
   display: grid;
-  grid-template-columns: minmax(0, 1.35fr) minmax(300px, 0.85fr);
+  grid-template-columns: minmax(0, 1.65fr) minmax(320px, 0.85fr);
   gap: 0;
-  width: min(1120px, calc(100vw - 48px));
+  width: min(1240px, calc(100vw - 64px));
   max-width: none;
   max-height: calc(100dvh - 48px);
   overflow: auto;
   overscroll-behavior: contain;
   padding: 0;
   border: 0;
-  border-radius: 20px;
+  border-radius: 4px;
   color: var(--workspace-ink);
   background: var(--workspace-surface);
   font-family: Arial, Helvetica, sans-serif;
@@ -100,7 +79,7 @@
 .ex-detail-photo {
   display: flex;
   align-items: center;
-  background: #e8e9e7;
+  background: #f5f5f3;
   min-width: 0;
 }
 .ex-detail-photo img {
@@ -114,19 +93,22 @@
   flex-direction: column;
   justify-content: space-between;
   gap: 36px;
-  padding: 64px 32px 32px;
+  padding: 68px 36px 36px;
 }
 .ex-category {
   margin: 0 0 14px;
   color: var(--workspace-muted);
-  font-size: 0.875rem;
+  font-size: 0.8125rem;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
 }
 .ex-detail-title {
   margin: 0;
-  font-size: clamp(1.75rem, 2.5vw, 2.25rem);
-  font-weight: 600;
-  letter-spacing: -0.035em;
-  line-height: 1.15;
+  font-family: Georgia, "Times New Roman", serif;
+  font-size: clamp(2rem, 3vw, 2.75rem);
+  font-weight: 400;
+  letter-spacing: -0.045em;
+  line-height: 1.12;
 }
 .ex-description {
   margin: 20px 0 0;
@@ -135,17 +117,15 @@
   line-height: 1.6;
 }
 .ex-traits {
-  display: flex;
-  flex-wrap: wrap;
-  gap: 8px;
-  padding: 0;
-  margin: 24px 0 0;
+  display: grid;
+  gap: 10px;
+  padding: 24px 0;
+  margin: 28px 0 0;
+  border-block: 1px solid #e8eae8;
   list-style: none;
 }
 .ex-traits li {
-  border: 1px solid var(--workspace-line);
-  border-radius: 6px;
-  padding: 6px 9px;
+  color: var(--workspace-muted);
   font-size: 0.875rem;
   line-height: 1.4;
 }
@@ -172,7 +152,7 @@
   min-height: 52px;
   padding: 12px 16px;
   border: 0;
-  border-radius: 9px;
+  border-radius: 4px;
   background: var(--workspace-action);
   color: white;
   font:
@@ -189,15 +169,9 @@
   color: var(--workspace-muted);
   cursor: default;
 }
-.ex-detail-action p {
-  margin: 12px 0 0;
-  text-align: center;
-  font-size: 0.875rem;
-  color: var(--workspace-muted);
-}
 .ex-detail-action small {
   display: block;
-  margin-top: 26px;
+  margin-top: 16px;
   text-align: center;
   font-size: 0.75rem;
   color: var(--workspace-muted);
@@ -210,7 +184,7 @@
   place-items: center;
   width: 40px;
   height: 40px;
-  border: 1px solid var(--workspace-line);
+  border: 0;
   border-radius: 50%;
   background: var(--workspace-surface);
   color: var(--workspace-ink);
@@ -220,41 +194,33 @@
   outline: 3px solid var(--workspace-action);
   outline-offset: 3px;
 }
-@media (min-width: 1800px) {
-  .ex-grid {
-    grid-template-columns: repeat(4, minmax(0, 1fr));
-  }
-}
 @media (max-width: 1000px) {
   .ex-grid {
     grid-template-columns: repeat(2, minmax(0, 1fr));
+    padding-bottom: 36px;
+  }
+  .ex-tile:nth-child(3n + 2) {
+    transform: none;
+  }
+  .ex-tile:nth-child(2n) {
+    transform: translateY(36px);
   }
 }
 @media (max-width: 760px) {
+  .cx-main.cx-explore-main {
+    padding: 36px 24px 64px;
+  }
   .ex-header {
-    margin-bottom: 22px;
+    margin-bottom: 30px;
   }
   .ex-grid {
-    gap: 12px;
-  }
-  .ex-tile {
-    border-radius: 10px;
-  }
-  .ex-tile-caption {
-    padding: 36px 12px 12px;
-  }
-  .ex-tile-caption strong {
-    font-size: 0.875rem;
-  }
-  .ex-tile-caption small,
-  .ex-tile-caption > svg {
-    display: none;
+    gap: 20px;
   }
   .ex-detail[data-slot="dialog-content"] {
     grid-template-columns: minmax(0, 1fr);
     width: calc(100vw - 24px);
     max-height: calc(100dvh - 24px);
-    border-radius: 16px;
+    border-radius: 4px;
   }
   .ex-detail-photo img {
     max-height: 48dvh;
@@ -267,14 +233,19 @@
     margin-top: 16px;
   }
 }
-@media (max-width: 360px) {
+@media (max-width: 520px) {
   .ex-grid {
     grid-template-columns: minmax(0, 1fr);
+    gap: 28px;
+    padding-bottom: 0;
+  }
+  .ex-tile:nth-child(2n) {
+    transform: none;
   }
 }
 @media (prefers-reduced-motion: reduce) {
-  .ex-tile img,
-  .ex-tile-caption {
+  .ex-tile,
+  .ex-tile img {
     transition: none;
   }
   .ex-tile:hover img {

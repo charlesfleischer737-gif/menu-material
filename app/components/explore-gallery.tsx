@@ -1,7 +1,7 @@
 "use client";
 
 import { useRef, useState } from "react";
-import { ArrowRight, Expand, X } from "lucide-react";
+import { ArrowRight, X } from "lucide-react";
 import {
   Dialog,
   DialogClose,
@@ -33,7 +33,6 @@ export default function ExploreGallery({
         <h1 id="explore-title" tabIndex={-1}>
           Explore
         </h1>
-        <p>A little inspiration for your next great photo.</p>
       </header>
 
       <div className="ex-grid">
@@ -58,13 +57,6 @@ export default function ExploreGallery({
               loading={index < 3 ? "eager" : "lazy"}
               decoding="async"
             />
-            <span className="ex-tile-caption">
-              <span>
-                <small>{style.group}</small>
-                <strong>{style.name}</strong>
-              </span>
-              <Expand size={19} aria-hidden="true" />
-            </span>
           </button>
         ))}
       </div>
@@ -136,7 +128,6 @@ export default function ExploreGallery({
                       <ArrowRight size={18} aria-hidden="true" />
                     )}
                   </button>
-                  <p>Make it yours in Photo Studio.</p>
                   <small>AI-generated style example</small>
                 </div>
               </div>

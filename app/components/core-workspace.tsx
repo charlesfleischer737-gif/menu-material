@@ -249,10 +249,10 @@ export default function CoreWorkspace({
           </button>
         </div>
       </aside>
-      <div className="cx-body">
+      <div className={`cx-body${view === "explore" ? " cx-explore-body" : ""}`}>
         <main
           id="creation-main"
-          className={`cx-main${["studio", "menu", "post"].includes(view) ? " cx-feature-main" : ""}`}
+          className={`cx-main${["studio", "menu", "post"].includes(view) ? " cx-feature-main" : ""}${view === "explore" ? " cx-explore-main" : ""}`}
         >
           {view === "loading" && (
             <p className="cx-feedback" role="status">
