@@ -467,7 +467,7 @@ export function SavedDrafts({
           {label}
         </button>
       </DialogTrigger>
-      <DialogContent className="cx-draft-dialog">
+      <DialogContent className="cx-workspace-popover cx-draft-dialog">
         <DialogHeader>
           <DialogTitle>{label}</DialogTitle>
           <DialogDescription>

@@ -53,7 +53,7 @@ export function ConfirmDelete({
 }) {
   return (
     <AlertDialog open={open} onOpenChange={(v) => !v && onClose()}>
-      <AlertDialogContent>
+      <AlertDialogContent className="cx-workspace-popover">
         <AlertDialogHeader>
           <AlertDialogTitle>Delete this image?</AlertDialogTitle>
           <AlertDialogDescription>

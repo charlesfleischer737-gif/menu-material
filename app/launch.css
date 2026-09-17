@@ -259,7 +259,7 @@
 /* Free-to-Pro plans and the anonymous photo workspace share the studio palette. */
 .cx-guest {
   min-height: 100vh;
-  background: #f8f7f3;
+  background: var(--workspace-canvas);
 }
 .cx-guest .pw-header {
   position: static;
@@ -282,9 +282,9 @@
   gap: 6px;
   align-items: center;
   border-radius: 100px;
-  background: #e9eee1;
+  background: var(--workspace-canvas);
   padding: 9px 13px;
-  color: #384830;
+  color: var(--workspace-ink);
   font-size: 13px;
   font-weight: 600;
 }
@@ -302,7 +302,7 @@
   margin: 8px 0;
 }
 .cx-guest-heading p {
-  color: #616259;
+  color: var(--workspace-muted);
   max-width: 650px;
 }
 .pw-plan-grid {
@@ -397,7 +397,7 @@
     gap: 12px;
   }
   .cx-guest-free {
-    font-size: 11px;
+    font-size: 12px;
     padding: 7px;
   }
   .cx-guest-heading {

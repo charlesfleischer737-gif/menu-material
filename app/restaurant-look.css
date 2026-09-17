@@ -149,7 +149,7 @@
 .cx-menu-qr-row p {
   font-size: 0.875rem;
   line-height: 1.55;
-  color: #63745e;
+  color: var(--workspace-muted);
 }
 .cx-menu-sharing {
   margin-top: 23px;
@@ -171,14 +171,14 @@
   width: 110px;
   height: 110px;
   flex-shrink: 0;
-  border: 1px solid #e5e9df;
+  border: 1px solid var(--workspace-line);
   border-radius: 9px;
 }
 .cx-qr-placeholder {
   display: grid;
   place-items: center;
-  color: #476347;
-  background: #f3f6ed;
+  color: var(--workspace-muted);
+  background: var(--workspace-canvas);
 }
 .cx-menu-qr-row h3 {
   font-size: 1.125rem;
@@ -202,7 +202,7 @@
 .cx-sharing-buttons > .cx-btn {
   flex: 1;
   min-height: 44px;
-  font-size: 0.8125rem;
+  font-size: 0.875rem;
   padding: 10px;
 }
 .cx-guest-check {
@@ -213,27 +213,27 @@
   line-height: 1.5;
   padding: 12px;
   margin: 15px 0;
-  color: #795b32;
+  color: var(--workspace-warning);
   border-radius: 10px;
-  background: #f9f4e9;
+  background: var(--workspace-warning-surface);
 }
 .cx-guest-check svg {
   flex-shrink: 0;
   margin-top: 2px;
 }
 .cx-guest-check.is-confirmed {
-  color: #3f6646;
-  background: #edf4e6;
+  color: var(--workspace-action);
+  background: var(--workspace-canvas);
 }
 .cx-menu-visibility {
   margin: 18px 0 0;
   padding-top: 15px;
-  border-top: 1px solid #e4e9dc;
+  border-top: 1px solid var(--workspace-line);
   font-size: 0.875rem;
 }
 .cx-menu-visibility summary {
   cursor: pointer;
-  color: #65745f;
+  color: var(--workspace-muted);
 }
 .cx-menu-visibility p {
   margin: 10px 0;
@@ -270,7 +270,7 @@
   font-size: 0.875rem;
   line-height: 1.65;
   margin-top: 16px;
-  color: #667460;
+  color: var(--workspace-muted);
 }
 .cx-post-sharing > small {
   display: block;
@@ -720,7 +720,7 @@
 .cx-sharing-tabs {
   display: flex;
   gap: 5px;
-  background: #edf1e7;
+  background: var(--workspace-canvas);
   border-radius: 11px;
   padding: 5px;
   margin: 20px 0;
@@ -737,12 +737,12 @@
   border-radius: 7px;
   font-size: 0.875rem;
   background: transparent;
-  color: #617058;
+  color: var(--workspace-muted);
 }
 .cx-sharing-tabs > button[aria-pressed="true"] {
-  color: #244b34;
-  background: #fff;
-  box-shadow: 0 1px 5px #263e1a18;
+  color: var(--workspace-action);
+  background: var(--workspace-surface);
+  box-shadow: 0 1px 5px #20262418;
   font-weight: 600;
 }
 .cx-menu-link-panel h3,
@@ -755,7 +755,7 @@
 .cx-menu-print-panel > p {
   font-size: 0.875rem;
   line-height: 1.6;
-  color: #65745e;
+  color: var(--workspace-muted);
   margin-bottom: 15px;
 }
 .cx-menu-link-panel .cx-field {
@@ -809,7 +809,7 @@
 .cx-menu-print-panel .cx-sharing-meta {
   font-size: 0.8125rem;
   margin: 8px 0 17px;
-  color: #6d7c65;
+  color: var(--workspace-muted);
   line-height: 1.5;
 }
 .cx-guest-check strong {
@@ -838,7 +838,7 @@
   gap: 9px;
   font-size: 0.875rem;
   line-height: 1.6;
-  color: #64745c;
+  color: var(--workspace-muted);
   padding-top: 15px;
 }
 .cx-menu-stable-note svg {

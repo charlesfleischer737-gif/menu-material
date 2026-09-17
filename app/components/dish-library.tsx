@@ -8,8 +8,9 @@ import {
   Star,
   Archive,
   UtensilsCrossed,
+  CircleAlert,
 } from "lucide-react";
-import { api, normalizePhoto, type Row } from "@/lib/client";
+import { api, money, normalizePhoto, type Row } from "@/lib/client";
 import { preferredPhoto, dishPhotos, dishStatus } from "@/lib/dish-library";
 import { downloadPhotoItem } from "@/lib/photo-destinations";
 import { workspacePreferenceKey } from "@/lib/workspace-navigation";
@@ -140,7 +141,7 @@ export default function DishLibrary({
             Use photo <ChevronDown size={14} />
           </button>
         </DropdownMenuTrigger>
-        <DropdownMenuContent align="end">
+        <DropdownMenuContent className="cx-workspace-popover" align="end">
           <DropdownMenuItem onSelect={() => reuse(dish, photo, "post")}>
             Make a post
           </DropdownMenuItem>
@@ -219,7 +220,7 @@ export default function DishLibrary({
                 <Plus size={16} /> Add dishes <ChevronDown size={15} />
               </button>
             </DropdownMenuTrigger>
-            <DropdownMenuContent align="end">
+            <DropdownMenuContent className="cx-workspace-popover" align="end">
               <DropdownMenuItem
                 onSelect={() => {
                   setAdding(true);
@@ -391,7 +392,11 @@ export default function DishLibrary({
             const a = preferredPhoto(d, state.assets);
             const label = dishStatus(d, state.assets);
             return (
-              <article className="mm-dish-card" key={d.id}>
+              <article
+                className="mm-dish-card"
+                key={d.id}
+                data-selected={selecting && selected.includes(d.id)}
+              >
                 <button className="mm-dish-open" onClick={() => open(d)}>
                   {a ? (
                     <img
@@ -405,7 +410,14 @@ export default function DishLibrary({
                     </div>
                   )}
                   <span>
-                    <strong>{d.name}</strong>
+                    <span className="mm-dish-title">
+                      <strong>{d.name}</strong>
+                      {Number.isFinite(d.price) && (
+                        <span className="mm-dish-price">
+                          {money(d.price, state.restaurant.currency)}
+                        </span>
+                      )}
+                    </span>
                     <small>{d.category}</small>
                   </span>
                 </button>
@@ -430,9 +442,16 @@ export default function DishLibrary({
                 )}
                 <footer>
                   <span
-                    className={`mm-status ${a?.approved_at ? "ready" : ""}`}
+                    className={`mm-status ${a?.approved_at ? "ready" : a ? "needs-review" : ""}`}
                   >
-                    {a?.approved_at && <Check size={13} />} {label}
+                    {a?.approved_at ? (
+                      <Check size={15} aria-hidden="true" />
+                    ) : a ? (
+                      <CircleAlert size={15} aria-hidden="true" />
+                    ) : (
+                      <Images size={15} aria-hidden="true" />
+                    )}{" "}
+                    {label}
                   </span>
                   {a?.approved_at ? (
                     <UsePhoto dish={d} photo={a} />

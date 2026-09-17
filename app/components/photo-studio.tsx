@@ -1061,7 +1061,7 @@ export default function PhotoStudio({
         </>
       )}
       <Dialog open={zoom} onOpenChange={setZoom}>
-        <DialogContent className="cx-zoom-dialog">
+        <DialogContent className="cx-workspace-popover cx-zoom-dialog">
           <DialogTitle>{b.name || "Your photo"} · full view</DialogTitle>
           <img
             src={before && source ? source : `/api/assets/${resultId}`}
