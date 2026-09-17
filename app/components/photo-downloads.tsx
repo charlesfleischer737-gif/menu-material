@@ -2,7 +2,7 @@
 import { useEffect, useState } from "react";
 import { ArrowRight, Check, Download, Megaphone } from "lucide-react";
 import { downloadBlob } from "@/lib/client";
-import { masterPhotoExport, photoExport } from "@/lib/creation-export";
+import { masterPhotoExport, photoExport } from "@/lib/photo-export";
 import {
   catalogProfiles,
   emptyAdjustments,
@@ -19,6 +19,7 @@ import {
   type PhotoDestination,
 } from "@/lib/photo-destinations";
 import { readPreference, rememberPreference } from "@/lib/workspace-navigation";
+import { photoExportEventKey } from "@/lib/photo-export-identity";
 import {
   CropControls,
   Feedback,
@@ -74,6 +75,7 @@ export default function PhotoDownloads({
     track("destination_selected", item.dishId, { destination: value });
   }
   async function download() {
+    const attemptId = crypto.randomUUID();
     if (!allChecked)
       throw Error("Review the crop for each selected dish first.");
     if (!photoOnly)
@@ -110,6 +112,18 @@ export default function PhotoDownloads({
           throw Error(
             "This collection is large. Download fewer photos at a time to keep your device responsive.",
           );
+        void photoExportEventKey(
+          photo.assetId,
+          destination,
+          crops[`${photo.assetId}:${destination}`] || {
+            ...emptyAdjustments,
+            fit: !catalog,
+          },
+        )
+          .then((key) =>
+            track("export_prepared", photo.assetId, { destination }, key),
+          )
+          .catch(() => {});
         if (items.length === 1) downloadBlob(output.blob, filename);
         else files[filename] = new Uint8Array(await output.blob.arrayBuffer());
         completed.push({
@@ -133,18 +147,19 @@ export default function PhotoDownloads({
         `plateworthy-${destination}-photos.zip`,
       );
     }
-    for (const { item: photo, ...dimensions } of completed)
-      track("export_complete", photo.assetId, {
-        format: destination,
-        dishId: photo.dishId,
-        ...dimensions,
-      });
+    for (const { item: photo } of completed)
+      track(
+        "export_download_started",
+        photo.assetId,
+        { destination },
+        attemptId,
+      );
     rememberPreference(key, destination);
     setDownloaded(true);
     action.setNotice(
       items.length > 1
-        ? "Your photos and upload instructions are downloaded together."
-        : "Photo downloaded. It’s also saved in My Dishes.",
+        ? "Download started. Your photos and upload instructions are in one file."
+        : "Download started. Your photo is also saved in My Dishes.",
     );
   }
   return (

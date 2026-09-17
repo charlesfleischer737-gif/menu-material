@@ -1,6 +1,6 @@
 import type { Row } from "./client";
 import { money } from "./client";
-import { drawPhoto, imageBitmap } from "./creation-export";
+import { drawPhoto, imageBitmap } from "./photo-export";
 import { emptyAdjustments } from "./studio";
 import { brandTypeface, readableBrandInk } from "./restaurant-look";
 import { getPostTemplate } from "./post-templates";

@@ -55,7 +55,25 @@ export default function Home() {
     if (state.user?.id) void api("events", { kind: "visit" }).catch(() => {});
   }, [state.user?.id]);
   useEffect(() => {
+    let cancelled = false;
     if (loaded && !state.user && location.hash === "#studio") setGuest(true);
+    if (loaded && state.user && location.hash === "#studio") {
+      void import("@/lib/guest-studio-storage")
+        .then(({ loadGuestDrafts }) => loadGuestDrafts())
+        .then((drafts) => {
+          if (
+            !cancelled &&
+            drafts.some(
+              (draft) =>
+                draft.requested &&
+                (!draft.transfer?.restaurantId ||
+                  draft.transfer.restaurantId === state.restaurant?.id),
+            )
+          )
+            setGuest(true);
+        })
+        .catch(() => {});
+    }
     if (loaded && new URLSearchParams(location.search).has("upgrade")) {
       if (state.user) setPlans(true);
       else {
@@ -63,7 +81,10 @@ export default function Home() {
         setAuth(true);
       }
     }
-  }, [loaded, state.user]);
+    return () => {
+      cancelled = true;
+    };
+  }, [loaded, state.user?.id, state.restaurant?.id]);
   useEffect(() => {
     const open = () => setPlans(true);
     window.addEventListener("plateworthy:plans", open);
@@ -160,6 +181,7 @@ export default function Home() {
           }
         >
           <CoreWorkspace
+            foreground={!settings && !plans && !auth}
             state={state}
             refresh={refresh}
             key={`${state.user.id}:${state.restaurant.id}`}

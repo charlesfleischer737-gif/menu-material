@@ -443,8 +443,24 @@ try {
   assert(outs.some((o) => o.asset_id === success));
   assert.equal(calls - callsBeforeRetry, 1, "only failed slot resubmitted");
   assert(
-    requests.some((q) => q.tools && q.input[0].content.length === 3),
-    "original and style reference sent",
+    requests.some((q) => {
+      const content = q.tools && q.input?.[0]?.content;
+      return (
+        Array.isArray(content) &&
+        content.filter((part) => part.type === "input_image").length === 2 &&
+        content.some(
+          (part) =>
+            part.type === "input_text" &&
+            part.text.startsWith("ORIGINAL DISH PHOTO:"),
+        ) &&
+        content.some(
+          (part) =>
+            part.type === "input_text" &&
+            part.text.startsWith("STYLE INSPIRATION ONLY:"),
+        )
+      );
+    }),
+    "original and style reference sent with distinct food and style roles",
   );
   const job = fresh.jobs.find((j) => j.id === item.job_id);
   assert.equal(JSON.parse(job.details).preserve, "Exactly 3 basil leaves");

@@ -16,6 +16,7 @@
   --workspace-error-surface: #fff2f1;
 }
 .cx-app,
+.cx-guest,
 .cx-workspace-popover {
   --cx-ink: var(--workspace-ink);
   --cx-green: var(--workspace-action);
@@ -1243,6 +1244,28 @@
   width: 100%;
   height: 100%;
   object-fit: contain;
+}
+.cx-photo-frame-status {
+  position: absolute;
+  inset: 0;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  flex-direction: column;
+  gap: 12px;
+  padding: 24px;
+  color: var(--workspace-muted);
+  text-align: center;
+}
+.cx-photo-frame-status p {
+  margin: 0;
+  max-width: 30ch;
+  font-size: 1rem;
+  line-height: 1.5;
+}
+.cx-photo-frame-status button {
+  min-height: 44px;
+  min-width: 44px;
 }
 .cx-photo-frame figcaption {
   font-size: 12px;

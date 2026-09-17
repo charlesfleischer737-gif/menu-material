@@ -1,4 +1,5 @@
 import { env } from "cloudflare:workers";
+import { canonicalStudioEvents } from "../studio-events";
 import {
   createHash,
   randomBytes,
@@ -73,14 +74,26 @@ export async function event(
   kind: string,
   entity: string | null = null,
   details: object = {},
+  dedupeKey?: string,
 ) {
   await run(
-    "INSERT INTO events (id,restaurant_id,kind,entity_id,details,created_at) VALUES (?,?,?,?,?,?)",
-    id(),
+    "INSERT INTO events (id,restaurant_id,kind,entity_id,details,created_at) VALUES (?,?,?,?,?,?) ON CONFLICT(id) DO NOTHING",
+    dedupeKey ? digest(`${restaurant}:${kind}:${entity}:${dedupeKey}`) : id(),
     restaurant,
     kind,
     entity,
-    JSON.stringify(details),
+    JSON.stringify({
+      ...details,
+      ...(canonicalStudioEvents[kind]
+        ? { canonicalEvent: canonicalStudioEvents[kind] }
+        : {}),
+      measurementMode:
+        config("LOCAL_DEVELOPMENT") === "true" ||
+        config("STUDIO_INTERNAL_QA") === "true"
+          ? "internal"
+          : "production",
+      eventSchema: 2,
+    }),
     now(),
   );
 }

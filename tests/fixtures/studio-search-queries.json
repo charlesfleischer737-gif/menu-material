@@ -1,0 +1,126 @@
+[
+  {
+    "query": "football",
+    "styles": ["menu-wood", "delivery-graphite", "bar-brass"]
+  },
+  {
+    "query": "game day",
+    "styles": ["menu-wood", "delivery-graphite", "bar-brass"]
+  },
+  {
+    "query": "foodball Sunday",
+    "styles": ["menu-wood", "delivery-graphite", "bar-brass"]
+  },
+  {
+    "query": "Christmas",
+    "styles": ["fine-candle", "fine-linen", "bakery-copper"]
+  },
+  {
+    "query": "holiday",
+    "styles": ["fine-candle", "fine-linen", "bakery-copper"]
+  },
+  { "query": "white marble", "styles": ["bakery-patisserie", "bakery-paris"] },
+  {
+    "query": "dark background",
+    "styles": ["studio-dark", "delivery-graphite", "fine-slate"]
+  },
+  {
+    "query": "warm wood",
+    "styles": ["menu-wood", "bakery-rustic", "delivery-daylight"]
+  },
+  { "query": "keep my plate", "shortcut": "keep-serving-dish" },
+  { "query": "café", "styles": ["beverage-cafe", "bakery-paris"] },
+  {
+    "query": "cozy coffee shop",
+    "styles": ["beverage-cafe", "beverage-ritual", "bakery-paris"]
+  },
+  {
+    "query": "romantic dinner",
+    "styles": [
+      "fine-candle",
+      "bar-velvet",
+      "bar-candle",
+      "fine-gallery",
+      "bakery-jewel"
+    ]
+  },
+  { "query": "outdoor terrace", "styles": ["fine-terrace", "menu-courtyard"] },
+  {
+    "query": "bright white",
+    "styles": ["delivery-white", "studio-ivory", "fine-linen"]
+  },
+  {
+    "query": "black backdrop",
+    "styles": ["studio-dark", "fine-obsidian", "delivery-graphite"]
+  },
+  { "query": "rustic bread", "styles": ["bakery-rustic"] },
+  { "query": "modern matcha", "styles": ["beverage-matcha"] },
+  {
+    "query": "blue background",
+    "styles": ["studio-color", "bar-bluehour", "bakery-blue"]
+  },
+  {
+    "query": "bold colorful",
+    "styles": ["studio-color", "studio-levitate", "beverage-orchid"]
+  },
+  { "query": "copper table", "styles": ["bakery-copper"] },
+  {
+    "query": "soft daylight",
+    "styles": ["fine-linen", "delivery-daylight", "menu-neutral", "menu-stone"]
+  },
+  { "query": "top down", "styles": ["delivery-overhead", "menu-overhead"] },
+  {
+    "query": "overhead",
+    "styles": ["delivery-overhead", "menu-overhead", "delivery-sage"]
+  },
+  { "query": "candlelit", "styles": ["fine-candle", "bar-candle"] },
+  {
+    "query": "festive holiday",
+    "styles": ["fine-candle", "fine-linen", "bakery-copper"]
+  },
+  {
+    "query": "summer drinks",
+    "styles": ["beverage-backlit", "beverage-citrus", "beverage-poolside"]
+  },
+  { "query": "poolside", "styles": ["beverage-poolside"] },
+  {
+    "query": "cocktails at night",
+    "styles": ["bar-velvet", "bar-bluehour", "bar-speakeasy"]
+  },
+  { "query": "takeout packaging", "styles": ["delivery-takeout"] },
+  {
+    "query": "pasta photo",
+    "styles": [
+      "menu-wood",
+      "menu-stone",
+      "fine-linen",
+      "fine-presented",
+      "menu-neutral",
+      "menu-handheld"
+    ]
+  },
+  { "query": "burger on white", "styles": ["delivery-white"] },
+  {
+    "query": "pizza menu",
+    "styles": ["menu-wood", "menu-overhead", "delivery-overhead", "menu-diner"]
+  },
+  {
+    "query": "charcol",
+    "styles": ["studio-dark", "delivery-graphite", "fine-slate"]
+  },
+  { "query": "marbel", "styles": ["bakery-patisserie", "bakery-paris"] },
+  {
+    "query": "warm backgound",
+    "styles": [
+      "menu-wood",
+      "bakery-rustic",
+      "delivery-daylight",
+      "bar-speakeasy"
+    ]
+  },
+  { "query": "white plate", "shortcut": "serving-dish" },
+  { "query": "custom background", "shortcut": "setting" },
+  { "query": "change lighting", "shortcut": "lighting" },
+  { "query": "room around the dish", "shortcut": "framing" },
+  { "query": "keep my glass", "shortcut": "keep-serving-dish" }
+]

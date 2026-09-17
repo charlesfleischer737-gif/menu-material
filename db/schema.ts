@@ -5,6 +5,7 @@ import {
   real,
   index,
   uniqueIndex,
+  primaryKey,
 } from "drizzle-orm/sqlite-core";
 export const users = sqliteTable("users", {
   id: text().primaryKey(),
@@ -124,13 +125,19 @@ export const assets = sqliteTable(
     kind: text().notNull(),
     key: text().notNull(),
     workingKey: text("working_key"),
+    uploadKey: text("upload_key"),
+    uploadFingerprint: text("upload_fingerprint"),
     mime: text().notNull(),
     name: text().notNull(),
     approvedAt: integer("approved_at"),
+    needsCorrection: integer("needs_correction").notNull().default(0),
     deletedAt: integer("deleted_at"),
     createdAt: integer("created_at").notNull(),
   },
-  (t) => [index("idx_assets_restaurant_dish").on(t.restaurantId, t.dishId)],
+  (t) => [
+    index("idx_assets_restaurant_dish").on(t.restaurantId, t.dishId),
+    uniqueIndex("idx_assets_upload_intent").on(t.restaurantId, t.uploadKey),
+  ],
 );
 export const creationDrafts = sqliteTable(
   "creation_drafts",
@@ -155,6 +162,38 @@ export const creationDrafts = sqliteTable(
       t.archivedAt,
       t.updatedAt,
     ),
+  ],
+);
+export const studioLibraries = sqliteTable("studio_libraries", {
+  restaurantId: text("restaurant_id")
+    .primaryKey()
+    .references(() => restaurants.id),
+  content: text().notNull().default("{}"),
+  revision: integer().notNull().default(1),
+  updatedAt: integer("updated_at").notNull(),
+});
+export const photoCorrections = sqliteTable(
+  "photo_corrections",
+  {
+    originalJobId: text("original_job_id").primaryKey(),
+    restaurantId: text("restaurant_id")
+      .notNull()
+      .references(() => restaurants.id),
+    reportedAssetId: text("reported_asset_id").notNull(),
+    sourceId: text("source_id"),
+    reason: text().notNull(),
+    detail: text().notNull().default(""),
+    correctionJobId: text("correction_job_id").unique(),
+    status: text().notNull().default("reported"),
+    creditedPeriod: text("credited_period"),
+    creditedAt: integer("credited_at"),
+    resolution: text().notNull().default(""),
+    createdAt: integer("created_at").notNull(),
+    updatedAt: integer("updated_at").notNull(),
+  },
+  (t) => [
+    index("idx_corrections_restaurant_credit").on(t.restaurantId, t.creditedAt),
+    index("idx_corrections_status").on(t.status, t.updatedAt),
   ],
 );
 export const assetEdits = sqliteTable("asset_edits", {
@@ -191,6 +230,24 @@ export const jobs = sqliteTable(
   (t) => [
     uniqueIndex("idx_jobs_idempotency").on(t.restaurantId, t.requestKey),
     index("idx_jobs_restaurant").on(t.restaurantId),
+  ],
+);
+export const studioLookUses = sqliteTable(
+  "studio_look_uses",
+  {
+    restaurantId: text("restaurant_id")
+      .notNull()
+      .references(() => restaurants.id),
+    requestKey: text("request_key").notNull(),
+    presetId: text("preset_id").notNull().default(""),
+    jobId: text("job_id")
+      .notNull()
+      .references(() => jobs.id),
+    usedAt: integer("used_at").notNull(),
+  },
+  (t) => [
+    primaryKey({ columns: [t.restaurantId, t.requestKey] }),
+    index("idx_studio_look_uses_recent").on(t.restaurantId, t.usedAt),
   ],
 );
 export const outputs = sqliteTable(
@@ -253,7 +310,15 @@ export const events = sqliteTable(
     details: text().notNull().default("{}"),
     createdAt: integer("created_at").notNull(),
   },
-  (t) => [index("idx_events_restaurant").on(t.restaurantId)],
+  (t) => [
+    index("idx_events_restaurant").on(t.restaurantId),
+    index("idx_events_kind_created").on(t.kind, t.createdAt),
+    index("idx_events_restaurant_kind_created").on(
+      t.restaurantId,
+      t.kind,
+      t.createdAt,
+    ),
+  ],
 );
 export const rateLimits = sqliteTable("rate_limits", {
   key: text().primaryKey(),

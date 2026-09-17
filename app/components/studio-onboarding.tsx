@@ -2,7 +2,6 @@
 import { useEffect, useId, useRef, useState } from "react";
 import { Check, ChevronsLeftRight, Sparkles } from "lucide-react";
 import type { PhotoStyle } from "@/lib/photo-styles";
-import { studioRenderProgress } from "@/lib/studio-onboarding";
 
 export function PhotoComparison({
   original,
@@ -106,15 +105,7 @@ export function StudioCreating({
     const timer = window.setInterval(tick, 1000);
     return () => clearInterval(timer);
   }, [startedAt, jobId]);
-  const progress = studioRenderProgress(elapsed, queued);
-  const stages = [
-    ["Adjusting the lighting", "Giving your food its best light."],
-    ["Building your chosen setting", style.name + ", made for your photo."],
-    [
-      "Refining textures & detail",
-      "Bringing the finished photograph together.",
-    ],
-  ];
+  const takingLonger = elapsed > 120;
   return (
     <div className="ps-render" aria-busy="true">
       <div className="ps-render-visual">
@@ -148,57 +139,24 @@ export function StudioCreating({
         </h1>
         <p className="ps-render-status" role="status">
           {queued
-            ? progress.takingLonger
+            ? takingLonger
               ? "Your image is still queued. Your photo and choices are safely saved."
               : "Your photo is saved. Waiting for the studio to start."
-            : progress.takingLonger
+            : takingLonger
               ? "Still creating your photo. Some images take a little longer."
               : "Your photo is taking shape. Creation time varies with the image and service demand."}
         </p>
-        <div className="ps-render-progress">
+        <div className="ps2-job-status">
+          <span className="ps2-job-indicator" aria-hidden="true" />
           <div>
-            <span>{queued ? "Waiting to start" : "Estimated progress"}</span>
-            <span>{queued ? "Queued" : `${progress.value}%`}</span>
+            <b>{queued ? "Waiting to start" : "Creating your photo"}</b>
+            <p>
+              {queued
+                ? "Your place in the queue is saved."
+                : "We’ll show your result when it is ready. You can leave this page and return to the same photo."}
+            </p>
           </div>
-          <progress
-            max={100}
-            value={progress.value}
-            aria-label="Estimated image creation progress"
-            aria-valuetext={
-              queued
-                ? "Waiting to start"
-                : `${progress.value}% estimated; waiting for the finished image`
-            }
-          />
         </div>
-        <ol
-          className="ps-render-stages"
-          aria-label="Image creation steps — estimated timing"
-        >
-          {stages.map(([title, detail], i) => (
-            <li
-              key={title}
-              data-phase={
-                i < progress.stage
-                  ? "past"
-                  : i === progress.stage
-                    ? "active"
-                    : "next"
-              }
-            >
-              <span className="ps-render-step">
-                {String(i + 1).padStart(2, "0")}
-              </span>
-              <div>
-                <b>{title}</b>
-                <p>{detail}</p>
-              </div>
-              {i === progress.stage && (
-                <span className="ps-render-pulse" aria-hidden="true" />
-              )}
-            </li>
-          ))}
-        </ol>
         <p className="ps-render-safe">
           <Check size={15} />
           Your original stays saved. Your result appears here.

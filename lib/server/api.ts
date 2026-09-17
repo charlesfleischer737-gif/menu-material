@@ -1,5 +1,15 @@
 import type { Row } from "./core";
 import { z } from "zod";
+import {
+  studioJobContext,
+  recordStudioJob,
+  studioProgressReport,
+} from "./studio-progress";
+import {
+  studioAvailability,
+  studioReleaseControls,
+  saveStudioRelease,
+} from "./studio-release";
 import { billingRoute, billingSummary, billingEnabled } from "./billing";
 import { validateImageDimensions } from "./image-validation";
 import { checkMenuSharing } from "./menu-sharing";
@@ -40,6 +50,10 @@ import {
   viewer,
 } from "./core";
 import { enqueue, updateJob, generateCaption, tick } from "./generation";
+import {
+  studioReferenceAvailability,
+  studioReferenceRequest,
+} from "./studio-references";
 import { creationRoute } from "./creation";
 import { libraryRoute } from "./library";
 import {
@@ -66,6 +80,7 @@ const passwordSchema = z
   .min(12, "Use at least 12 characters for your password.")
   .max(128);
 const dishSchema = z.object({
+  creationId: z.string().uuid().optional(),
   revision: z.number().int().min(1).optional(),
   name: z.string().trim().min(1).max(100),
   description: z.string().trim().max(2000).default(""),
@@ -408,6 +423,39 @@ async function upload(req: Request, r: Row, forcedKind?: string) {
     400,
     "Save your dish first.",
   );
+  const uploadKey = f.get("requestKey")
+    ? z.string().uuid().parse(f.get("requestKey"))
+    : null;
+  const uploadFingerprint = uploadKey
+    ? digest(
+        JSON.stringify({
+          dishId,
+          kind,
+          file: digest(Buffer.from(bytes).toString("base64")),
+          working: digest(Buffer.from(working).toString("base64")),
+        }),
+      )
+    : null;
+  const existingUpload =
+    uploadKey &&
+    (await one(
+      "SELECT id,upload_fingerprint,deleted_at FROM assets WHERE restaurant_id=? AND upload_key=?",
+      r.id,
+      uploadKey,
+    ));
+  if (existingUpload) {
+    assert(
+      !existingUpload.deleted_at,
+      409,
+      "This transferred photo was removed. Choose it again to upload a new copy.",
+    );
+    assert(
+      existingUpload.upload_fingerprint === uploadFingerprint,
+      409,
+      "This upload request belongs to a different photo. Choose the photo again.",
+    );
+    return response({ id: existingUpload.id }, 201);
+  }
   const aid = id(),
     key = `private/${r.id}/source/${aid}`,
     workingKey = `private/${r.id}/working/${aid}.jpg`;
@@ -417,8 +465,8 @@ async function upload(req: Request, r: Row, forcedKind?: string) {
     await bucket().put(workingKey, working, {
       httpMetadata: { contentType: "image/jpeg" },
     });
-    await run(
-      "INSERT INTO assets (id,restaurant_id,dish_id,kind,key,working_key,mime,name,created_at) VALUES (?,?,?,?,?,?,?,?,?)",
+    const inserted = await run(
+      "INSERT INTO assets (id,restaurant_id,dish_id,kind,key,working_key,mime,name,created_at,upload_key,upload_fingerprint) VALUES (?,?,?,?,?,?,?,?,?,?,?) ON CONFLICT(restaurant_id,upload_key) DO NOTHING",
       aid,
       r.id,
       dishId,
@@ -428,7 +476,26 @@ async function upload(req: Request, r: Row, forcedKind?: string) {
       mime,
       file.name.slice(0, 150),
       now(),
+      uploadKey,
+      uploadFingerprint,
     );
+    if (!inserted.meta.changes) {
+      const winner = await one(
+        "SELECT id,upload_fingerprint,deleted_at FROM assets WHERE restaurant_id=? AND upload_key=?",
+        r.id,
+        uploadKey,
+      );
+      await bucket().delete([key, workingKey]);
+      await releaseStorage(aid);
+      assert(
+        winner &&
+          !winner.deleted_at &&
+          winner.upload_fingerprint === uploadFingerprint,
+        409,
+        "This upload request belongs to a different photo. Choose the photo again.",
+      );
+      return response({ id: winner.id }, 201);
+    }
     if (kind === "logo") {
       await run("UPDATE restaurants SET logo_id=? WHERE id=?", aid, r.id);
       await run(
@@ -441,6 +508,8 @@ async function upload(req: Request, r: Row, forcedKind?: string) {
     await releaseStorage(aid);
     throw e;
   }
+  if (kind === "source")
+    await event(r.id, "source_ready", aid, { dishId }, aid).catch(() => {});
   return response({ id: aid }, 201);
 }
 async function downloadAsset(
@@ -645,6 +714,7 @@ export async function handle(req: Request) {
       if (!u)
         return response({
           user: null,
+          studioAvailability: await studioAvailability(),
           billingEnabled: billingEnabled(),
           ownerSetup:
             !!config("BOOTSTRAP_OWNER_EMAIL") &&
@@ -658,6 +728,7 @@ export async function handle(req: Request) {
       const { r } = await owner(req);
       return response({
         user: u,
+        studioAvailability: await studioAvailability(r.id),
         restaurant: {
           ...r,
           style: styleSchema.parse(JSON.parse(r.style)),
@@ -674,7 +745,7 @@ export async function handle(req: Request) {
           r.id,
         ),
         assets: await all(
-          "SELECT id,dish_id,kind,mime,name,approved_at,created_at FROM assets WHERE restaurant_id=? AND deleted_at IS NULL ORDER BY created_at DESC",
+          "SELECT id,dish_id,kind,mime,name,approved_at,needs_correction,created_at FROM assets WHERE restaurant_id=? AND deleted_at IS NULL ORDER BY created_at DESC",
           r.id,
         ),
         assetEdits: await all(
@@ -682,7 +753,7 @@ export async function handle(req: Request) {
           r.id,
         ),
         jobs: await all(
-          "SELECT * FROM jobs WHERE restaurant_id=? ORDER BY created_at DESC LIMIT 100",
+          "SELECT id,restaurant_id,dish_id,request_key,credit_period,fingerprint,prompt,json_remove(details,'$.generationPrompts') AS details,input_method,source_id,parent_id,status,created_at FROM jobs WHERE restaurant_id=? ORDER BY created_at DESC LIMIT 100",
           r.id,
         ),
         outputs: await all(
@@ -711,12 +782,47 @@ export async function handle(req: Request) {
     }
     if (p[0] === "admin") {
       await admin(req);
+      if (method === "GET" && p[1] === "studio-report") {
+        const mode = z
+          .enum(["production", "internal"])
+          .parse(url.searchParams.get("mode") || "production");
+        const days = z.coerce
+          .number()
+          .int()
+          .min(7)
+          .max(90)
+          .parse(url.searchParams.get("days") || 30);
+        return response(await studioProgressReport(mode, days));
+      }
+      if (
+        method === "GET" &&
+        p[1] === "photo-correction" &&
+        p[2] &&
+        ["original", "reported"].includes(p[3])
+      ) {
+        const report = await one(
+          "SELECT * FROM photo_corrections WHERE original_job_id=?",
+          z.string().uuid().parse(p[2]),
+        );
+        assert(report, 404, "Report not found.");
+        const asset = await one(
+          "SELECT * FROM assets WHERE id=? AND restaurant_id=? AND deleted_at IS NULL",
+          p[3] === "original" ? report.source_id : report.reported_asset_id,
+          report.restaurant_id,
+        );
+        assert(asset, 404, "This photo is no longer available.");
+        return downloadAsset(req, asset, asset.working_key || asset.key);
+      }
       if (method === "GET")
         return response({
           restaurants: await all(
             "SELECT r.id,r.name,r.allowance,r.paused,r.daily_budget_cents,r.created_at,u.email,(SELECT count(*) FROM outputs WHERE restaurant_id=r.id AND status='completed') AS completed,(SELECT count(*) FROM outputs WHERE restaurant_id=r.id AND status NOT IN ('completed','failed')) AS reserved,(SELECT count(*) FROM outputs WHERE restaurant_id=r.id AND status='failed') AS failed,(SELECT sum(cost_estimate) FROM outputs WHERE restaurant_id=r.id) AS cost_estimate,(SELECT count(*) FROM assets WHERE restaurant_id=r.id AND approved_at IS NOT NULL AND kind='generated') AS approved,(SELECT sum(CAST(json_extract(details,'$.minutes') AS INTEGER)) FROM events WHERE restaurant_id=r.id AND kind='support_time') AS support_minutes FROM restaurants r JOIN users u ON u.id=r.user_id ORDER BY r.created_at DESC",
           ),
           controls: await aiControls(),
+          studioRelease: await studioReleaseControls(),
+          studioPipelines: await all(
+            "SELECT DISTINCT COALESCE(json_extract(details,'$.pipelineVersion'),'legacy') AS version FROM jobs ORDER BY version LIMIT 50",
+          ),
           worker: {
             configured: !!config("JOB_RUNNER_SECRET"),
             lastSeen: Number(
@@ -740,11 +846,57 @@ export async function handle(req: Request) {
           events: await all(
             "SELECT * FROM events ORDER BY created_at DESC LIMIT 100",
           ),
+          photoCorrections: await all(
+            "SELECT c.*,r.name AS restaurant_name FROM photo_corrections c JOIN restaurants r ON r.id=c.restaurant_id WHERE c.status='review' ORDER BY c.created_at LIMIT 200",
+          ),
           outputs: await all(
             "SELECT id,restaurant_id,job_id,status,attempts,usage,cost_estimate,error FROM outputs ORDER BY created_at DESC LIMIT 200",
           ),
         });
       const b = await body(req);
+      if (p[1] === "studio-release")
+        return response(await saveStudioRelease(b));
+      if (p[1] === "photo-correction") {
+        const input = z
+          .object({
+            originalJobId: z.string().uuid(),
+            action: z.enum(["restore", "resolve"]),
+            resolution: z.string().trim().min(5).max(500),
+          })
+          .parse(b);
+        const report = await one(
+          "SELECT * FROM photo_corrections WHERE original_job_id=?",
+          input.originalJobId,
+        );
+        assert(report, 404, "Report not found.");
+        if (input.action === "restore") {
+          const { restoreCorrectionCredit } =
+            await import("./correction-policy");
+          const restored = await restoreCorrectionCredit(
+            input.originalJobId,
+            true,
+            input.resolution,
+          );
+          assert(
+            restored?.credited_at,
+            409,
+            "There is no eligible original image charge to restore.",
+          );
+        } else
+          await run(
+            "UPDATE photo_corrections SET status=CASE WHEN credited_at IS NULL THEN 'resolved' ELSE 'credited' END,resolution=?,updated_at=? WHERE original_job_id=?",
+            input.resolution,
+            now(),
+            input.originalJobId,
+          );
+        await event(
+          report.restaurant_id,
+          "food_error_reviewed",
+          report.reported_asset_id,
+          { action: input.action },
+        );
+        return response({ ok: true });
+      }
       if (p[1] === "ai-controls") {
         const settings = z
           .object({
@@ -821,6 +973,12 @@ export async function handle(req: Request) {
       throw new AppError(404, "Not found.");
     }
     const { r } = await owner(req);
+    if (p[0] === "studio-references" && !p[1] && method === "POST") {
+      const input = studioReferenceRequest.parse(await body(req));
+      return response(
+        await studioReferenceAvailability(r.id, input.referenceIds),
+      );
+    }
     const libraryResponse = await libraryRoute(req, p, r);
     if (libraryResponse) return libraryResponse;
     const creationResponse = await creationRoute(req, p, r);
@@ -912,7 +1070,7 @@ export async function handle(req: Request) {
     }
     if (p[0] === "dishes" && method === "POST") {
       const b = dishSchema.parse(await body(req));
-      const did = p[1] || id();
+      const did = p[1] || b.creationId || id();
       if (p[1]) {
         assert(
           await one(
@@ -948,7 +1106,7 @@ export async function handle(req: Request) {
         );
       } else
         await run(
-          "INSERT INTO dishes (id,restaurant_id,name,description,portion,plating,setting,price,available,confirmed_at,created_at,category,preserve) VALUES (?,?,?,?,?,?,?,?,?,?,?,?,?)",
+          "INSERT INTO dishes (id,restaurant_id,name,description,portion,plating,setting,price,available,confirmed_at,created_at,category,preserve) VALUES (?,?,?,?,?,?,?,?,?,?,?,?,?) ON CONFLICT(id) DO NOTHING",
           did,
           r.id,
           b.name,
@@ -963,6 +1121,15 @@ export async function handle(req: Request) {
           b.category,
           b.preserve,
         );
+      assert(
+        await one(
+          "SELECT id FROM dishes WHERE id=? AND restaurant_id=?",
+          did,
+          r.id,
+        ),
+        404,
+        "Dish not found.",
+      );
       return response({
         id: did,
         revision: (await one("SELECT revision FROM dishes WHERE id=?", did))
@@ -977,6 +1144,24 @@ export async function handle(req: Request) {
         r.id,
       );
       assert(a, 404, "Image not found.");
+      if (method === "GET" && p[2] === "context") {
+        const { originalPhotoJob } = await import("./correction-policy");
+        const job = await originalPhotoJob(r.id, a.id);
+        const edit = await one(
+          "SELECT source_id FROM asset_edits WHERE asset_id=?",
+          a.id,
+        );
+        return response({
+          assetId: a.id,
+          jobId: job?.id || null,
+          sourceId:
+            job?.source_id ||
+            edit?.source_id ||
+            (["source", "staff"].includes(a.kind) ? a.id : null),
+          inputMethod: job?.input_method || "photo",
+          details: job ? JSON.parse(job.details) : null,
+        });
+      }
       if (method === "GET") {
         if (
           url.searchParams.has("download") &&
@@ -1054,7 +1239,7 @@ export async function handle(req: Request) {
           "Only dish photos can be approved.",
         );
         await run(
-          "UPDATE assets SET approved_at=?,kind=CASE WHEN kind='staff' THEN 'source' ELSE kind END WHERE id=?",
+          "UPDATE assets SET approved_at=COALESCE(approved_at,?),kind=CASE WHEN kind='staff' THEN 'source' ELSE kind END WHERE id=?",
           now(),
           a.id,
         );
@@ -1082,7 +1267,8 @@ export async function handle(req: Request) {
                   jobId: outputJob.id,
                 }
               : {},
-          );
+            a.id,
+          ).catch(() => {});
         return response({ ok: true });
       }
       if (method === "POST" && p[2] === "reject") {
@@ -1122,7 +1308,10 @@ export async function handle(req: Request) {
         return response({ ok: true });
       }
       const b = await body(req);
-      return response(await enqueue(r, b), 202);
+      const context = await studioJobContext(r.id, b);
+      const job = await enqueue(r, b);
+      await recordStudioJob(r.id, b, job, context);
+      return response(job, 202);
     }
     if (p[0] === "captions" && method === "POST") {
       const b = await body(req);

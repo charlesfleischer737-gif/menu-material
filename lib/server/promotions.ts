@@ -52,6 +52,7 @@ export const styleSchema = z.object({
       composition: z
         .enum([
           "Full dish",
+          "Close-up detail",
           "Room around the plate",
           "Space above for a headline",
         ])
@@ -59,17 +60,23 @@ export const styleSchema = z.object({
     })
     .optional(),
 });
+export async function styleReferenceAsset(
+  restaurantId: string,
+  assetId: string,
+) {
+  return one(
+    "SELECT id,key,working_key FROM assets WHERE id=? AND restaurant_id=? AND (kind='reference' OR (kind IN ('generated','edited') AND approved_at IS NOT NULL AND needs_correction=0)) AND deleted_at IS NULL",
+    assetId,
+    restaurantId,
+  );
+}
 export async function validateStyle(
   r: Row,
   style: z.infer<typeof styleSchema>,
 ) {
   for (const aid of style.referenceIds)
     assert(
-      await one(
-        "SELECT id FROM assets WHERE id=? AND restaurant_id=? AND kind='reference' AND deleted_at IS NULL",
-        aid,
-        r.id,
-      ),
+      await styleReferenceAsset(r.id, aid),
       400,
       "Choose style references from your restaurant.",
     );

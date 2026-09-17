@@ -972,7 +972,7 @@ export const photoStyles: PhotoStyle[] = [
     description:
       "Rich copper and low warm light reveal the folds, crust and glaze of a beautiful bake.",
     bestFor: "Cardamom knots, cinnamon rolls and laminated pastry",
-    traits: ["Patinated copper", "Cocoa plaster", "Low warm sidelight"],
+    traits: ["Patinated copper counter", "Cocoa plaster", "Low warm sidelight"],
     prompt:
       "Off-white ceramic on subtly patinated copper counter, cocoa-toned plaster background and low warm sidelight revealing real pastry texture. Refined indulgent editorial. Preserve shape, layers, glaze, toppings and portion. No added shine, crumbs or ingredients.",
     image: "/studio/styles/bakery-copper.webp",

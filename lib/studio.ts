@@ -1,10 +1,10 @@
 import { photoStyles, type PhotoStyle } from "./photo-styles";
 export { photoStyles, styleCategories } from "./photo-styles";
-export const PIPELINE_VERSION = "studio-2026-09-15-flare-v5";
+export const PIPELINE_VERSION = "studio-2026-09-17-studio-v6";
 const legacyLooks = [
   {
     id: "keep",
-    name: "Keep my setting",
+    name: "Polish my original",
     cue: "Your scene, beautifully lit",
     group: "Recommended",
     image: "/studio/styles/delivery-white.webp",
@@ -75,7 +75,7 @@ const legacyLooks = [
   },
   {
     id: "reference",
-    name: "Match this photo",
+    name: "Your inspiration",
     cue: "Bring a look you love",
     group: "My looks",
     image: "/studio/styles/bakery-rustic.webp",
@@ -91,6 +91,35 @@ export const looks: PhotoStyle[] = [
   })),
 ];
 export type LookId = string;
+export function resolvePhotoLook(
+  brief: Record<string, any>,
+): PhotoStyle | null {
+  const known = looks.find((look) => look.id === brief.look);
+  if (known) return known;
+  if (
+    typeof brief.photoStyleSnapshot === "string" &&
+    brief.photoStyleSnapshot.trim()
+  )
+    return {
+      id: brief.look || "captured-look",
+      name: brief.savedLookName || "Your saved look",
+      cue: "Your saved setting and light",
+      group: "Saved",
+      image: brief.photoReferenceIds?.[0]
+        ? `/api/assets/${brief.photoReferenceIds[0]}`
+        : "",
+      prompt: brief.photoStyleSnapshot,
+    };
+  return null;
+}
+export const unavailablePhotoLook: PhotoStyle = {
+  id: "unavailable",
+  name: "Look unavailable",
+  cue: "Choose another look to continue",
+  group: "Saved",
+  image: "",
+  prompt: "",
+};
 export const formats = {
   toast: {
     label: "Toast item photo",
@@ -210,7 +239,7 @@ export function photoBrief(destination = "menu") {
     analysisSourceId: "",
     analysisStatus: "none",
     analysisSubject: "",
-    styleChosen: false,
+    styleChosen: true,
     mode: "photo",
     destination,
     format:
@@ -221,17 +250,19 @@ export function photoBrief(destination = "menu") {
           : destination === "print"
             ? "print"
             : "menu",
-    look: destination === "delivery" ? "delivery-white" : "menu-stone",
+    look: "keep",
     lookCategory: destination === "delivery" ? "delivery" : "menu",
     surface: "As shown",
     lighting: "As shown",
-    plate: "style",
+    plate: "keep",
     angle: "keep",
     composition: "Full dish",
     note: "",
     referenceId: "",
     requestKey: "",
     savedLook: false,
+    photoStyleSnapshot: null,
+    photoReferenceIds: null,
     adjustments: { ...emptyAdjustments },
   };
 }
@@ -240,9 +271,11 @@ export function styleFor(
   restaurant: Record<string, any>,
 ) {
   const base = restaurant.style || {};
-  const look =
-    looks.find((l) => l.id === brief.look) ||
-    photoStyles.find((l) => l.id === "menu-stone")!;
+  const look = resolvePhotoLook(brief);
+  if (!look)
+    throw new Error(
+      "This saved look is unavailable. Choose another look before creating a photo.",
+    );
   const prompt =
     brief.angle === "keep" && look.angle === "overhead"
       ? look.prompt.replace(
@@ -253,17 +286,19 @@ export function styleFor(
   return {
     ...base,
     photoStyle:
-      look.id === "restaurant"
+      brief.photoStyleSnapshot ??
+      (look.id === "restaurant"
         ? base.photoStyle
         : prompt +
           (look.id === "color"
             ? ` Background color: ${base.primary || "#235b48"}.`
-            : ""),
+            : "")),
     referenceIds:
-      brief.look === "reference"
+      brief.photoReferenceIds ??
+      (brief.look === "reference"
         ? [brief.referenceId].filter(Boolean)
         : brief.look === "restaurant"
           ? base.referenceIds || []
-          : [],
+          : []),
   };
 }

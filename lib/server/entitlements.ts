@@ -4,7 +4,7 @@ import { now, one } from "./core";
 // belong to their original period, even when a failed job finishes next month.
 export const entitlementSql = `SELECT r.id,r.paused,
   COALESCE(p.id,'free') AS credit_period,
-  COALESCE(p.allowance,r.allowance) AS allowance,
+  COALESCE(p.allowance,r.allowance)+(SELECT count(*) FROM photo_corrections c WHERE c.restaurant_id=r.id AND c.credited_period=COALESCE(p.id,'free') AND c.credited_at IS NOT NULL) AS allowance,
   p.ends_at AS renews_at
   FROM restaurants r LEFT JOIN billing_periods p ON p.id=(
     SELECT bp.id FROM billing_periods bp JOIN billing_accounts ba

@@ -1,6 +1,13 @@
 export type Row = Record<string, any>;
-export async function api(path: string, body?: unknown, method?: string) {
+export async function api(
+  path: string,
+  body?: unknown,
+  method?: string,
+  signal?: AbortSignal,
+) {
   const res = await fetch("/api/" + path, {
+    signal,
+    keepalive: path === "creation-events",
     method: method || (body === undefined ? "GET" : "POST"),
     headers:
       body instanceof FormData
@@ -15,11 +22,21 @@ export async function api(path: string, body?: unknown, method?: string) {
           ? body
           : JSON.stringify(body),
   });
-  const data = (await res.json()) as Row;
+  const data = (await res.json().catch(() => null)) as Row | null;
   if (!res.ok)
-    throw Object.assign(new Error(data.error || "Please try again."), {
-      status: res.status,
-    });
+    throw Object.assign(
+      new Error(
+        data?.error ||
+          "The service couldn’t complete that action. Please try again.",
+      ),
+      {
+        status: res.status,
+      },
+    );
+  if (!data)
+    throw Error(
+      "The service returned an incomplete response. Please try again.",
+    );
   return data;
 }
 export async function normalizePhoto(file: File): Promise<Blob> {

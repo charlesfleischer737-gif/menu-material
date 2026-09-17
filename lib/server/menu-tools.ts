@@ -1,5 +1,6 @@
 import { entitlementSql } from "./entitlements";
 import { z } from "zod";
+import { checkStudioGeneration } from "./studio-release";
 import { validateImageDimensions } from "./image-validation";
 import {
   limitedForm,
@@ -127,6 +128,12 @@ export async function retryFailed(r: Row, jobId: string) {
     r.id,
   );
   assert(job, 404, "Generation not found.");
+  await checkStudioGeneration(r.id, JSON.parse(job.details));
+  assert(
+    !job.credit_period.startsWith("complimentary:"),
+    409,
+    "This complimentary correction has finished. Open its food-error report to see your allowance recovery or review status.",
+  );
   assert(
     config("OPENAI_API_KEY") && !r.paused,
     503,
@@ -625,12 +632,12 @@ export async function menuTools(req: Request, p: string[], r: Row) {
   if (p[0] === "insights" && req.method === "GET") {
     const since = now() - 28 * 86400000;
     const creative = await one(
-      "SELECT count(*) AS downloads,count(DISTINCT a.dish_id) AS dishes,count(DISTINCT date(e.created_at/1000,'unixepoch')) AS days FROM events e JOIN assets a ON a.id=e.entity_id AND a.restaurant_id=e.restaurant_id WHERE e.restaurant_id=? AND e.kind='export_complete' AND a.approved_at IS NOT NULL AND e.created_at>=?",
+      "SELECT count(*) AS downloads,count(DISTINCT a.dish_id) AS dishes,count(DISTINCT date(e.created_at/1000,'unixepoch')) AS days FROM events e JOIN assets a ON a.id=e.entity_id AND a.restaurant_id=e.restaurant_id WHERE e.restaurant_id=? AND e.kind IN ('export_complete','export_download_started','native_share_complete') AND a.approved_at IS NOT NULL AND e.created_at>=?",
       r.id,
       since,
     );
     const firstDownload = await one(
-      "SELECT MIN(e.created_at) AS downloaded,(SELECT MIN(created_at) FROM assets WHERE restaurant_id=? AND kind='source') AS uploaded FROM events e JOIN assets a ON a.id=e.entity_id AND a.restaurant_id=e.restaurant_id WHERE e.restaurant_id=? AND e.kind='export_complete' AND a.approved_at IS NOT NULL",
+      "SELECT MIN(e.created_at) AS downloaded,(SELECT MIN(created_at) FROM assets WHERE restaurant_id=? AND kind='source') AS uploaded FROM events e JOIN assets a ON a.id=e.entity_id AND a.restaurant_id=e.restaurant_id WHERE e.restaurant_id=? AND e.kind IN ('export_complete','export_download_started','native_share_complete') AND a.approved_at IS NOT NULL",
       r.id,
       r.id,
     );
@@ -672,7 +679,7 @@ export async function menuTools(req: Request, p: string[], r: Row) {
         job.id,
       );
       const rejected = await one(
-        "SELECT id FROM events WHERE restaurant_id=? AND kind='image_rejected' AND entity_id IN (SELECT asset_id FROM outputs WHERE job_id=?)",
+        "SELECT id FROM events WHERE restaurant_id=? AND kind IN ('image_rejected','food_error_reported') AND entity_id IN (SELECT asset_id FROM outputs WHERE job_id=?)",
         r.id,
         job.id,
       );

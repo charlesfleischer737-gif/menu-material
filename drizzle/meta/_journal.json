@@ -64,6 +64,41 @@
       "when": 1789582010768,
       "tag": "0008_eminent_iron_patriot",
       "breakpoints": true
+    },
+    {
+      "idx": 9,
+      "version": "6",
+      "when": 1789614096637,
+      "tag": "0009_medical_doctor_spectrum",
+      "breakpoints": true
+    },
+    {
+      "idx": 10,
+      "version": "6",
+      "when": 1789617610205,
+      "tag": "0010_illegal_dagger",
+      "breakpoints": true
+    },
+    {
+      "idx": 11,
+      "version": "6",
+      "when": 1789618079603,
+      "tag": "0011_previous_micromacro",
+      "breakpoints": true
+    },
+    {
+      "idx": 12,
+      "version": "6",
+      "when": 1789648446397,
+      "tag": "0012_legal_tattoo",
+      "breakpoints": true
+    },
+    {
+      "idx": 13,
+      "version": "6",
+      "when": 1789656474644,
+      "tag": "0013_nebulous_black_panther",
+      "breakpoints": true
     }
   ]
 }

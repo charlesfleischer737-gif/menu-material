@@ -1,6 +1,6 @@
 import type { Row } from "./client";
 import { money } from "./client";
-import { imageBitmap, drawPhoto, canvasBlob } from "./creation-export";
+import { imageBitmap, drawPhoto, canvasBlob } from "./photo-export";
 import { menuCrop, menuHero, menuAppearance } from "./menu-design";
 import { paintMaterial, gradient, glow, mixColor } from "./template-materials";
 import { readableBrandInk } from "./restaurant-look";

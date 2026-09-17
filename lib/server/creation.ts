@@ -21,7 +21,15 @@ import { styleSchema, validateStyle } from "./promotions";
 import { advanceBatches, retryFailed } from "./menu-tools";
 import { analyzePhoto } from "./photo-analysis";
 import { manageDrafts } from "./drafts";
+import { studioLibraryRoute } from "./studio-library";
+import { photoCorrectionsRoute } from "./photo-corrections";
+import { lookRecipeSchema } from "../studio-library";
+import {
+  creationEventKinds,
+  parseCreationEventDetails,
+} from "../studio-events";
 import { limitedForm, reserveStorage, releaseStorage } from "./safeguards";
+import { recordStudioSource } from "./studio-progress";
 const draftSchema = z.object({
   id: z.string().uuid(),
   kind: z.enum(["studio", "post", "menu"]),
@@ -29,8 +37,21 @@ const draftSchema = z.object({
   draft: z.record(z.string(), z.unknown()),
 });
 export async function creationRoute(req: Request, p: string[], r: Row) {
+  const correction = await photoCorrectionsRoute(req, p, r);
+  if (correction) return correction;
+  const studioLibrary = await studioLibraryRoute(req, p, r);
+  if (studioLibrary) return studioLibrary;
   const managed = await manageDrafts(req, p, r.id);
   if (managed) return managed;
+  if (p[0] === "photo-batches" && req.method === "GET") {
+    const record = await one(
+      "SELECT draft FROM creation_drafts WHERE id=? AND restaurant_id=? AND kind='batch'",
+      z.string().uuid().parse(p[1]),
+      r.id,
+    );
+    assert(record, 404, "Photo set not found.");
+    return response({ batch: JSON.parse(record.draft) });
+  }
   if (p[0] === "photo-analysis" && req.method === "POST")
     return analyzePhoto(r, (await body(req)).sourceId);
   if (p[0] === "creation-drafts") {
@@ -54,8 +75,9 @@ export async function creationRoute(req: Request, p: string[], r: Row) {
       "This draft belongs to another tool.",
     );
     // A retry of an already-saved version is safe, including after a lost response.
-    if (prior?.draft === content)
+    if (prior?.draft === content) {
       return response({ id: prior.id, revision: prior.revision });
+    }
     if (!prior) {
       assert(
         b.revision === 0,
@@ -70,6 +92,7 @@ export async function creationRoute(req: Request, p: string[], r: Row) {
         content,
         now(),
       );
+      if (b.kind === "studio") await recordStudioSource(r.id, b.id, b.draft);
       return response({ id: b.id, revision: 1 });
     }
     const updated = await one(
@@ -85,6 +108,11 @@ export async function creationRoute(req: Request, p: string[], r: Row) {
       409,
       "This draft changed in another window. Reopen it to keep the latest version.",
     );
+    if (b.kind === "studio") {
+      const before = JSON.parse(prior.draft);
+      if (before.sourceId !== b.draft.sourceId || before.mode !== b.draft.mode)
+        await recordStudioSource(r.id, b.id, b.draft);
+    }
     return response({ id: b.id, revision: updated.revision });
   }
   if (p[0] === "post-caption" && req.method === "POST") {
@@ -198,7 +226,7 @@ export async function creationRoute(req: Request, p: string[], r: Row) {
       assert(prior, 404, "Batch not found.");
       const d = JSON.parse(prior.draft);
       const approved = await one(
-        "SELECT a.id FROM outputs o JOIN assets a ON a.id=o.asset_id WHERE o.job_id=? AND a.restaurant_id=? AND a.approved_at IS NOT NULL AND a.deleted_at IS NULL",
+        "SELECT a.id FROM outputs o JOIN assets a ON a.id=o.asset_id WHERE o.job_id=? AND a.restaurant_id=? AND a.approved_at IS NOT NULL AND a.needs_correction=0 AND a.deleted_at IS NULL",
         d.sampleJobId,
         r.id,
       );
@@ -255,8 +283,9 @@ export async function creationRoute(req: Request, p: string[], r: Row) {
             }),
           )
           .min(1)
-          .max(5),
+          .max(8),
         style: styleSchema,
+        recipe: lookRecipeSchema.optional(),
       })
       .parse(raw);
     assert(
@@ -278,7 +307,19 @@ export async function creationRoute(req: Request, p: string[], r: Row) {
       );
     const settings = {
       style: b.style,
-      controls: { format: "menu" },
+      controls: {
+        format: "menu",
+        ...(b.recipe
+          ? {
+              surface: b.recipe.surface,
+              lighting: b.recipe.lighting,
+              plate: b.recipe.plate,
+              angle: b.recipe.angle,
+              composition: b.recipe.composition,
+            }
+          : {}),
+      },
+      revision: b.recipe?.note || "",
       candidateCount: 1,
       editMode: "preserve",
     };
@@ -294,13 +335,23 @@ export async function creationRoute(req: Request, p: string[], r: Row) {
       continued: false,
     };
     await run(
-      "INSERT INTO creation_drafts (id,restaurant_id,kind,draft,updated_at) VALUES (?,?,'batch',?,?)",
+      "INSERT INTO creation_drafts (id,restaurant_id,kind,draft,updated_at) VALUES (?,?,'batch',?,?) ON CONFLICT(id) DO NOTHING",
       batchId,
       r.id,
       JSON.stringify(d),
       now(),
     );
-    return response({ batch: d });
+    const savedBatch = await one(
+      "SELECT draft FROM creation_drafts WHERE id=? AND restaurant_id=? AND kind='batch'",
+      batchId,
+      r.id,
+    );
+    assert(
+      savedBatch,
+      409,
+      "This photo set belongs to another draft. Start a new set.",
+    );
+    return response({ batch: JSON.parse(savedBatch.draft) });
   }
   if (p[0] === "photo-edits" && req.method === "POST") {
     await limit("photo-edits:" + r.id, 60, 3600);
@@ -382,21 +433,12 @@ export async function creationRoute(req: Request, p: string[], r: Row) {
     return response({ id: aid });
   }
   if (p[0] === "creation-events" && req.method === "POST") {
+    await limit("creation-events:" + r.id, 600, 60);
     const b = z
       .object({
-        kind: z.enum([
-          "upload_complete",
-          "style_selected",
-          "generation_submission",
-          "destination_selected",
-          "export_complete",
-          "food_issue",
-          "step_view",
-          "quick_adjustment",
-          "post_saved",
-          "photo_reused",
-        ]),
+        kind: z.enum(creationEventKinds),
         entityId: z.string().uuid().optional(),
+        eventKey: z.string().max(200).optional(),
         details: z
           .record(
             z.string(),
@@ -406,7 +448,90 @@ export async function creationRoute(req: Request, p: string[], r: Row) {
       })
       .parse(await body(req));
     assert(Object.keys(b.details).length <= 12, 400, "Too much event data.");
-    await event(r.id, b.kind, b.entityId || null, b.details);
+    if (b.entityId)
+      assert(
+        await one(
+          "SELECT id FROM assets WHERE id=? AND restaurant_id=? UNION ALL SELECT id FROM dishes WHERE id=? AND restaurant_id=? UNION ALL SELECT id FROM jobs WHERE id=? AND restaurant_id=? UNION ALL SELECT id FROM creation_drafts WHERE id=? AND restaurant_id=? LIMIT 1",
+          b.entityId,
+          r.id,
+          b.entityId,
+          r.id,
+          b.entityId,
+          r.id,
+          b.entityId,
+          r.id,
+        ),
+        400,
+        "The activity belongs to unavailable work.",
+      );
+    const details = parseCreationEventDetails(b.kind, b.details);
+    if (
+      [
+        "export_prepared",
+        "export_download_started",
+        "native_share_complete",
+        "native_share_cancelled",
+        "handoff_started",
+      ].includes(b.kind)
+    ) {
+      assert(
+        b.entityId &&
+          (await one(
+            "SELECT id FROM assets WHERE id=? AND restaurant_id=? AND approved_at IS NOT NULL AND deleted_at IS NULL AND needs_correction=0",
+            b.entityId,
+            r.id,
+          )),
+        400,
+        "Review this photo before using it.",
+      );
+    }
+    for (const key of ["sourceId", "dishId", "jobId", "draftId"]) {
+      const value = details[key];
+      if (!value) continue;
+      const table = {
+        sourceId: "assets",
+        dishId: "dishes",
+        jobId: "jobs",
+        draftId: "creation_drafts",
+      }[key]!;
+      assert(
+        await one(
+          `SELECT id FROM ${table} WHERE id=? AND restaurant_id=?`,
+          value,
+          r.id,
+        ),
+        400,
+        "The activity belongs to unavailable work.",
+      );
+    }
+    if (details.lookId) {
+      const library = await one(
+        "SELECT content FROM studio_libraries WHERE restaurant_id=?",
+        r.id,
+      );
+      assert(
+        library &&
+          JSON.parse(library.content).looks.some(
+            (look: Row) => look.id === details.lookId,
+          ),
+        400,
+        "The saved look is unavailable.",
+      );
+    }
+    await event(r.id, b.kind, b.entityId || null, details, b.eventKey);
+    if (
+      b.kind === "export_prepared" &&
+      details.draftId &&
+      details.sourceId &&
+      details.exportKey
+    )
+      await event(
+        r.id,
+        "studio_export_linked",
+        b.entityId || null,
+        details,
+        `${details.draftId}:${details.sourceId}:${details.exportKey}`,
+      );
     return response({ ok: true });
   }
   return null;

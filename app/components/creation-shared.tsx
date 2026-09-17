@@ -2,6 +2,7 @@
 import {
   useCallback,
   useEffect,
+  useLayoutEffect,
   useRef,
   useState,
   type ReactNode,
@@ -14,7 +15,8 @@ import {
   RotateCw,
 } from "lucide-react";
 import { api, type Row } from "@/lib/client";
-import { drawPhoto, imageBitmap } from "@/lib/creation-export";
+import { createPhotoPreviewRenderer, imageBitmap } from "@/lib/photo-export";
+import { latestFrame } from "@/lib/latest-frame";
 import { emptyAdjustments, type Adjustments } from "@/lib/studio";
 import {
   hasSavedContent,
@@ -29,11 +31,17 @@ import {
   DialogTitle,
   DialogTrigger,
 } from "@/components/ui/dialog";
-export function track(kind: string, entityId?: string, details: Row = {}) {
+export function track(
+  kind: string,
+  entityId?: string,
+  details: Row = {},
+  eventKey?: string,
+) {
   void api("creation-events", {
     kind,
     entityId: entityId || undefined,
     details,
+    eventKey: eventKey || crypto.randomUUID(),
   }).catch(() => {});
 }
 export function useAction() {
@@ -202,10 +210,18 @@ export function useCreationDraft(
   }, [kind, preferenceKey, recoveryKey]);
   function change(patch: Row) {
     const next = { ...latest.current, ...patch };
+    const content = JSON.stringify(next);
+    if (content === JSON.stringify(latest.current)) return;
     latest.current = next;
-    backup();
     setDraft(next);
-    setStatus("Saving…");
+    if (content === saved.current && !saving.current) {
+      forgetBackup();
+      setSaveError("");
+      setStatus("All changes saved");
+    } else {
+      backup();
+      setStatus("Saving…");
+    }
   }
   useEffect(() => {
     if (!ready || JSON.stringify(draft) === saved.current) return;
@@ -830,56 +846,114 @@ export function PhotoFrame({
   edits = emptyAdjustments,
   onChange,
   label = "Your photo · layout preview",
+  onReadyChange,
 }: {
   src: string;
   ratio?: number;
   edits?: Adjustments;
   onChange?: (e: Adjustments) => void;
   label?: string;
+  onReadyChange?: (ready: boolean) => void;
 }) {
+  const readyCallback = useRef(onReadyChange);
+  readyCallback.current = onReadyChange;
   const canvas = useRef<HTMLCanvasElement>(null),
     im = useRef<ImageBitmap | null>(null),
-    [error, setError] = useState(""),
-    [loaded, setLoaded] = useState(0),
+    [attempt, setAttempt] = useState(0),
+    [load, setLoad] = useState({ src, status: "loading", error: "" }),
     drag = useRef<{ x: number; y: number; ex: number; ey: number } | null>(
       null,
     );
-  useEffect(() => {
-    let active = true;
-    setError("");
-    imageBitmap(src)
+  const [preview] = useState(createPhotoPreviewRenderer);
+  const [frames] = useState(() =>
+    latestFrame<{
+      canvas: HTMLCanvasElement;
+      bitmap: ImageBitmap;
+      ratio: number;
+      edits: Adjustments;
+      src: string;
+    }>((frame) => {
+      try {
+        preview.draw(
+          frame.canvas,
+          frame.bitmap,
+          800,
+          Math.round(800 / frame.ratio),
+          frame.edits,
+        );
+        readyCallback.current?.(true);
+      } catch {
+        readyCallback.current?.(false);
+        setLoad({
+          src: frame.src,
+          status: "error",
+          error: "This photo preview couldn’t update. Please try again.",
+        });
+      }
+    }),
+  );
+  const ready = load.src === src && load.status === "ready";
+  const error = load.src === src ? load.error : "";
+  useLayoutEffect(() => {
+    const controller = new AbortController();
+    let owned: ImageBitmap | null = null;
+    frames.clear();
+    preview.clear();
+    drag.current = null;
+    readyCallback.current?.(false);
+    setLoad({ src, status: "loading", error: "" });
+    if (canvas.current) {
+      canvas.current.width = 0;
+      canvas.current.height = 0;
+    }
+    imageBitmap(src, controller.signal)
       .then((b) => {
-        if (!active) {
+        if (controller.signal.aborted) {
           b.close();
           return;
         }
+        owned = b;
         im.current = b;
-        setLoaded((v) => v + 1);
+        setLoad({ src, status: "ready", error: "" });
       })
-      .catch((e) => setError(e.message));
+      .catch(() => {
+        if (!controller.signal.aborted)
+          setLoad({
+            src,
+            status: "error",
+            error: "This photo couldn’t be opened. Please try again.",
+          });
+      });
     return () => {
-      active = false;
-      im.current?.close();
-      im.current = null;
+      controller.abort();
+      frames.clear();
+      preview.clear();
+      owned?.close();
+      if (im.current === owned) im.current = null;
     };
-  }, [src]);
-  useEffect(() => {
-    if (canvas.current && im.current)
-      drawPhoto(
-        canvas.current,
-        im.current,
-        800,
-        Math.round(800 / ratio),
+  }, [src, attempt, preview, frames]);
+  useLayoutEffect(() => {
+    readyCallback.current?.(false);
+    if (ready && canvas.current && im.current)
+      frames.push({
+        canvas: canvas.current,
+        bitmap: im.current,
+        ratio,
         edits,
-      );
-  }, [loaded, edits, ratio]);
+        src,
+      });
+  }, [ready, load, edits, ratio, src, frames]);
   return (
     <figure className="cx-photo-frame">
       <div
-        className={onChange ? "cx-draggable" : ""}
+        className={onChange && ready ? "cx-draggable" : ""}
         style={{ aspectRatio: ratio }}
+        role="group"
+        aria-label="Photo preview"
+        tabIndex={-1}
+        aria-busy={!ready && !error}
         onPointerDown={(e) => {
-          if (!onChange) return;
+          if (!onChange || !ready) return;
           e.currentTarget.setPointerCapture(e.pointerId);
           drag.current = {
             x: e.clientX,
@@ -889,7 +963,7 @@ export function PhotoFrame({
           };
         }}
         onPointerMove={(e) => {
-          if (!drag.current || !onChange) return;
+          if (!drag.current || !onChange || !ready) return;
           const bounds = e.currentTarget.getBoundingClientRect();
           onChange({
             ...edits,
@@ -918,12 +992,34 @@ export function PhotoFrame({
           drag.current = null;
         }}
       >
-        <canvas ref={canvas} aria-label={label} role="img" />
-        {error && <p role="alert">{error}</p>}
+        <canvas
+          ref={canvas}
+          aria-label={label}
+          role="img"
+          style={{ visibility: ready ? "visible" : "hidden" }}
+        />
+        {!ready && (
+          <div className="cx-photo-frame-status">
+            <p role={error ? "alert" : "status"}>
+              {error || "Opening your photo…"}
+            </p>
+            {error && (
+              <button
+                className="cx-link"
+                onClick={() => {
+                  canvas.current?.parentElement?.focus();
+                  setAttempt((value) => value + 1);
+                }}
+              >
+                Try again
+              </button>
+            )}
+          </div>
+        )}
       </div>
       <figcaption>
         {label}
-        {onChange && <span>Drag to position</span>}
+        {onChange && ready && <span>Drag to position</span>}
       </figcaption>
     </figure>
   );
@@ -933,16 +1029,20 @@ export function CropControls({
   onChange,
   quick = false,
   allowFit = true,
+  section = "all",
+  showValues = false,
 }: {
   value: Adjustments;
   onChange: (e: Adjustments) => void;
   quick?: boolean;
   allowFit?: boolean;
+  section?: "all" | "crop" | "light";
+  showValues?: boolean;
 }) {
   const e = { ...emptyAdjustments, ...value };
   return (
     <div className="cx-crop-controls">
-      {allowFit && (
+      {allowFit && section !== "light" && (
         <div className="cx-segment" aria-label="Photo fit">
           <button
             aria-pressed={e.fit}
@@ -959,10 +1059,14 @@ export function CropControls({
         </div>
       )}
       {[
-        ["Horizontal position", "x", 0, 100, 1],
-        ["Vertical position", "y", 0, 100, 1],
-        ["Zoom", "zoom", 1, 2, 0.01],
-        ...(quick
+        ...(section !== "light"
+          ? [
+              ["Horizontal position", "x", 0, 100, 1],
+              ["Vertical position", "y", 0, 100, 1],
+              ["Zoom", "zoom", 1, 2, 0.01],
+            ]
+          : []),
+        ...(quick && section !== "crop"
           ? [
               ["Brightness", "brightness", 80, 120, 1],
               ["Contrast", "contrast", 80, 120, 1],
@@ -972,6 +1076,15 @@ export function CropControls({
       ].map(([label, key, min, max, step]) => (
         <label className="cx-range" key={String(key)}>
           <span>{label}</span>
+          {showValues && (
+            <span className="cx-range-value" aria-hidden="true">
+              {key === "zoom"
+                ? `${Number(e.zoom).toFixed(2)}×`
+                : key === "warmth"
+                  ? e.warmth
+                  : `${e[key as keyof Adjustments]}%`}
+            </span>
+          )}
           <input
             type="range"
             min={Number(min)}
@@ -984,7 +1097,7 @@ export function CropControls({
           />
         </label>
       ))}
-      {quick && (
+      {quick && section !== "light" && (
         <button
           className="cx-link"
           onClick={() => onChange({ ...e, rotate: (e.rotate + 90) % 360 })}

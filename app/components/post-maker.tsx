@@ -162,15 +162,16 @@ export default function PostMaker({
               a.id === seed.photoId && a.approved_at && a.dish_id === d?.id,
           );
         if (d && a) {
-          await start(
-            postFromPhoto(
+          await start({
+            ...postFromPhoto(
               initial(state.restaurant, 2),
               d,
               a,
               state.restaurant,
               true,
             ),
-          );
+            ...(seed.occasion ? { occasion: seed.occasion } : {}),
+          });
           track("photo_reused", a.id, { dishId: d.id, destination: "post" });
         }
       }

@@ -21,21 +21,42 @@ import {
   formats,
   photoBrief,
   styleFor,
+  resolvePhotoLook,
+  unavailablePhotoLook,
   emptyAdjustments,
   type PhotoFormat,
 } from "@/lib/studio";
-import { canvasBlob, drawPhoto, imageBitmap } from "@/lib/creation-export";
-import PhotoDownloads from "./photo-downloads";
+import { canvasBlob, drawPhoto, imageBitmap } from "@/lib/photo-export";
+import { PhotoFinishSheet } from "./photo-finish-sheet";
+import {
+  PhotoAdjustmentSheet,
+  type PhotoAdjustmentSession,
+  type PhotoAdjustmentValues,
+} from "./photo-adjustment-sheet";
+import { PhotoCorrectionSheet } from "./photo-correction-sheet";
+import { PhotoBatchSheet } from "./photo-batch-sheet";
+import { SavePhotoLookSheet } from "./save-photo-look-sheet";
+import { useStudioNavigation } from "./use-studio-navigation";
+import { useStudioTiming } from "./use-studio-timing";
+import { recipeFromDraft } from "@/lib/studio-library";
+import { occasionName } from "@/lib/studio-occasions";
+import { capturedPhotoRecipe, photoLookContext } from "@/lib/photo-recipe";
 import { photoAdvice } from "@/lib/photo-advice";
 import {
   restaurantPhotoDefaults,
   restaurantPhotoSelection,
 } from "@/lib/restaurant-look";
 import { photoAnalysisRecommendation } from "@/lib/studio-onboarding";
+import { studioLookPatch } from "@/lib/studio-discovery";
+import {
+  activeInspirationIds,
+  inspirationPatch,
+  inspirationStatusMessage,
+} from "@/lib/studio-reference";
+import { useInspirationAvailability } from "./use-inspiration-availability";
 import { PhotoComparison, StudioCreating } from "./studio-onboarding";
 import { StudioWorkbench } from "./studio-workbench";
 import {
-  CropControls,
   Feedback,
   Field,
   ToolHeader,
@@ -48,12 +69,14 @@ import {
   useStepFocus,
 } from "./creation-shared";
 export default function PhotoStudio({
+  active = true,
   state,
   refresh,
   seed,
   onSeedUsed,
   onDestination,
 }: {
+  active?: boolean;
   state: Row;
   refresh: () => Promise<void>;
   seed: Row | null;
@@ -79,16 +102,68 @@ export default function PhotoStudio({
     { act, busy, setNotice, setError } = action;
   const [advice, setAdvice] = useState(""),
     [before, setBefore] = useState(false),
-    [compare, setCompare] = useState(true),
+    [compare, setCompare] = useState(false),
     [adjust, setAdjust] = useState(""),
     [aiChanges, setAiChanges] = useState(""),
     [accurate, setAccurate] = useState(false),
-    [zoom, setZoom] = useState(false);
-  const seedHandled = useRef(""),
-    editKey = useRef("");
-  const selected =
-      looks.find((l) => l.id === b.look) ||
-      photoStyles.find((l) => l.id === "menu-stone")!,
+    [zoom, setZoom] = useState(false),
+    [finishOpen, setFinishOpen] = useState(false);
+  const [correctionOpen, setCorrectionOpen] = useState(false);
+  const [exporting, setExporting] = useState(false);
+  const [referenceBusy, setReferenceBusy] = useState(false);
+  const [batchOpen, setBatchOpen] = useState(false),
+    [saveLookOpen, setSaveLookOpen] = useState(false);
+  const [resultRecipe, setResultRecipe] = useState<Row | null>(null);
+  const [resultHasGeneration, setResultHasGeneration] = useState(false);
+  const resultAction = useRef<HTMLButtonElement>(null);
+  const [quickSession, setQuickSession] =
+    useState<PhotoAdjustmentSession | null>(null);
+  const quickActive = useRef<string | null>(null),
+    quickTrigger = useRef<HTMLElement | null>(null);
+  function setQuickOpen(open: boolean) {
+    quickActive.current = open ? quickSession?.id || null : null;
+    setAdjust((current) =>
+      open ? "quick" : current === "quick" ? "" : current,
+    );
+  }
+  function returnFromAdjustments(event: Event) {
+    event.preventDefault();
+    requestAnimationFrame(() => {
+      if (document.querySelector('[role="dialog"][data-state="open"]')) return;
+      const trigger = quickTrigger.current;
+      (trigger?.isConnected && trigger.getClientRects().length
+        ? trigger
+        : resultAction.current
+      )?.focus({ preventScroll: true });
+    });
+  }
+  function returnToResult(event: Event) {
+    event.preventDefault();
+    requestAnimationFrame(() => {
+      if (!document.querySelector('[role="dialog"][data-state="open"]'))
+        resultAction.current?.focus({ preventScroll: true });
+    });
+  }
+  useStudioNavigation(
+    [
+      ...(finishOpen ? ["finish"] : []),
+      ...(correctionOpen ? ["correction"] : []),
+      ...(batchOpen ? ["batch"] : []),
+      ...(saveLookOpen ? ["save-look"] : []),
+      ...(zoom ? ["zoom"] : []),
+      ...(adjust === "quick" ? ["quick"] : []),
+    ],
+    (stack) => {
+      setFinishOpen(stack.includes("finish"));
+      setCorrectionOpen(stack.includes("correction"));
+      setBatchOpen(stack.includes("batch"));
+      setSaveLookOpen(stack.includes("save-look"));
+      setZoom(stack.includes("zoom"));
+      setQuickOpen(stack.includes("quick") && !!quickSession);
+    },
+  );
+  const seedHandled = useRef("");
+  const selected = resolvePhotoLook(b) || unavailablePhotoLook,
     source =
       b.mode === "photo" && b.sourceId ? `/api/assets/${b.sourceId}` : "",
     job = state.jobs.find((j: Row) => j.id === b.jobId),
@@ -102,6 +177,30 @@ export default function PhotoStudio({
       !!running ||
       ["Creating your photo", "Applying your changes"].includes(busy),
     format = formats[b.format as PhotoFormat] || formats.menu;
+  const inspirationIds = activeInspirationIds(b, state.restaurant);
+  const inspirationId = inspirationIds[0] || "";
+  const inspirationAvailability = useInspirationAvailability(
+    state.restaurant.id,
+    inspirationIds,
+    ready && active && b.step <= 3,
+  );
+  useStudioTiming(
+    ready && active ? draftStore.id : "",
+    b.sourceId || "",
+    exporting
+      ? "export"
+      : busy === "Preparing your photo" || referenceBusy
+        ? "upload"
+        : creating
+          ? job?.status === "queued"
+            ? "queue"
+            : "generation"
+          : busy ||
+              inspirationAvailability.status === "checking" ||
+              state.studioAvailability?.creationEnabled === false
+            ? null
+            : "decision",
+  );
   const restaurantLook = {
     ...looks.find((l) => l.id === "restaurant")!,
     image: state.restaurant.style?.referenceIds?.[0]
@@ -111,33 +210,67 @@ export default function PhotoStudio({
     cue: "Your saved lighting, setting and photographic style",
     group: "SAVED FOR YOUR RESTAURANT",
   };
-  const firstImage = !state.assets.some(
-    (a: Row) => a.kind === "generated" && a.approved_at,
-  );
+  useEffect(() => {
+    if (b.step === 5 && resultId) setFinishOpen(true);
+  }, [b.step, resultId]);
   const canCompare = !!source && !!resultId && resultId !== b.sourceId;
+  useEffect(() => {
+    if (!ready || !draftStore.id) return;
+    let session = "";
+    try {
+      session =
+        sessionStorage.getItem("menu-material:studio-session") ||
+        crypto.randomUUID();
+      sessionStorage.setItem("menu-material:studio-session", session);
+    } catch {
+      session = crypto.randomUUID();
+    }
+    const draftId = draftStore.id;
+    void save()
+      .then(() =>
+        track(
+          "studio_opened",
+          undefined,
+          { draftId, guest: false },
+          `${session}:${draftId}`,
+        ),
+      )
+      .catch(() => {});
+  }, [ready, draftStore.id]);
+  useEffect(() => {
+    let active = true;
+    setResultRecipe(null);
+    setResultHasGeneration(asset?.kind === "generated");
+    if (resultId)
+      void api(`assets/${resultId}/context`)
+        .then((context) => {
+          if (active) {
+            setResultHasGeneration(!!context.jobId);
+            const captured = capturedPhotoRecipe(context);
+            const usable = state.assets.find(
+              (entry: Row) => entry.id === resultId,
+            );
+            setResultRecipe({
+              ...captured,
+              ...(usable?.approved_at &&
+              !usable.needs_correction &&
+              ["generated", "edited"].includes(usable.kind)
+                ? { photoReferenceIds: [resultId], referenceId: resultId }
+                : {}),
+            });
+          }
+        })
+        .catch(() => {});
+    return () => {
+      active = false;
+    };
+  }, [resultId, asset?.approved_at, asset?.needs_correction]);
   const comparing = canCompare && compare && !before && adjust !== "quick";
   function chooseLook(id: string) {
     if (busy) return;
-    const preset = looks.find((l) => l.id === id)!;
-    update({
-      look: id,
-      styleChosen: true,
-      previousPhotoStyle: null,
-      ...(preset.category ? { lookCategory: preset.category } : {}),
-      surface: "As shown",
-      lighting: "As shown",
-      plate: id === "keep" ? "keep" : "style",
-      angle: preset.angle || "keep",
-      composition: "Full dish",
-      ...(id === "restaurant"
-        ? {
-            ...restaurantPhotoDefaults({
-              style: { ...state.restaurant.style, autoApply: true },
-            }),
-          }
-        : {}),
-    });
-    track("style_selected", b.dishId, { look: id, category: preset.category });
+    const preset = looks.find((l) => l.id === id);
+    if (!preset) return;
+    update(studioLookPatch(read(), id, state.restaurant));
   }
   function matchRestaurant(enabled: boolean) {
     if (busy) return;
@@ -151,8 +284,10 @@ export default function PhotoStudio({
   const styleImage =
     b.look === "keep" && source
       ? source
-      : b.look === "reference" && b.referenceId
-        ? `/api/assets/${b.referenceId}`
+      : b.look === "reference"
+        ? inspirationId
+          ? `/api/assets/${inspirationId}`
+          : ""
         : b.look === "restaurant"
           ? restaurantLook.image
           : selected.image;
@@ -184,6 +319,9 @@ export default function PhotoStudio({
       try {
         details = JSON.parse(prior?.details || "{}");
       } catch {}
+      const context = seed.photoId
+        ? await api(`assets/${seed.photoId}/context`)
+        : null;
       await start({
         ...photoBrief(seed.destination || "menu"),
         ...seed,
@@ -209,6 +347,10 @@ export default function PhotoStudio({
             ? "restaurant"
             : "menu-stone",
         ...(!prior ? restaurantPhotoDefaults(state.restaurant) : {}),
+        ...(context ? capturedPhotoRecipe(context) : {}),
+        ...(context
+          ? { resultId: seed.photoId, jobId: context.jobId || "", step: 4 }
+          : {}),
       });
       setAccurate(false);
       setAdjust("");
@@ -285,11 +427,21 @@ export default function PhotoStudio({
       requestKey: "",
     });
   }
-  async function openQuickEdits() {
-    update({ resultId: b.sourceId, jobId: "", step: 4 });
+  function openQuickEdits(assetId = b.sourceId) {
+    const session = {
+      id: crypto.randomUUID(),
+      assetId,
+      format: (b.format in formats ? b.format : "menu") as PhotoFormat,
+      adjustments: { ...emptyAdjustments },
+    };
+    quickTrigger.current =
+      document.activeElement instanceof HTMLElement
+        ? document.activeElement
+        : null;
+    quickActive.current = session.id;
+    setQuickSession(session);
     setAdjust("quick");
-    setAccurate(false);
-    await save();
+    setError("");
   }
   async function openPhotoAsMenu() {
     const photo = await fetch(source);
@@ -310,7 +462,9 @@ export default function PhotoStudio({
       price: (prior?.price || 0) / 100,
       available: prior ? !!prior.available : true,
       confirmed: true,
-      setting: styleFor(b, state.restaurant).photoStyle,
+      setting: resolvePhotoLook(b)
+        ? styleFor(b, state.restaurant).photoStyle
+        : prior?.setting || "",
     };
     const data = await api(
       "dishes" + (b.dishId ? "/" + b.dishId : ""),
@@ -350,6 +504,7 @@ export default function PhotoStudio({
         resultId: "",
         jobId: "",
         mode: "photo",
+        adjustments: { ...emptyAdjustments },
         step: 1,
       });
       setBefore(false);
@@ -372,8 +527,10 @@ export default function PhotoStudio({
       throw Error("Add your dish photo first.");
     if (b.mode === "description" && (!b.name.trim() || !b.description.trim()))
       throw Error("Add a dish name and a short description first.");
-    if (b.look === "reference" && !b.referenceId)
+    if (b.look === "reference" && !inspirationId)
       throw Error("Add a style reference, or choose one of our looks.");
+    if (inspirationAvailability.status !== "ready")
+      throw Error(inspirationStatusMessage(inspirationAvailability.status));
     // Once Create is pressed, late photo analysis must not change the chosen look.
     change({ styleChosen: true, generationStartedAt: Date.now() });
     const did = await ensureDish();
@@ -382,6 +539,7 @@ export default function PhotoStudio({
     await save();
     track("generation_submission", did, { format: b.format, look: b.look });
     const j = await api("jobs", {
+      studioDraftId: draftStore.id,
       dishId: did,
       sourceId: b.mode === "photo" ? b.sourceId : null,
       parentId: parentId || null,
@@ -389,6 +547,7 @@ export default function PhotoStudio({
       requestKey: key,
       candidateCount: 1,
       style: styleFor(b, state.restaurant),
+      lookContext: photoLookContext(b),
       editMode: "preserve",
       controls: {
         format: b.format,
@@ -401,6 +560,9 @@ export default function PhotoStudio({
         cropY: b.adjustments.y,
         zoom: b.adjustments.zoom,
       },
+    }).catch((error) => {
+      if (inspirationIds.length) inspirationAvailability.retry();
+      throw error;
     });
     change({
       jobId: j.id,
@@ -412,96 +574,107 @@ export default function PhotoStudio({
     setAdjust("");
     setAccurate(false);
     setBefore(false);
-    setCompare(true);
+    setCompare(false);
     await save();
     await refresh();
+    if (j.reused)
+      setNotice(
+        "This matching photo was already saved. No additional image was used.",
+      );
     void api("jobs/tick", {})
       .then(refresh)
       .catch(() => {});
   }
-  async function approve() {
+  async function approve(confirmed = accurate) {
     if (adjust === "quick")
       throw Error("Save your adjustments as a new version before downloading.");
-    if (!b.name.trim())
-      throw Error("Give this dish a name so you can find it again.");
-    if (!accurate)
+    if (!confirmed && !asset?.approved_at)
       throw Error("Check that the photo represents the dish you serve.");
     await ensureDish();
     await api(`assets/${resultId}/approve`, { accurate: true });
-    change({ step: 5 });
+    change({ step: 4 });
     await save();
     await refresh();
   }
-  async function quickSave() {
-    const im = await imageBitmap(`/api/assets/${resultId}`);
+  async function quickSave(
+    session: PhotoAdjustmentSession,
+    values: PhotoAdjustmentValues,
+    requestKey: string,
+  ) {
+    const im = await imageBitmap(`/api/assets/${session.assetId}`);
     const c = document.createElement("canvas");
     try {
       const width = Math.min(2048, im.width),
-        height = Math.round(width / format.ratio);
-      drawPhoto(c, im, width, height, b.adjustments);
+        height = Math.round(width / formats[values.format].ratio);
+      drawPhoto(c, im, width, height, values.adjustments);
     } finally {
       im.close();
     }
     const fd = new FormData();
     fd.set("file", await canvasBlob(c), "adjusted.jpg");
-    fd.set("parentId", resultId);
-    editKey.current ||= crypto.randomUUID();
-    fd.set("requestKey", editKey.current);
-    fd.set("edits", JSON.stringify({ format: b.format, ...b.adjustments }));
+    fd.set("parentId", session.assetId);
+    fd.set("requestKey", requestKey);
+    fd.set(
+      "edits",
+      JSON.stringify({ format: values.format, ...values.adjustments }),
+    );
     const data = await api("photo-edits", fd);
-    editKey.current = "";
-    change({
-      resultId: data.id,
-      adjustments: { ...emptyAdjustments },
-      step: 4,
-    });
-    setAccurate(false);
-    setAdjust("");
-    await save();
-    await refresh();
+    // Back can dismiss an in-flight save. Retain its completed version in history
+    // without replacing the photo the owner has since opened.
+    const stillOpen = quickActive.current === session.id;
+    if (stillOpen) {
+      change({
+        resultId: data.id,
+        format: values.format,
+        ...(session.assetId === b.sourceId ? { jobId: "" } : {}),
+        adjustments: { ...emptyAdjustments },
+        step: 4,
+      });
+      setAccurate(false);
+      setBefore(false);
+      setCompare(false);
+      setQuickOpen(false);
+    }
+    const updates = await Promise.allSettled([
+      ...(stillOpen ? [save()] : []),
+      refresh(),
+    ]);
     setNotice(
-      "Saved as a new version. Your original and earlier photos are still here.",
+      updates.some((update) => update.status === "rejected")
+        ? "Your new version is saved. Some page details couldn’t refresh; reopen this dish to see its saved versions."
+        : stillOpen
+          ? "Saved as a new version. Your original and earlier photos are still here."
+          : "Your new version is saved in this dish’s history.",
     );
   }
-  async function saveLook() {
-    const im = await fetch(`/api/assets/${resultId}`);
-    if (!im.ok) throw Error("This photo could not be opened.");
-    const file = new File([await im.blob()], "restaurant-look.png", {
-      type: "image/png",
+  async function nextPhoto(reuse = false) {
+    if (reuse && !resultRecipe)
+      throw Error(
+        "The saved photo settings are still loading. Try again in a moment.",
+      );
+    const recipe = reuse
+      ? recipeFromDraft({ ...b, ...resultRecipe }, state.restaurant)
+      : {};
+    setFinishOpen(false);
+    await start({
+      ...photoBrief(b.destination),
+      ...(!reuse ? restaurantPhotoDefaults(state.restaurant) : {}),
+      ...recipe,
+      ...(reuse
+        ? {
+            format: b.format,
+            referenceId: resultRecipe?.referenceId,
+            savedLookId: resultRecipe?.savedLookId,
+            savedLookName: resultRecipe?.savedLookName,
+            styleIntent: true,
+            studioDefaultResolved: true,
+          }
+        : {}),
     });
-    const normalized = await normalizePhoto(file);
-    const form = new FormData();
-    form.set("file", file);
-    form.set("normalized", normalized, "look.jpg");
-    form.set("kind", "reference");
-    const ref = await api("assets", form);
-    await api("restaurant", {
-      name: state.restaurant.name,
-      cuisine: state.restaurant.cuisine,
-      brand: state.restaurant.brand,
-      currency: state.restaurant.currency,
-      style: {
-        ...styleFor(b, state.restaurant),
-        referenceIds: [ref.id],
-        autoApply: true,
-        photoPreset: photoStyles.some((s) => s.id === b.look)
-          ? b.look
-          : state.restaurant.style?.photoPreset || "",
-        photoDefaults: {
-          surface: b.surface,
-          lighting: b.lighting,
-          plate: b.plate,
-          angle: b.angle,
-          composition: b.composition,
-        },
-      },
-    });
-    change({ savedLook: true });
-    await save();
-    await refresh();
-    setNotice(
-      "Your restaurant look is saved and will be used automatically for new photos and posts. Adjust colors and typography in Your restaurant.",
-    );
+    setAdjust("");
+    setBefore(false);
+    setCompare(false);
+    setAccurate(false);
   }
   if (!ready) return <DraftRecovery store={draftStore} />;
   return (
@@ -584,39 +757,59 @@ export default function PhotoStudio({
         <>
           <StudioWorkbench
             draft={b}
-            state={state}
+            state={{ ...state, studioDraftId: draftStore.id }}
             selected={selected}
             styleImage={styleImage}
             source={source}
-            busy={busy}
+            busy={busy || (referenceBusy ? "Preparing inspiration" : "")}
             advice={advice}
             update={update}
             chooseLook={chooseLook}
             matchRestaurant={matchRestaurant}
             uploadPhoto={(file) => void uploadPhoto(file)}
-            uploadReference={(file) =>
-              void act("Saving your reference", async () => {
-                const form = new FormData();
-                form.set("file", file);
-                form.set(
-                  "normalized",
-                  await normalizePhoto(file),
-                  "reference.jpg",
-                );
-                form.set("kind", "reference");
-                const a = await api("assets", form);
-                update({ referenceId: a.id });
-                await save();
-                await refresh();
-              })
+            referencePhoto={
+              inspirationId
+                ? { id: inspirationId, url: `/api/assets/${inspirationId}` }
+                : null
             }
+            onReferenceBusyChange={setReferenceBusy}
+            inspirationStatus={inspirationAvailability.status}
+            retryInspiration={inspirationAvailability.retry}
+            applyInspiration={async (selection, base, signal) => {
+              let referenceId =
+                selection?.kind === "existing" ? selection.photo.id : null;
+              if (selection?.kind === "file") {
+                const form = new FormData();
+                form.set("file", selection.file);
+                form.set("normalized", selection.normalized, "reference.jpg");
+                form.set("kind", "reference");
+                form.set("requestKey", selection.requestKey);
+                const a = await api("assets", form);
+                referenceId = a.id;
+              }
+              if (signal.aborted) return;
+              update(
+                inspirationPatch(
+                  base,
+                  referenceId,
+                  selection?.kind === "existing",
+                ),
+              );
+              await save();
+              // The draft is saved; a background refresh failure must not
+              // turn a successful application into a second upload attempt.
+              void refresh().catch(() => {});
+            }}
             create={() => void act("Creating your photo", () => generate())}
-            quickEdit={() => void act("Opening quick edits", openQuickEdits)}
+            quickEdit={() => openQuickEdits()}
             openMenu={() => void act("Opening your menu", openPhotoAsMenu)}
+            refreshAvailability={() =>
+              void act("Checking availability", refresh)
+            }
           />
         </>
       )}
-      {b.step === 4 && (
+      {b.step >= 4 && (
         <>
           {!resultId ? (
             creating ? (
@@ -723,16 +916,7 @@ export default function PhotoStudio({
                         before && source ? source : `/api/assets/${resultId}`
                       }
                       ratio={format.ratio}
-                      edits={
-                        adjust === "quick" && !before
-                          ? b.adjustments
-                          : emptyAdjustments
-                      }
-                      onChange={
-                        adjust === "quick" && !before
-                          ? (adjustments) => change({ adjustments })
-                          : undefined
-                      }
+                      edits={emptyAdjustments}
                       label={
                         before
                           ? "Original photo"
@@ -761,26 +945,36 @@ export default function PhotoStudio({
                         .map((a: Row) => (
                           <button
                             key={a.id}
-                            onClick={() => {
-                              change({
-                                resultId: a.id,
-                                adjustments: { ...emptyAdjustments },
-                              });
-                              setBefore(false);
-                              setAccurate(false);
-                              setAdjust("");
-                            }}
+                            onClick={() =>
+                              void act("Opening this version", async () => {
+                                const context = await api(
+                                  `assets/${a.id}/context`,
+                                );
+                                change({
+                                  ...capturedPhotoRecipe(context),
+                                  resultId: a.id,
+                                  jobId: context.jobId || "",
+                                  step: 4,
+                                  adjustments: { ...emptyAdjustments },
+                                });
+                                setBefore(false);
+                                setAccurate(false);
+                                setAdjust("");
+                              })
+                            }
                           >
                             <img
                               src={`/api/assets/${a.id}`}
                               alt={`${a.kind === "source" ? "Original" : "Saved version"} of ${b.name || "your dish"}`}
                             />
                             <span>
-                              {a.kind === "source"
-                                ? "Original"
-                                : a.approved_at
-                                  ? "Approved"
-                                  : "Review photo"}
+                              {a.needs_correction
+                                ? "Needs correction"
+                                : a.kind === "source"
+                                  ? "Original"
+                                  : a.approved_at
+                                    ? "Approved"
+                                    : "Review photo"}
                             </span>
                           </button>
                         ))}
@@ -791,140 +985,69 @@ export default function PhotoStudio({
                   <span className="cx-pill">
                     {asset?.approved_at ? "Approved photo" : "A quick check"}
                   </span>
-                  <h2>
-                    {firstImage
-                      ? "A quick check, then it’s yours."
-                      : "Still your delicious dish?"}
-                  </h2>
+                  <h2>Your food. Beautifully presented.</h2>
                   <p>
-                    Check the ingredients and portion against your original,
-                    then give your dish a name.
+                    Take a closer look at your dish. When it feels right, save a
+                    size made for where you’ll use it.
                   </p>
-                  <Field label="Save this dish as">
-                    <input
-                      value={b.name}
-                      maxLength={100}
-                      placeholder="Give your dish a name"
-                      onChange={(e) => change({ name: e.target.value })}
-                    />
-                  </Field>
-                  <label className="cx-check">
-                    <input
-                      type="checkbox"
-                      checked={accurate}
-                      onChange={(e) => setAccurate(e.target.checked)}
-                    />
-                    This looks like the dish I serve.
-                  </label>
                   <button
-                    className="cx-btn cx-full"
-                    disabled={
-                      !!busy ||
-                      !accurate ||
-                      !b.name.trim() ||
-                      adjust === "quick"
-                    }
-                    onClick={() =>
-                      act("Saving your photo", async () => {
-                        await approve();
-                      })
-                    }
+                    ref={resultAction}
+                    className="cx-btn cx-full ps2-result-primary"
+                    disabled={!!busy || adjust === "quick"}
+                    onClick={() => setFinishOpen(true)}
                   >
-                    <Check size={18} />
-                    Approve & choose download
+                    <Download size={18} />
+                    Use photo
+                    <ArrowRight size={16} />
                   </button>
                   <p className="cx-review-save-note">
                     {adjust === "quick"
-                      ? "Save your adjustments below, then download your finished photo."
-                      : "Saved in My Dishes. Download for your channels next."}
+                      ? "Save this version before using your adjusted photo."
+                      : "Review and download. No image allowance used."}
                   </p>
                   <div className="cx-rule" />
                   <button
                     className="cx-btn cx-secondary cx-full"
-                    onClick={() => {
-                      setAdjust(adjust === "quick" ? "" : "quick");
-                      setBefore(false);
-                    }}
+                    onClick={() => openQuickEdits(resultId)}
                   >
                     <SlidersHorizontal size={17} />
                     Quick adjustments
                   </button>
                   <button
                     className="cx-link"
-                    onClick={() => setAdjust(adjust === "ai" ? "" : "ai")}
+                    onClick={() => {
+                      setAdjust(adjust === "ai" ? "" : "ai");
+                    }}
                   >
                     <Sparkles size={16} />
                     Change the setting with AI
                   </button>
-                  <details className="cx-food-issue">
-                    <summary>Something changed in my food</summary>
-                    <p>
-                      Tell us what changed. We’ll keep the original as the food
-                      reference.
+                  {(resultHasGeneration || !!asset?.needs_correction) && (
+                    <button
+                      className="cx-link cx-food-issue"
+                      onClick={() => setCorrectionOpen(true)}
+                    >
+                      {asset?.needs_correction
+                        ? "View food correction report"
+                        : "Something changed in my food"}
+                    </button>
+                  )}
+                  {!!asset?.needs_correction && (
+                    <p className="ps2-inline-note">
+                      Needs correction · Kept in history and excluded from
+                      automatic photo choices.
                     </p>
-                    {[
-                      ["ingredients", "Ingredients"],
-                      ["portion", "Portion or quantity"],
-                      ["plating", "Plate or packaging"],
-                      ["artificial", "Looks artificial"],
-                    ].map(([id, label]) => (
-                      <button
-                        className="cx-link"
-                        key={id}
-                        onClick={() =>
-                          act("Saving your feedback", async () => {
-                            await api(`assets/${resultId}/reject`, {
-                              reason: id,
-                            });
-                            setAiChanges(
-                              `Restore the original ${label.toLowerCase()}. Match my original dish faithfully. `,
-                            );
-                            setAdjust("ai");
-                            setNotice(
-                              "Feedback saved. Review your requested changes before applying them.",
-                            );
-                          })
-                        }
-                      >
-                        {label}
-                      </button>
-                    ))}
-                  </details>
+                  )}
+                  {b.photoBatchId && (
+                    <button
+                      className="cx-link"
+                      onClick={() => setBatchOpen(true)}
+                    >
+                      Return to photo set
+                    </button>
+                  )}
                 </aside>
               </div>
-              {adjust === "quick" && (
-                <div className="cx-panel cx-adjust">
-                  <h2>Quick adjustments</h2>
-                  <p>
-                    Instant edits. No image allowance used. Saved as a new
-                    version.
-                  </p>
-                  <Field label="Crop format">
-                    <select
-                      value={b.format}
-                      onChange={(e) => change({ format: e.target.value })}
-                    >
-                      {Object.entries(formats).map(([id, f]) => (
-                        <option key={id} value={id}>
-                          {f.label}
-                        </option>
-                      ))}
-                    </select>
-                  </Field>
-                  <CropControls
-                    value={b.adjustments}
-                    onChange={(adjustments) => change({ adjustments })}
-                    quick
-                  />
-                  <button
-                    className="cx-btn"
-                    disabled={!!busy}
-                    onClick={() => act("Saving your adjustment", quickSave)}
-                  >
-                    Save this version
-                  </button>
-                </div>
-              )}
               {adjust === "ai" && (
                 <div className="cx-panel cx-adjust">
                   <h2>What would you like to change?</h2>
@@ -936,7 +1059,7 @@ export default function PhotoStudio({
                     {[
                       "Remove a distracting object",
                       "Simplify the background",
-                      "Bring back my original food",
+                      "Use a cooler background",
                     ].map((t) => (
                       <button
                         key={t}
@@ -977,88 +1100,147 @@ export default function PhotoStudio({
           )}
         </>
       )}
-      {b.step === 5 && resultId && (
-        <>
-          <div className="cx-success cx-approved-summary">
-            <img src={`/api/assets/${resultId}`} alt={b.name} />
-            <div>
-              <span className="cx-pill">
-                <Check size={14} />
-                Approved & saved
-              </span>
-              <h2>{b.name}</h2>
-              <p>Ready for the places you already sell and share.</p>
-              {!b.savedLook && (
-                <button
-                  className="cx-link"
-                  disabled={!!busy}
-                  onClick={() => act("Saving your restaurant look", saveLook)}
-                >
-                  <Sparkles size={16} />
-                  Use this look for my next dish
-                </button>
-              )}
-            </div>
-          </div>
-          <PhotoDownloads
-            key={resultId}
-            items={[
-              {
-                assetId: resultId,
-                dishId: b.dishId,
-                name: b.name,
-                fromPhoto: b.mode === "photo",
-              },
-            ]}
-            initialFormat={b.format}
-            preferenceKey={workspacePreferenceKey(
-              state.user.id,
-              state.restaurant.id,
-            )}
-            onPromote={(photo) =>
-              onDestination("post", photo.dishId, photo.assetId, {
-                quick: true,
-              })
+      {saveLookOpen && resultId && asset?.approved_at && (
+        <SavePhotoLookSheet
+          onCloseAutoFocus={returnToResult}
+          state={state}
+          draft={{ ...b, ...resultRecipe }}
+          assetId={resultId}
+          onClose={() => setSaveLookOpen(false)}
+        />
+      )}
+      {batchOpen && (
+        <PhotoBatchSheet
+          onCloseAutoFocus={returnToResult}
+          state={state}
+          draft={{ ...b, ...resultRecipe }}
+          onClose={() => setBatchOpen(false)}
+          refresh={refresh}
+          remember={async (id) => {
+            change({ photoBatchId: id });
+            await save();
+          }}
+          onReview={(item, jobId, photoId) => {
+            const dish = state.dishes.find(
+              (entry: Row) => entry.id === item.dishId,
+            );
+            change({
+              dishId: item.dishId,
+              sourceId: item.sourceId,
+              name: dish?.name || "",
+              description: dish?.description || "",
+              jobId,
+              resultId: photoId,
+              mode: "photo",
+              step: 4,
+              adjustments: { ...emptyAdjustments },
+            });
+            setBatchOpen(false);
+            setBefore(false);
+            setCompare(false);
+            setAdjust("");
+          }}
+        />
+      )}
+      {correctionOpen && resultId && (
+        <PhotoCorrectionSheet
+          onCloseAutoFocus={returnToResult}
+          assetId={resultId}
+          onClose={() => setCorrectionOpen(false)}
+          refresh={refresh}
+          onOpenCorrection={(jobId, photoId) => {
+            change({
+              jobId,
+              resultId: photoId || "",
+              step: 4,
+              adjustments: { ...emptyAdjustments },
+            });
+            setCompare(false);
+            setBefore(false);
+            setAdjust("");
+            setCorrectionOpen(false);
+          }}
+        />
+      )}
+      {quickSession && (
+        <PhotoAdjustmentSheet
+          key={quickSession.id}
+          session={quickSession}
+          open={adjust === "quick"}
+          onOpenChange={setQuickOpen}
+          onSave={(values, requestKey) =>
+            quickSave(quickSession, values, requestKey)
+          }
+          onCloseAutoFocus={returnFromAdjustments}
+        />
+      )}
+      {resultId && (
+        <PhotoFinishSheet
+          measurementContext={{
+            draftId: draftStore.id,
+            ...(b.sourceId ? { sourceId: b.sourceId } : {}),
+          }}
+          onBusyChange={setExporting}
+          onCloseAutoFocus={returnToResult}
+          key={resultId}
+          open={finishOpen}
+          onOpenChange={setFinishOpen}
+          assetId={resultId}
+          dishId={b.dishId}
+          name={b.name || ""}
+          fromPhoto={b.mode === "photo"}
+          approved={!!asset?.approved_at}
+          initialFormat={b.format}
+          preferenceKey={workspacePreferenceKey(
+            state.user.id,
+            state.restaurant.id,
+          )}
+          checks={b.exportChecks || {}}
+          rememberCheck={(key) =>
+            change({
+              exportChecks: { ...(read().exportChecks || {}), [key]: true },
+            })
+          }
+          onApprove={() => approve(true)}
+          onNew={() => void act("Starting a new photo", () => nextPhoto())}
+          onReuse={() => void act("Reusing your look", () => nextPhoto(true))}
+          onBatch={() => {
+            if (!resultRecipe) {
+              setError(
+                "The saved photo settings are still loading. Try again.",
+              );
+              return;
             }
-          />
-          <div className="cx-button-row cx-secondary-actions">
-            <button
-              className="cx-btn cx-secondary"
-              disabled={!!busy}
-              onClick={() =>
-                act("Starting your next dish", () =>
-                  start({
-                    ...photoBrief(),
-                    ...restaurantPhotoDefaults(state.restaurant),
-                  }),
-                )
-              }
-            >
-              <ImagePlus size={17} />
-              Add another dish
-            </button>
-            <button className="cx-link" onClick={() => change({ step: 4 })}>
-              Review or create another version
-            </button>
-            <details>
-              <summary>Menus & print</summary>
-              <div className="cx-button-row">
-                <button
-                  className="cx-link"
-                  onClick={() => onDestination("menu", b.dishId, resultId)}
-                >
-                  Add to a Menu Material menu
-                </button>
-                <button
-                  className="cx-link"
-                  onClick={() => onDestination("print", b.dishId, resultId)}
-                >
-                  Create a print menu
-                </button>
-              </div>
-            </details>
-          </div>
-        </>
+            setFinishOpen(false);
+            setBatchOpen(true);
+          }}
+          onSaveLook={() => {
+            if (!resultRecipe) {
+              setError(
+                "The saved photo settings are still loading. Try again.",
+              );
+              return;
+            }
+            setFinishOpen(false);
+            setSaveLookOpen(true);
+          }}
+          onDestination={(target) => {
+            setFinishOpen(false);
+            track("handoff_started", resultId, {
+              destination: target,
+              draftId: draftStore.id,
+              ...(b.sourceId ? { sourceId: b.sourceId } : {}),
+            });
+            onDestination(
+              target,
+              b.dishId,
+              resultId,
+              target === "post"
+                ? { quick: true, occasion: occasionName(b.occasionId) }
+                : undefined,
+            );
+          }}
+        />
       )}
       <Dialog open={zoom} onOpenChange={setZoom}>
         <DialogContent className="cx-workspace-popover cx-zoom-dialog">

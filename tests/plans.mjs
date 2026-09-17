@@ -441,6 +441,85 @@ try {
   assert(stored.size >= 2);
   checks += 7;
   assert.equal((await call("state")).remaining, 4);
+  const referenceDraft = {
+    ...draft,
+    look: "reference",
+    referenceId: "guest-reference",
+    photoReferenceIds: ["guest-reference"],
+  };
+  const referenceTransfer = { id: id(), revision: 0, requestKey: id() };
+  await assert.rejects(
+    transferGuestPhoto(
+      referenceDraft,
+      { file, normalized: file, url: "blob:local" },
+      null,
+      guestState,
+      referenceTransfer,
+    ),
+    /Add an inspiration photo/,
+  );
+  assert.equal(
+    referenceTransfer.dishId,
+    undefined,
+    "Missing guest inspiration is detected before account writes",
+  );
+  const guestReference = { file, normalized: file, url: "blob:reference" };
+  await transferGuestPhoto(
+    referenceDraft,
+    { file, normalized: file, url: "blob:local" },
+    guestReference,
+    guestState,
+    referenceTransfer,
+  );
+  const referenceSaved = JSON.parse(
+    (
+      await one(
+        "SELECT draft FROM creation_drafts WHERE id=?",
+        referenceTransfer.id,
+      )
+    ).draft,
+  );
+  const referenceJob = JSON.parse(
+    (await one("SELECT details FROM jobs WHERE id=?", referenceTransfer.jobId))
+      .details,
+  );
+  assert.notEqual(referenceTransfer.referenceId, "guest-reference");
+  assert.notEqual(referenceTransfer.referenceId, referenceTransfer.sourceId);
+  assert.deepEqual(referenceSaved.photoReferenceIds, [
+    referenceTransfer.referenceId,
+  ]);
+  assert.deepEqual(referenceJob.style.referenceIds, [
+    referenceTransfer.referenceId,
+  ]);
+  assert.equal(referenceSaved.sourceId, referenceTransfer.sourceId);
+  const beforeRetryAssets = (
+    await one(
+      "SELECT count(*) n FROM assets WHERE restaurant_id=?",
+      guestState.restaurant.id,
+    )
+  ).n;
+  await transferGuestPhoto(
+    referenceDraft,
+    { file, normalized: file, url: "blob:local" },
+    guestReference,
+    guestState,
+    referenceTransfer,
+  );
+  assert.equal(
+    (
+      await one(
+        "SELECT count(*) n FROM assets WHERE restaurant_id=?",
+        guestState.restaurant.id,
+      )
+    ).n,
+    beforeRetryAssets,
+  );
+  assert.equal(
+    (await call("state")).remaining,
+    3,
+    "Guest reference handoff retry cannot consume another image",
+  );
+  checks += 9;
   cookie = freeCookie;
   assert.equal((await call("state")).remaining, 1);
   assert.equal(

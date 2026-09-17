@@ -87,7 +87,7 @@ assert.equal(
 assert.equal(automatic.look, "restaurant");
 assert.equal(automatic.lighting, "Soft daylight");
 assert.equal(automatic.plate, "style");
-assert.equal(photoBrief().plate, "style");
+assert.equal(photoBrief().plate, "keep");
 assert.equal(
   restaurantPhotoDefaults({
     style: { ...brand, photoDefaults: { plate: "keep" } },
@@ -613,9 +613,28 @@ try {
     "Flare retains full menu dimensions",
   );
   assert.equal(
-    requests.at(-1).input[0].content.length,
-    3,
+    requests
+      .at(-1)
+      .input[0].content.filter((part) => part.type === "input_image").length,
+    2,
     "Original identity plus edited parent are passed",
+  );
+  assert(
+    requests
+      .at(-1)
+      .input[0].content.some(
+        (part) =>
+          part.type === "input_text" &&
+          part.text.startsWith("ORIGINAL DISH PHOTO:"),
+      ) &&
+      requests
+        .at(-1)
+        .input[0].content.some(
+          (part) =>
+            part.type === "input_text" &&
+            part.text.startsWith("PREVIOUS RESULT:"),
+        ),
+    "The original food and prior result have separate roles",
   );
   assert.match(
     requests.at(-1).input[0].content[0].text,

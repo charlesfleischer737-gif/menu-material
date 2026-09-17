@@ -22,13 +22,21 @@ import {
 } from "@/lib/workspace-navigation";
 import Brand from "./brand";
 import PhotoStudio from "./photo-studio";
-import DishLibrary from "./dish-library";
-import MenuBuilder from "./menu-builder";
-import PostMaker from "./post-maker";
-import MenuTools from "./menu-tools";
-import PromotionWorkspace from "./promotion-workspace";
+import { deferredWorkspace } from "./deferred-workspace";
 import { Heading } from "./creation-shared";
+const DishLibrary = deferredWorkspace(
+  "My Dishes",
+  () => import("./dish-library"),
+);
+const MenuBuilder = deferredWorkspace("Menus", () => import("./menu-builder"));
+const PostMaker = deferredWorkspace("Post Maker", () => import("./post-maker"));
+const MenuTools = deferredWorkspace("menu tools", () => import("./menu-tools"));
+const PromotionWorkspace = deferredWorkspace(
+  "campaigns",
+  () => import("./promotion-workspace"),
+);
 export default function CoreWorkspace({
+  foreground = true,
   state,
   refresh,
   onSettings,
@@ -36,6 +44,7 @@ export default function CoreWorkspace({
   onLogout,
   adminContent,
 }: {
+  foreground?: boolean;
   state: Row;
   refresh: () => Promise<void>;
   onSettings: () => void;
@@ -247,6 +256,7 @@ export default function CoreWorkspace({
           {visited.includes("studio") && (
             <div hidden={view !== "studio"} aria-hidden={view !== "studio"}>
               <PhotoStudio
+                active={foreground && view === "studio"}
                 state={state}
                 refresh={refresh}
                 seed={photoSeed}

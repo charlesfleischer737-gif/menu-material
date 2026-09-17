@@ -1,0 +1,71 @@
+{
+  "method": "Same 12MP resized test source, 800x800 output, 90-degree rotation, 20 adjustment frames per renderer. Timed draw plus synchronous getImageData to force pixel readback. Explicit GC before each sample is outside timing. Native NAPI canvas only, not browser/phone FPS.",
+  "uncached": {
+    "milliseconds": [
+      140.52420899999998,
+      86.832833,
+      79.37945800000006,
+      74.41362499999991,
+      74.33966699999996,
+      74.47275000000002,
+      75.19716700000004,
+      74.56204200000002,
+      75.14658299999996,
+      82.87754199999995,
+      82.9872089999999,
+      81.28662499999996,
+      75.25412499999993,
+      74.96570799999995,
+      75.00654199999985,
+      74.72733300000004,
+      74.96783400000004,
+      74.53983300000004,
+      74.73241600000006,
+      73.97608300000002
+    ],
+    "median": 74.96783400000004,
+    "p95": 86.832833,
+    "first": 140.52420899999998
+  },
+  "cached": {
+    "milliseconds": [
+      73.97583299999997,
+      12.064832999999908,
+      11.977542000000085,
+      11.757417000000032,
+      12.076500000000124,
+      12.023582999999917,
+      11.91800000000012,
+      11.783916999999974,
+      11.944749999999885,
+      12.136708999999883,
+      12.83370799999966,
+      12.862499999999727,
+      12.061208000000079,
+      12.503208000000086,
+      12.077125000000251,
+      12.047375000000102,
+      12.013832999999977,
+      11.702000000000226,
+      11.954666000000088,
+      11.901458999999704
+    ],
+    "median": 12.023582999999917,
+    "p95": 12.862499999999727,
+    "first": 73.97583299999997
+  },
+  "date": "2026-09-17",
+  "nativeCanvasVersion": "1.0.9",
+  "host": "Darwin arm64",
+  "runOrder": [
+    "uncached",
+    "cached"
+  ],
+  "sourceHashes": {
+    "lib/photo-export.ts": "814f0d0010cfae79b86d382003a7f9032d5917adec2c2b2fdf8a00b3d0c0d722",
+    "lib/latest-frame.ts": "f5703f5a113be777b73bc8dfd3931c3daec618ffe18cc869e250e49a9741d7df",
+    "app/components/creation-shared.tsx": "a337e1e42896e6719f0e9327d9acb96ac0fa7604789a794ecfe5100996bd7273",
+    "tests/fixtures/photo-render-pixels.json": "2a2607edc3489909dbd95505baed6925bfcd5e4b83698f213ba156f38cdaf0eb"
+  },
+  "reviewedBuildManifestSha256": "0401a0ca83428f068d658ed18001cb4ec18ef8a6915693443ee0bc062a20d2ec"
+}

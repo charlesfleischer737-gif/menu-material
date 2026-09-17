@@ -320,6 +320,18 @@ assert.equal(toast.blob.type, "image/jpeg");
 assert(toast.width >= 750 && toast.height >= 450);
 assert(Math.abs(toast.width / toast.height - 5 / 3) < 0.002);
 assert(toast.blob.size <= 5 * 1024 * 1024);
+writeFileSync(
+  `${root}/photo-toast.jpg`,
+  Buffer.from(await toast.blob.arrayBuffer()),
+);
+writeFileSync(
+  `${root}/photo-master.jpg`,
+  Buffer.from(await master.blob.arrayBuffer()),
+);
+writeFileSync(
+  `${root}/photo-uber.jpg`,
+  Buffer.from(await delivery.blob.arrayBuffer()),
+);
 const inputPhoto = await loadImage(jpg);
 assert(
   toast.width <= inputPhoto.width && toast.height <= inputPhoto.height,

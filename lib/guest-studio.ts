@@ -1,5 +1,7 @@
 import { api, type Row } from "./client";
-import { styleFor, emptyAdjustments } from "./studio";
+import { styleFor, emptyAdjustments, resolvePhotoLook } from "./studio";
+import { photoLookContext } from "./photo-recipe";
+import { activeInspirationId } from "./studio-reference";
 import {
   rememberPreference,
   workspacePreferenceKey,
@@ -14,6 +16,10 @@ export type GuestTransfer = {
   referenceId?: string;
   jobId?: string;
   startedAt?: number;
+  restaurantId?: string;
+  dishKey?: string;
+  sourceRequestKey?: string;
+  referenceRequestKey?: string;
 };
 export async function transferGuestPhoto(
   draft: Row,
@@ -21,18 +27,37 @@ export async function transferGuestPhoto(
   reference: GuestPhoto | null,
   state: Row,
   transfer: GuestTransfer,
+  persistProgress: () => Promise<void> = async () => {},
 ) {
+  const activeReference = activeInspirationId(draft, state.restaurant);
+  if ((draft.look === "reference" || activeReference) && !reference)
+    throw Error(
+      "Add an inspiration photo, or choose another look to continue.",
+    );
+  if (transfer.restaurantId && transfer.restaurantId !== state.restaurant.id)
+    throw Error(
+      "This draft was started in another restaurant account. Sign back in to that account to continue.",
+    );
+  transfer.restaurantId = state.restaurant.id;
+  transfer.dishKey ||= crypto.randomUUID();
+  transfer.sourceRequestKey ||= crypto.randomUUID();
+  transfer.referenceRequestKey ||= crypto.randomUUID();
+  await persistProgress();
   // Keep successful intermediate IDs for a retry. Job submission remains
   // idempotent even when the server's response is interrupted.
   if (!transfer.dishId)
     transfer.dishId = (
       await api("dishes", {
+        creationId: transfer.dishKey,
         name: draft.name.trim() || "Untitled dish",
         description: draft.description || "",
         confirmed: true,
-        setting: styleFor(draft, state.restaurant).photoStyle,
+        setting: resolvePhotoLook(draft)
+          ? styleFor(draft, state.restaurant).photoStyle
+          : "",
       })
     ).id;
+  await persistProgress();
   for (const [asset, kind, key] of [
     [photo, "source", "sourceId"],
     [reference, "reference", "referenceId"],
@@ -43,13 +68,31 @@ export async function transferGuestPhoto(
     form.set("normalized", asset.normalized, "working.jpg");
     form.set("dishId", transfer.dishId!);
     form.set("kind", kind);
+    form.set(
+      "requestKey",
+      kind === "source"
+        ? transfer.sourceRequestKey!
+        : transfer.referenceRequestKey!,
+    );
     transfer[key] = (await api("assets", form)).id;
+    await persistProgress();
   }
   const saved = {
     ...draft,
+    measurementOrigin: "guest",
     dishId: transfer.dishId,
     sourceId: transfer.sourceId || "",
     referenceId: transfer.referenceId || "",
+    photoReferenceIds:
+      draft.photoReferenceIds == null
+        ? draft.photoReferenceIds
+        : draft.photoReferenceIds
+            .map((referenceId: string) =>
+              referenceId === draft.referenceId
+                ? transfer.referenceId
+                : referenceId,
+            )
+            .filter(Boolean),
     requestKey: transfer.requestKey,
     styleChosen: true,
     step: 1,
@@ -62,6 +105,7 @@ export async function transferGuestPhoto(
       draft: content,
     });
     transfer.revision = result.revision;
+    await persistProgress();
   };
   if (!transfer.jobId) await persist(saved);
   const workspace = workspacePreferenceKey(state.user.id, state.restaurant.id);
@@ -70,6 +114,7 @@ export async function transferGuestPhoto(
   if (!transfer.jobId)
     transfer.jobId = (
       await api("jobs", {
+        studioDraftId: transfer.id,
         dishId: transfer.dishId,
         sourceId: draft.mode === "photo" ? transfer.sourceId : null,
         parentId: null,
@@ -77,6 +122,7 @@ export async function transferGuestPhoto(
         requestKey: transfer.requestKey,
         candidateCount: 1,
         style: styleFor(saved, state.restaurant),
+        lookContext: photoLookContext(saved),
         editMode: "preserve",
         controls: {
           format: draft.format,
@@ -91,6 +137,7 @@ export async function transferGuestPhoto(
         },
       })
     ).id;
+  await persistProgress();
   transfer.startedAt ||= Date.now();
   await persist({
     ...saved,
@@ -101,5 +148,16 @@ export async function transferGuestPhoto(
     generationStartedAt: transfer.startedAt,
     adjustments: { ...emptyAdjustments },
   });
+  try {
+    const favorites = JSON.parse(
+      localStorage.getItem("menu-material:guest-look-favorites") || "[]",
+    );
+    if (favorites.length) {
+      await api("studio-library/import-favorites", { favorites });
+      localStorage.removeItem("menu-material:guest-look-favorites");
+    }
+  } catch {
+    /* Keep device favorites for the next safe transfer attempt. */
+  }
   history.replaceState(null, "", "/#studio");
 }

@@ -1,0 +1,709 @@
+{
+  "description": "Pixels captured from the existing renderer before preview caching changes. NAPI canvas fixture; not a browser or phone qualification.",
+  "cases": [
+    {
+      "source": "public/pasta.jpg",
+      "sourceSha256": "5418ad99a238c6d1714bdd7a6b3d564615e7471d8aa37c8519c7053f54509877",
+      "width": 320,
+      "height": 320,
+      "edits": {
+        "rotate": 0
+      },
+      "pixelSha256": "fee847e320f53c627167fcba7a8efaa937e4c30e32fdac1b839513507c9c0cf9"
+    },
+    {
+      "source": "public/pasta.jpg",
+      "sourceSha256": "5418ad99a238c6d1714bdd7a6b3d564615e7471d8aa37c8519c7053f54509877",
+      "width": 320,
+      "height": 320,
+      "edits": {
+        "fit": false,
+        "zoom": 1.6,
+        "x": 21,
+        "y": 73,
+        "brightness": 119,
+        "contrast": 112,
+        "warmth": 24,
+        "rotate": 0
+      },
+      "pixelSha256": "f037c0fceeae19c77bc133ff926659b12dfe41f9a8466960b7fa13cc4ff835a8"
+    },
+    {
+      "source": "public/pasta.jpg",
+      "sourceSha256": "5418ad99a238c6d1714bdd7a6b3d564615e7471d8aa37c8519c7053f54509877",
+      "width": 320,
+      "height": 320,
+      "edits": {
+        "fit": true,
+        "zoom": 1,
+        "x": 90,
+        "y": 10,
+        "brightness": 86,
+        "contrast": 93,
+        "warmth": -18,
+        "rotate": 0
+      },
+      "pixelSha256": "aaabbbb5e93c157a9082d6adb65a64d2f01cad7f01221af0168d709c7ef218b5"
+    },
+    {
+      "source": "public/pasta.jpg",
+      "sourceSha256": "5418ad99a238c6d1714bdd7a6b3d564615e7471d8aa37c8519c7053f54509877",
+      "width": 320,
+      "height": 320,
+      "edits": {
+        "rotate": 90
+      },
+      "pixelSha256": "00c4dfe29db6c38b1f820e351758dae001210b968281ac948f10ce979b283046"
+    },
+    {
+      "source": "public/pasta.jpg",
+      "sourceSha256": "5418ad99a238c6d1714bdd7a6b3d564615e7471d8aa37c8519c7053f54509877",
+      "width": 320,
+      "height": 320,
+      "edits": {
+        "fit": false,
+        "zoom": 1.6,
+        "x": 21,
+        "y": 73,
+        "brightness": 119,
+        "contrast": 112,
+        "warmth": 24,
+        "rotate": 90
+      },
+      "pixelSha256": "2476c76343d171b04354dd9135961f8557522d9a4156c6c8a7ce5e2deb805686"
+    },
+    {
+      "source": "public/pasta.jpg",
+      "sourceSha256": "5418ad99a238c6d1714bdd7a6b3d564615e7471d8aa37c8519c7053f54509877",
+      "width": 320,
+      "height": 320,
+      "edits": {
+        "fit": true,
+        "zoom": 1,
+        "x": 90,
+        "y": 10,
+        "brightness": 86,
+        "contrast": 93,
+        "warmth": -18,
+        "rotate": 90
+      },
+      "pixelSha256": "20ff99bd9a28152222669e68816b5835555a4e63c566f7f41fe979a8bd884278"
+    },
+    {
+      "source": "public/pasta.jpg",
+      "sourceSha256": "5418ad99a238c6d1714bdd7a6b3d564615e7471d8aa37c8519c7053f54509877",
+      "width": 320,
+      "height": 320,
+      "edits": {
+        "rotate": 180
+      },
+      "pixelSha256": "53c65c56c6d9ebff099836a380b69a779c467759a21bfbf53c6fa1e1256b0d6c"
+    },
+    {
+      "source": "public/pasta.jpg",
+      "sourceSha256": "5418ad99a238c6d1714bdd7a6b3d564615e7471d8aa37c8519c7053f54509877",
+      "width": 320,
+      "height": 320,
+      "edits": {
+        "fit": false,
+        "zoom": 1.6,
+        "x": 21,
+        "y": 73,
+        "brightness": 119,
+        "contrast": 112,
+        "warmth": 24,
+        "rotate": 180
+      },
+      "pixelSha256": "f4e55888c21b7db74399cfd5c000a6698b83917641242811717ed19605338fe3"
+    },
+    {
+      "source": "public/pasta.jpg",
+      "sourceSha256": "5418ad99a238c6d1714bdd7a6b3d564615e7471d8aa37c8519c7053f54509877",
+      "width": 320,
+      "height": 320,
+      "edits": {
+        "fit": true,
+        "zoom": 1,
+        "x": 90,
+        "y": 10,
+        "brightness": 86,
+        "contrast": 93,
+        "warmth": -18,
+        "rotate": 180
+      },
+      "pixelSha256": "f4069ade1325a7d05280ae42e8c57629d6a513fa9c6d41cacf0186e439f5afa8"
+    },
+    {
+      "source": "public/pasta.jpg",
+      "sourceSha256": "5418ad99a238c6d1714bdd7a6b3d564615e7471d8aa37c8519c7053f54509877",
+      "width": 320,
+      "height": 320,
+      "edits": {
+        "rotate": 270
+      },
+      "pixelSha256": "7cc96d4938609845569f099489bd775e26d8974c6c7cd393c7837cd125c76c3a"
+    },
+    {
+      "source": "public/pasta.jpg",
+      "sourceSha256": "5418ad99a238c6d1714bdd7a6b3d564615e7471d8aa37c8519c7053f54509877",
+      "width": 320,
+      "height": 320,
+      "edits": {
+        "fit": false,
+        "zoom": 1.6,
+        "x": 21,
+        "y": 73,
+        "brightness": 119,
+        "contrast": 112,
+        "warmth": 24,
+        "rotate": 270
+      },
+      "pixelSha256": "121872d30b97ffa10809712f315c21b67c86c8a07035f44a319914426c3cc92b"
+    },
+    {
+      "source": "public/pasta.jpg",
+      "sourceSha256": "5418ad99a238c6d1714bdd7a6b3d564615e7471d8aa37c8519c7053f54509877",
+      "width": 320,
+      "height": 320,
+      "edits": {
+        "fit": true,
+        "zoom": 1,
+        "x": 90,
+        "y": 10,
+        "brightness": 86,
+        "contrast": 93,
+        "warmth": -18,
+        "rotate": 270
+      },
+      "pixelSha256": "2ee1f1f33d09b55d80b5dce7072cf83ea6cb677ab3e9ee588923b4b8cafea3ac"
+    },
+    {
+      "source": "public/pasta.jpg",
+      "sourceSha256": "5418ad99a238c6d1714bdd7a6b3d564615e7471d8aa37c8519c7053f54509877",
+      "width": 180,
+      "height": 320,
+      "edits": {
+        "rotate": 0
+      },
+      "pixelSha256": "388c1d3a84f198e548978b6f2b8d0988e9c3126d3f96b9182c8c3e1747fe47d1"
+    },
+    {
+      "source": "public/pasta.jpg",
+      "sourceSha256": "5418ad99a238c6d1714bdd7a6b3d564615e7471d8aa37c8519c7053f54509877",
+      "width": 180,
+      "height": 320,
+      "edits": {
+        "fit": false,
+        "zoom": 1.6,
+        "x": 21,
+        "y": 73,
+        "brightness": 119,
+        "contrast": 112,
+        "warmth": 24,
+        "rotate": 0
+      },
+      "pixelSha256": "0d3e977305d4b6f0caf532a512cb9e7d64f7ab55730e342b6b09fcb82a73e630"
+    },
+    {
+      "source": "public/pasta.jpg",
+      "sourceSha256": "5418ad99a238c6d1714bdd7a6b3d564615e7471d8aa37c8519c7053f54509877",
+      "width": 180,
+      "height": 320,
+      "edits": {
+        "fit": true,
+        "zoom": 1,
+        "x": 90,
+        "y": 10,
+        "brightness": 86,
+        "contrast": 93,
+        "warmth": -18,
+        "rotate": 0
+      },
+      "pixelSha256": "9bc1078a3f5e33084ac933c63083ef33c81e26032c8cabd6ed1b7e04cd068e0e"
+    },
+    {
+      "source": "public/pasta.jpg",
+      "sourceSha256": "5418ad99a238c6d1714bdd7a6b3d564615e7471d8aa37c8519c7053f54509877",
+      "width": 180,
+      "height": 320,
+      "edits": {
+        "rotate": 90
+      },
+      "pixelSha256": "8a9d0de6708644ad26485b6569526abf75139366cb91911d94dfe59f6a1bcafd"
+    },
+    {
+      "source": "public/pasta.jpg",
+      "sourceSha256": "5418ad99a238c6d1714bdd7a6b3d564615e7471d8aa37c8519c7053f54509877",
+      "width": 180,
+      "height": 320,
+      "edits": {
+        "fit": false,
+        "zoom": 1.6,
+        "x": 21,
+        "y": 73,
+        "brightness": 119,
+        "contrast": 112,
+        "warmth": 24,
+        "rotate": 90
+      },
+      "pixelSha256": "4b0cc0050d561924ebb334da7529482cc876c9c2b32f7fee2c05510f7673495a"
+    },
+    {
+      "source": "public/pasta.jpg",
+      "sourceSha256": "5418ad99a238c6d1714bdd7a6b3d564615e7471d8aa37c8519c7053f54509877",
+      "width": 180,
+      "height": 320,
+      "edits": {
+        "fit": true,
+        "zoom": 1,
+        "x": 90,
+        "y": 10,
+        "brightness": 86,
+        "contrast": 93,
+        "warmth": -18,
+        "rotate": 90
+      },
+      "pixelSha256": "85ce321fd863249e71cb018c7ca5308ce7a16cb4ef0fc1cf2c58d424d1f199fc"
+    },
+    {
+      "source": "public/pasta.jpg",
+      "sourceSha256": "5418ad99a238c6d1714bdd7a6b3d564615e7471d8aa37c8519c7053f54509877",
+      "width": 180,
+      "height": 320,
+      "edits": {
+        "rotate": 180
+      },
+      "pixelSha256": "e27d6a39b2ad1ac74bac4231d33796dee77583fb4ac32025cfc634b3b9da90e5"
+    },
+    {
+      "source": "public/pasta.jpg",
+      "sourceSha256": "5418ad99a238c6d1714bdd7a6b3d564615e7471d8aa37c8519c7053f54509877",
+      "width": 180,
+      "height": 320,
+      "edits": {
+        "fit": false,
+        "zoom": 1.6,
+        "x": 21,
+        "y": 73,
+        "brightness": 119,
+        "contrast": 112,
+        "warmth": 24,
+        "rotate": 180
+      },
+      "pixelSha256": "55c53dd8d58681e13ce8a7b8df04ca8f29039f76b906d5aad00ef0df342185bf"
+    },
+    {
+      "source": "public/pasta.jpg",
+      "sourceSha256": "5418ad99a238c6d1714bdd7a6b3d564615e7471d8aa37c8519c7053f54509877",
+      "width": 180,
+      "height": 320,
+      "edits": {
+        "fit": true,
+        "zoom": 1,
+        "x": 90,
+        "y": 10,
+        "brightness": 86,
+        "contrast": 93,
+        "warmth": -18,
+        "rotate": 180
+      },
+      "pixelSha256": "9378146de8c91197fa546b3cd11d430275bba3346266a29ba7d865a7cd982754"
+    },
+    {
+      "source": "public/pasta.jpg",
+      "sourceSha256": "5418ad99a238c6d1714bdd7a6b3d564615e7471d8aa37c8519c7053f54509877",
+      "width": 180,
+      "height": 320,
+      "edits": {
+        "rotate": 270
+      },
+      "pixelSha256": "cf6db9fd3b33a6bd560e320282b4aa68fe8dbda8a552dfad1cb784ce65e88a92"
+    },
+    {
+      "source": "public/pasta.jpg",
+      "sourceSha256": "5418ad99a238c6d1714bdd7a6b3d564615e7471d8aa37c8519c7053f54509877",
+      "width": 180,
+      "height": 320,
+      "edits": {
+        "fit": false,
+        "zoom": 1.6,
+        "x": 21,
+        "y": 73,
+        "brightness": 119,
+        "contrast": 112,
+        "warmth": 24,
+        "rotate": 270
+      },
+      "pixelSha256": "b4f305854aa958745ad3d19f710c7855e1e3832dcf554a8ef69adeb42234232a"
+    },
+    {
+      "source": "public/pasta.jpg",
+      "sourceSha256": "5418ad99a238c6d1714bdd7a6b3d564615e7471d8aa37c8519c7053f54509877",
+      "width": 180,
+      "height": 320,
+      "edits": {
+        "fit": true,
+        "zoom": 1,
+        "x": 90,
+        "y": 10,
+        "brightness": 86,
+        "contrast": 93,
+        "warmth": -18,
+        "rotate": 270
+      },
+      "pixelSha256": "be656e2bccd02dd849fd7c028024f14d1830a4cb32c4baa9ddbdcbf7135395b5"
+    },
+    {
+      "source": "public/burger.jpg",
+      "sourceSha256": "8cb645e41d2b16b127fe5b0cb78b09a3aafd8cef176aa94f0ea0b1a0b7ec9022",
+      "width": 320,
+      "height": 320,
+      "edits": {
+        "rotate": 0
+      },
+      "pixelSha256": "13d2f7053fc3567f2815ce1ce4540f1362e4c6ec2f9e39732812a8b4ac010159"
+    },
+    {
+      "source": "public/burger.jpg",
+      "sourceSha256": "8cb645e41d2b16b127fe5b0cb78b09a3aafd8cef176aa94f0ea0b1a0b7ec9022",
+      "width": 320,
+      "height": 320,
+      "edits": {
+        "fit": false,
+        "zoom": 1.6,
+        "x": 21,
+        "y": 73,
+        "brightness": 119,
+        "contrast": 112,
+        "warmth": 24,
+        "rotate": 0
+      },
+      "pixelSha256": "b3fcb250669b0612e164656151c8e019b78e55d52621630079fe3187694051f1"
+    },
+    {
+      "source": "public/burger.jpg",
+      "sourceSha256": "8cb645e41d2b16b127fe5b0cb78b09a3aafd8cef176aa94f0ea0b1a0b7ec9022",
+      "width": 320,
+      "height": 320,
+      "edits": {
+        "fit": true,
+        "zoom": 1,
+        "x": 90,
+        "y": 10,
+        "brightness": 86,
+        "contrast": 93,
+        "warmth": -18,
+        "rotate": 0
+      },
+      "pixelSha256": "59805b3dd18837ae2dcbc1339963fcd10d584dccaa07f276b454bad55fd605a3"
+    },
+    {
+      "source": "public/burger.jpg",
+      "sourceSha256": "8cb645e41d2b16b127fe5b0cb78b09a3aafd8cef176aa94f0ea0b1a0b7ec9022",
+      "width": 320,
+      "height": 320,
+      "edits": {
+        "rotate": 90
+      },
+      "pixelSha256": "a2ee762ac0c16021062d2b9e3847dd3ab3fd1ab8a54577fbd89aa2f1db4b010f"
+    },
+    {
+      "source": "public/burger.jpg",
+      "sourceSha256": "8cb645e41d2b16b127fe5b0cb78b09a3aafd8cef176aa94f0ea0b1a0b7ec9022",
+      "width": 320,
+      "height": 320,
+      "edits": {
+        "fit": false,
+        "zoom": 1.6,
+        "x": 21,
+        "y": 73,
+        "brightness": 119,
+        "contrast": 112,
+        "warmth": 24,
+        "rotate": 90
+      },
+      "pixelSha256": "f1d0e08604aee4a8eb98a9fa2b5c5c2bd10bf00ee6d3e53693e61b73dd4745b3"
+    },
+    {
+      "source": "public/burger.jpg",
+      "sourceSha256": "8cb645e41d2b16b127fe5b0cb78b09a3aafd8cef176aa94f0ea0b1a0b7ec9022",
+      "width": 320,
+      "height": 320,
+      "edits": {
+        "fit": true,
+        "zoom": 1,
+        "x": 90,
+        "y": 10,
+        "brightness": 86,
+        "contrast": 93,
+        "warmth": -18,
+        "rotate": 90
+      },
+      "pixelSha256": "e15fae8896d4a2058c6c3cd8e8cf297051229592fbaf2a8a3bf742945dfaf877"
+    },
+    {
+      "source": "public/burger.jpg",
+      "sourceSha256": "8cb645e41d2b16b127fe5b0cb78b09a3aafd8cef176aa94f0ea0b1a0b7ec9022",
+      "width": 320,
+      "height": 320,
+      "edits": {
+        "rotate": 180
+      },
+      "pixelSha256": "4c1f7e31db644f407f7a859ee3119131ac28298048a8bef17dac94db9ef9557c"
+    },
+    {
+      "source": "public/burger.jpg",
+      "sourceSha256": "8cb645e41d2b16b127fe5b0cb78b09a3aafd8cef176aa94f0ea0b1a0b7ec9022",
+      "width": 320,
+      "height": 320,
+      "edits": {
+        "fit": false,
+        "zoom": 1.6,
+        "x": 21,
+        "y": 73,
+        "brightness": 119,
+        "contrast": 112,
+        "warmth": 24,
+        "rotate": 180
+      },
+      "pixelSha256": "396a25ac689a907889580890d97e5257f1c5eaadbd2c17836b8d11ee70af4b69"
+    },
+    {
+      "source": "public/burger.jpg",
+      "sourceSha256": "8cb645e41d2b16b127fe5b0cb78b09a3aafd8cef176aa94f0ea0b1a0b7ec9022",
+      "width": 320,
+      "height": 320,
+      "edits": {
+        "fit": true,
+        "zoom": 1,
+        "x": 90,
+        "y": 10,
+        "brightness": 86,
+        "contrast": 93,
+        "warmth": -18,
+        "rotate": 180
+      },
+      "pixelSha256": "eb915458e9d3e504811673246e5319e35654fe0cc692d6e036dbae23ecee006a"
+    },
+    {
+      "source": "public/burger.jpg",
+      "sourceSha256": "8cb645e41d2b16b127fe5b0cb78b09a3aafd8cef176aa94f0ea0b1a0b7ec9022",
+      "width": 320,
+      "height": 320,
+      "edits": {
+        "rotate": 270
+      },
+      "pixelSha256": "13c76de064ee5c6b824d6225db845baa4a710a723ee524c701f64248abd3a6e9"
+    },
+    {
+      "source": "public/burger.jpg",
+      "sourceSha256": "8cb645e41d2b16b127fe5b0cb78b09a3aafd8cef176aa94f0ea0b1a0b7ec9022",
+      "width": 320,
+      "height": 320,
+      "edits": {
+        "fit": false,
+        "zoom": 1.6,
+        "x": 21,
+        "y": 73,
+        "brightness": 119,
+        "contrast": 112,
+        "warmth": 24,
+        "rotate": 270
+      },
+      "pixelSha256": "b30f7877371f75a861ad80650d70d8d5d9a18e8d255e7158f45defd959775705"
+    },
+    {
+      "source": "public/burger.jpg",
+      "sourceSha256": "8cb645e41d2b16b127fe5b0cb78b09a3aafd8cef176aa94f0ea0b1a0b7ec9022",
+      "width": 320,
+      "height": 320,
+      "edits": {
+        "fit": true,
+        "zoom": 1,
+        "x": 90,
+        "y": 10,
+        "brightness": 86,
+        "contrast": 93,
+        "warmth": -18,
+        "rotate": 270
+      },
+      "pixelSha256": "d7902db2505296b93dc821bce2fc00b1b8b32864e8fa4d34a3220a0f5d3b847d"
+    },
+    {
+      "source": "public/burger.jpg",
+      "sourceSha256": "8cb645e41d2b16b127fe5b0cb78b09a3aafd8cef176aa94f0ea0b1a0b7ec9022",
+      "width": 180,
+      "height": 320,
+      "edits": {
+        "rotate": 0
+      },
+      "pixelSha256": "c57ffcbbf4d47c2085f7e44df751103958ea678a867009e276051f1ba6492e4a"
+    },
+    {
+      "source": "public/burger.jpg",
+      "sourceSha256": "8cb645e41d2b16b127fe5b0cb78b09a3aafd8cef176aa94f0ea0b1a0b7ec9022",
+      "width": 180,
+      "height": 320,
+      "edits": {
+        "fit": false,
+        "zoom": 1.6,
+        "x": 21,
+        "y": 73,
+        "brightness": 119,
+        "contrast": 112,
+        "warmth": 24,
+        "rotate": 0
+      },
+      "pixelSha256": "0d35169183cbfb219b6f9fe9448f316909db110deca1bde61b5301c1e7f35e48"
+    },
+    {
+      "source": "public/burger.jpg",
+      "sourceSha256": "8cb645e41d2b16b127fe5b0cb78b09a3aafd8cef176aa94f0ea0b1a0b7ec9022",
+      "width": 180,
+      "height": 320,
+      "edits": {
+        "fit": true,
+        "zoom": 1,
+        "x": 90,
+        "y": 10,
+        "brightness": 86,
+        "contrast": 93,
+        "warmth": -18,
+        "rotate": 0
+      },
+      "pixelSha256": "69a9032d27e83637603dd16725a1af9ec450969d80d87df37dc4a22ca008538c"
+    },
+    {
+      "source": "public/burger.jpg",
+      "sourceSha256": "8cb645e41d2b16b127fe5b0cb78b09a3aafd8cef176aa94f0ea0b1a0b7ec9022",
+      "width": 180,
+      "height": 320,
+      "edits": {
+        "rotate": 90
+      },
+      "pixelSha256": "03b591254f12b337a708e1f5e241d843960f502709949eeac0b5f41d48508a19"
+    },
+    {
+      "source": "public/burger.jpg",
+      "sourceSha256": "8cb645e41d2b16b127fe5b0cb78b09a3aafd8cef176aa94f0ea0b1a0b7ec9022",
+      "width": 180,
+      "height": 320,
+      "edits": {
+        "fit": false,
+        "zoom": 1.6,
+        "x": 21,
+        "y": 73,
+        "brightness": 119,
+        "contrast": 112,
+        "warmth": 24,
+        "rotate": 90
+      },
+      "pixelSha256": "ecce640acbac9d188119d0d09bb15fef081db5fe236467152fbf512610add814"
+    },
+    {
+      "source": "public/burger.jpg",
+      "sourceSha256": "8cb645e41d2b16b127fe5b0cb78b09a3aafd8cef176aa94f0ea0b1a0b7ec9022",
+      "width": 180,
+      "height": 320,
+      "edits": {
+        "fit": true,
+        "zoom": 1,
+        "x": 90,
+        "y": 10,
+        "brightness": 86,
+        "contrast": 93,
+        "warmth": -18,
+        "rotate": 90
+      },
+      "pixelSha256": "ca626bf8425a173e8296b5c2db9a546de039189886a7552b6dfcec75efbe61c4"
+    },
+    {
+      "source": "public/burger.jpg",
+      "sourceSha256": "8cb645e41d2b16b127fe5b0cb78b09a3aafd8cef176aa94f0ea0b1a0b7ec9022",
+      "width": 180,
+      "height": 320,
+      "edits": {
+        "rotate": 180
+      },
+      "pixelSha256": "8eb5d344dd146c100c57bbb12ff28bcada89ec8b127dd8e0575f09b83c23b4e3"
+    },
+    {
+      "source": "public/burger.jpg",
+      "sourceSha256": "8cb645e41d2b16b127fe5b0cb78b09a3aafd8cef176aa94f0ea0b1a0b7ec9022",
+      "width": 180,
+      "height": 320,
+      "edits": {
+        "fit": false,
+        "zoom": 1.6,
+        "x": 21,
+        "y": 73,
+        "brightness": 119,
+        "contrast": 112,
+        "warmth": 24,
+        "rotate": 180
+      },
+      "pixelSha256": "3126bee59714fef984485a2783933ddb76ce8e3fece9b147f90d1cdad1ecefe3"
+    },
+    {
+      "source": "public/burger.jpg",
+      "sourceSha256": "8cb645e41d2b16b127fe5b0cb78b09a3aafd8cef176aa94f0ea0b1a0b7ec9022",
+      "width": 180,
+      "height": 320,
+      "edits": {
+        "fit": true,
+        "zoom": 1,
+        "x": 90,
+        "y": 10,
+        "brightness": 86,
+        "contrast": 93,
+        "warmth": -18,
+        "rotate": 180
+      },
+      "pixelSha256": "a1daa7417aded13f8ff6910d7832cdb4cd5b93268d83a86121fb251adc8cc40b"
+    },
+    {
+      "source": "public/burger.jpg",
+      "sourceSha256": "8cb645e41d2b16b127fe5b0cb78b09a3aafd8cef176aa94f0ea0b1a0b7ec9022",
+      "width": 180,
+      "height": 320,
+      "edits": {
+        "rotate": 270
+      },
+      "pixelSha256": "9feb3833212649a0589c45ed668d4cb964dab2eed87b947b65b2624f8b2854c2"
+    },
+    {
+      "source": "public/burger.jpg",
+      "sourceSha256": "8cb645e41d2b16b127fe5b0cb78b09a3aafd8cef176aa94f0ea0b1a0b7ec9022",
+      "width": 180,
+      "height": 320,
+      "edits": {
+        "fit": false,
+        "zoom": 1.6,
+        "x": 21,
+        "y": 73,
+        "brightness": 119,
+        "contrast": 112,
+        "warmth": 24,
+        "rotate": 270
+      },
+      "pixelSha256": "f157506dae57c8fad8f1b2b9d4b29b4322a7bd8b50ed3f906ba18111554116f8"
+    },
+    {
+      "source": "public/burger.jpg",
+      "sourceSha256": "8cb645e41d2b16b127fe5b0cb78b09a3aafd8cef176aa94f0ea0b1a0b7ec9022",
+      "width": 180,
+      "height": 320,
+      "edits": {
+        "fit": true,
+        "zoom": 1,
+        "x": 90,
+        "y": 10,
+        "brightness": 86,
+        "contrast": 93,
+        "warmth": -18,
+        "rotate": 270
+      },
+      "pixelSha256": "b99e2d8e382c34af9d040e06e9b2f639c515d96f1094d80daf592c6beb70cb86"
+    }
+  ]
+}

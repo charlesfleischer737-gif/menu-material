@@ -8,7 +8,7 @@ export function dishPhotos(dish: Row, assets: Row[]) {
   );
 }
 export function preferredPhoto(dish: Row, assets: Row[]) {
-  const photos = dishPhotos(dish, assets);
+  const photos = dishPhotos(dish, assets).filter((a) => !a.needs_correction);
   return (
     photos.find((a) => a.id === dish.preferred_photo_id && a.approved_at) ||
     photos.find((a) => a.approved_at) ||

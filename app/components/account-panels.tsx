@@ -10,6 +10,8 @@ import {
   DialogDescription,
 } from "@/components/ui/dialog";
 import { Pick } from "./controls";
+import { StudioReleasePanel } from "./studio-release-panel";
+import { StudioProgressPanel } from "./studio-progress-panel";
 import RestaurantStyle from "./restaurant-style";
 import { api, normalizePhoto, type Row } from "@/lib/client";
 export function SettingsPanel({ open, close, state, act, refresh, busy }: any) {
@@ -130,6 +132,27 @@ export function Admin({ act, refresh, busy }: any) {
         </Button>
       </div>
       {loadError && <p role="alert">{loadError}</p>}
+      {data && data.photoCorrections?.length > 0 && (
+        <section className="cx-panel">
+          <h3>Food reports awaiting review</h3>
+          <p>
+            Review the original and reported photo before resolving the report.
+            Restoring an image affects allowance only.
+          </p>
+          {data.photoCorrections.map((report: Row) => (
+            <FoodReportReview
+              key={report.original_job_id}
+              report={report}
+              busy={busy}
+              act={act}
+              done={async () => {
+                await load();
+                await refresh();
+              }}
+            />
+          ))}
+        </section>
+      )}
       {data && (
         <AiOperations
           key={JSON.stringify(data.controls)}
@@ -139,6 +162,19 @@ export function Admin({ act, refresh, busy }: any) {
           load={load}
         />
       )}
+      {data?.studioRelease && (
+        <StudioReleasePanel
+          key={data.studioRelease.revision}
+          data={data}
+          busy={busy}
+          act={act}
+          done={async () => {
+            await load();
+            await refresh();
+          }}
+        />
+      )}
+      {data && <StudioProgressPanel />}
       <div className="admin-invite">
         <label className="field">
           Invite email
@@ -245,6 +281,64 @@ export function Admin({ act, refresh, busy }: any) {
         </details>
       )}
     </section>
+  );
+}
+function FoodReportReview({ report, busy, act, done }: any) {
+  const [resolution, setResolution] = useState("");
+  return (
+    <div className="ps2-review-report">
+      <b>
+        {report.restaurant_name} · {report.reason}
+      </b>
+      <p>{report.detail || "No additional detail."}</p>
+      <div className="ps2-review-images">
+        {report.source_id && (
+          <a
+            href={`/api/admin/photo-correction/${report.original_job_id}/original`}
+            target="_blank"
+            rel="noreferrer"
+          >
+            Open original
+          </a>
+        )}
+        <a
+          href={`/api/admin/photo-correction/${report.original_job_id}/reported`}
+          target="_blank"
+          rel="noreferrer"
+        >
+          Open reported photo
+        </a>
+      </div>
+      <label className="field">
+        Reply visible to the owner
+        <textarea
+          value={resolution}
+          maxLength={500}
+          onChange={(e) => setResolution(e.target.value)}
+        />
+      </label>
+      {["restore", "resolve"].map((action) => (
+        <Button
+          key={action}
+          variant="outline"
+          disabled={!!busy || resolution.trim().length < 5}
+          onClick={() =>
+            act("Resolving food report", async () => {
+              await api("admin/photo-correction", {
+                originalJobId: report.original_job_id,
+                action,
+                resolution,
+              });
+              await done();
+            })
+          }
+        >
+          {action === "restore"
+            ? "Restore 1 image and resolve"
+            : "Resolve with reply"}
+        </Button>
+      ))}
+    </div>
   );
 }
 function AdminRestaurant({ restaurant: r, act, refresh }: any) {

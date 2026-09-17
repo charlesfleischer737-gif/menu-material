@@ -798,14 +798,15 @@ function Insights() {
         </Button>
       </div>
       <p className="muted">
-        See what you create and reuse in Menu Material. Downloads record your
-        export actions; publication and orders happen in your existing channels.
+        See what you create and reuse in Menu Material. Export actions record a
+        download starting or a native share completing; they do not confirm file
+        receipt or publication.
       </p>
       <div className="metric-grid">
         {[
-          ["Approved photo downloads", data.creative?.downloads || 0],
+          ["Photo export actions", data.creative?.downloads || 0],
           ["Dishes exported", data.creative?.dishes || 0],
-          ["Days with photo downloads", data.creative?.days || 0],
+          ["Days with photo exports", data.creative?.days || 0],
           ["Posts started from saved photos", count("photo_reused")],
         ].map(([label, value]) => (
           <div key={label}>
@@ -815,7 +816,7 @@ function Insights() {
         ))}
       </div>
       <p className="muted">
-        First approved photo download:{" "}
+        First approved photo export action:{" "}
         {data.firstDownloadElapsedMs == null
           ? "Not recorded yet."
           : `${Math.max(1, Math.round(data.firstDownloadElapsedMs / 60000))} minutes after your first upload (elapsed time, including time away).`}{" "}

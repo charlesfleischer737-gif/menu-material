@@ -1,5 +1,5 @@
 import { renderComposedPost } from "./post-composition";
-import { drawPhoto, imageBitmap } from "./creation-export";
+import { drawPhoto, imageBitmap } from "./photo-export";
 import { money, type Row } from "./client";
 import { getPostTemplate } from "./post-templates";
 import { emptyAdjustments } from "./studio";

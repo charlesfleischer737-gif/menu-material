@@ -1,8 +1,14 @@
 import type { Row } from "./core";
 import { entitlementSql } from "./entitlements";
+import { settleCorrection } from "./correction-policy";
 import { z } from "zod";
-import { PIPELINE_VERSION } from "../studio";
-import { styleSchema, validateStyle } from "./promotions";
+import { checkStudioGeneration } from "./studio-release";
+import { PIPELINE_VERSION, looks } from "../studio";
+import { styleSchema } from "./promotions";
+import {
+  requireStudioReferences,
+  UnavailableStudioReference,
+} from "./studio-references";
 import {
   reserveAi,
   finishAi,
@@ -31,7 +37,7 @@ function imageSettings(
   const modern = model.startsWith("gpt-image-2");
   return {
     model,
-    size: ["doordash", "uber"].includes(format)
+    size: ["toast", "door", "doordash", "uber"].includes(format)
       ? modern
         ? "2048x1152"
         : "1536x1024"
@@ -96,7 +102,48 @@ Requested adjustment: ${JSON.stringify(revision)}
 FINISH
 Appetizing editorial food photography with believable texture, natural highlights and realistic depth. No plastic textures, excessive gloss, impossible geometry or illustration. Do not add promotional text, prices, watermarks, new logos or invented branded packaging. Preserve existing branding visible on the original drink vessel as required above. Before finishing, ensure the setting and light clearly express the chosen style, the food is still the same serving, and any drink retains its original vessel and visible branding. Produce the image only.`;
 }
-export async function enqueue(r: Row, input: Row) {
+export async function enqueue(
+  r: Row,
+  input: Row,
+  policy?: { correctionFor: string },
+) {
+  let correctionOriginal: Row | null = null;
+  if (policy) {
+    const claim = await one(
+      "SELECT * FROM photo_corrections WHERE original_job_id=? AND restaurant_id=?",
+      policy.correctionFor,
+      r.id,
+    );
+    assert(
+      claim && ["reported", "queued", "ready"].includes(claim.status),
+      409,
+      "This correction is no longer available.",
+    );
+    assert(
+      input.requestKey === `food-correction:${policy.correctionFor}` &&
+        input.candidateCount === 1 &&
+        input.sourceId === claim.source_id &&
+        !input.parentId,
+      400,
+      "This correction must use the original photo.",
+    );
+    const existing = await one(
+      "SELECT * FROM jobs WHERE restaurant_id=? AND request_key=?",
+      r.id,
+      input.requestKey,
+    );
+    if (existing) return existing;
+    correctionOriginal = await one(
+      "SELECT * FROM jobs WHERE id=? AND restaurant_id=?",
+      policy.correctionFor,
+      r.id,
+    );
+    assert(
+      correctionOriginal?.dish_id === input.dishId,
+      400,
+      "This correction belongs to a different dish.",
+    );
+  }
   assert(
     config("OPENAI_API_KEY"),
     503,
@@ -133,8 +180,18 @@ export async function enqueue(r: Row, input: Row) {
   const controls = z
     .object({
       format: z
-        .enum(["menu", "feed", "story", "doordash", "uber", "print"])
-        .default("menu"),
+        .enum([
+          "menu",
+          "toast",
+          "feed",
+          "story",
+          "door",
+          "doordash",
+          "uber",
+          "print",
+        ])
+        .default("menu")
+        .transform((format) => (format === "door" ? "doordash" : format)),
       surface: z.string().max(80).default("As shown"),
       lighting: z.string().max(80).default("As shown"),
       plate: z.enum(["style", "keep", "white"]).default("style"),
@@ -161,7 +218,7 @@ export async function enqueue(r: Row, input: Row) {
   }
   const source = input.sourceId
     ? await one(
-        "SELECT * FROM assets WHERE id=? AND restaurant_id=? AND dish_id=? AND kind IN ('source','generated') AND deleted_at IS NULL",
+        "SELECT * FROM assets WHERE id=? AND restaurant_id=? AND dish_id=? AND kind IN ('source','staff','generated') AND deleted_at IS NULL",
         input.sourceId,
         r.id,
         d.id,
@@ -179,28 +236,57 @@ export async function enqueue(r: Row, input: Row) {
   assert(!input.parentId || parent, 404, "Revision image not found.");
   const revision = String(input.revision || "").slice(0, 1000);
   const style = styleSchema.parse(input.style || JSON.parse(r.style || "{}"));
-  await validateStyle(r, style);
   assert(
     source || d.description.trim(),
     400,
     "Describe the ingredients, portion and presentation to create an illustration without a photo.",
   );
   const rendering = imageSettings(controls.format);
-  const details = {
+  const captured = correctionOriginal
+    ? JSON.parse(correctionOriginal.details)
+    : d;
+  const lookContext = input.lookContext
+    ? z
+        .object({
+          presetId: z.string().max(80),
+          savedLookId: z.string().uuid().optional(),
+          version: z.number().int().positive().optional(),
+          name: z.string().max(60).optional(),
+          occasionId: z.string().max(40).default(""),
+          overrides: z
+            .array(
+              z.enum(["surface", "lighting", "plate", "angle", "composition"]),
+            )
+            .max(5)
+            .default([]),
+        })
+        .parse(input.lookContext)
+    : null;
+  const details: Row = {
     controls,
     pipelineVersion: PIPELINE_VERSION,
     model: rendering.model,
+    orchestratorModel: config("OPENAI_ORCHESTRATOR_MODEL", "gpt-6-astra"),
     rendering,
     candidateCount: count,
-    name: d.name,
-    description: d.description,
-    portion: d.portion,
-    plating: d.plating,
+    name: captured.name,
+    description: captured.description,
+    portion: captured.portion,
+    plating: captured.plating,
     setting: input.style?.photoStyle || d.setting || style.photoStyle,
     style,
-    preserve: d.preserve,
+    preserve: captured.preserve,
     editMode: input.editMode === "style" ? "style" : "preserve",
+    ...(policy ? { correctionFor: policy.correctionFor } : {}),
+    ...(lookContext
+      ? { lookContext }
+      : correctionOriginal && captured.lookContext
+        ? { lookContext: captured.lookContext }
+        : {}),
   };
+  details.generationPrompts = Array.from({ length: count }, (_, slot) =>
+    imagePrompt(details, revision, slot),
+  );
   const fingerprint = digest(
     JSON.stringify({
       details,
@@ -224,19 +310,68 @@ export async function enqueue(r: Row, input: Row) {
     );
     return existing;
   }
+  const priorUse = await one(
+    "SELECT j.* FROM studio_look_uses u JOIN jobs j ON j.id=u.job_id AND j.restaurant_id=u.restaurant_id WHERE u.restaurant_id=? AND u.request_key=?",
+    r.id,
+    input.requestKey,
+  );
+  if (priorUse) {
+    assert(
+      priorUse.fingerprint === fingerprint,
+      409,
+      "That request was already used with different dish details. Start a new request.",
+    );
+    return { ...priorUse, reused: true };
+  }
+  const presetId = looks.some(
+    (look) => look.id === details.lookContext?.presetId,
+  )
+    ? details.lookContext.presetId
+    : "";
+  await checkStudioGeneration(r.id, details);
   const cached = await one(
-    "SELECT j.* FROM jobs j WHERE j.restaurant_id=? AND j.fingerprint=? AND j.status='completed' AND NOT EXISTS(SELECT 1 FROM outputs o LEFT JOIN assets a ON a.id=o.asset_id WHERE o.job_id=j.id AND (a.id IS NULL OR a.deleted_at IS NOT NULL)) ORDER BY j.created_at DESC LIMIT 1",
+    "SELECT j.* FROM jobs j WHERE j.restaurant_id=? AND j.fingerprint=? AND j.status='completed' AND NOT EXISTS(SELECT 1 FROM outputs o LEFT JOIN assets a ON a.id=o.asset_id WHERE o.job_id=j.id AND (a.id IS NULL OR a.deleted_at IS NOT NULL OR a.needs_correction=1)) ORDER BY j.created_at DESC LIMIT 1",
     r.id,
     fingerprint,
   );
-  if (cached) return cached;
+  if (cached && !policy) {
+    await run(
+      "INSERT INTO studio_look_uses (restaurant_id,request_key,preset_id,job_id,used_at) VALUES (?,?,?,?,?) ON CONFLICT(restaurant_id,request_key) DO NOTHING",
+      r.id,
+      input.requestKey,
+      presetId,
+      cached.id,
+      now(),
+    );
+    const acceptedUse = await one(
+      "SELECT job_id FROM studio_look_uses WHERE restaurant_id=? AND request_key=?",
+      r.id,
+      input.requestKey,
+    );
+    assert(
+      acceptedUse?.job_id === cached.id,
+      409,
+      "That request was already used with different dish details. Start a new request.",
+    );
+    await event(
+      r.id,
+      "generation_reused",
+      cached.id,
+      { sourceId: source?.id || "", policy: "reused" },
+      input.requestKey,
+    ).catch(() => {});
+    return { ...cached, reused: true };
+  }
+  // Accepted work and reusable completed results above do not need their
+  // references again. New work must have every reference before reserving quota.
+  await requireStudioReferences(r.id, style.referenceIds);
   const jobId = id(),
     t = now();
   try {
     await db().batch([
       db()
         .prepare(
-          `INSERT INTO jobs (id,restaurant_id,dish_id,request_key,fingerprint,prompt,details,input_method,source_id,parent_id,status,created_at,credit_period) SELECT ?,?,?,?,?,?,?,?,?,?,'queued',?,e.credit_period FROM (${entitlementSql}) e WHERE e.paused=0 AND e.allowance-(SELECT count(*) FROM outputs o WHERE o.restaurant_id=e.id AND o.credit_period=e.credit_period AND o.status!='failed') >= ?`,
+          `INSERT INTO jobs (id,restaurant_id,dish_id,request_key,fingerprint,prompt,details,input_method,source_id,parent_id,status,created_at,credit_period) SELECT ?,?,?,?,?,?,?,?,?,?,'queued',?,COALESCE(?,e.credit_period) FROM (${entitlementSql}) e WHERE e.paused=0 AND (?=1 OR e.allowance-(SELECT count(*) FROM outputs o WHERE o.restaurant_id=e.id AND o.credit_period=e.credit_period AND o.status!='failed') >= ?)`,
         )
         .bind(
           jobId,
@@ -250,9 +385,11 @@ export async function enqueue(r: Row, input: Row) {
           source?.id ?? null,
           parent?.id ?? null,
           t,
+          policy ? `complimentary:${policy.correctionFor}` : null,
           t,
           t,
           r.id,
+          policy ? 1 : 0,
           count,
         ),
       ...Array.from({ length: count }, (_, i) => i).map((slot) =>
@@ -262,6 +399,11 @@ export async function enqueue(r: Row, input: Row) {
           )
           .bind(id(), jobId, r.id, slot, t, jobId),
       ),
+      db()
+        .prepare(
+          "INSERT INTO studio_look_uses (restaurant_id,request_key,preset_id,job_id,used_at) SELECT restaurant_id,request_key,?,id,created_at FROM jobs WHERE id=?",
+        )
+        .bind(presetId, jobId),
     ]);
   } catch (e) {
     const existing = await one(
@@ -276,6 +418,19 @@ export async function enqueue(r: Row, input: Row) {
         "This request key belongs to a different request.",
       );
       return existing;
+    }
+    const reused = await one(
+      "SELECT j.* FROM studio_look_uses u JOIN jobs j ON j.id=u.job_id AND j.restaurant_id=u.restaurant_id WHERE u.restaurant_id=? AND u.request_key=?",
+      r.id,
+      input.requestKey,
+    );
+    if (reused) {
+      assert(
+        reused.fingerprint === fingerprint,
+        409,
+        "This request key belongs to a different request.",
+      );
+      return { ...reused, reused: true };
     }
     throw e;
   }
@@ -300,11 +455,51 @@ export async function enqueue(r: Row, input: Row) {
     402,
     `You need ${count} image${count === 1 ? "" : "s"} remaining for this request. Check your plan to upgrade or see when your allowance renews.`,
   );
-  await event(r.id, "generation_requested", jobId, {
-    method: source ? "photo" : "description",
-    revision: !!parent,
-  });
-  if (parent) await event(r.id, "revision_requested", jobId);
+  await event(
+    r.id,
+    "generation_requested",
+    jobId,
+    {
+      method: source ? "photo" : "description",
+      revision: !!parent,
+      sourceId: source?.id || "",
+      policy: policy ? "complimentary" : "allowance",
+      count,
+      styleId: lookContext?.presetId || "",
+      savedLookId: lookContext?.savedLookId || "",
+      pipelineVersion: PIPELINE_VERSION,
+    },
+    jobId,
+  ).catch(() => {});
+  if (lookContext?.savedLookId) {
+    try {
+      const library = await one(
+        "SELECT content FROM studio_libraries WHERE restaurant_id=?",
+        r.id,
+      );
+      if (
+        library &&
+        JSON.parse(library.content).looks.some(
+          (look: Row) => look.id === lookContext.savedLookId,
+        )
+      )
+        await event(
+          r.id,
+          "look_reused",
+          jobId,
+          {
+            lookId: lookContext.savedLookId,
+            version: lookContext.version || 1,
+            sourceId: source?.id || "",
+            policy: policy ? "complimentary" : "allowance",
+          },
+          jobId,
+        );
+    } catch {
+      // A reporting failure must not change the accepted job.
+    }
+  }
+  if (parent) await event(r.id, "revision_requested", jobId).catch(() => {});
   return job;
 }
 export async function provider(
@@ -355,6 +550,11 @@ export async function provider(
 }
 async function inputImages(job: Row) {
   const list = [];
+  const details = JSON.parse(job.details);
+  await requireStudioReferences(
+    job.restaurant_id,
+    details.style?.referenceIds || [],
+  );
   for (const assetId of [
     ...new Set(
       [
@@ -382,6 +582,16 @@ async function inputImages(job: Row) {
       400,
       "This image needs resizing. Please upload it again.",
     );
+    if (details.generationPrompts)
+      list.push({
+        type: "input_text",
+        text:
+          assetId === job.source_id
+            ? "ORIGINAL DISH PHOTO: the only source of truth for food identity, portion and branding."
+            : assetId === job.parent_id
+              ? "PREVIOUS RESULT: change only the requested styling. Restore food from the original when needed."
+              : "STYLE INSPIRATION ONLY: use setting, light and color. Never copy this image's food, text, branding or people.",
+      });
     list.push({
       type: "input_image",
       image_url: `data:${a.working_key ? "image/jpeg" : a.mime};base64,${Buffer.from(bytes).toString("base64")}`,
@@ -390,7 +600,10 @@ async function inputImages(job: Row) {
   return list;
 }
 export async function updateJob(jobId: string) {
-  const states = await all("SELECT status FROM outputs WHERE job_id=?", jobId);
+  const states = await all(
+    "SELECT id,status,restaurant_id,asset_id FROM outputs WHERE job_id=?",
+    jobId,
+  );
   const active = states.some(
     (s) => !["completed", "failed"].includes(s.status),
   );
@@ -408,6 +621,31 @@ export async function updateJob(jobId: string) {
           : "failed",
     jobId,
   );
+  await settleCorrection(jobId);
+  for (const output of states.filter((entry) =>
+    ["completed", "failed"].includes(entry.status),
+  )) {
+    try {
+      await event(
+        output.restaurant_id,
+        output.status === "completed"
+          ? (await one(
+              "SELECT id FROM events WHERE id=?",
+              digest(
+                `${output.restaurant_id}:generation_failed:${output.id}:failed`,
+              ),
+            ))
+            ? "generation_recovered"
+            : "generation_completed"
+          : "generation_failed",
+        output.id,
+        { jobId, assetId: output.asset_id || "" },
+        output.status,
+      );
+    } catch {
+      // Measurement must never turn a completed photo into a failed job.
+    }
+  }
 }
 async function settle(o: Row, res: Row) {
   const generated = res.output?.find(
@@ -486,10 +724,16 @@ async function settle(o: Row, res: Row) {
           o.id,
         ),
     ]);
-    await event(o.restaurant_id, "image_completed", aId, {
-      jobId: o.job_id,
-      waitMs: now() - job.created_at,
-    });
+    await event(
+      o.restaurant_id,
+      "image_completed",
+      aId,
+      {
+        jobId: o.job_id,
+        waitMs: now() - job.created_at,
+      },
+      o.id,
+    ).catch(() => {});
   } else if (
     ["failed", "cancelled", "incomplete", "completed"].includes(res.status)
   ) {
@@ -596,6 +840,18 @@ export async function tick(restaurantId?: string) {
         const job = await one("SELECT * FROM jobs WHERE id=?", o.job_id);
         assert(job, 404, "Generation not found.");
         const details = JSON.parse(job.details);
+        try {
+          await checkStudioGeneration(job.restaurant_id, details);
+        } catch (error) {
+          if (!(error instanceof AppError) || error.status !== 423) throw error;
+          await run(
+            "UPDATE outputs SET status='failed',error=?,lease_until=0 WHERE id=? AND lease_token=?",
+            `${error.message} No image was created; the reserved allowance is available again.`,
+            o.id,
+            lease,
+          );
+          return;
+        }
         // Freeze rendering settings when reserving a job, including across deployments.
         // Legacy jobs predate snapshots and used high-quality PNG output.
         const rendering = details.rendering ?? {
@@ -618,7 +874,9 @@ export async function tick(restaurantId?: string) {
           "responses",
           "POST",
           {
-            model: config("OPENAI_ORCHESTRATOR_MODEL", "gpt-6-astra"),
+            model:
+              details.orchestratorModel ||
+              config("OPENAI_ORCHESTRATOR_MODEL", "gpt-6-astra"),
             background: true,
             store: true,
             input: [
@@ -627,7 +885,9 @@ export async function tick(restaurantId?: string) {
                 content: [
                   {
                     type: "input_text",
-                    text: imagePrompt(details, job.prompt, o.slot),
+                    text:
+                      details.generationPrompts?.[o.slot] ||
+                      imagePrompt(details, job.prompt, o.slot),
                   },
                   ...images,
                 ],
@@ -686,7 +946,9 @@ export async function tick(restaurantId?: string) {
       if (definitive || preSubmit)
         await run(
           "UPDATE outputs SET status='failed',error=?,lease_until=0 WHERE id=? AND lease_token=?",
-          "Image creation failed. Your allowance has been restored.",
+          preSubmit && e instanceof UnavailableStudioReference
+            ? `${e.message} Your image allowance has been restored.`
+            : "Image creation failed. Your allowance has been restored.",
           o.id,
           lease,
         );

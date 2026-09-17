@@ -149,6 +149,8 @@ export function restaurantPhotoDefaults(restaurant: Record<string, any>) {
   return {
     look: "restaurant",
     styleChosen: true,
+    photoStyleSnapshot: style.photoStyle || null,
+    photoReferenceIds: style.referenceIds || null,
     lookCategory:
       photoStyles.find((p) => p.id === style.photoPreset)?.category || "menu",
     surface: style.photoDefaults?.surface || "As shown",
@@ -167,6 +169,8 @@ const photoSelectionKeys = [
   "plate",
   "angle",
   "composition",
+  "photoStyleSnapshot",
+  "photoReferenceIds",
 ] as const;
 
 export function restaurantPhotoSelection(
@@ -201,6 +205,8 @@ export function restaurantPhotoSelection(
     photoStyles.find((style) => style.id === "menu-stone")!;
   return {
     look: fallback.id,
+    photoStyleSnapshot: null,
+    photoReferenceIds: null,
     lookCategory: fallback.category,
     surface: "As shown",
     lighting: "As shown",
