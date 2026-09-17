@@ -21,9 +21,8 @@
 }
 .ex-grid {
   display: grid;
-  grid-template-columns: repeat(3, minmax(0, 1fr));
+  grid-template-columns: repeat(2, minmax(0, 1fr));
   gap: clamp(24px, 2.75vw, 44px);
-  padding-bottom: 64px;
 }
 .ex-tile {
   position: relative;
@@ -41,9 +40,6 @@
 }
 .cx-app .ex-tile {
   cursor: zoom-in;
-}
-.ex-tile:nth-child(3n + 2) {
-  transform: translateY(64px);
 }
 .ex-tile img {
   display: block;
@@ -194,18 +190,6 @@
   outline: 3px solid var(--workspace-action);
   outline-offset: 3px;
 }
-@media (max-width: 1000px) {
-  .ex-grid {
-    grid-template-columns: repeat(2, minmax(0, 1fr));
-    padding-bottom: 36px;
-  }
-  .ex-tile:nth-child(3n + 2) {
-    transform: none;
-  }
-  .ex-tile:nth-child(2n) {
-    transform: translateY(36px);
-  }
-}
 @media (max-width: 760px) {
   .cx-main.cx-explore-main {
     padding: 36px 24px 64px;
@@ -235,12 +219,7 @@
 }
 @media (max-width: 520px) {
   .ex-grid {
-    grid-template-columns: minmax(0, 1fr);
-    gap: 28px;
-    padding-bottom: 0;
-  }
-  .ex-tile:nth-child(2n) {
-    transform: none;
+    gap: 12px;
   }
 }
 @media (prefers-reduced-motion: reduce) {
