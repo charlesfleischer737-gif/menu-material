@@ -4,6 +4,7 @@ import {
   visibleMenuSections,
   type DesignedMenu,
   type MenuEntry,
+  type MenuSection,
 } from "./menu-document";
 import { menuDesignSpec, menuTheme, type MenuFont } from "./menu-design-system";
 
@@ -123,10 +124,26 @@ export function composeMenu(
     menu.showLogo && (menu.restaurant.logoId || menu.restaurant.logo_id);
   const centered = ["centered", "feature"].includes(spec.architecture);
   const street = spec.architecture === "street",
-    priceSize = street ? 14 : 11;
+    bar = spec.architecture === "taproom",
+    cocktail = spec.architecture === "cocktail",
+    fresh = spec.architecture === "fresh",
+    titleLed = spec.architecture === "feature" || cocktail,
+    displaySection = ["poster", "street", "taproom"].includes(
+      spec.architecture,
+    ),
+    uppercaseSection = [
+      "editorial",
+      "centered",
+      "poster",
+      "feature",
+      "street",
+      "taproom",
+      "cocktail",
+    ].includes(spec.architecture),
+    priceSize = street || bar ? 14 : 11;
   const headingWidth = hero ? bodyWidth - 168 : bodyWidth;
-  const nameSize = spec.architecture === "feature" ? 14 : spec.titleSize;
-  const nameFont = spec.architecture === "feature" ? "sans" : spec.heading;
+  const nameSize = titleLed ? 14 : spec.titleSize;
+  const nameFont = titleLed ? "sans" : spec.heading;
   const lines = (
     text: string,
     w: number,
@@ -134,7 +151,7 @@ export function composeMenu(
     font: MenuFont = "sans",
   ) => wrapMenuText(text, w, fs, font, measure);
   const nameLines = lines(
-    ["poster", "street"].includes(spec.architecture)
+    ["poster", "street", "taproom"].includes(spec.architecture)
       ? menu.restaurant.name.toUpperCase()
       : menu.restaurant.name,
     headingWidth - (logo && !centered ? 46 : 0),
@@ -142,7 +159,7 @@ export function composeMenu(
     nameFont,
   );
   const nameHeight = nameLines.length * nameSize * 1.27;
-  const titleSize = spec.architecture === "feature" ? 33 : 10.5;
+  const titleSize = titleLed ? (cocktail ? 42 : 33) : fresh ? 17 : 10.5;
   const subtitleHeight = menu.subtitle
     ? lines(menu.subtitle, headingWidth, 11).length * 14 + 8
     : 0;
@@ -163,10 +180,10 @@ export function composeMenu(
     31 +
       nameHeight +
       lines(
-        spec.architecture === "feature" ? menu.title : menu.title.toUpperCase(),
+        titleLed ? menu.title : menu.title.toUpperCase(),
         headingWidth,
         titleSize,
-        spec.architecture === "feature" ? "italic" : "sans",
+        titleLed ? "italic" : "sans",
       ).length *
         titleSize *
         1.27 +
@@ -289,7 +306,7 @@ export function composeMenu(
           }
         }
         yy += addText(
-          ["poster", "street"].includes(spec.architecture)
+          ["poster", "street", "taproom"].includes(spec.architecture)
             ? menu.restaurant.name.toUpperCase()
             : menu.restaurant.name,
           nx,
@@ -303,14 +320,12 @@ export function composeMenu(
         );
         yy += 8;
         yy += addText(
-          spec.architecture === "feature"
-            ? menu.title
-            : menu.title.toUpperCase(),
+          titleLed ? menu.title : menu.title.toUpperCase(),
           margin,
           yy,
           headingWidth,
           titleSize,
-          spec.architecture === "feature" ? "italic" : "sans",
+          titleLed ? "italic" : "sans",
           ink,
           align,
           "title",
@@ -362,15 +377,15 @@ export function composeMenu(
             theme.accent,
             spec.architecture === "editorial" || spec.architecture === "list"
               ? 0.8
-              : street
+              : street || bar || fresh
                 ? 4
                 : 0.5,
           );
-          if (["editorial", "list"].includes(spec.architecture))
+          if (["editorial", "list", "taproom"].includes(spec.architecture))
             shape(
               "line",
               margin,
-              firstHeader + 4,
+              firstHeader + (bar ? 7 : 4),
               bodyWidth,
               0,
               theme.accent,
@@ -415,17 +430,59 @@ export function composeMenu(
         y = top;
       } else startPage();
     };
-    function sectionMeasure(name: string, description: string) {
+    function priceColumns(section: MenuSection) {
+      if (!["ledger", "list", "taproom", "fresh"].includes(spec.architecture))
+        return null;
+      const first = section.items[0]?.variants;
+      if (!first || first.length < 2 || first.length > 3) return null;
+      if (
+        section.items.some(
+          (item) =>
+            item.priceMode !== "variants" ||
+            item.variants.length !== first.length ||
+            item.variants.some((v, n) => v.label !== first[n].label) ||
+            (item.photoId &&
+              item.photoId !== hero?.photoId &&
+              (menu.layout === "grid" ||
+                (menu.layout === "featured" && item.featured))),
+        )
+      )
+        return null;
+      const widths = first.map(
+        (v, n) =>
+          Math.max(
+            measure(v.label, "sans", 11),
+            ...section.items.map((i) =>
+              measure(
+                menuPrice(
+                  i.variants[n].price,
+                  menu.restaurant.currency,
+                  menu.priceFormat,
+                  menu.language,
+                ),
+                "sans",
+                11,
+              ),
+            ),
+          ) + 9,
+      );
+      const total = widths.reduce((sum, w) => sum + w, 0);
+      const nameWidth = columnWidth - total - 15;
+      if (nameWidth < Math.max(96, columnWidth * 0.46)) return null;
+      return { widths, nameWidth, labels: first.map((v) => v.label) };
+    }
+    type PriceColumns = ReturnType<typeof priceColumns>;
+    function sectionMeasure(
+      name: string,
+      description: string,
+      grid: PriceColumns = null,
+    ) {
       return (
         lines(
-          ["editorial", "centered", "poster", "feature", "street"].includes(
-            spec.architecture,
-          )
-            ? name.toUpperCase()
-            : name,
+          uppercaseSection ? name.toUpperCase() : name,
           columnWidth,
           spec.sectionSize,
-          ["poster", "street"].includes(spec.architecture)
+          displaySection
             ? "display"
             : spec.architecture === "list"
               ? "serif"
@@ -434,25 +491,25 @@ export function composeMenu(
           spec.sectionSize *
           1.27 +
         12 +
-        (description ? lines(description, columnWidth, 11).length * 14 + 6 : 0)
+        (description
+          ? lines(description, columnWidth, 11).length * 14 + 6
+          : 0) +
+        (grid ? 18 : 0)
       );
     }
-    function drawSection(name: string, description: string, id: string) {
-      const headerFont = ["poster", "street"].includes(spec.architecture)
+    function drawSection(
+      name: string,
+      description: string,
+      id: string,
+      grid: PriceColumns,
+    ) {
+      const headerFont = displaySection
         ? "display"
         : spec.architecture === "list"
           ? "serif"
           : "sans";
-      const label = [
-        "editorial",
-        "centered",
-        "poster",
-        "feature",
-        "street",
-      ].includes(spec.architecture)
-        ? name.toUpperCase()
-        : name;
-      if (spec.architecture === "ledger" || street)
+      const label = uppercaseSection ? name.toUpperCase() : name;
+      if (spec.architecture === "ledger" || street || fresh)
         shape(
           "rect",
           x() - 7,
@@ -477,7 +534,11 @@ export function composeMenu(
         undefined,
         id,
       );
-      if (["editorial", "poster"].includes(spec.architecture))
+      if (
+        ["editorial", "poster", "taproom", "cocktail"].includes(
+          spec.architecture,
+        )
+      )
         shape(
           "line",
           x(),
@@ -485,7 +546,7 @@ export function composeMenu(
           columnWidth,
           0,
           theme.rule,
-          spec.architecture === "poster" ? 1 : 0.4,
+          spec.architecture === "poster" || bar ? 1.4 : 0.4,
         );
       y += 12;
       if (description)
@@ -503,14 +564,35 @@ export function composeMenu(
             undefined,
             id,
           ) + 6;
+      if (grid) {
+        let xx = x() + grid.nameWidth + 15;
+        grid.labels.forEach((label, n) => {
+          addText(
+            label,
+            xx,
+            y,
+            grid.widths[n],
+            11,
+            "sans",
+            theme.muted,
+            "right",
+            "price-column",
+            undefined,
+            id,
+          );
+          xx += grid.widths[n];
+        });
+        y += 18;
+      }
     }
-    function entryMetrics(item: MenuEntry) {
+    function entryMetrics(item: MenuEntry, grid: PriceColumns) {
       const price = entryPrice(item, menu),
         priceWidth = price
           ? measure(price, "sans", priceSize) + (street ? 20 : 12)
           : 0;
       const priceBelow = priceWidth > columnWidth * 0.38;
-      const nameWidth = columnWidth - (priceBelow ? 0 : priceWidth);
+      const nameWidth =
+        grid?.nameWidth ?? columnWidth - (priceBelow ? 0 : priceWidth);
       const photo =
         !!item.photoId &&
         item.photoId !== hero?.photoId &&
@@ -523,18 +605,22 @@ export function composeMenu(
         spec.itemSize *
         1.27;
       const descriptionHeight = item.description
-        ? 4 + lines(item.description, columnWidth, 11).length * 14
+        ? 4 +
+          lines(item.description, grid?.nameWidth ?? columnWidth, 11).length *
+            14
         : 0;
       const extra = [
-        ...(item.priceMode === "variants" ? item.variants : []).map((v) => ({
-          label: v.label,
-          price: menuPrice(
-            v.price,
-            menu.restaurant.currency,
-            menu.priceFormat,
-            menu.language,
-          ),
-        })),
+        ...(item.priceMode === "variants" && !grid ? item.variants : []).map(
+          (v) => ({
+            label: v.label,
+            price: menuPrice(
+              v.price,
+              menu.restaurant.currency,
+              menu.priceFormat,
+              menu.language,
+            ),
+          }),
+        ),
         ...item.additions.map((v) => ({
           label: `+ ${v.label}`,
           price: menuPrice(
@@ -583,14 +669,16 @@ export function composeMenu(
     for (const section of sections) {
       if (section.pageBreakBefore && y > top + 1) advance(true);
       else if (section.pageBreakBefore && column > 0) advance(true);
-      const sh = sectionMeasure(section.name, section.description);
+      const grid = priceColumns(section);
+      const sh = sectionMeasure(section.name, section.description, grid);
       const whole =
-        sh + section.items.reduce((n, i) => n + entryMetrics(i).height, 0);
+        sh +
+        section.items.reduce((n, i) => n + entryMetrics(i, grid).height, 0);
       if (whole < (bottom - top) * 0.55 && y + whole > limit() && y > top + 1)
         advance();
       let started = false;
       for (const item of section.items) {
-        const metrics = entryMetrics(item),
+        const metrics = entryMetrics(item, grid),
           needed = metrics.height + (started ? 0 : sh);
         if (metrics.height + sh > bottom - Math.min(firstTop, continuationTop))
           throw Error(
@@ -611,7 +699,7 @@ export function composeMenu(
           y +
             metrics.height +
             (needsHeading
-              ? sectionMeasure(headingName, headingDescription)
+              ? sectionMeasure(headingName, headingDescription, grid)
               : 0) >
           bottom
         )
@@ -619,7 +707,7 @@ export function composeMenu(
             `${item.name || "This dish"} does not fit comfortably. Choose one column or shorten its description.`,
           );
         if (needsHeading)
-          drawSection(headingName, headingDescription, section.id);
+          drawSection(headingName, headingDescription, section.id, grid);
         started = true;
         const start = y;
         if (metrics.photoHeight && item.photoId) {
@@ -648,6 +736,31 @@ export function composeMenu(
           "item",
           item.id,
         );
+        if (cocktail)
+          shape("line", x() - 10, y + 2, 0, nameHeight - 3, theme.accent, 1.2);
+        if (grid) {
+          let xx = x() + grid.nameWidth + 15;
+          item.variants.forEach((variant, n) => {
+            addText(
+              menuPrice(
+                variant.price,
+                menu.restaurant.currency,
+                menu.priceFormat,
+                menu.language,
+              ),
+              xx,
+              y + (spec.itemSize - 11) * 0.8,
+              grid.widths[n],
+              11,
+              "sans",
+              theme.ink,
+              "right",
+              "price-option",
+              item.id,
+            );
+            xx += grid.widths[n];
+          });
+        }
         if (street && metrics.price && !metrics.priceBelow)
           shape(
             "rect",
@@ -693,7 +806,7 @@ export function composeMenu(
               item.description,
               x(),
               y + 4,
-              columnWidth,
+              grid?.nameWidth ?? columnWidth,
               11,
               "sans",
               theme.muted,

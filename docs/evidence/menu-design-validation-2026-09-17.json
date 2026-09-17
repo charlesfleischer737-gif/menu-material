@@ -1,6 +1,6 @@
 {
-  "cases": 42,
-  "longContentCases": 7,
+  "cases": 60,
+  "longContentCases": 10,
   "photoChecks": [
     "effective crop resolution",
     "300-PPI raster dimensions",
@@ -11,39 +11,54 @@
     {
       "design": "bistro",
       "pages": 1,
-      "timeMs": 558.189708
+      "timeMs": 440.67612500000007
     },
     {
       "design": "cafe",
       "pages": 1,
-      "timeMs": 206.95325000000003
+      "timeMs": 170.44558400000005
     },
     {
       "design": "casual",
       "pages": 1,
-      "timeMs": 181.2788329999994
+      "timeMs": 162.0149590000001
     },
     {
       "design": "truck",
       "pages": 1,
-      "timeMs": 199.36083400000007
+      "timeMs": 210.95016600000054
+    },
+    {
+      "design": "bar",
+      "pages": 1,
+      "timeMs": 195.00337500000023
+    },
+    {
+      "design": "cocktail",
+      "pages": 2,
+      "timeMs": 130.28408299999955
+    },
+    {
+      "design": "smoothie",
+      "pages": 1,
+      "timeMs": 152.8348329999999
     },
     {
       "design": "fine",
       "pages": 2,
-      "timeMs": 121.8204169999999
+      "timeMs": 118.5080420000013
     },
     {
       "design": "wine",
       "pages": 2,
-      "timeMs": 105.6344169999993
+      "timeMs": 106.31895799999984
     },
     {
       "design": "special",
       "pages": 2,
-      "timeMs": 127.79750000000058
+      "timeMs": 134.72570799999994
     }
   ],
-  "maxMs": 558.189708,
-  "averageMs": 177.8816825238095
+  "maxMs": 440.67612500000007,
+  "averageMs": 162.85557845000005
 }

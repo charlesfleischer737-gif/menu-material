@@ -23,6 +23,7 @@ import {
 import { api, type Row } from "@/lib/client";
 import {
   menuPurposeIds,
+  menuPurposeLabel,
   type MenuDocument,
   type MenuEntry,
   type MenuSection,
@@ -885,9 +886,7 @@ export function MenuDetailsInspector({
         >
           {menuPurposeIds.map((p) => (
             <option value={p} key={p}>
-              {p === "food_truck"
-                ? "Food truck / counter service"
-                : p[0].toUpperCase() + p.slice(1)}
+              {menuPurposeLabel(p)}
             </option>
           ))}
         </select>

@@ -1,0 +1,88 @@
+[
+  {
+    "purpose": "dive-bar",
+    "paper": "letter",
+    "items": 11,
+    "pages": 1,
+    "warnings": []
+  },
+  {
+    "purpose": "dive-bar",
+    "paper": "a4",
+    "items": 11,
+    "pages": 1,
+    "warnings": []
+  },
+  {
+    "purpose": "cocktail-bar",
+    "paper": "letter",
+    "items": 8,
+    "pages": 1,
+    "warnings": []
+  },
+  {
+    "purpose": "cocktail-bar",
+    "paper": "a4",
+    "items": 8,
+    "pages": 1,
+    "warnings": []
+  },
+  {
+    "purpose": "smoothie-truck",
+    "paper": "letter",
+    "items": 8,
+    "pages": 1,
+    "warnings": []
+  },
+  {
+    "purpose": "smoothie-truck",
+    "paper": "a4",
+    "items": 8,
+    "pages": 1,
+    "warnings": []
+  },
+  {
+    "purpose": "cafe",
+    "paper": "letter",
+    "items": 12,
+    "pages": 1,
+    "warnings": []
+  },
+  {
+    "purpose": "cafe",
+    "paper": "a4",
+    "items": 12,
+    "pages": 1,
+    "warnings": []
+  },
+  {
+    "purpose": "wine",
+    "paper": "letter",
+    "items": 8,
+    "pages": 1,
+    "warnings": [
+      "Spacing was gently tightened to meet your page preference. Text sizes are unchanged."
+    ]
+  },
+  {
+    "purpose": "wine",
+    "paper": "a4",
+    "items": 8,
+    "pages": 1,
+    "warnings": []
+  },
+  {
+    "purpose": "tasting",
+    "paper": "letter",
+    "items": 5,
+    "pages": 1,
+    "warnings": []
+  },
+  {
+    "purpose": "tasting",
+    "paper": "a4",
+    "items": 5,
+    "pages": 1,
+    "warnings": []
+  }
+]

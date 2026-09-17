@@ -9,6 +9,9 @@ export const menuDesignIds = [
   "fine",
   "wine",
   "special",
+  "bar",
+  "cocktail",
+  "smoothie",
 ] as const;
 export const menuPurposeIds = [
   "dinner",
@@ -19,7 +22,19 @@ export const menuPurposeIds = [
   "specials",
   "tasting",
   "food_truck",
+  "bar",
+  "cocktails",
+  "smoothies",
 ] as const;
+export const menuPurposeLabel = (purpose: string) =>
+  (
+    ({
+      food_truck: "Food truck / counter service",
+      bar: "Dive bar & beer",
+      cocktails: "Cocktail bar",
+      smoothies: "Smoothies & juice",
+    }) as Record<string, string>
+  )[purpose] || purpose.charAt(0).toUpperCase() + purpose.slice(1);
 const shortText = z.string().trim().max(120);
 const price = z.number().int().min(0).max(100000000);
 const priceOption = z.object({

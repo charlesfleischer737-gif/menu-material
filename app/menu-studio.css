@@ -3207,6 +3207,114 @@
   gap: 8px;
   padding: 20px 26px;
 }
+
+/* Drink menus keep a distinct reading rhythm across print and phone. */
+.md-design-bar .md-guest-header {
+  border-bottom: 6px double var(--md-accent);
+}
+.md-design-bar h1 {
+  font-family: "Post Condensed", Impact, sans-serif;
+  font-size: clamp(2.5rem, 8vw, 4rem);
+  text-transform: uppercase;
+  line-height: 0.98;
+  letter-spacing: -0.02em;
+}
+.md-design-bar h2 {
+  font-family: "Post Condensed", Impact, sans-serif;
+  font-size: 1.8rem;
+  letter-spacing: 0;
+  border-bottom: 2px solid var(--md-accent);
+}
+.md-design-bar .md-guest-item h3 {
+  font-size: 1.65rem;
+  letter-spacing: 0;
+}
+.md-design-cocktail h1 {
+  font-family: "Post Sans", sans-serif;
+  font-size: 1rem;
+  font-weight: 500;
+  text-transform: uppercase;
+  letter-spacing: 0.12em;
+}
+.md-design-cocktail .md-guest-title {
+  font-family: "Post Serif Italic", Georgia, serif;
+  font-size: clamp(2.6rem, 8vw, 3.5rem);
+  line-height: 1.1;
+  text-transform: none;
+  letter-spacing: -0.025em;
+  margin-top: 14px;
+}
+.md-design-cocktail .md-guest-sections {
+  grid-template-columns: 1fr;
+  max-width: 650px;
+  margin-inline: auto;
+}
+.md-design-cocktail h2 {
+  font-size: 0.875rem;
+  letter-spacing: 0.13em;
+}
+.md-design-cocktail .md-guest-item {
+  border-left: 2px solid var(--md-accent);
+  padding-left: 18px;
+  margin-bottom: 27px;
+}
+.md-design-cocktail .md-guest-item h3 {
+  font-size: 1.6rem;
+}
+.md-design-smoothie h1 {
+  font-family: "Post Sans", sans-serif;
+  font-size: clamp(2rem, 6vw, 2.8rem);
+  font-weight: 700;
+  line-height: 1.1;
+  letter-spacing: -0.045em;
+}
+.md-design-smoothie .md-guest-header {
+  border-bottom: 4px solid var(--md-accent);
+}
+.md-design-smoothie .md-guest-title {
+  font-size: 1.25rem;
+  text-transform: none;
+  letter-spacing: 0;
+}
+.md-design-smoothie h2 {
+  background: var(--md-subtle);
+  border: 0;
+  padding: 10px 13px;
+  font-size: 1.15rem;
+  text-transform: none;
+  letter-spacing: -0.015em;
+}
+.md-design-smoothie .md-guest-item h3 {
+  font-size: 1.15rem;
+  font-weight: 650;
+}
+.md-design-smoothie .md-guest-item {
+  border-bottom: 1px solid var(--md-rule);
+  padding-bottom: 18px;
+}
+:is(.md-design-cafe, .md-design-wine, .md-design-bar, .md-design-smoothie)
+  .md-guest-prices[data-options="2"] {
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+}
+:is(.md-design-cafe, .md-design-wine, .md-design-bar, .md-design-smoothie)
+  .md-guest-prices[data-options="3"] {
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+}
+:is(.md-design-cafe, .md-design-wine, .md-design-bar, .md-design-smoothie)
+  .md-guest-prices:is([data-options="2"], [data-options="3"])
+  > div {
+  display: flex;
+  flex-direction: column;
+  align-items: flex-start;
+  gap: 3px;
+  min-width: 0;
+}
+:is(.md-design-cafe, .md-design-wine, .md-design-bar, .md-design-smoothie)
+  .md-guest-prices:is([data-options="2"], [data-options="3"])
+  dt {
+  font-size: 0.875rem;
+  color: var(--md-muted);
+}
 .menu-document-switcher a {
   display: inline-flex;
   align-items: center;

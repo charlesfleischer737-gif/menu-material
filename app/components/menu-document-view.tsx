@@ -332,7 +332,10 @@ export default function MenuDocumentView({
                   </div>
                   {item.description && <p>{item.description}</p>}
                   {!!item.variants.length && item.priceMode === "variants" && (
-                    <dl className="md-guest-prices">
+                    <dl
+                      className="md-guest-prices"
+                      data-options={item.variants.length}
+                    >
                       {item.variants.map((v) => (
                         <div key={v.id}>
                           <dt>{v.label}</dt>

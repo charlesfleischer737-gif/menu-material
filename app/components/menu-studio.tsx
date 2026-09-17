@@ -24,6 +24,7 @@ import {
   entryPrice,
   menuContentIssues,
   menuPurposeIds,
+  menuPurposeLabel,
   newMenuDocument,
   newMenuEntry,
   type DesignedMenu,
@@ -914,9 +915,7 @@ export default function MenuStudio({
               >
                 {menuPurposeIds.map((p) => (
                   <option key={p} value={p}>
-                    {p === "food_truck"
-                      ? "Food truck / counter service"
-                      : p[0].toUpperCase() + p.slice(1)}
+                    {menuPurposeLabel(p)}
                   </option>
                 ))}
               </select>

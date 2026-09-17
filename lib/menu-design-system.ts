@@ -17,7 +17,10 @@ export type MenuDesignSpec = {
     | "centered"
     | "list"
     | "feature"
-    | "street";
+    | "street"
+    | "taproom"
+    | "cocktail"
+    | "fresh";
   columns: 1 | 2;
   titleSize: number;
   itemSize: number;
@@ -88,6 +91,54 @@ export const menuDesignCollection: MenuDesignSpec[] = [
     itemSize: 19,
     sectionSize: 19,
     purposes: ["food_truck", "lunch", "specials"],
+  },
+  {
+    id: "bar",
+    name: "Last Call",
+    description: "Straight-up drinks. Big type. No fuss.",
+    category: "Dive bar & beer",
+    color: "#983728",
+    paper: "#fffdf5",
+    heading: "display",
+    item: "display",
+    architecture: "taproom",
+    columns: 2,
+    titleSize: 54,
+    itemSize: 18,
+    sectionSize: 21,
+    purposes: ["bar", "drinks"],
+  },
+  {
+    id: "cocktail",
+    name: "Velvet Hour",
+    description: "Expressive cocktails, quietly composed.",
+    category: "Cocktail bar",
+    color: "#69452d",
+    paper: "#fffdf9",
+    heading: "italic",
+    item: "serif",
+    architecture: "cocktail",
+    columns: 1,
+    titleSize: 42,
+    itemSize: 17,
+    sectionSize: 12,
+    purposes: ["cocktails", "drinks"],
+  },
+  {
+    id: "smoothie",
+    name: "Fresh Press",
+    description: "Bright blends, clear sizes, your choice of extras.",
+    category: "Smoothie truck & juice bar",
+    color: "#23604b",
+    paper: "#fffef8",
+    heading: "sans",
+    item: "sans",
+    architecture: "fresh",
+    columns: 2,
+    titleSize: 33,
+    itemSize: 14,
+    sectionSize: 18,
+    purposes: ["smoothies", "food_truck", "cafe"],
   },
   {
     id: "fine",
@@ -166,9 +217,23 @@ export function menuContrast(a: string, b: string) {
 export function menuTheme(menu: DesignedMenu) {
   const spec = menuDesignSpec(menu.design),
     dark = menu.appearance === "dark";
-  const background = dark ? "#18211e" : spec.paper,
+  const background = dark
+      ? spec.id === "cocktail"
+        ? "#24202b"
+        : spec.id === "bar"
+          ? "#242321"
+          : "#18211e"
+      : spec.paper,
     ink = dark ? "#fffdf6" : "#242923",
-    muted = dark ? "#d1d7ce" : "#525b51";
+    muted = dark ? "#d1d7ce" : "#525b51",
+    subtle = dark
+      ? "#26362d"
+      : spec.id === "truck"
+        ? "#f8d97c"
+        : spec.id === "smoothie"
+          ? "#f8e8cb"
+          : "#f0f3ed",
+    bandedHeadings = spec.id === "cafe" || spec.id === "smoothie";
   let accent =
     menu.colorMode === "custom"
       ? menu.color
@@ -178,7 +243,9 @@ export function menuTheme(menu: DesignedMenu) {
   if (!/^#[0-9a-f]{6}$/i.test(accent)) accent = spec.color;
   for (
     let step = 0;
-    menuContrast(accent, background) < 4.5 && step < 15;
+    (menuContrast(accent, background) < 4.5 ||
+      (bandedHeadings && menuContrast(accent, subtle) < 4.5)) &&
+    step < 15;
     step++
   )
     accent =
@@ -196,7 +263,7 @@ export function menuTheme(menu: DesignedMenu) {
     muted,
     accent,
     rule: dark ? "#516057" : "#c4cbbf",
-    subtle: dark ? "#26362d" : spec.id === "truck" ? "#f8d97c" : "#f0f3ed",
+    subtle,
     onAccent: menuContrast(accent, "#ffffff") >= 4.5 ? "#ffffff" : "#152016",
   };
 }
@@ -226,6 +293,12 @@ export function recommendMenuDesigns(menu: MenuDocument) {
 }
 export function designReason(menu: MenuDocument, id: string) {
   const spec = menuDesignSpec(id);
+  if (spec.id === "bar")
+    return "Bold drink names, strong dividers, and aligned pour prices make a busy bar menu easy to scan.";
+  if (spec.id === "cocktail")
+    return "A spacious single-column list gives cocktail names, ingredients, and prices a clear rhythm.";
+  if (spec.id === "smoothie")
+    return "Bright section bands and aligned size prices make blends and extras easy to compare.";
   if (spec.id === "truck")
     return "Bold section bars, generous dish names, and highlighted prices keep counter-service choices quick to read.";
   if (spec.id === "cafe")
