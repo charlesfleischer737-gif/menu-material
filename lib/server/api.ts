@@ -1163,9 +1163,10 @@ export async function handle(req: Request) {
     if (p[0] === "assets") {
       if (method === "POST" && !p[1]) return await upload(req, r);
       const a = await one(
-        "SELECT * FROM assets WHERE id=? AND restaurant_id=? AND deleted_at IS NULL",
+        "SELECT * FROM assets WHERE id=? AND restaurant_id=? AND (deleted_at IS NULL OR ?='DELETE')",
         p[1],
         r.id,
+        method,
       );
       assert(a, 404, "Image not found.");
       if (method === "GET" && p[2] === "context") {
@@ -1224,29 +1225,48 @@ export async function handle(req: Request) {
             })),
           })),
         });
-        await db().batch([
-          db()
-            .prepare("UPDATE assets SET deleted_at=? WHERE id=?")
-            .bind(now(), a.id),
-          db()
-            .prepare(
-              "UPDATE restaurants SET published=?,menu_draft=?,logo_id=CASE WHEN logo_id=? THEN NULL ELSE logo_id END WHERE id=?",
-            )
-            .bind(
-              r.published
-                ? JSON.stringify(prune(JSON.parse(r.published)))
-                : null,
-              JSON.stringify(prune(JSON.parse(r.menu_draft))),
-              a.id,
-              r.id,
-            ),
-        ]);
+        await run(
+          "UPDATE assets SET deleted_at=COALESCE(deleted_at,?) WHERE id=? AND restaurant_id=?",
+          now(),
+          a.id,
+          r.id,
+        );
+        await pruneDocumentAsset(r.id, a.id);
+        // The request's restaurant snapshot may predate a concurrent publication.
+        // Retry against current values instead of writing that older snapshot back.
+        let pruned = false;
+        for (let attempt = 0; attempt < 5; attempt++) {
+          const current = await one(
+            "SELECT published,menu_draft FROM restaurants WHERE id=?",
+            r.id,
+          );
+          assert(current, 404, "Restaurant not found.");
+          const saved = await run(
+            "UPDATE restaurants SET published=?,menu_draft=?,logo_id=CASE WHEN logo_id=? THEN NULL ELSE logo_id END WHERE id=? AND published IS ? AND menu_draft IS ?",
+            current.published
+              ? JSON.stringify(prune(JSON.parse(current.published)))
+              : null,
+            JSON.stringify(prune(JSON.parse(current.menu_draft))),
+            a.id,
+            r.id,
+            current.published,
+            current.menu_draft,
+          );
+          if (saved.meta.changes) {
+            pruned = true;
+            break;
+          }
+        }
+        assert(
+          pruned,
+          409,
+          "A menu changed while removing this photo. Please retry the removal.",
+        );
         await bucket().delete([
           a.key,
           ...(a.working_key ? [a.working_key] : []),
           `public/${r.id}/${a.id}`,
         ]);
-        await pruneDocumentAsset(r.id, a.id);
         await releaseStorage(a.id);
         await event(r.id, "asset_deleted", a.id);
         return response({ ok: true });

@@ -27,7 +27,7 @@ Examples use fictional restaurant content. They are layout proofs, not customer 
 
 | Check | Result |
 |---|---|
-| Menu API suite | 57 request checks passed, including migration, snapshot privacy, source-text privacy, tenant ownership, revision conflicts, stable QR routing, publication recovery, archival recovery, library usage, retired-client write protection, and preserving concise originals. A concurrent publication/main-menu regression fails against the previous implementation and passes with transaction-time routing. |
+| Menu API suite | 67 request checks passed, including atomic migration and retry after a simulated failure, snapshot/source-text privacy, tenant ownership, revision conflicts, stable QR routing, publication and archival recovery, library usage, retired-client write protection, and preserving concise originals. Secondary-menu photos are publicly accessible only after publication; removal prunes drafts, publications, and history and can be retried. Concurrent publication and photo-removal regressions preserve newer main-menu choices. Each newly fixed failure was reproduced against its prior implementation. |
 | Print fixture matrix | 42 compositions passed: seven styles × 12/30/60 dishes × Letter/A4. Every visible dish appears exactly once. Text bounds, measured text collisions, heading placement, and the readability floor are checked. |
 | Longer content | Seven additional design cases passed with long restaurant names, section names, dish names, and fixed-price labels. |
 | Production output | Crop-adjusted low-resolution warnings, 300-PPI raster dimensions, transparent logo alpha, continuous masthead bleed, trim/bleed dimensions, price variants, add-ons, page breaks, and unsupported-character diagnostics passed. |
@@ -47,3 +47,17 @@ Physical paper/color proofs, text-only browser enlargement, broader physical-dev
 AI reference interpretation, translations, scheduled publication, printer-specific CMYK/PDF-X output, and a dedicated preview worker are later work. Recommendations currently use deterministic content/purpose rules; layout and routine editing work without an AI call. Unsupported print characters are diagnosed instead of silently substituted. The preview cache shares prepared PDFs and ignores superseded results, but in-progress PDF computation itself is not cancelled.
 
 The software is ready for review and the first owner pilot. Broader rollout should follow the pilot and physical-print checks described in the [original plan](MENU_FEATURE_PLAN_2026-09-17.md).
+
+## Requirement audit before public release
+
+| Plan requirement | Current evidence and remaining gate |
+|---|---|
+| Distinct professional compositions, including casual service | Seven measured designs and an actual one-page Taco Local food-truck proof are delivered. Visual evidence is linked above. Physical print/color review remains open. |
+| Correct structured content and legible pagination | The 42-case print matrix, seven long-content cases, and mixed-price/photo cases pass. Every style has generic dinner coverage; purpose-specific café, wine, and tasting-menu examples are not yet a complete visual benchmark set. |
+| Guided generation and routine editing | Import review, purpose/paper/page brief, three recommendations, full collection, all-page inspection, print/phone editing, undo, export, and reviewed publication are delivered and exercised. Owner task-time targets have not been measured. |
+| Independent menus and safe migration/publication | API checks cover menu-specific edits, exact legacy public snapshots, atomic migration, named URLs, primary routing, recovery, privacy, and concurrent changes. These are automated/local results, not production usage observations. |
+| Phone accessibility and responsiveness | Street Kitchen passed the documented widths and readable-content checks. Text-only 200% enlargement, the full style/purpose/device matrix, and screen-reader review remain open. Local PDF timings do not establish browser/device latency. |
+| AI-assisted design and wording | Existing extraction and reviewed shortening use the configured connection. Deterministic recommendations work without AI. Optional visual-reference interpretation and translations remain unimplemented; no broader AI design capability is claimed. |
+| Efficient preview architecture | Shared prepared-PDF caching, debounce, and obsolete-result suppression are delivered. A dedicated worker and cancellation of already-running computation remain unimplemented. |
+| In-service validation | Five owner trials, physical print proofs, initial/repeat task timings, and evidence of return use remain external release gates. No owners have been recruited or contacted by this task. |
+| Public release | A reviewed build is prepared; public publishing still awaits the outstanding owner response required by the hosting skill. Preparing or saving a release does not publish it. |

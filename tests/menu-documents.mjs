@@ -7,7 +7,7 @@ process.env.DISHLIGHT_DATA_DIR = root;
 process.env.APP_ORIGIN = "http://localhost";
 process.env.OPENAI_API_KEY = "test-only-not-a-real-key";
 const { handle } = await import("../lib/server/api.ts");
-const { one, run } = await import("../lib/server/core.ts");
+const { one, run, db, bucket } = await import("../lib/server/core.ts");
 const { newMenuDocument, newMenuEntry } =
   await import("../lib/menu-document.ts");
 let cookie = "",
@@ -98,8 +98,31 @@ try {
     Date.now() - 1000,
     state.restaurant.id,
   );
+  const savedLegacyId = crypto.randomUUID();
+  await run(
+    "INSERT INTO creation_drafts (id,restaurant_id,kind,draft,updated_at) VALUES (?,?,'menu',?,?)",
+    savedLegacyId,
+    state.restaurant.id,
+    JSON.stringify(legacy),
+    Date.now(),
+  );
+  await run(
+    `CREATE TRIGGER fail_saved_menu_migration BEFORE INSERT ON menu_documents WHEN NEW.id='${savedLegacyId}' BEGIN SELECT RAISE(ABORT, 'simulated interrupted migration'); END`,
+  );
+  await call("menus/initialize", {}, 500);
+  assert.equal(
+    (await one("SELECT count(*) AS total FROM menu_documents")).total,
+    0,
+    "an interrupted migration leaves no partial menu collection",
+  );
+  assert.equal(
+    (await one("SELECT count(*) AS total FROM menu_publication_history")).total,
+    0,
+  );
+  await run("DROP TRIGGER fail_saved_menu_migration");
   const initialized = await call("menus/initialize", {});
-  assert.equal(initialized.menus.length, 1);
+  assert.equal(initialized.menus.length, 2);
+  assert(initialized.menus.some((m) => m.id === savedLegacyId));
   assert.deepEqual(
     initialized.menus[0].published,
     legacy,
@@ -369,6 +392,93 @@ try {
     "Brunch",
     "publishing an old main menu preserves a newer concurrent main-menu choice",
   );
+  const assetId = crypto.randomUUID(),
+    assetKey = `restaurants/${rid}/${assetId}.png`;
+  await run(
+    "INSERT INTO assets (id,restaurant_id,dish_id,kind,key,mime,name,approved_at,created_at) VALUES (?,?,?,'source',?,'image/png','test-photo.png',?,?)",
+    assetId,
+    rid,
+    dish.id,
+    assetKey,
+    Date.now(),
+    Date.now(),
+  );
+  await bucket().put(assetKey, new Uint8Array([137, 80, 78, 71]), {
+    httpMetadata: { contentType: "image/png" },
+  });
+  const photoDraft = structuredClone(doc);
+  photoDraft.title = "Photo menu";
+  photoDraft.sections[0].items[0].photoId = assetId;
+  let photoMenu = await call("menus", {
+    id: crypto.randomUUID(),
+    draft: photoDraft,
+  });
+  await call(`public/${slug}/assets/${assetId}`, undefined, 404);
+  photoMenu = await call(`menus/${photoMenu.id}/publish`, {
+    revision: photoMenu.revision,
+    confirmed: true,
+  });
+  const publicAsset = await handle(
+    new Request(`http://localhost/api/public/${slug}/assets/${assetId}`),
+  );
+  assert.equal(publicAsset.status, 200, "a secondary menu's photo is public");
+  await publicAsset.arrayBuffer();
+
+  // Pause deletion after it has read the restaurant, then choose a newer main menu.
+  const assetRead = Promise.withResolvers(),
+    resumeDelete = Promise.withResolvers(),
+    database = db(),
+    originalPrepare = database.prepare;
+  database.prepare = function (sql) {
+    const statement = originalPrepare.call(this, sql);
+    if (!sql.startsWith("SELECT * FROM assets WHERE id=? AND restaurant_id=?"))
+      return statement;
+    const originalBind = statement.bind;
+    statement.bind = function (...args) {
+      const bound = originalBind.apply(this, args),
+        originalFirst = bound.first;
+      bound.first = async function (...firstArgs) {
+        const result = await originalFirst.apply(this, firstArgs);
+        database.prepare = originalPrepare;
+        assetRead.resolve();
+        await resumeDelete.promise;
+        return result;
+      };
+      return bound;
+    };
+    return statement;
+  };
+  const deletion = call(`assets/${assetId}`, undefined, 200, "DELETE");
+  await assetRead.promise;
+  try {
+    await call(`menus/${firstId}/primary`, { revision: dinner.revision });
+  } finally {
+    resumeDelete.resolve();
+    database.prepare = originalPrepare;
+  }
+  await deletion;
+  assert.equal(
+    (await call(`public/${slug}`)).menu.documentId,
+    firstId,
+    "photo deletion preserves a newer main-menu choice",
+  );
+  const prunedPhotoMenu = await call(`menus/${photoMenu.id}`);
+  assert.equal(prunedPhotoMenu.draft.sections[0].items[0].photoId, null);
+  assert.equal(prunedPhotoMenu.published.sections[0].items[0].photoId, null);
+  assert.equal(
+    JSON.parse(
+      (
+        await one(
+          "SELECT snapshot FROM menu_publication_history WHERE menu_id=?",
+          photoMenu.id,
+        )
+      ).snapshot,
+    ).sections[0].items[0].photoId,
+    null,
+    "publication history cannot restore a deleted photo",
+  );
+  await call(`public/${slug}/assets/${assetId}`, undefined, 404);
+  await call(`assets/${assetId}`, undefined, 200, "DELETE");
   console.log(
     `${checks} menu document API checks passed: independent content, draft privacy, named publication, stable QR, revision conflicts, history, ownership, and reviewed AI suggestions.`,
   );

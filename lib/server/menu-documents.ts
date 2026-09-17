@@ -317,25 +317,29 @@ export async function menuDocumentsRoute(req: Request, p: string[], r: Row) {
       );
       const draft = upgradeMenuDocument(JSON.parse(r.menu_draft), dishes),
         t = now();
-      await run(
-        "INSERT OR IGNORE INTO menu_documents (id,restaurant_id,draft,revision,published,published_at,is_primary,created_at,updated_at) VALUES (?,?,?,1,?,?,1,?,?)",
-        r.id,
-        r.id,
-        JSON.stringify(draft),
-        r.published,
-        r.published_at,
-        t,
-        t,
-      );
+      const migration = [
+        db()
+          .prepare(
+            "INSERT OR IGNORE INTO menu_documents (id,restaurant_id,draft,revision,published,published_at,is_primary,created_at,updated_at) VALUES (?,?,?,1,?,?,1,?,?)",
+          )
+          .bind(
+            r.id,
+            r.id,
+            JSON.stringify(draft),
+            r.published,
+            r.published_at,
+            t,
+            t,
+          ),
+      ];
       // Keep the exact old public snapshot available after the first new publication.
       if (r.published)
-        await run(
-          "INSERT OR IGNORE INTO menu_publication_history (id,menu_id,restaurant_id,snapshot,revision,created_at) VALUES (?,?,?,?,1,?)",
-          r.id,
-          r.id,
-          r.id,
-          r.published,
-          r.published_at || t,
+        migration.push(
+          db()
+            .prepare(
+              "INSERT OR IGNORE INTO menu_publication_history (id,menu_id,restaurant_id,snapshot,revision,created_at) VALUES (?,?,?,?,1,?)",
+            )
+            .bind(r.id, r.id, r.id, r.published, r.published_at || t),
         );
       // Older saved drafts remain available as independent documents; no shared dish mutation.
       const older = await all(
@@ -347,18 +351,25 @@ export async function menuDocumentsRoute(req: Request, p: string[], r: Row) {
           const old = JSON.parse(previous.draft);
           if (!old.rows?.length && !old.sections?.length) continue;
           const migrated = upgradeMenuDocument(old, dishes);
-          await run(
-            "INSERT OR IGNORE INTO menu_documents (id,restaurant_id,draft,revision,is_primary,created_at,updated_at) VALUES (?,?,?,1,0,?,?)",
-            previous.id,
-            r.id,
-            JSON.stringify(migrated),
-            t,
-            previous.updated_at,
+          migration.push(
+            db()
+              .prepare(
+                "INSERT OR IGNORE INTO menu_documents (id,restaurant_id,draft,revision,is_primary,created_at,updated_at) VALUES (?,?,?,1,0,?,?)",
+              )
+              .bind(
+                previous.id,
+                r.id,
+                JSON.stringify(migrated),
+                t,
+                previous.updated_at,
+              ),
           );
         } catch {
           /* The original remains available in creation_drafts for recovery. */
         }
       }
+      // A failed write must leave initialization retryable, including older drafts.
+      await db().batch(migration);
     }
     return response({
       menus: (
