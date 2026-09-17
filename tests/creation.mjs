@@ -20,7 +20,8 @@ const {
   recommendationsForPhoto,
   studioRenderProgress,
 } = await import("../lib/studio-onboarding.ts");
-const { foodFamilies, photoBrief } = await import("../lib/studio.ts");
+const { foodFamilies, photoBrief, styleFor } = await import("../lib/studio.ts");
+const { studioLookPatch } = await import("../lib/studio-discovery.ts");
 const { imagePrompt } = await import("../lib/server/generation.ts");
 const { restaurantPhotoDefaults, restaurantPhotoSelection, brandPostFields } =
   await import("../lib/restaurant-look.ts");
@@ -123,6 +124,40 @@ assert(
   "Model metadata is not photo direction",
 );
 assert(!stylePrompt.includes("internal-pipeline"));
+for (const [id, vessel] of [
+  ["delivery-takeout", /open unbranded kraft takeout box/],
+  ["delivery-paper", /unbranded paper-lined takeaway tray/],
+  ["studio-chrome", /polished stainless serving tray/],
+  ["bakery-rustic", /natural wood bread board/],
+]) {
+  const selected = { ...photoBrief(), ...studioLookPatch(photoBrief(), id) };
+  const prompt = imagePrompt({
+    ...promptDetails,
+    controls: selected,
+    style: styleFor(selected, {}),
+  });
+  assert.equal(selected.plate, "style");
+  assert.match(prompt, vessel, `${id} sends its food vessel to generation`);
+  assert.match(prompt, /The vessel type may change/);
+  assert.match(prompt, /not stay on a plate inside or beneath it/);
+  assert.match(prompt, /Never add or remove ingredients/);
+  assert.doesNotMatch(prompt, /Choose the same functional type/);
+  assert.doesNotMatch(prompt, /Retain the original plate or takeout container/);
+  assert.doesNotMatch(prompt, /Serving ware: Keep the original plate/);
+}
+for (const id of ["beverage-cafe", "bar-velvet"]) {
+  const selected = { ...photoBrief(), ...studioLookPatch(photoBrief(), id) };
+  const prompt = imagePrompt({
+    ...promptDetails,
+    controls: selected,
+    style: styleFor(selected, {}),
+  });
+  assert.equal(selected.plate, "keep");
+  assert.match(prompt, /Serving ware: Keep the original plate/);
+  assert.match(prompt, /Identify food versus drinks from the original subject/);
+  assert.match(prompt, /Never put solid food in a drinking glass/);
+  assert.match(prompt, /applied to food, retain the original plate/);
+}
 const controlledPrompt = imagePrompt(
   {
     ...promptDetails,
@@ -595,6 +630,10 @@ try {
   );
   await call("assets/" + editId + "?download=1", undefined, 403);
   await call("assets/" + editId + "/approve", { accurate: true });
+  const takeoutDraft = {
+    ...photoBrief(),
+    ...studioLookPatch(photoBrief(), "delivery-takeout"),
+  };
   await call(
     "jobs",
     {
@@ -602,7 +641,8 @@ try {
       parentId: editId,
       requestKey: crypto.randomUUID(),
       revision: "Remove napkin",
-      controls: { plate: "style" },
+      controls: { plate: takeoutDraft.plate },
+      style: styleFor(takeoutDraft, {}),
     },
     202,
   );
@@ -640,6 +680,16 @@ try {
     requests.at(-1).input[0].content[0].text,
     /Match the serving ware to the selected style/,
     "The style plate control reaches the provider on a revision",
+  );
+  assert.match(
+    requests.at(-1).input[0].content[0].text,
+    /open unbranded kraft takeout box/,
+    "Selecting takeout on a plate photo reaches the provider through a revision",
+  );
+  assert.match(
+    requests.at(-1).input[0].content[0].text,
+    /Never put solid food in a drinking glass/,
+    "Subject compatibility protection reaches the provider",
   );
   await call("jobs/tick", {});
   assert(

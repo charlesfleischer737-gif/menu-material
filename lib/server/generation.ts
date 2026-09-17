@@ -64,7 +64,7 @@ export function imagePrompt(d: Row, revision = "", slot = 0) {
       ? "Keep the original plate or serving vessel, including its shape, material and color. Restyle the surrounding scene fully."
       : c.plate === "white"
         ? "For food, replace the original plate with a simple white ceramic plate or an appropriate white bowl for liquid food. Preserve the food and serving size. For drinks, keep the original drinking vessel and its visible branding as specified under DRINK IDENTITY."
-        : "Match the serving ware to the selected style. For food, replace an unsuitable original plate, bowl or board with a refined, realistic vessel appropriate to the dish and style. Choose the same functional type and capacity; preserve the portion and the food arrangement relative to itself. A plate change must never shrink, enlarge or rearrange the meal. For drinks, keep the original drinking vessel and its visible branding as specified under DRINK IDENTITY. If the selected style specifically features takeout packaging, retain the actual takeout container.";
+        : "Match the serving ware to the selected style. For food styles with explicit serving ware, replace the original food vessel with the specified plate, bowl, takeout box, paper-lined tray, metal tray or board. The vessel type may change: a plated meal must move directly into the requested takeout box, not stay on a plate inside or beneath it. Retain existing food packaging only when it already matches the requested style. Match the original serving capacity and preserve the food arrangement relative to itself; never shrink, enlarge, cut, stack or rearrange the meal to fit. Keep liquid food in a suitable leakproof food container. When the style specifies no food serving ware, keep the original. Beverage and bar styles applied to food keep the original food vessel and change only the setting and lighting. For drinks, keep the original drinking vessel and its visible branding as specified under DRINK IDENTITY.";
   const food = {
     name: d.name,
     description: d.description,
@@ -76,6 +76,9 @@ export function imagePrompt(d: Row, revision = "", slot = 0) {
 
 FOOD IDENTITY
 Use the original upload as the source of truth for the food: retain its ingredients, counts, portion size, doneness, toppings, sauce and recognizable arrangement. Never add or remove ingredients, garnish, sides or extra servings. Preserve natural food color while relighting it. Food fidelity does not require preserving the original plate, tabletop, room, exposure, shadows or white balance.
+
+FOOD AND STYLE COMPATIBILITY
+Identify food versus drinks from the original subject, never from the selected style or reference image. When a Beverage or Bar & Lounge style is applied to food, retain the original plate, bowl, board or food container and apply only the background, surface and lighting. Never put solid food in a drinking glass, cup, mug, bottle or can to imitate a beverage style, and never turn the food into a drink. This compatibility rule overrides conflicting serving-ware directions. A food style that explicitly calls for different food serving ware may change that vessel under OWNER CONTROLS without changing the food itself.
 
 DRINK IDENTITY
 Whenever an uploaded subject includes a drink, preserve the exact original glass, cup, mug, bottle or can: silhouette, proportions, rim, base, stem or handle, material and color. Retain its existing visible logos, brand marks, printed lettering, labels and embossing as photographed, including their design, wording, color, size and position on the vessel. Keep the logo-facing orientation recognizable. Do not erase, replace, simplify, redesign or invent this branding; preserve only what is actually visible in the original, without completing obscured text from the drink name. Existing product branding is part of the photographed subject, not added promotional text.
@@ -100,7 +103,7 @@ Confirmed dish: ${JSON.stringify(food)}
 Requested adjustment: ${JSON.stringify(revision)}
 
 FINISH
-Appetizing editorial food photography with believable texture, natural highlights and realistic depth. No plastic textures, excessive gloss, impossible geometry or illustration. Do not add promotional text, prices, watermarks, new logos or invented branded packaging. Preserve existing branding visible on the original drink vessel as required above. Before finishing, ensure the setting and light clearly express the chosen style, the food is still the same serving, and any drink retains its original vessel and visible branding. Produce the image only.`;
+Appetizing editorial food photography with believable texture, natural highlights and realistic depth. No plastic textures, excessive gloss, impossible geometry or illustration. Do not add promotional text, prices, watermarks, new logos or invented branded packaging. Preserve existing branding visible on the original drink vessel as required above. Before finishing, ensure the setting and light clearly express the chosen style, the food is still the same serving, explicit food serving ware is realized unless an owner control or subject compatibility requires retaining it, and any drink retains its original vessel and visible branding. Produce the image only.`;
 }
 export async function enqueue(
   r: Row,

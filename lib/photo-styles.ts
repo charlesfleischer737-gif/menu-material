@@ -10,6 +10,8 @@ export type PhotoStyle = {
   bestFor?: string;
   traits?: string[];
   angle?: string;
+  // Only presets with explicit food serving ware opt into replacing it.
+  plate?: "style";
   legacy?: boolean;
 };
 export const styleCategories = [
@@ -80,6 +82,7 @@ export const styleCategories = [
 export const photoStyles: PhotoStyle[] = [
   {
     id: "delivery-white",
+    plate: "style",
     category: "delivery",
     group: "Delivery & Takeout",
     name: "Clean & craveable",
@@ -95,21 +98,22 @@ export const photoStyles: PhotoStyle[] = [
   },
   {
     id: "delivery-takeout",
+    plate: "style",
     category: "delivery",
     group: "Delivery & Takeout",
     name: "Takeout, elevated",
     cue: "Neat packaging · fresh detail",
-    description:
-      "A tidy, polished view of your food in the packaging customers actually receive.",
+    description: "A tidy, polished view of your food in an open takeout box.",
     bestFor: "Poke, grain bowls and boxed meals",
-    traits: ["Soft neutral light", "Pale grey surface", "Keep real packaging"],
+    traits: ["Soft neutral light", "Pale grey surface", "Open takeout box"],
     prompt:
-      "Pale grey clean tabletop, balanced soft daylight, crisp food texture. Retain the original plate or takeout container and exact contents. Show the full serving. No added packaging, sides, logos or text.",
+      "Pale grey tabletop, soft daylight, crisp food texture. Serve the unchanged food directly in an open unbranded kraft takeout box sized for the full portion. Retain suitable existing takeout packaging; otherwise replace the original plate. No plate inside or under the box, added sides, logos or text.",
     image: "/studio/styles/delivery-takeout.webp",
     angle: "keep",
   },
   {
     id: "delivery-daylight",
+    plate: "style",
     category: "delivery",
     group: "Delivery & Takeout",
     name: "Natural daylight",
@@ -125,6 +129,7 @@ export const photoStyles: PhotoStyle[] = [
   },
   {
     id: "delivery-overhead",
+    plate: "style",
     category: "delivery",
     group: "Delivery & Takeout",
     name: "Top-down clarity",
@@ -140,6 +145,7 @@ export const photoStyles: PhotoStyle[] = [
   },
   {
     id: "delivery-paper",
+    plate: "style",
     category: "delivery",
     group: "Delivery & Takeout",
     name: "Paper & crunch",
@@ -150,15 +156,16 @@ export const photoStyles: PhotoStyle[] = [
     traits: [
       "Bright diffuse light",
       "Sand seamless",
-      "Real takeaway container",
+      "Paper-lined takeaway tray",
     ],
     prompt:
-      "Warm sand seamless tabletop, bright diffuse light and soft short shadows that reveal crisp food texture. Retain the original takeout container and any existing paper liner. Complete serving visible. No extra packaging, sides, props or text.",
+      "Warm sand tabletop, bright diffuse light, soft shadows and crisp food texture. Serve unchanged food directly in an unbranded paper-lined takeaway tray sized for the full portion. Retain suitable existing packaging; otherwise replace the plate. No plate under the tray, added sides, props or text.",
     image: "/studio/styles/delivery-paper.webp",
     angle: "keep",
   },
   {
     id: "delivery-sage",
+    plate: "style",
     category: "delivery",
     group: "Delivery & Takeout",
     name: "Fresh on sage",
@@ -174,6 +181,7 @@ export const photoStyles: PhotoStyle[] = [
   },
   {
     id: "delivery-graphite",
+    plate: "style",
     category: "delivery",
     group: "Delivery & Takeout",
     name: "Crisp on charcoal",
@@ -204,6 +212,7 @@ export const photoStyles: PhotoStyle[] = [
   },
   {
     id: "fine-linen",
+    plate: "style",
     category: "fine",
     group: "Fine Dining",
     name: "White-linen service",
@@ -219,6 +228,7 @@ export const photoStyles: PhotoStyle[] = [
   },
   {
     id: "fine-slate",
+    plate: "style",
     category: "fine",
     group: "Fine Dining",
     name: "Dark degustation",
@@ -234,6 +244,7 @@ export const photoStyles: PhotoStyle[] = [
   },
   {
     id: "fine-counter",
+    plate: "style",
     category: "fine",
     group: "Fine Dining",
     name: "Chef’s counter",
@@ -249,6 +260,7 @@ export const photoStyles: PhotoStyle[] = [
   },
   {
     id: "fine-candle",
+    plate: "style",
     category: "fine",
     group: "Fine Dining",
     name: "Evening reservation",
@@ -264,6 +276,7 @@ export const photoStyles: PhotoStyle[] = [
   },
   {
     id: "fine-presented",
+    plate: "style",
     category: "fine",
     group: "Fine Dining",
     name: "Presented by the chef",
@@ -283,6 +296,7 @@ export const photoStyles: PhotoStyle[] = [
   },
   {
     id: "fine-terrace",
+    plate: "style",
     category: "fine",
     group: "Fine Dining",
     name: "Riviera terrace",
@@ -298,6 +312,7 @@ export const photoStyles: PhotoStyle[] = [
   },
   {
     id: "fine-obsidian",
+    plate: "style",
     category: "fine",
     group: "Fine Dining",
     name: "Obsidian tasting",
@@ -313,6 +328,7 @@ export const photoStyles: PhotoStyle[] = [
   },
   {
     id: "fine-gallery",
+    plate: "style",
     category: "fine",
     group: "Fine Dining",
     name: "The gallery plate",
@@ -332,6 +348,7 @@ export const photoStyles: PhotoStyle[] = [
   },
   {
     id: "menu-stone",
+    plate: "style",
     category: "menu",
     group: "Menu",
     name: "Fresh on stone",
@@ -351,6 +368,7 @@ export const photoStyles: PhotoStyle[] = [
   },
   {
     id: "menu-wood",
+    plate: "style",
     category: "menu",
     group: "Menu",
     name: "Neighborhood table",
@@ -366,6 +384,7 @@ export const photoStyles: PhotoStyle[] = [
   },
   {
     id: "menu-overhead",
+    plate: "style",
     category: "menu",
     group: "Menu",
     name: "Menu flat lay",
@@ -381,6 +400,7 @@ export const photoStyles: PhotoStyle[] = [
   },
   {
     id: "menu-neutral",
+    plate: "style",
     category: "menu",
     group: "Menu",
     name: "Modern bistro",
@@ -396,6 +416,7 @@ export const photoStyles: PhotoStyle[] = [
   },
   {
     id: "menu-terrazzo",
+    plate: "style",
     category: "menu",
     group: "Menu",
     name: "Terrazzo brunch",
@@ -411,6 +432,7 @@ export const photoStyles: PhotoStyle[] = [
   },
   {
     id: "menu-courtyard",
+    plate: "style",
     category: "menu",
     group: "Menu",
     name: "Courtyard table",
@@ -426,6 +448,7 @@ export const photoStyles: PhotoStyle[] = [
   },
   {
     id: "menu-handheld",
+    plate: "style",
     category: "menu",
     group: "Menu",
     name: "From our kitchen",
@@ -441,6 +464,7 @@ export const photoStyles: PhotoStyle[] = [
   },
   {
     id: "menu-diner",
+    plate: "style",
     category: "menu",
     group: "Menu",
     name: "Modern diner",
@@ -704,6 +728,7 @@ export const photoStyles: PhotoStyle[] = [
   },
   {
     id: "studio-ivory",
+    plate: "style",
     category: "studio",
     group: "Studio",
     name: "Sculpted ivory",
@@ -719,6 +744,7 @@ export const photoStyles: PhotoStyle[] = [
   },
   {
     id: "studio-color",
+    plate: "style",
     category: "studio",
     group: "Studio",
     name: "Color-pop campaign",
@@ -738,6 +764,7 @@ export const photoStyles: PhotoStyle[] = [
   },
   {
     id: "studio-dark",
+    plate: "style",
     category: "studio",
     group: "Studio",
     name: "Spotlight studio",
@@ -757,6 +784,7 @@ export const photoStyles: PhotoStyle[] = [
   },
   {
     id: "studio-pastel",
+    plate: "style",
     category: "studio",
     group: "Studio",
     name: "Soft-color studio",
@@ -772,6 +800,7 @@ export const photoStyles: PhotoStyle[] = [
   },
   {
     id: "studio-levitate",
+    plate: "style",
     category: "studio",
     group: "Studio",
     name: "Lifted in coral",
@@ -791,6 +820,7 @@ export const photoStyles: PhotoStyle[] = [
   },
   {
     id: "studio-chrome",
+    plate: "style",
     category: "studio",
     group: "Studio",
     name: "Chrome editorial",
@@ -810,6 +840,7 @@ export const photoStyles: PhotoStyle[] = [
   },
   {
     id: "studio-sunbeam",
+    plate: "style",
     category: "studio",
     group: "Studio",
     name: "Butter-yellow sun",
@@ -829,6 +860,7 @@ export const photoStyles: PhotoStyle[] = [
   },
   {
     id: "studio-arch",
+    plate: "style",
     category: "studio",
     group: "Studio",
     name: "Terracotta forms",
@@ -844,6 +876,7 @@ export const photoStyles: PhotoStyle[] = [
   },
   {
     id: "bakery-morning",
+    plate: "style",
     category: "bakery",
     group: "Bakery",
     name: "Fresh from the oven",
@@ -859,6 +892,7 @@ export const photoStyles: PhotoStyle[] = [
   },
   {
     id: "bakery-patisserie",
+    plate: "style",
     category: "bakery",
     group: "Bakery",
     name: "Patisserie counter",
@@ -874,6 +908,7 @@ export const photoStyles: PhotoStyle[] = [
   },
   {
     id: "bakery-rustic",
+    plate: "style",
     category: "bakery",
     group: "Bakery",
     name: "Artisan bread",
@@ -893,6 +928,7 @@ export const photoStyles: PhotoStyle[] = [
   },
   {
     id: "bakery-jewel",
+    plate: "style",
     category: "bakery",
     group: "Bakery",
     name: "Confectionery color",
@@ -908,6 +944,7 @@ export const photoStyles: PhotoStyle[] = [
   },
   {
     id: "bakery-paris",
+    plate: "style",
     category: "bakery",
     group: "Bakery",
     name: "Parisian pause",
@@ -927,6 +964,7 @@ export const photoStyles: PhotoStyle[] = [
   },
   {
     id: "bakery-hands",
+    plate: "style",
     category: "bakery",
     group: "Bakery",
     name: "Made by hand",
@@ -946,6 +984,7 @@ export const photoStyles: PhotoStyle[] = [
   },
   {
     id: "bakery-blue",
+    plate: "style",
     category: "bakery",
     group: "Bakery",
     name: "Blueberry morning",
@@ -965,6 +1004,7 @@ export const photoStyles: PhotoStyle[] = [
   },
   {
     id: "bakery-copper",
+    plate: "style",
     category: "bakery",
     group: "Bakery",
     name: "Golden on copper",

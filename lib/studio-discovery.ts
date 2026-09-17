@@ -60,7 +60,7 @@ export function studioLookPatch(
       : {
           surface: "As shown",
           lighting: "As shown",
-          plate: "keep",
+          plate: current.family === "Drinks" ? "keep" : style.plate || "keep",
           angle: "keep",
           composition: "Full dish",
         };
@@ -136,7 +136,7 @@ export function lookSummary(draft: Draft) {
 }
 
 // Describe the same effective choices that selecting a catalog look will apply.
-// Example photos may use different serving ware or angles; those are not defaults.
+// Only explicit food serving ware is applied; example camera angles are not defaults.
 export function lookExpectations(
   current: Draft,
   id: string,

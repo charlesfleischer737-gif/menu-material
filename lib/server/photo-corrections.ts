@@ -154,9 +154,13 @@ export async function photoCorrectionsRoute(req: Request, p: string[], r: Row) {
           requestKey: `food-correction:${rootId}`,
           candidateCount: 1,
           style: saved.style,
-          controls: { ...saved.controls, plate: "keep", angle: "keep" },
+          controls: {
+            ...saved.controls,
+            plate: saved.controls?.plate || "keep",
+            angle: "keep",
+          },
           editMode: "preserve",
-          revision: `Correct the reported ${row.reason} error. ${row.detail}. Reproduce the untouched source food, portion, serving vessel and branding faithfully. Retain the requested scene only where compatible with food accuracy.`,
+          revision: `Correct the reported ${row.reason} error. ${row.detail}. Reproduce the untouched source food and portion faithfully. Follow the saved serving-ware control and selected style for food; preserve original drink vessels and branding. Retain the requested scene only where compatible with food accuracy.`,
         },
         { correctionFor: rootId },
       );

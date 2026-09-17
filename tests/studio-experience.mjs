@@ -229,12 +229,36 @@ try {
     "keep",
   );
   assert.equal(studioLookPatch(draft, "studio-dark").photoStyleSnapshot, null);
+  for (const id of [
+    "delivery-takeout",
+    "delivery-paper",
+    "delivery-graphite",
+    "studio-chrome",
+    "bakery-rustic",
+    "fine-linen",
+  ]) {
+    assert.equal(
+      studioLookPatch(photoBrief(), id).plate,
+      "style",
+      `${id} must apply its explicit food serving ware to a plate upload`,
+    );
+    for (const plate of ["keep", "white"]) {
+      assert.equal(
+        studioLookPatch(
+          { ...photoBrief(), plate, studioOverrides: ["plate"] },
+          id,
+        ).plate,
+        plate,
+        `${id} must retain a deliberate serving-ware override`,
+      );
+    }
+  }
   for (const style of photoStyles) {
     const expectation = lookExpectations(photoBrief(), style.id);
     assert.equal(
       expectation.rows.find((row) => row.label === "Serving dish").value,
-      "Keep your serving dish",
-      `${style.id} must not imply that example ware is applied by default`,
+      style.plate === "style" ? "Follow this look" : "Keep your serving dish",
+      `${style.id} must describe its effective serving-ware choice`,
     );
     assert.equal(
       expectation.rows.find((row) => row.label === "Camera angle").value,
@@ -242,6 +266,18 @@ try {
       `${style.id} must not imply that an example angle is applied by default`,
     );
     assert.equal(expectation.angleChanged, false);
+    assert.equal(
+      studioLookPatch({ ...photoBrief(), family: "Drinks" }, style.id).plate,
+      "keep",
+      `${style.id} must not replace an uploaded drink's vessel by default`,
+    );
+    if (["bar", "beverage"].includes(style.category)) {
+      assert.equal(
+        studioLookPatch({ ...photoBrief(), plate: "style" }, style.id).plate,
+        "keep",
+        `${style.id} on food must preserve the food's original plate`,
+      );
+    }
   }
   const expectationDraft = structuredClone(draft);
   const expectation = lookExpectations(draft, "delivery-overhead");
@@ -296,7 +332,7 @@ try {
   assert.equal(
     illustrationExpectation.rows.find((row) => row.label === "Serving dish")
       .value,
-    "Choose a suitable vessel",
+    "Follow this look",
     "Description mode must not claim to preserve a supplied photo",
   );
   await call("studio-library", undefined, 401);
@@ -464,6 +500,7 @@ try {
   );
   form.set("dishId", dish.id);
   const asset = await call("assets", form, 201);
+  let correctionSourceId = "";
   for (const format of ["toast", "door"]) {
     const job = await call(
       "jobs",
@@ -472,7 +509,8 @@ try {
         sourceId: asset.id,
         requestKey: id(),
         candidateCount: 1,
-        controls: { format, plate: "keep" },
+        controls: { format, plate: format === "door" ? "style" : "keep" },
+        style: styleFor({ look: "delivery-takeout" }, {}),
       },
       202,
     );
@@ -483,13 +521,16 @@ try {
       details.controls.format,
       format === "door" ? "doordash" : "toast",
     );
+    if (format === "door") correctionSourceId = job.id;
   }
   const correctionState = await call("state");
   const { updateJob } = await import("../lib/server/generation.ts");
   const { restoreCorrectionCredit } =
     await import("../lib/server/correction-policy.ts");
   const { preferredPhoto } = await import("../lib/dish-library.ts");
-  const originalJob = correctionState.jobs[0],
+  const originalJob = correctionState.jobs.find(
+      (job) => job.id === correctionSourceId,
+    ),
     resultAsset = id();
   await run(
     "INSERT INTO assets (id,restaurant_id,dish_id,kind,key,mime,name,created_at,approved_at) VALUES (?,?,?,'generated',?,'image/jpeg','Result',?,?)",
@@ -538,7 +579,13 @@ try {
   assert.equal(correctionJob.source_id, asset.id);
   assert.equal(correctionJob.parent_id, null);
   assert(correctionJob.credit_period.startsWith("complimentary:"));
-  assert.equal(JSON.parse(correctionJob.details).controls.plate, "keep");
+  const correctedDetails = JSON.parse(correctionJob.details);
+  assert.equal(
+    correctedDetails.controls.plate,
+    "style",
+    "A food correction must not silently put a takeout meal back on its source plate",
+  );
+  assert.match(correctedDetails.style.photoStyle, /kraft takeout box/);
   const rejected = await one("SELECT * FROM assets WHERE id=?", resultAsset);
   assert.equal(rejected.needs_correction, 1);
   assert(
