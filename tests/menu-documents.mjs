@@ -347,6 +347,28 @@ try {
     null,
     "restoring history never publishes automatically",
   );
+  brunch = await call(`menus/${brunch.id}`);
+  brunch = await call(`menus/${brunch.id}/publish`, {
+    revision: brunch.revision,
+    confirmed: true,
+  });
+  dinner = await call(`menus/${firstId}/publish`, {
+    revision: legacyRestored.revision,
+    confirmed: true,
+  });
+  await call(`menus/${firstId}/primary`, { revision: dinner.revision });
+  await Promise.all([
+    call(`menus/${firstId}/publish`, {
+      revision: dinner.revision,
+      confirmed: true,
+    }),
+    call(`menus/${brunch.id}/primary`, { revision: brunch.revision }),
+  ]);
+  assert.equal(
+    (await call(`public/${slug}`)).menu.title,
+    "Brunch",
+    "publishing an old main menu preserves a newer concurrent main-menu choice",
+  );
   console.log(
     `${checks} menu document API checks passed: independent content, draft privacy, named publication, stable QR, revision conflicts, history, ownership, and reviewed AI suggestions.`,
   );

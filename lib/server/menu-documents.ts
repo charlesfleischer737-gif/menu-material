@@ -535,7 +535,6 @@ export async function menuDocumentsRoute(req: Request, p: string[], r: Row) {
       serialized = JSON.stringify(content),
       t = now(),
       hid = id();
-    const isPrimary = row.is_primary || !r.published;
     await db().batch([
       db()
         .prepare(
@@ -547,20 +546,17 @@ export async function menuDocumentsRoute(req: Request, p: string[], r: Row) {
           "INSERT INTO menu_publication_history (id,menu_id,restaurant_id,snapshot,revision,created_at) SELECT ?,id,restaurant_id,published,revision,? FROM menu_documents WHERE id=? AND published_at=? AND revision=?",
         )
         .bind(hid, t, row.id, t, b.revision),
-      ...(isPrimary
-        ? [
-            db()
-              .prepare(
-                "UPDATE menu_documents SET is_primary=CASE WHEN id=? THEN 1 ELSE 0 END WHERE restaurant_id=? AND EXISTS(SELECT 1 FROM menu_documents WHERE id=? AND published_at=? AND revision=?)",
-              )
-              .bind(row.id, r.id, row.id, t, b.revision),
-            db()
-              .prepare(
-                "UPDATE restaurants SET published=?,published_at=? WHERE id=? AND EXISTS(SELECT 1 FROM menu_documents WHERE id=? AND published_at=? AND revision=?)",
-              )
-              .bind(serialized, t, r.id, row.id, t, b.revision),
-          ]
-        : []),
+      // Resolve the main menu inside the transaction, after any concurrent choice.
+      db()
+        .prepare(
+          "UPDATE menu_documents SET is_primary=CASE WHEN id=? THEN 1 ELSE 0 END WHERE restaurant_id=? AND EXISTS(SELECT 1 FROM menu_documents WHERE id=? AND published_at=? AND revision=? AND (is_primary=1 OR (SELECT published FROM restaurants WHERE id=?) IS NULL))",
+        )
+        .bind(row.id, r.id, row.id, t, b.revision, r.id),
+      db()
+        .prepare(
+          "UPDATE restaurants SET published=?,published_at=? WHERE id=? AND EXISTS(SELECT 1 FROM menu_documents WHERE id=? AND published_at=? AND revision=? AND is_primary=1)",
+        )
+        .bind(serialized, t, r.id, row.id, t, b.revision),
     ]);
     assert(
       await one("SELECT id FROM menu_publication_history WHERE id=?", hid),

@@ -27,7 +27,7 @@ Examples use fictional restaurant content. They are layout proofs, not customer 
 
 | Check | Result |
 |---|---|
-| Menu API suite | 50 request checks passed, including migration, snapshot privacy, source-text privacy, tenant ownership, revision conflicts, stable QR routing, publication recovery, archival recovery, library usage, retired-client write protection, and preserving concise originals. |
+| Menu API suite | 57 request checks passed, including migration, snapshot privacy, source-text privacy, tenant ownership, revision conflicts, stable QR routing, publication recovery, archival recovery, library usage, retired-client write protection, and preserving concise originals. A concurrent publication/main-menu regression fails against the previous implementation and passes with transaction-time routing. |
 | Print fixture matrix | 42 compositions passed: seven styles × 12/30/60 dishes × Letter/A4. Every visible dish appears exactly once. Text bounds, measured text collisions, heading placement, and the readability floor are checked. |
 | Longer content | Seven additional design cases passed with long restaurant names, section names, dish names, and fixed-price labels. |
 | Production output | Crop-adjusted low-resolution warnings, 300-PPI raster dimensions, transparent logo alpha, continuous masthead bleed, trim/bleed dimensions, price variants, add-ons, page breaks, and unsupported-character diagnostics passed. |
