@@ -344,9 +344,6 @@ export default function HomepageStyleGallery() {
           {loadError}
         </p>
       )}
-      <p className="pw-style-disclosure">
-        AI-styled examples of the same dish.
-      </p>
     </section>
   );
 }

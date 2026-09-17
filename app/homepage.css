@@ -440,10 +440,6 @@
 .pw-gallery-controls {
   display: none;
 }
-.pw-use-case-intro .pw-output-disclosure {
-  margin-top: 6px;
-  font-size: 0.875rem;
-}
 .pw-output-stage {
   display: grid;
   place-items: center;
@@ -679,7 +675,7 @@
     gap: 8px;
   }
   .pw-gallery-controls {
-    justify-content: space-between;
+    justify-content: flex-end;
     margin-top: 16px;
     color: var(--pw-muted);
     font-size: 0.875rem;

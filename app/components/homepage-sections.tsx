@@ -157,9 +157,6 @@ export default function HomepageSections() {
               Better food photos for your menu, delivery listings, and social
               posts.
             </p>
-            <p className="pw-output-disclosure">
-              Example layouts · Sample dishes and prices
-            </p>
           </div>
         </div>
         <Carousel
@@ -191,7 +188,6 @@ export default function HomepageSections() {
             ))}
           </CarouselContent>
           <div className="pw-gallery-controls">
-            <span>Swipe to explore</span>
             <div>
               <CarouselPrevious aria-label="Previous use case" />
               <CarouselNext aria-label="Next use case" />
