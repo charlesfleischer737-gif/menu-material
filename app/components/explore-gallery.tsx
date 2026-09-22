@@ -97,10 +97,6 @@ export default function ExploreGallery({
                 decoding="async"
               />
             </span>
-            <span className="ex-tile-caption">
-              <strong>{style.name}</strong>
-              <span>{style.group}</span>
-            </span>
           </button>
         ))}
       </div>
