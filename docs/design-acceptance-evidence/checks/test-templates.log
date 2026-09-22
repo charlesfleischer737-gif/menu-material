@@ -1,0 +1,11 @@
+$ node --disable-warning=ExperimentalWarning --experimental-loader ./tests/runtime-loader.mjs tests/template-quality.mjs
+PASS: 48 new composition/export cases, all designs and paper profiles, phone-size type and Story safety, independent carousel framing, searchable PDFs, print trim/bleed, 60-dish pagination. Artifacts: /private/tmp/menu-workspace-export-qa
+PASS: 20 representative post proofs and 8 menu proofs, text collision checks, all four pagination strategies. Artifacts: /private/tmp/menu-template-art-direction
+PASS: four photograph-led menu proofs and real template default appearances
+PASS: ordinary 40-character customer headlines retain generous photography in Post and Story formats
+$ node --disable-warning=ExperimentalWarning --experimental-loader ./tests/runtime-loader.mjs tests/post-legibility.mjs
+{
+  "cases": 120,
+  "failures": [],
+  "root": "/private/tmp/post-legibility-acceptance"
+}

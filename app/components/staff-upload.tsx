@@ -1,5 +1,5 @@
 "use client";
-import { useEffect, useState } from "react";
+import { useCallback, useEffect, useRef, useState } from "react";
 import { Button } from "@/components/ui/button";
 import Brand from "./brand";
 import { api, normalizePhoto, type Row } from "@/lib/client";
@@ -11,16 +11,25 @@ export default function StaffUpload({ token }: { token: string }) {
     [busy, setBusy] = useState(false),
     [error, setError] = useState(""),
     [notice, setNotice] = useState("");
+  const photoInput = useRef<HTMLInputElement>(null);
+  const load = useCallback(
+    () =>
+      api("staff/" + token)
+        .then((next) => {
+          setData(next);
+          setError("");
+        })
+        .catch((e) => setError(e.message)),
+    [token],
+  );
   useEffect(() => {
-    void api("staff/" + token)
-      .then(setData)
-      .catch((e) => setError(e.message));
-  }, [token]);
+    void load();
+  }, [load]);
   return (
     <main className="staff-upload-page">
       <Brand />
       <section className="panel">
-        <p className="eyebrow">STAFF PHOTO DROP</p>
+        <p className="staff-context">Staff photos</p>
         <h1>{data?.name || "Dish photos"}</h1>
         <p className="muted">
           Send a photo to the owner for review. Frame the whole dish, use soft
@@ -30,6 +39,24 @@ export default function StaffUpload({ token }: { token: string }) {
           <p className="error" role="alert">
             {error}
           </p>
+        )}
+        {!data && !error && (
+          <div className="staff-loading" role="status">
+            Opening the photo drop…
+            <span aria-hidden="true" />
+            <span aria-hidden="true" />
+          </div>
+        )}
+        {!data && error && (
+          <Button
+            variant="outline"
+            onClick={() => {
+              setError("");
+              void load();
+            }}
+          >
+            Try opening again
+          </Button>
         )}
         {notice && (
           <p className="notice" role="status">
@@ -52,9 +79,14 @@ export default function StaffUpload({ token }: { token: string }) {
             <label className="field">
               Photo
               <input
+                ref={photoInput}
                 type="file"
                 accept="image/jpeg,image/png,image/heic,.heic"
-                onChange={(e) => setFile(e.target.files?.[0] || null)}
+                onChange={(e) => {
+                  setFile(e.target.files?.[0] || null);
+                  setNotice("");
+                  setError("");
+                }}
               />
             </label>
             <Button
@@ -76,6 +108,7 @@ export default function StaffUpload({ token }: { token: string }) {
                   await api("staff/" + token + "/upload", form);
                   setNotice("Photo sent for owner review. " + advice);
                   setFile(null);
+                  if (photoInput.current) photoInput.current.value = "";
                 } catch (e) {
                   setError((e as Error).message);
                 } finally {
@@ -85,6 +118,11 @@ export default function StaffUpload({ token }: { token: string }) {
             >
               {busy ? "Sending photo…" : "Send to owner"}
             </Button>
+            {(!dish || !file) && (
+              <p className="fine">
+                Choose a dish and a photo to send for review.
+              </p>
+            )}
             <p className="fine">
               Your photo is private. The owner decides whether to approve or
               publish it.

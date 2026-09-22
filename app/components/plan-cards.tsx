@@ -26,15 +26,17 @@ export default function PlanCards({
           <li>Photos for your existing menu and social channels</li>
           <li>No credit card required</li>
         </ul>
-        {onFree ? (
-          <button className="cx-btn secondary" disabled={busy} onClick={onFree}>
-            Continue free
-          </button>
-        ) : (
-          <Link className="cx-btn secondary" href="/#studio">
-            Try it free
-          </Link>
-        )}
+        <div className="pw-plan-action">
+          {onFree ? (
+            <button className="cx-btn" disabled={busy} onClick={onFree}>
+              Continue free
+            </button>
+          ) : (
+            <Link className="cx-btn" href="/#studio">
+              Try it free
+            </Link>
+          )}
+        </div>
       </article>
       <article className="pw-plan-card is-pro">
         <p className="pw-eyebrow">KEEP GOOD FOOD IN THE SPOTLIGHT</p>
@@ -52,26 +54,28 @@ export default function PlanCards({
           <li>Reuse approved photos in matching posts and Stories</li>
           <li>Cancel future renewals through billing</li>
         </ul>
-        {enabled ? (
-          onUpgrade ? (
-            <button className="cx-btn" disabled={busy} onClick={onUpgrade}>
-              {busy ? "Opening secure checkout…" : "Get Pro — $9.99/month"}
-            </button>
+        <div className="pw-plan-action">
+          {enabled ? (
+            onUpgrade ? (
+              <button className="cx-btn" disabled={busy} onClick={onUpgrade}>
+                {busy ? "Opening secure checkout…" : "Get Pro — $9.99/month"}
+              </button>
+            ) : (
+              <Link className="cx-btn" href="/?upgrade=1">
+                Get Pro — $9.99/month
+              </Link>
+            )
           ) : (
-            <Link className="cx-btn" href="/?upgrade=1">
-              Get Pro — $9.99/month
-            </Link>
-          )
-        ) : (
-          <>
-            <button className="cx-btn" disabled>
-              Pro is coming soon
-            </button>
-            <p className="fine">
-              Subscriptions aren’t open yet. Start with 5 free images today.
-            </p>
-          </>
-        )}
+            <>
+              <p className="fine">
+                Subscriptions aren’t open yet. Start with 5 free images today.
+              </p>
+              <button className="cx-btn" disabled>
+                Pro is coming soon
+              </button>
+            </>
+          )}
+        </div>
       </article>
     </div>
   );

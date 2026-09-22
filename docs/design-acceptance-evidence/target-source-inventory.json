@@ -1,0 +1,245 @@
+{
+  "note": "Static direct-icon-button inventory. Includes legacy components; excludes dynamic child expressions and compound controls. Rendered browser inventory remains necessary.",
+  "icons": [
+    {
+      "file": "app/components/explore-gallery.tsx",
+      "line": 54,
+      "named": true,
+      "openingTag": "<button\n              type=\"button\"\n              aria-label=\"Clear style search\"\n              onClick={() => {\n                setQuery(\"\");\n                searchInput.current?.focus();\n              }}\n            >"
+    },
+    {
+      "file": "app/components/explore-gallery.tsx",
+      "line": 194,
+      "named": true,
+      "openingTag": "<DialogClose\n                className=\"ex-close\"\n                aria-label=\"Close style details\"\n              >"
+    },
+    {
+      "file": "app/components/menu-builder.tsx",
+      "line": 748,
+      "named": true,
+      "openingTag": "<button\n                          className=\"cx-link\"\n                          aria-label={`Move ${section} section earlier`}\n                          disabled={!sectionIndex}\n                          onClick={() => moveSection(section, -1)}\n                        >"
+    },
+    {
+      "file": "app/components/menu-builder.tsx",
+      "line": 756,
+      "named": true,
+      "openingTag": "<button\n                          className=\"cx-link\"\n                          aria-label={`Move ${section} section later`}\n                          disabled={sectionIndex === sections.length - 1}\n                          onClick={() => moveSection(section, 1)}\n                        >"
+    },
+    {
+      "file": "app/components/menu-builder.tsx",
+      "line": 803,
+      "named": true,
+      "openingTag": "<button\n                        className=\"cx-link\"\n                        aria-label=\"Move dish up\"\n                        disabled={\n                          !rows\n                            .slice(0, selectedIndex)\n                            .some((r) => r.category === row.category)\n                        }\n                        onClick={() => move(selectedIndex, -1)}\n                      >"
+    },
+    {
+      "file": "app/components/menu-builder.tsx",
+      "line": 815,
+      "named": true,
+      "openingTag": "<button\n                        className=\"cx-link\"\n                        aria-label=\"Move dish down\"\n                        disabled={\n                          !rows\n                            .slice(selectedIndex + 1)\n                            .some((r) => r.category === row.category)\n                        }\n                        onClick={() => move(selectedIndex, 1)}\n                      >"
+    },
+    {
+      "file": "app/components/menu-proof.tsx",
+      "line": 239,
+      "named": true,
+      "openingTag": "<button\n            aria-label=\"Previous page\"\n            disabled={page <= 1}\n            onClick={() => setPage((p) => p - 1)}\n          >"
+    },
+    {
+      "file": "app/components/menu-proof.tsx",
+      "line": 247,
+      "named": true,
+      "openingTag": "<button\n            aria-label=\"Next page\"\n            disabled={!result || page >= result.pages}\n            onClick={() => setPage((p) => p + 1)}\n          >"
+    },
+    {
+      "file": "app/components/menu-proof.tsx",
+      "line": 263,
+      "named": true,
+      "openingTag": "<button\n            aria-label=\"Zoom out\"\n            disabled={effectiveZoom <= 25}\n            onClick={() => changeZoom(-20)}\n          >"
+    },
+    {
+      "file": "app/components/menu-proof.tsx",
+      "line": 294,
+      "named": true,
+      "openingTag": "<button\n            aria-label=\"Zoom in\"\n            disabled={effectiveZoom >= 200}\n            onClick={() => changeZoom(20)}\n          >"
+    },
+    {
+      "file": "app/components/menu-studio-controls.tsx",
+      "line": 88,
+      "named": true,
+      "openingTag": "<button className=\"md-icon\" aria-label=\"Close dialog\" onClick={close}>"
+    },
+    {
+      "file": "app/components/menu-studio-controls.tsx",
+      "line": 245,
+      "named": true,
+      "openingTag": "<button\n            className=\"md-icon\"\n            aria-label={`Remove ${kind === \"variants\" ? \"option\" : \"add-on\"} ${index + 1}${v.label ? `: ${v.label}` : \"\"}`}\n            onClick={() => change(values.filter((o) => o.id !== v.id))}\n          >"
+    },
+    {
+      "file": "app/components/menu-studio-controls.tsx",
+      "line": 315,
+      "named": true,
+      "openingTag": "<button\n            className=\"md-icon\"\n            aria-label={`Move ${item.name || \"untitled dish\"} earlier`}\n            disabled={index === 0}\n            onClick={() => reorder(-1)}\n          >"
+    },
+    {
+      "file": "app/components/menu-studio-controls.tsx",
+      "line": 323,
+      "named": true,
+      "openingTag": "<button\n            className=\"md-icon\"\n            aria-label={`Move ${item.name || \"untitled dish\"} later`}\n            disabled={index === section.items.length - 1}\n            onClick={() => reorder(1)}\n          >"
+    },
+    {
+      "file": "app/components/menu-studio-controls.tsx",
+      "line": 667,
+      "named": true,
+      "openingTag": "<button\n            className=\"md-icon\"\n            aria-label={`Move ${section.name || \"untitled section\"} earlier`}\n            disabled={!index}\n            onClick={() => reorder(-1)}\n          >"
+    },
+    {
+      "file": "app/components/menu-studio-controls.tsx",
+      "line": 675,
+      "named": true,
+      "openingTag": "<button\n            className=\"md-icon\"\n            aria-label={`Move ${section.name || \"untitled section\"} later`}\n            disabled={index === count - 1}\n            onClick={() => reorder(1)}\n          >"
+    },
+    {
+      "file": "app/components/menu-studio.tsx",
+      "line": 416,
+      "named": true,
+      "openingTag": "<button\n                  className=\"md-icon md-more-actions\"\n                  aria-label=\"More menu actions\"\n                >"
+    },
+    {
+      "file": "app/components/menu-studio.tsx",
+      "line": 451,
+      "named": true,
+      "openingTag": "<button\n                className=\"md-icon\"\n                aria-label=\"Undo menu change\"\n                title=\"Undo\"\n                disabled={!store.canUndo || !!busy}\n                onClick={store.undo}\n              >"
+    },
+    {
+      "file": "app/components/menu-studio.tsx",
+      "line": 460,
+      "named": true,
+      "openingTag": "<button\n                className=\"md-icon\"\n                aria-label=\"Redo menu change\"\n                title=\"Redo\"\n                disabled={!store.canRedo || !!busy}\n                onClick={store.redo}\n              >"
+    },
+    {
+      "file": "app/components/menu-studio.tsx",
+      "line": 520,
+      "named": true,
+      "openingTag": "<button\n                className=\"md-icon\"\n                aria-label=\"Dismiss error\"\n                onClick={() => setError(\"\")}\n              >"
+    },
+    {
+      "file": "app/components/photo-adjustment-sheet.tsx",
+      "line": 118,
+      "named": true,
+      "openingTag": "<button\n            className=\"ps2-icon-button\"\n            aria-label=\"Cancel adjustments\"\n            disabled={busy}\n            onClick={() => onOpenChange(false)}\n          >"
+    },
+    {
+      "file": "app/components/photo-batch-sheet.tsx",
+      "line": 198,
+      "named": true,
+      "openingTag": "<button\n            className=\"ps2-icon-button\"\n            aria-label=\"Close photo set\"\n            disabled={busy}\n            onClick={onClose}\n          >"
+    },
+    {
+      "file": "app/components/photo-correction-sheet.tsx",
+      "line": 113,
+      "named": true,
+      "openingTag": "<button\n            className=\"ps2-icon-button\"\n            aria-label=\"Close food correction\"\n            disabled={busy}\n            onClick={onClose}\n          >"
+    },
+    {
+      "file": "app/components/photo-finish-sheet.tsx",
+      "line": 234,
+      "named": true,
+      "openingTag": "<button\n            className=\"ps2-icon-button\"\n            disabled={busy}\n            aria-label=\"Close download\"\n            onClick={() => onOpenChange(false)}\n          >"
+    },
+    {
+      "file": "app/components/photo-inspiration-sheet.tsx",
+      "line": 179,
+      "named": true,
+      "openingTag": "<button\n            className=\"ps2-icon-button\"\n            aria-label=\"Cancel inspiration\"\n            disabled={locked.current}\n            onClick={() => onOpenChange(false)}\n          >"
+    },
+    {
+      "file": "app/components/plateworthy-landing.tsx",
+      "line": 85,
+      "named": true,
+      "openingTag": "<button\n                className=\"pw-mobile-menu-trigger\"\n                aria-label=\"Open navigation\"\n              >"
+    },
+    {
+      "file": "app/components/post-maker.tsx",
+      "line": 581,
+      "named": true,
+      "openingTag": "<button\n                                className=\"cx-link cx-icon\"\n                                aria-label={`Move ${i.name} earlier`}\n                                disabled={!index}\n                                onClick={() => {\n                                  const next = [...items];\n                                  [next[index - 1], next[index]] = [\n                                    next[index],\n                                    next[index - 1],\n                                  ];\n                                  update({ items: next });\n                                }}\n                              >"
+    },
+    {
+      "file": "app/components/post-maker.tsx",
+      "line": 596,
+      "named": true,
+      "openingTag": "<button\n                                className=\"cx-link cx-icon\"\n                                aria-label={`Move ${i.name} later`}\n                                disabled={index === items.length - 1}\n                                onClick={() => {\n                                  const next = [...items];\n                                  [next[index + 1], next[index]] = [\n                                    next[index],\n                                    next[index + 1],\n                                  ];\n                                  update({ items: next });\n                                }}\n                              >"
+    },
+    {
+      "file": "app/components/post-maker.tsx",
+      "line": 611,
+      "named": true,
+      "openingTag": "<button\n                                className=\"cx-link cx-icon cx-danger\"\n                                aria-label={`Remove ${i.name}`}\n                                onClick={() =>\n                                  update({\n                                    items: items.filter((_, n) => n !== index),\n                                  })\n                                }\n                              >"
+    },
+    {
+      "file": "app/components/restaurant-settings.tsx",
+      "line": 161,
+      "named": true,
+      "openingTag": "<button\n              className=\"cx-icon\"\n              aria-label=\"Close restaurant settings\"\n              disabled={working}\n              onClick={requestClose}\n            >"
+    },
+    {
+      "file": "app/components/save-photo-look-sheet.tsx",
+      "line": 75,
+      "named": true,
+      "openingTag": "<button\n            className=\"ps2-icon-button\"\n            disabled={store.busy}\n            aria-label=\"Close saved look\"\n            onClick={onClose}\n          >"
+    },
+    {
+      "file": "app/components/studio-saved-looks.tsx",
+      "line": 120,
+      "named": true,
+      "openingTag": "<button\n              className=\"ps2-icon-button\"\n              aria-label={`${library.favorites.includes(look.id) ? \"Remove\" : \"Add\"} ${look.name} ${library.favorites.includes(look.id) ? \"from\" : \"to\"} favorites`}\n              aria-pressed={library.favorites.includes(look.id)}\n              disabled={busy}\n              onClick={() => void store.favorite(look.id)}\n            >"
+    },
+    {
+      "file": "app/components/studio-saved-looks.tsx",
+      "line": 243,
+      "named": true,
+      "openingTag": "<button\n                      className=\"ps2-icon-button\"\n                      aria-label={`Use saved look ${look.name}`}\n                      disabled={unavailable(look)}\n                      onClick={() => apply(look)}\n                    >"
+    },
+    {
+      "file": "app/components/studio-workbench.tsx",
+      "line": 1173,
+      "named": true,
+      "openingTag": "<button\n              className=\"ps2-icon-button\"\n              aria-label=\"Close style browser\"\n              onClick={() => setBrowserOpen(false)}\n            >"
+    },
+    {
+      "file": "app/components/studio-workbench.tsx",
+      "line": 1380,
+      "named": true,
+      "openingTag": "<button\n                            aria-label=\"Clear search\"\n                            onClick={() => {\n                              changeQuery(\"\");\n                              searchInput.current?.focus();\n                            }}\n                          >"
+    },
+    {
+      "file": "app/components/studio-workbench.tsx",
+      "line": 1568,
+      "named": true,
+      "openingTag": "<button\n                                className=\"ps2-favorite\"\n                                aria-label={`${saved.library.favorites.includes(style.id) ? \"Remove\" : \"Add\"} ${style.name} ${saved.library.favorites.includes(style.id) ? \"from\" : \"to\"} favorites`}\n                                aria-pressed={saved.library.favorites.includes(\n                                  style.id,\n                                )}\n                                disabled={saved.busy || !saved.ready}\n                                onClick={() => void saved.favorite(style.id)}\n                              >"
+    },
+    {
+      "file": "app/components/studio-workbench.tsx",
+      "line": 1678,
+      "named": true,
+      "openingTag": "<button\n              className=\"ps2-icon-button\"\n              aria-label=\"Cancel customization\"\n              onClick={() => setCustomOpen(false)}\n            >"
+    },
+    {
+      "file": "app/components/studio-workbench.tsx",
+      "line": 2055,
+      "named": true,
+      "openingTag": "<button\n              className=\"ps2-icon-button\"\n              aria-label=\"Cancel saving look\"\n              onClick={() => setSaveOpen(false)}\n            >"
+    },
+    {
+      "file": "app/components/studio-workbench.tsx",
+      "line": 2134,
+      "named": true,
+      "openingTag": "<button\n              className=\"ps2-icon-button\"\n              aria-label=\"Close My Dishes\"\n              onClick={() => setLibraryOpen(false)}\n            >"
+    },
+    {
+      "file": "app/components/workspace-controls.tsx",
+      "line": 106,
+      "named": true,
+      "openingTag": "<SheetClose aria-label={`Close ${title.toLowerCase()}`}>"
+    }
+  ]
+}

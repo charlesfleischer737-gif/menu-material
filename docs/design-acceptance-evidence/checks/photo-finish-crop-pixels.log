@@ -1,0 +1,1 @@
+Photo preview: 48 pre-change pixel cases match in both export and cached preview; bounded image-layer reuse and cleanup passed.

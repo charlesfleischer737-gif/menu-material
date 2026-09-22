@@ -1,0 +1,49 @@
+{
+  "date": "2026-09-17",
+  "candidate": "working tree based on 657a2c6; run before final editor-tab and legacy-navigation refinements",
+  "method": "Package scripts expanded and executed using the bundled Node 24.19 runtime; bundled runtime has no npm CLI. The same test entry points and arguments ran in script order, including test:studio once.",
+  "results": [
+    {
+      "name": "typecheck",
+      "exitCode": 0,
+      "durationMs": 2080,
+      "log": "checks/typecheck.log",
+      "tail": "$ node node_modules/typescript/bin/tsc --noEmit\n"
+    },
+    {
+      "name": "test",
+      "exitCode": 0,
+      "durationMs": 4643,
+      "log": "checks/test.log",
+      "tail": "    at Object.batch (file:///Users/charlesfleischer/Documents/ChatGPT/AI%20Restaurant%20Project/lib/local-runtime.ts:65:55)\n    at enqueue (file:///Users/charlesfleischer/Documents/ChatGPT/AI%20Restaurant%20Project/lib/server/generation.ts:235:20)\n    at async handle (file:///Users/charlesfleischer/Documents/ChatGPT/AI%20Restaurant%20Project/lib/server/api.ts:765:25)\n    at async call (file:///Users/charlesfleischer/Documents/ChatGPT/AI%20Restaurant%20Project/tests/studio-recents.mjs:27:20)\n    at async file:///Users/charlesfleischer/Documents/ChatGPT/AI%20Restaurant%20Project/tests/studio-recents.mjs:383:3 {\n  code: 'ERR_SQLITE_ERROR',\n  errcode: 1811,\n  errstr: 'constraint failed'\n}\n$ node --disable-warning=ExperimentalWarning --experimental-loader ./tests/runtime-loader.mjs tests/studio-references.mjs\nStudio references: 54 API checks; full-reference readiness, unavailable/storage recovery, ownership, pre-reservation checks, queue races, replay and cached reuse passed. No provider calls.\nGeneration recovery 9d105b04-5499-4cf9-b4f6-8a11986a4cc4 An inspiration photo is unavailable. Replace your inspiration or choose another look.\nGeneration recovery 0c031032-d34f-431c-bae3-0b288a60af08 An inspiration photo is unavailable. Replace your inspiration or choose another look.\n"
+    },
+    {
+      "name": "test:menus",
+      "exitCode": 0,
+      "durationMs": 18094,
+      "log": "checks/test-menus.log",
+      "tail": "    \"items\": 5,\n    \"pages\": 1,\n    \"warnings\": []\n  },\n  {\n    \"purpose\": \"tasting\",\n    \"paper\": \"a4\",\n    \"items\": 5,\n    \"pages\": 1,\n    \"warnings\": []\n  }\n]\nPurpose-specific menu proofs passed: content, prices, text bounds, collisions, readable type, and actual PDF page counts. Artifacts: /private/tmp/menu-purpose-quality\n"
+    },
+    {
+      "name": "test:exports",
+      "exitCode": 0,
+      "durationMs": 24912,
+      "log": "checks/test-exports.log",
+      "tail": "$ node --disable-warning=ExperimentalWarning --experimental-loader ./tests/runtime-loader.mjs tests/exports.mjs\nPASS: 128 exported PDF/image checks, embedded-text prices, US Letter/A4, all ten new post templates and legacy draft mappings, independent feed/story dimensions, carousel ZIP and clean delivery JPEG. Artifacts: /private/tmp/plated-export-qa\n"
+    },
+    {
+      "name": "test:templates",
+      "exitCode": 0,
+      "durationMs": 85170,
+      "log": "checks/test-templates.log",
+      "tail": "$ node --disable-warning=ExperimentalWarning --experimental-loader ./tests/runtime-loader.mjs tests/template-quality.mjs\nPASS: 48 new composition/export cases, all designs and paper profiles, phone-size type and Story safety, independent carousel framing, searchable PDFs, print trim/bleed, 60-dish pagination. Artifacts: /private/tmp/menu-workspace-export-qa\nPASS: 20 representative post proofs and 8 menu proofs, text collision checks, all four pagination strategies. Artifacts: /private/tmp/menu-template-art-direction\nPASS: four photograph-led menu proofs and real template default appearances\nPASS: ordinary 40-character customer headlines retain generous photography in Post and Story formats\n$ node --disable-warning=ExperimentalWarning --experimental-loader ./tests/runtime-loader.mjs tests/post-legibility.mjs\n{\n  \"cases\": 120,\n  \"failures\": [],\n  \"root\": \"/private/tmp/post-legibility-acceptance\"\n}\n"
+    },
+    {
+      "name": "test:photo-preview",
+      "exitCode": 0,
+      "durationMs": 635,
+      "log": "checks/test-photo-preview.log",
+      "tail": "$ node --disable-warning=ExperimentalWarning --experimental-loader ./tests/runtime-loader.mjs tests/photo-preview.mjs\nPhoto preview: 48 pre-change pixel cases match in both export and cached preview; bounded image-layer reuse and cleanup passed.\n"
+    }
+  ]
+}

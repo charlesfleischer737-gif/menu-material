@@ -6,12 +6,12 @@
 }
 .md-studio,
 .md-dialog {
-  --md-ui-ink: #263b30;
-  --md-ui-muted: #667268;
-  --md-ui-border: #dfe4dc;
-  --md-ui-bg: #fafbf8;
+  --md-ui-ink: var(--workspace-ink);
+  --md-ui-muted: var(--workspace-muted);
+  --md-ui-border: var(--workspace-line);
+  --md-ui-bg: var(--workspace-canvas);
   color: var(--md-ui-ink);
-  font-family: "Post Sans", Arial, sans-serif;
+  font-family: var(--font-ui);
   font-size: 14px;
   line-height: 1.5;
 }
@@ -43,7 +43,8 @@
 }
 .md-studio button:disabled,
 .md-dialog button:disabled {
-  opacity: 0.45;
+  opacity: 1;
+  color: var(--workspace-muted);
   cursor: not-allowed;
 }
 .md-studio button:focus-visible,
@@ -52,7 +53,7 @@
 .md-dialog a:focus-visible,
 .md-guest a:focus-visible,
 .md-guest button:focus-visible {
-  outline: 3px solid #678b5b;
+  outline: 2px solid var(--workspace-focus);
   outline-offset: 3px;
 }
 .md-studio input,
@@ -117,18 +118,17 @@
   gap: 12px;
   align-items: center;
   border: 0;
-  padding: 3px 0;
+  padding: 0;
   background: transparent;
   text-align: left;
   max-width: 100%;
 }
 .md-document-picker h1 {
-  font-size: 26px;
+  font-size: 30px;
   letter-spacing: -0.9px;
   font-weight: 650;
-  overflow: hidden;
-  text-overflow: ellipsis;
-  white-space: nowrap;
+  overflow-wrap: anywhere;
+  white-space: normal;
 }
 .md-save-status {
   font-size: 13px;
@@ -158,36 +158,48 @@
   align-items: center;
   justify-content: center;
   gap: 8px;
-  min-height: 39px;
-  border: 1px solid #294b35;
-  border-radius: 7px;
-  background: #294b35;
+  min-height: 44px;
+  border: 1px solid var(--workspace-action);
+  border-radius: 8px;
+  background: var(--workspace-action);
   color: #fff !important;
-  padding: 9px 15px;
+  padding: 10px 16px;
   font-size: 14px !important;
-  font-weight: 650 !important;
-  line-height: 1.35;
+  font-weight: 600 !important;
+  line-height: 1.4;
   text-decoration: none;
   transition:
     background 0.15s,
     border-color 0.15s;
 }
 .md-button:hover:not(:disabled) {
-  background: #1d3d28;
+  background: var(--workspace-action-hover);
+}
+.md-button:active:not(:disabled) {
+  background: var(--workspace-action-pressed);
 }
 .md-button.md-secondary {
   background: #fff;
-  color: #354936 !important;
-  border-color: #d5ddcf;
+  color: var(--workspace-ink) !important;
+  border-color: var(--workspace-control);
 }
 .md-button.md-secondary:hover:not(:disabled) {
-  background: #f0f4ea;
-  border-color: #a9ba9f;
+  background: var(--workspace-canvas);
+  border-color: var(--workspace-control);
+}
+.md-button.md-secondary:active:not(:disabled) {
+  background: var(--workspace-selected);
+}
+.md-studio .md-button:disabled,
+.md-dialog .md-button:disabled {
+  color: var(--workspace-muted) !important;
+  background: var(--workspace-disabled);
+  border-color: var(--workspace-line);
 }
 .md-button.md-small {
   padding: 7px 10px;
-  min-height: 32px;
-  font-size: 13px !important;
+  min-height: 44px;
+  font-size: 14px !important;
 }
 .md-button.md-full {
   width: 100%;
@@ -198,11 +210,11 @@
   justify-content: center;
   padding: 6px;
   border: 0;
-  border-radius: 5px;
+  border-radius: 8px;
   background: transparent;
-  color: #697766;
-  min-height: 32px;
-  min-width: 32px;
+  color: var(--workspace-muted);
+  min-height: 44px;
+  min-width: 44px;
 }
 .md-icon:hover:not(:disabled) {
   background: #edf1e7;
@@ -304,11 +316,11 @@
 }
 .md-outline {
   align-self: stretch;
-  border-right: 1px solid #dfe4d9;
+  border-right: 1px solid var(--workspace-line);
   display: flex;
   flex-direction: column;
   min-width: 0;
-  background: #fbfcf9;
+  background: var(--workspace-surface);
 }
 .md-outline-heading {
   display: flex;
@@ -355,7 +367,7 @@
   background: transparent;
   text-align: left;
   color: #56604c;
-  font-size: 12px !important;
+  font-size: 14px !important;
   letter-spacing: 0.7px;
   text-transform: uppercase;
   font-weight: 750 !important;
@@ -422,13 +434,15 @@
   align-items: center;
   border: 0;
   background: none;
-  color: #899c78;
-  font-size: 12px !important;
+  color: var(--workspace-action);
+  font-size: 14px !important;
+  min-height: 44px;
   padding: 7px 8px;
   margin-top: 2px;
 }
 .md-outline-add:hover {
-  color: #3e6937;
+  color: var(--workspace-action-hover);
+  text-decoration: underline;
 }
 .md-outline-bottom {
   display: grid;
@@ -438,15 +452,15 @@
   border-top: 1px solid #e5e9df;
 }
 .md-outline-bottom .md-text-button {
-  font-size: 12px !important;
+  font-size: 14px !important;
 }
 .md-outline-bottom .md-button {
-  font-size: 13px !important;
+  font-size: 14px !important;
 }
 .md-stage {
   min-width: 0;
   align-self: stretch;
-  background: #eaece4;
+  background: var(--workspace-stage);
   display: flex;
   flex-direction: column;
 }
@@ -612,13 +626,14 @@
 }
 .md-proof-hit:hover,
 .md-proof-hit:focus-visible {
-  background: #a7b58315;
-  border-color: #718b5466;
+  background: color-mix(in srgb, var(--workspace-action) 6%, transparent);
+  border-color: var(--workspace-action);
+  box-shadow: 0 0 0 2px var(--workspace-surface);
 }
 .md-proof-hit.is-selected {
-  border-color: #859d69;
-  background: #acc39413;
-  box-shadow: 0 0 0 2px #fff7;
+  border-color: var(--workspace-action);
+  background: color-mix(in srgb, var(--workspace-action) 6%, transparent);
+  box-shadow: 0 0 0 2px var(--workspace-surface);
 }
 .md-page-thumbnails {
   display: flex;
@@ -907,7 +922,7 @@
   margin: 11px 0 22px;
 }
 .md-inspector-welcome .md-text-button {
-  font-size: 12px !important;
+  font-size: 14px !important;
   margin-top: 12px;
 }
 .md-review-callout {
@@ -3101,7 +3116,7 @@
 .md-field input,
 .md-field textarea,
 .md-field select {
-  font-size: 14px !important;
+  font-size: 16px !important;
 }
 .md-studio .md-help,
 .md-dialog .md-help {
@@ -3111,7 +3126,7 @@
   grid-template-columns: 210px minmax(270px, 1fr) 290px;
 }
 .md-studio {
-  padding: 15px 0 30px;
+  padding: 0 0 32px;
 }
 .md-outline-item > small {
   font-size: 12px;
@@ -3123,7 +3138,7 @@
   padding-inline: 12px;
 }
 .md-inspector-tabs button {
-  font-size: 13px !important;
+  font-size: 14px !important;
 }
 .md-outline-sections {
   max-height: 780px;
@@ -3148,15 +3163,55 @@
     font-size: 13px !important;
   }
   .md-document-picker h1 {
-    font-size: 24px;
+    font-size: 30px;
   }
 }
 @media (max-width: 1100px) {
   .md-workspace {
-    grid-template-columns: 190px minmax(0, 1fr);
+    display: block;
   }
-  .md-inspector {
-    grid-column: 1/-1;
+  .md-workspace > :is(.md-outline, .md-stage, .md-inspector) {
+    display: none;
+  }
+  .md-mobile-preview .md-stage,
+  .md-mobile-details .md-inspector {
+    display: block;
+    border: 0;
+  }
+  .md-mobile-outline .md-outline {
+    display: flex;
+    border: 0;
+  }
+  .md-mobile-nav {
+    display: flex;
+    gap: 4px;
+    padding: 4px;
+    margin-bottom: 16px;
+    background: var(--workspace-stage);
+    border-radius: 8px;
+  }
+  .md-mobile-nav button {
+    display: flex;
+    flex: 1;
+    align-items: center;
+    justify-content: center;
+    gap: 8px;
+    min-height: 44px;
+    border: 0;
+    border-radius: 6px;
+    background: transparent;
+    color: var(--workspace-muted);
+    font-size: 14px;
+  }
+  .md-mobile-nav button[aria-pressed="true"] {
+    background: var(--workspace-surface);
+    color: var(--workspace-ink);
+    font-weight: 650;
+    box-shadow: 0 1px 3px rgb(20 38 30 / 10%);
+  }
+  .md-inspector-content {
+    max-width: none;
+    max-height: none;
   }
   .md-header-actions {
     gap: 5px;
@@ -3168,7 +3223,36 @@
     font-size: 16px;
   }
 }
+.md-inspector {
+  scroll-margin-top: 16px;
+}
+.md-inspector:focus {
+  outline: none;
+}
+.md-focus-preview .md-workspace {
+  grid-template-columns: minmax(0, 1fr);
+}
+.md-focus-preview .md-workspace > :is(.md-outline, .md-inspector),
+.md-focus-preview .md-mobile-nav {
+  display: none;
+}
+.md-focus-preview .md-stage {
+  display: block;
+}
+.md-focus-toggle {
+  min-height: 44px;
+}
 @media (max-width: 740px) {
+  .md-inspector {
+    scroll-margin-top: 128px;
+  }
+  .md-focus-toggle {
+    min-width: 44px;
+    justify-content: center;
+  }
+  .md-focus-toggle span {
+    display: none;
+  }
   .md-studio {
     padding: 12px 0 24px;
   }
@@ -3385,4 +3469,105 @@
 .menu-document-switcher a[aria-current="page"] {
   text-decoration: underline;
   text-underline-offset: 4px;
+}
+
+/* Guest navigation stays compact while inheriting the restaurant's palette. */
+.customer-menu-switcher {
+  display: block;
+  min-width: 0;
+  border: 0;
+  padding: 0;
+  margin: 0 0 16px;
+  font:
+    16px/1.5 "Post Sans",
+    sans-serif;
+}
+.customer-menu-switcher label {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  min-width: 0;
+}
+.customer-menu-switcher label > span {
+  font-size: 14px;
+  flex: 0 0 auto;
+}
+.customer-menu-switcher select {
+  min-width: 0;
+  width: 100%;
+  min-height: 44px;
+  padding: 8px 12px;
+  border: 1px solid currentColor;
+  border-radius: 8px;
+  background: var(--md-paper, var(--card));
+  color: var(--md-ink, var(--foreground));
+  font: inherit;
+}
+.customer-menu-switcher select:focus-visible {
+  outline: 2px solid currentColor;
+  outline-offset: 3px;
+}
+.customer-menu-switcher.menu-document-switcher {
+  margin: 16px 26px;
+  padding: 0;
+  gap: 0;
+}
+.md-guest-nav {
+  gap: 8px;
+  margin-bottom: 16px;
+}
+.md-guest-nav > .md-section-navigation {
+  display: flex;
+  align-items: flex-start;
+  gap: 8px;
+  overflow: visible;
+  padding: 0;
+  min-width: 0;
+}
+.md-section-links {
+  display: flex;
+  flex: 1;
+  min-width: 0;
+  gap: 8px;
+  overflow-x: auto;
+  overscroll-behavior-x: contain;
+  scrollbar-width: thin;
+  padding: 4px 3px;
+  margin: -4px -3px;
+}
+.md-guest-nav button {
+  border-radius: 8px;
+  color: var(--md-ink);
+}
+.md-section-links button[aria-current="location"] {
+  font-weight: 700;
+  border-color: currentColor;
+  text-decoration: underline;
+  text-underline-offset: 4px;
+}
+.md-guest-nav .md-sections-more {
+  display: inline-flex;
+  flex: 0 0 44px;
+  align-items: center;
+  justify-content: center;
+  width: 44px;
+  height: 44px;
+  padding: 0;
+  border-color: currentColor;
+}
+@media (max-width: 740px) {
+  main.md-guest {
+    padding: 24px 20px;
+  }
+  main.md-guest .md-guest-header {
+    margin-bottom: 16px;
+    padding-bottom: 16px;
+  }
+  main.md-guest .md-guest-title {
+    margin-top: 8px;
+  }
+  main.md-design-casual .md-guest-header {
+    margin: -24px -20px 16px;
+    padding: 24px 20px 16px;
+  }
 }

@@ -8,7 +8,11 @@ import {
   DialogTitle,
   DialogDescription,
 } from "@/components/ui/dialog";
-import { Tabs, TabsList, TabsTrigger } from "@/components/ui/tabs";
+import {
+  Collapsible,
+  CollapsibleContent,
+  CollapsibleTrigger,
+} from "@/components/ui/collapsible";
 import { api } from "@/lib/client";
 import Brand from "./brand";
 export default function Auth({
@@ -18,6 +22,7 @@ export default function Auth({
   ownerSetup,
   onDone,
   initialMode = "login",
+  billingEnabled = false,
 }: {
   open: boolean;
   setOpen: (v: boolean) => void;
@@ -25,6 +30,7 @@ export default function Auth({
   ownerSetup: boolean;
   onDone: () => Promise<void>;
   initialMode?: "login" | "signup";
+  billingEnabled?: boolean;
 }) {
   const [mode, setMode] = useState("login"),
     [email, setEmail] = useState(""),
@@ -83,7 +89,19 @@ export default function Auth({
         if (!busy) setOpen(v);
       }}
     >
-      <DialogContent className="auth-dialog">
+      <DialogContent
+        className="auth-dialog"
+        closeDisabled={busy}
+        fallbackFocus={() =>
+          // A menu item can disappear, or its phone trigger can be hidden
+          // after resizing. Return to the available sign-in navigation.
+          [
+            ...document.querySelectorAll<HTMLElement>(
+              ".pw-homepage .pw-login, .pw-homepage .pw-mobile-menu-trigger",
+            ),
+          ].find((element) => element.getClientRects().length) || null
+        }
+      >
         <Brand />
         <DialogHeader>
           <DialogTitle>
@@ -91,29 +109,40 @@ export default function Auth({
               ? "Welcome back."
               : resetting
                 ? "Choose a new password."
-                : "Your first 5 images are on us."}
+                : "Start with 5 free images."}
           </DialogTitle>
           <DialogDescription>
             {mode === "login"
               ? "Sign in to your restaurant workspace."
               : resetting
                 ? "Restore access with your secure reset link. Your previous sign-ins will be closed."
-                : "Create your free account to generate your image. Your photo and selected look stay ready. No credit card needed."}
+                : "Your photo and selected look stay ready. No credit card needed."}
           </DialogDescription>
         </DialogHeader>
         {!resetting && (
-          <Tabs
-            value={mode}
-            onValueChange={(value) => {
-              setMode(value);
-              setError("");
-            }}
+          <div
+            className="workspace-segments auth-mode-choice"
+            role="group"
+            aria-label="Account access"
           >
-            <TabsList className="mode-tabs">
-              <TabsTrigger value="signup">Create account</TabsTrigger>
-              <TabsTrigger value="login">Sign in</TabsTrigger>
-            </TabsList>
-          </Tabs>
+            {[
+              { value: "signup", label: "Create account" },
+              { value: "login", label: "Sign in" },
+            ].map((option) => (
+              <button
+                key={option.value}
+                type="button"
+                disabled={busy}
+                aria-pressed={mode === option.value}
+                onClick={() => {
+                  setMode(option.value);
+                  setError("");
+                }}
+              >
+                {option.label}
+              </button>
+            ))}
+          </div>
         )}
         {ownerSetup && !invite && (
           <Button
@@ -137,22 +166,12 @@ export default function Auth({
           </Button>
         )}
         <form onSubmit={submit}>
-          {mode === "signup" && !resetting && (
-            <label className="field">
-              Restaurant name <small>Optional—you can add it later.</small>
-              <input
-                maxLength={100}
-                value={restaurant}
-                onChange={(e) => setRestaurant(e.target.value)}
-                autoComplete="organization"
-              />
-            </label>
-          )}
           <label className="field">
             Email address
             <input
               required
               type="email"
+              disabled={busy}
               maxLength={254}
               value={email}
               onChange={(e) => setEmail(e.target.value)}
@@ -165,6 +184,7 @@ export default function Auth({
             <input
               required
               minLength={mode === "signup" ? 12 : 1}
+              disabled={busy}
               maxLength={128}
               type="password"
               value={password}
@@ -174,6 +194,28 @@ export default function Auth({
               }
             />
           </label>
+          {mode === "signup" && !resetting && (
+            <Collapsible className="auth-optional">
+              <CollapsibleTrigger asChild>
+                <button type="button" disabled={busy}>
+                  Restaurant name <span>(optional)</span>
+                  <span aria-hidden="true">+</span>
+                </button>
+              </CollapsibleTrigger>
+              <CollapsibleContent>
+                <label className="field">
+                  Restaurant name
+                  <input
+                    disabled={busy}
+                    maxLength={100}
+                    value={restaurant}
+                    onChange={(e) => setRestaurant(e.target.value)}
+                    autoComplete="organization"
+                  />
+                </label>
+              </CollapsibleContent>
+            </Collapsible>
+          )}
           <label className="pw-honeypot" aria-hidden="true">
             Website
             <input
@@ -188,20 +230,20 @@ export default function Auth({
               {error}
             </p>
           )}
-          <Button className="wide mt-5" disabled={busy}>
+          <Button className="wide auth-submit" disabled={busy}>
             {busy
               ? "Opening your workspace…"
               : mode === "login"
                 ? "Sign in"
                 : resetting
                   ? "Save new password"
-                  : "Create free account & continue"}
+                  : "Create free account"}
           </Button>
         </form>
         {mode === "signup" && !resetting && (
           <p className="fine">
-            5 free image generations, once per account. Pro: $9.99/month for 100
-            generations per month.{" "}
+            5 free images, once per account.{" "}
+            {billingEnabled ? "Pro: $9.99/month." : "Pro is coming soon."}{" "}
             <a href="/pricing" target="_blank" rel="noreferrer">
               See plans
             </a>

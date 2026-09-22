@@ -1,0 +1,47 @@
+{
+  "environment": "Isolated localhost:5173; existing test accounts; no response bodies or credentials recorded",
+  "checks": [
+    {
+      "role": "anonymous",
+      "method": "GET",
+      "endpoint": "admin",
+      "status": 403
+    },
+    {
+      "role": "anonymous",
+      "method": "GET",
+      "endpoint": "admin/studio-report?mode=internal&days=30",
+      "status": 403
+    },
+    {
+      "role": "owner",
+      "method": "GET",
+      "endpoint": "admin",
+      "status": 403
+    },
+    {
+      "role": "owner",
+      "method": "GET",
+      "endpoint": "admin/studio-report?mode=internal&days=30",
+      "status": 403
+    },
+    {
+      "role": "admin",
+      "method": "GET",
+      "endpoint": "admin",
+      "status": 200
+    },
+    {
+      "role": "admin",
+      "method": "GET",
+      "endpoint": "admin/studio-report?mode=internal&days=30",
+      "status": 200
+    },
+    {
+      "role": "owner",
+      "method": "POST",
+      "endpoint": "admin/restaurant",
+      "status": 403
+    }
+  ]
+}

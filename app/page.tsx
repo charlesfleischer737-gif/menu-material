@@ -9,6 +9,8 @@ import {
 } from "react";
 import Auth from "./components/auth";
 import Landing from "./components/plateworthy-landing";
+import Brand from "./components/brand";
+import WorkspacePlaceholder from "./components/workspace-placeholder";
 import { api, type Row } from "@/lib/client";
 const GuestStudio = lazy(() => import("./components/guest-studio"));
 const PlanDialog = lazy(() => import("./components/plan-dialog"));
@@ -130,14 +132,28 @@ export default function Home() {
       actionBusy.current = false;
     }
   }
+  if (!loaded)
+    return (
+      <main className="initial-loading">
+        <Brand />
+        <WorkspacePlaceholder
+          title="Menu Material"
+          message="Getting things ready…"
+        />
+      </main>
+    );
   return (
     <>
       {guest ? (
         <Suspense
           fallback={
-            <p className="cx-feedback" role="status">
-              Opening Photo Studio…
-            </p>
+            <main className="initial-loading">
+              <Brand />
+              <WorkspacePlaceholder
+                title="Photo Studio"
+                message="Opening Photo Studio…"
+              />
+            </main>
           }
         >
           <GuestStudio
@@ -175,9 +191,13 @@ export default function Home() {
       ) : (
         <Suspense
           fallback={
-            <p className="cx-feedback" role="status">
-              Opening your workspace…
-            </p>
+            <main className="initial-loading">
+              <Brand />
+              <WorkspacePlaceholder
+                title="Your workspace"
+                message="Opening your workspace…"
+              />
+            </main>
           }
         >
           <CoreWorkspace
@@ -204,7 +224,13 @@ export default function Home() {
             adminContent={
               state.user.role === "admin" ? (
                 <Suspense
-                  fallback={<p role="status">Opening administration…</p>}
+                  fallback={
+                    <WorkspacePlaceholder
+                      title="Administration"
+                      layout="operations"
+                      message="Opening administration…"
+                    />
+                  }
                 >
                   <Admin act={act} refresh={refresh} busy={busy} />
                 </Suspense>
@@ -227,6 +253,7 @@ export default function Home() {
         local={!!state.local}
         ownerSetup={!!state.ownerSetup}
         initialMode={authMode}
+        billingEnabled={!!state.billing?.enabled}
         onDone={async () => {
           if (new URLSearchParams(location.search).has("upgrade"))
             setPlans(true);
@@ -254,11 +281,6 @@ export default function Home() {
             busy={busy}
           />
         </Suspense>
-      )}
-      {!loaded && (
-        <div className="loading-strip" role="status">
-          Opening your workspace…
-        </div>
       )}
     </>
   );

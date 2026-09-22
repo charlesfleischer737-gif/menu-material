@@ -1,6 +1,7 @@
 "use client";
 import { useEffect, useEffectEvent, useRef, useState } from "react";
 import { api, type Row } from "@/lib/client";
+import { draftStatus } from "@/lib/workspace-status";
 import {
   menuDocumentSchema,
   newMenuDocument,
@@ -93,7 +94,7 @@ export function useMenuDocument(restaurantId: string) {
     undo.current = [];
     redo.current = [];
     setHistoryVersion((n) => n + 1);
-    setStatus(recovered ? "Recovered unsaved edits" : "All changes saved");
+    setStatus(recovered ? "Recovered unsaved edits" : draftStatus.saved);
     try {
       localStorage.setItem(
         `menu-material:active-menu:${restaurantId}`,
@@ -149,7 +150,7 @@ export function useMenuDocument(restaurantId: string) {
       value = current.current;
     if (!row || JSON.stringify(value) === saved.current) return;
     const serialized = JSON.stringify(value);
-    setStatus("Saving…");
+    setStatus(draftStatus.saving);
     const promise = (async () => {
       try {
         const result = (await api(
@@ -160,8 +161,9 @@ export function useMenuDocument(restaurantId: string) {
         saved.current = serialized;
         updateRecord(result);
         setError("");
-        setStatus("All changes saved");
-        if (JSON.stringify(current.current) === serialized) {
+        const isCurrent = JSON.stringify(current.current) === serialized;
+        setStatus(isCurrent ? draftStatus.saved : "Unsaved changes");
+        if (isCurrent) {
           try {
             localStorage.removeItem(key(row.id));
           } catch {}
@@ -170,7 +172,7 @@ export function useMenuDocument(restaurantId: string) {
         if ((e as Error & { status?: number }).status === 409)
           conflict.current = true;
         setError((e as Error).message);
-        setStatus("Saved on this browser");
+        setStatus(draftStatus.failed);
         remember(current.current);
         throw e;
       }
@@ -279,6 +281,8 @@ export function useMenuDocument(restaurantId: string) {
     status,
     error,
     recovered,
+    hasUnsavedChanges:
+      record !== null && JSON.stringify(draft) !== JSON.stringify(record.draft),
     canUndo: historyVersion >= 0 && undo.current.length > 0,
     canRedo: redo.current.length > 0,
     undo: back,

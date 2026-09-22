@@ -63,6 +63,7 @@ import { useStudioLibrary } from "./use-studio-library";
 import { StudioSavedLooks } from "./studio-saved-looks";
 import { StudioOccasions } from "./studio-occasions";
 import { PhotoInspirationSheet } from "./photo-inspiration-sheet";
+import WorkspaceActionBar from "./workspace-action-bar";
 import type {
   InspirationPhoto,
   InspirationSelection,
@@ -146,6 +147,7 @@ export function StudioWorkbench({
     state.guest ? undefined : state.restaurant?.id,
   );
   const [browseTab, setBrowseTab] = useState("all"),
+    [filtersOpen, setFiltersOpen] = useState(false),
     [saveOpen, setSaveOpen] = useState(false),
     [saveName, setSaveName] = useState(""),
     [saveError, setSaveError] = useState("");
@@ -402,27 +404,6 @@ export function StudioWorkbench({
   }, [query, mood, category, browseTab, browserOpen, resultCount]);
   const photoReady =
     b.mode === "photo" ? !!source : !!b.name?.trim() && !!b.description?.trim();
-  const mobileAction = useRef<HTMLDivElement>(null);
-  const [actionInFlow, setActionInFlow] = useState(false);
-  useLayoutEffect(() => {
-    const dock = mobileAction.current;
-    if (!dock) return;
-    const viewport = window.visualViewport;
-    const measure = () => {
-      const height = viewport?.height || window.innerHeight;
-      setActionInFlow(dock.getBoundingClientRect().height > height * 0.28);
-    };
-    const observer = new ResizeObserver(measure);
-    observer.observe(dock);
-    window.addEventListener("resize", measure);
-    viewport?.addEventListener("resize", measure);
-    measure();
-    return () => {
-      observer.disconnect();
-      window.removeEventListener("resize", measure);
-      viewport?.removeEventListener("resize", measure);
-    };
-  }, [photoReady, creationPaused]);
   const vesselConflict = b.family === "Drinks" && b.plate !== "keep";
   const inspirationBlock = inspirationStatusMessage(inspirationStatus);
   const canCreate =
@@ -679,9 +660,7 @@ export function StudioWorkbench({
           {source && <img src={source} alt="Your original dish photo" />}
         </section>
       ) : (
-        <div
-          className={`ps2-workbench ${photoReady ? "ps2-ready" : ""} ${actionInFlow ? "ps2-action-in-flow" : ""}`}
-        >
+        <div className={`ps2-workbench ${photoReady ? "ps2-ready" : ""}`}>
           <section className="ps2-photo-area" aria-label="Your photo">
             <div className="ps2-section-heading">
               <div>
@@ -1139,16 +1118,13 @@ export function StudioWorkbench({
         </div>
       )}
       {photoReady && !creationPaused && (
-        <div
-          ref={mobileAction}
-          className={`ps2-mobile-action ${actionInFlow ? "ps2-action-in-flow" : ""}`}
-        >
+        <WorkspaceActionBar className="ps2-mobile-action">
           <div>
             <b>{lookName}</b>
             <span>{reason}</span>
           </div>
           {createButton}
-        </div>
+        </WorkspaceActionBar>
       )}
       <input
         ref={upload}
@@ -1185,9 +1161,8 @@ export function StudioWorkbench({
         >
           <header className="ps2-dialog-header">
             <div>
-              <span className="ps2-kicker">A LITTLE INSPIRATION</span>
               <DialogTitle ref={detailHeading} tabIndex={-1}>
-                {detail ? detail.name : "Find a look you love."}
+                {detail ? detail.name : "Browse styles"}
               </DialogTitle>
               <DialogDescription>
                 {detail
@@ -1374,67 +1349,97 @@ export function StudioWorkbench({
                       </button>
                     </p>
                   )}
-                  <label className="ps2-search">
-                    <Search size={19} />
-                    <input
-                      ref={searchInput}
-                      aria-label={
-                        browseTab === "saved"
-                          ? "Search saved looks"
-                          : browseTab === "occasions"
-                            ? "Search occasions"
-                            : "Search all looks"
-                      }
-                      maxLength={maximumStyleQueryLength}
-                      value={query}
-                      onChange={(e) => changeQuery(e.target.value)}
-                      placeholder={
-                        browseTab === "saved"
-                          ? "Search a name, setting or light…"
-                          : browseTab === "occasions"
-                            ? "Try Christmas, football, summer…"
-                            : "Try warm wood, café, keep my plate…"
-                      }
-                    />
-                    {query && (
-                      <button
-                        aria-label="Clear search"
-                        onClick={() => {
-                          changeQuery("");
-                          searchInput.current?.focus();
-                        }}
+                  <Collapsible open={filtersOpen} onOpenChange={setFiltersOpen}>
+                    <div className="ps2-browser-search-row">
+                      <div
+                        className="ps2-search"
+                        role="search"
+                        aria-label="Style browser"
                       >
-                        <X size={16} />
-                      </button>
-                    )}
-                  </label>
-                  {browseTab === "all" && (!capability || cards.length > 0) && (
-                    <div className="ps2-filters">
-                      <div className="ps2-moods" role="group" aria-label="Mood">
-                        {lookMoods.map((value) => (
+                        <Search size={19} />
+                        <input
+                          ref={searchInput}
+                          aria-label={
+                            browseTab === "saved"
+                              ? "Search saved looks"
+                              : browseTab === "occasions"
+                                ? "Search occasions"
+                                : "Search all looks"
+                          }
+                          maxLength={maximumStyleQueryLength}
+                          value={query}
+                          onChange={(e) => changeQuery(e.target.value)}
+                          placeholder={
+                            browseTab === "saved"
+                              ? "Search a name, setting or light…"
+                              : browseTab === "occasions"
+                                ? "Try Christmas, football, summer…"
+                                : "Try warm wood, café, keep my plate…"
+                          }
+                        />
+                        {query && (
                           <button
-                            key={value}
-                            aria-pressed={mood === value}
-                            onClick={() => setMood(value)}
+                            aria-label="Clear search"
+                            onClick={() => {
+                              changeQuery("");
+                              searchInput.current?.focus();
+                            }}
                           >
-                            {value}
+                            <X size={16} />
                           </button>
-                        ))}
+                        )}
                       </div>
-                      <select
-                        aria-label="Type of look"
-                        value={category}
-                        onChange={(e) => setCategory(e.target.value)}
-                      >
-                        <option value="all">All looks</option>
-                        {styleCategories.map((c) => (
-                          <option key={c.id} value={c.id}>
-                            {c.name}
-                          </option>
-                        ))}
-                      </select>
+                      {browseTab === "all" &&
+                        (!capability || cards.length > 0) && (
+                          <CollapsibleTrigger asChild>
+                            <button className="cx-btn cx-secondary ps2-filter-trigger">
+                              <SlidersHorizontal size={16} />
+                              Filters
+                              {(mood !== "All" || category !== "all") && (
+                                <span className="ps2-filter-count">
+                                  {Number(mood !== "All") +
+                                    Number(category !== "all")}
+                                </span>
+                              )}
+                            </button>
+                          </CollapsibleTrigger>
+                        )}
                     </div>
-                  )}
+                    {browseTab === "all" &&
+                      (!capability || cards.length > 0) && (
+                        <CollapsibleContent>
+                          <div className="ps2-filters">
+                            <div
+                              className="ps2-moods"
+                              role="group"
+                              aria-label="Mood"
+                            >
+                              {lookMoods.map((value) => (
+                                <button
+                                  key={value}
+                                  aria-pressed={mood === value}
+                                  onClick={() => setMood(value)}
+                                >
+                                  {value}
+                                </button>
+                              ))}
+                            </div>
+                            <select
+                              aria-label="Type of look"
+                              value={category}
+                              onChange={(e) => setCategory(e.target.value)}
+                            >
+                              <option value="all">All looks</option>
+                              {styleCategories.map((c) => (
+                                <option key={c.id} value={c.id}>
+                                  {c.name}
+                                </option>
+                              ))}
+                            </select>
+                          </div>
+                        </CollapsibleContent>
+                      )}
+                  </Collapsible>
                   {browseTab === "all" && (
                     <div className="ps2-search-summary">
                       <p className="ps2-result-count" role="status">
@@ -1445,6 +1450,10 @@ export function StudioWorkbench({
                             {cards.length} {search.related ? "related " : ""}
                             {cards.length === 1 ? "look" : "looks"}
                             {query ? ` for “${query}”` : " to make your own"}
+                            {mood !== "All" ? ` · ${mood}` : ""}
+                            {category !== "all"
+                              ? ` · ${styleCategories.find((entry) => entry.id === category)?.name || category}`
+                              : ""}
                           </>
                         )}
                       </p>
@@ -1516,24 +1525,6 @@ export function StudioWorkbench({
                           data-selected={b.look === style.id}
                         >
                           <button
-                            className="ps2-favorite"
-                            aria-label={`${saved.library.favorites.includes(style.id) ? "Remove" : "Add"} ${style.name} ${saved.library.favorites.includes(style.id) ? "from" : "to"} favorites`}
-                            aria-pressed={saved.library.favorites.includes(
-                              style.id,
-                            )}
-                            disabled={saved.busy || !saved.ready}
-                            onClick={() => void saved.favorite(style.id)}
-                          >
-                            <Heart
-                              size={16}
-                              fill={
-                                saved.library.favorites.includes(style.id)
-                                  ? "currentColor"
-                                  : "none"
-                              }
-                            />
-                          </button>
-                          <button
                             className="ps2-card-detail"
                             data-look-detail={`catalog-image:${style.id}`}
                             onClick={(event) =>
@@ -1564,19 +1555,35 @@ export function StudioWorkbench({
                                 {style.cue}
                               </span>
                             </button>
-                            <button
-                              className="ps2-icon-button"
-                              aria-label={`Use ${style.name}`}
-                              aria-pressed={b.look === style.id}
-                              disabled={!!busy}
-                              onClick={() => select(style.id)}
-                            >
-                              {b.look === style.id ? (
-                                <Check size={17} />
-                              ) : (
-                                <ArrowRight size={17} />
-                              )}
-                            </button>
+                            <div className="ps2-card-actions">
+                              <button
+                                className="cx-btn cx-secondary ps2-card-use"
+                                aria-label={`Use ${style.name}`}
+                                aria-pressed={b.look === style.id}
+                                disabled={!!busy}
+                                onClick={() => select(style.id)}
+                              >
+                                {b.look === style.id ? "Selected" : "Use look"}
+                              </button>
+                              <button
+                                className="ps2-favorite"
+                                aria-label={`${saved.library.favorites.includes(style.id) ? "Remove" : "Add"} ${style.name} ${saved.library.favorites.includes(style.id) ? "from" : "to"} favorites`}
+                                aria-pressed={saved.library.favorites.includes(
+                                  style.id,
+                                )}
+                                disabled={saved.busy || !saved.ready}
+                                onClick={() => void saved.favorite(style.id)}
+                              >
+                                <Heart
+                                  size={16}
+                                  fill={
+                                    saved.library.favorites.includes(style.id)
+                                      ? "currentColor"
+                                      : "none"
+                                  }
+                                />
+                              </button>
+                            </div>
                           </div>
                         </article>
                       ))}
@@ -1614,6 +1621,9 @@ export function StudioWorkbench({
               </div>
               {(!capability || cards.length > 0) && (
                 <footer className="ps2-dialog-footer">
+                  <span className="ps2-browser-current" role="status">
+                    Current look: {lookName}
+                  </span>
                   <button
                     className="cx-link"
                     disabled={!!busy}

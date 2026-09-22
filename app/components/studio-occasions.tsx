@@ -57,13 +57,15 @@ export function StudioOccasions({
     <section ref={section} className="ps2-occasions">
       {current ? (
         <>
-          <button className="cx-link" onClick={() => onActive("")}>
-            <ChevronLeft size={16} />
-            All occasions
-          </button>
-          <h3 ref={heading} tabIndex={-1}>
-            {current.name}
-          </h3>
+          <div className="ps2-occasion-heading">
+            <h3 ref={heading} tabIndex={-1}>
+              {current.name}
+            </h3>
+            <button className="cx-link" onClick={() => onActive("")}>
+              <ChevronLeft size={16} />
+              All occasions
+            </button>
+          </div>
           <p>{current.description}</p>
           <div className="ps2-gallery">
             {current.looks

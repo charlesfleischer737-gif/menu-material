@@ -9,9 +9,19 @@ export default function Privacy() {
     <PublicInformation
       title="Your photos, drafts and public menu."
       intro="This page explains Menu Material’s current data handling. Updated September 16, 2026."
+      sections={[
+        { id: "information", label: "Information we store" },
+        { id: "publishing", label: "Publishing & sharing" },
+        { id: "processing", label: "AI processing" },
+        { id: "payments", label: "Payments" },
+        { id: "retention", label: "Saving & retention" },
+        { id: "requests", label: "Questions & requests" },
+      ]}
     >
       <section>
-        <h2>Information used by Menu Material</h2>
+        <h2 id="information" tabIndex={-1}>
+          Information used by Menu Material
+        </h2>
         <p>
           Menu Material stores your account email, protected password record,
           restaurant details, uploaded photos, menu files, drafts, generated
@@ -28,7 +38,9 @@ export default function Privacy() {
         </p>
       </section>
       <section>
-        <h2>Private until you choose to publish</h2>
+        <h2 id="publishing" tabIndex={-1}>
+          Private until you choose to publish
+        </h2>
         <p>
           Your workspace photos and drafts require access to your restaurant
           account. Publishing a menu makes its selected content, approved photos
@@ -38,12 +50,14 @@ export default function Privacy() {
         <p>
           Unpublishing removes access through the public menu. Deleting a photo
           removes its stored original and working version and stops it being
-          served by the site. Copies already downloaded or shared outside
-          Menu Material cannot be recalled.
+          served by the site. Copies already downloaded or shared outside Menu
+          Material cannot be recalled.
         </p>
       </section>
       <section>
-        <h2>AI processing and hosting</h2>
+        <h2 id="processing" tabIndex={-1}>
+          AI processing and hosting
+        </h2>
         <p>
           When you request AI work, the relevant photos, dish details and
           instructions are sent to OpenAI. Background image requests retain a
@@ -60,21 +74,26 @@ export default function Privacy() {
           >
             OpenAI’s API data controls
           </a>
-          . This page does not promise a provider retention period that
-          Menu Material cannot control.
+          . This page does not promise a provider retention period that Menu
+          Material cannot control.
         </p>
       </section>
       <section>
-        <h2>Payments</h2>
+        <h2 id="payments" tabIndex={-1}>
+          Payments
+        </h2>
         <p>
           When subscriptions are available, Stripe handles checkout and billing.
-          Menu Material stores customer and subscription identifiers, subscription
-          status, paid billing periods and image usage. Payment-card details are
-          entered on Stripe’s hosted pages and are not stored by Menu Material.
+          Menu Material stores customer and subscription identifiers,
+          subscription status, paid billing periods and image usage.
+          Payment-card details are entered on Stripe’s hosted pages and are not
+          stored by Menu Material.
         </p>
       </section>
       <section>
-        <h2>Saving and retention</h2>
+        <h2 id="retention" tabIndex={-1}>
+          Saving and retention
+        </h2>
         <p>
           Photos and drafts are retained to let you return to your work.
           Archiving a draft hides it from the active list; it does not delete
@@ -90,7 +109,9 @@ export default function Privacy() {
         </p>
       </section>
       <section>
-        <h2>Questions or removal requests</h2>
+        <h2 id="requests" tabIndex={-1}>
+          Questions or removal requests
+        </h2>
         <p>
           If you have an administrator contact, use it for privacy or account
           removal requests. A public support email address is not available yet.

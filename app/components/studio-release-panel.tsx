@@ -3,27 +3,33 @@ import { useState } from "react";
 import { api, type Row } from "@/lib/client";
 import { looks, PIPELINE_VERSION } from "@/lib/studio";
 import { Button } from "@/components/ui/button";
+import {
+  AdminOperationStatus,
+  type useAdminOperation,
+} from "./admin-operation";
 
 export function StudioReleasePanel({
   data,
   busy,
-  act,
   done,
+  operation,
 }: {
   data: Row;
   busy: string;
-  act: any;
   done: () => Promise<void>;
+  operation: ReturnType<typeof useAdminOperation>;
 }) {
   const [controls, setControls] = useState<Row>(data.studioRelease);
   const [search, setSearch] = useState("");
-  const toggle = (field: string, value: string) =>
+  const toggle = (field: string, value: string) => {
+    operation.changed();
     setControls((current) => ({
       ...current,
       [field]: current[field].includes(value)
         ? current[field].filter((entry: string) => entry !== value)
         : [...current[field], value],
     }));
+  };
   const pipelines = [
     ...new Set<string>([
       PIPELINE_VERSION,
@@ -31,9 +37,21 @@ export function StudioReleasePanel({
       ...controls.disabledPipelines,
     ]),
   ];
+  const matchingLooks = looks.filter((look) =>
+    (look.name + " " + look.cue).toLowerCase().includes(search.toLowerCase()),
+  );
+  const dirty =
+    controls.mode !== data.studioRelease.mode ||
+    ["pilotRestaurantIds", "disabledStyleIds", "disabledPipelines"].some(
+      (field) =>
+        controls[field].length !== data.studioRelease[field].length ||
+        controls[field].some(
+          (value: string) => !data.studioRelease[field].includes(value),
+        ),
+    );
   return (
     <section className="cx-panel">
-      <h3>Photo Studio availability</h3>
+      <h2>Photo Studio availability</h2>
       {data.studioRelease.configurationError && (
         <p role="alert">
           The saved availability settings could not be read. New creation is
@@ -51,9 +69,10 @@ export function StudioReleasePanel({
           New photo creation
           <select
             value={controls.mode}
-            onChange={(event) =>
-              setControls({ ...controls, mode: event.target.value })
-            }
+            onChange={(event) => {
+              setControls({ ...controls, mode: event.target.value });
+              operation.changed();
+            }}
           >
             <option value="open">Available to all restaurants</option>
             <option value="pilot">Pilot restaurants only</option>
@@ -93,23 +112,22 @@ export function StudioReleasePanel({
             />
           </label>
           <div className="ps2-release-grid">
-            {looks
-              .filter((look) =>
-                (look.name + " " + look.cue)
-                  .toLowerCase()
-                  .includes(search.toLowerCase()),
-              )
-              .map((look) => (
-                <label className="check-label" key={look.id}>
-                  <input
-                    type="checkbox"
-                    checked={controls.disabledStyleIds.includes(look.id)}
-                    onChange={() => toggle("disabledStyleIds", look.id)}
-                  />
-                  Pause {look.name}
-                </label>
-              ))}
+            {matchingLooks.map((look) => (
+              <label className="check-label" key={look.id}>
+                <input
+                  type="checkbox"
+                  checked={controls.disabledStyleIds.includes(look.id)}
+                  onChange={() => toggle("disabledStyleIds", look.id)}
+                />
+                Pause {look.name}
+              </label>
+            ))}
           </div>
+          {!matchingLooks.length && (
+            <p className="admin-empty-note">
+              No looks match “{search}”. Try another name or clear the search.
+            </p>
+          )}
         </details>
         <details className="ps2-release-options">
           <summary>
@@ -134,20 +152,25 @@ export function StudioReleasePanel({
         </details>
         <Button
           onClick={() =>
-            act("Saving Photo Studio availability", async () => {
-              await api("admin/studio-release", {
-                revision: controls.revision,
-                mode: controls.mode,
-                pilotRestaurantIds: controls.pilotRestaurantIds,
-                disabledStyleIds: controls.disabledStyleIds,
-                disabledPipelines: controls.disabledPipelines,
-              });
-              await done();
-            })
+            operation.run(
+              "Saving Photo Studio availability",
+              "Photo Studio availability saved.",
+              async () => {
+                await api("admin/studio-release", {
+                  revision: controls.revision,
+                  mode: controls.mode,
+                  pilotRestaurantIds: controls.pilotRestaurantIds,
+                  disabledStyleIds: controls.disabledStyleIds,
+                  disabledPipelines: controls.disabledPipelines,
+                });
+                await done();
+              },
+            )
           }
         >
           Save Photo Studio availability
         </Button>
+        <AdminOperationStatus feedback={operation.feedback} dirty={dirty} />
       </fieldset>
     </section>
   );

@@ -28,6 +28,7 @@ import {
 } from "@/lib/studio";
 import { canvasBlob, drawPhoto, imageBitmap } from "@/lib/photo-export";
 import { PhotoFinishSheet } from "./photo-finish-sheet";
+import WorkspaceActionBar from "./workspace-action-bar";
 import {
   PhotoAdjustmentSheet,
   type PhotoAdjustmentSession,
@@ -720,9 +721,13 @@ export default function PhotoStudio({
     setCompare(false);
     setAccurate(false);
   }
-  if (!ready) return <DraftRecovery store={draftStore} />;
+  if (!ready) return <DraftRecovery store={draftStore} title="Photo Studio" />;
   return (
-    <section className="cx-tool cx-feature-page cx-guided-studio" ref={root}>
+    <section
+      className="cx-tool cx-feature-page cx-guided-studio"
+      ref={root}
+      data-action-layout
+    >
       <ToolHeader title="Photo Studio" status={status}>
         <div className="cx-button-row">
           <SavedDrafts
@@ -1034,16 +1039,18 @@ export default function PhotoStudio({
                     Take a closer look at your dish. When it feels right, save a
                     size made for where you’ll use it.
                   </p>
-                  <button
-                    ref={resultAction}
-                    className="cx-btn cx-full ps2-result-primary"
-                    disabled={!!busy || adjust === "quick"}
-                    onClick={() => setFinishOpen(true)}
-                  >
-                    <Download size={18} />
-                    Use photo
-                    <ArrowRight size={16} />
-                  </button>
+                  <WorkspaceActionBar>
+                    <button
+                      ref={resultAction}
+                      className="cx-btn cx-full ps2-result-primary"
+                      disabled={!!busy || adjust === "quick"}
+                      onClick={() => setFinishOpen(true)}
+                    >
+                      <Download size={18} />
+                      Use photo
+                      <ArrowRight size={16} />
+                    </button>
+                  </WorkspaceActionBar>
                   <p className="cx-review-save-note">
                     {adjust === "quick"
                       ? "Save this version before using your adjusted photo."

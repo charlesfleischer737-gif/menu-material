@@ -1,0 +1,252 @@
+.rs-dialog.restaurant-dialog {
+  display: flex;
+  flex-direction: column;
+  width: min(840px, calc(100vw - 32px));
+  max-width: 840px;
+  height: min(800px, calc(100dvh - 48px));
+  max-height: calc(100dvh - 48px);
+  padding: 0;
+  gap: 0;
+  overflow: hidden;
+  border: 1px solid var(--workspace-line);
+  border-radius: var(--radius-panel);
+  background: var(--workspace-surface);
+}
+.rs-header {
+  display: flex;
+  align-items: flex-start;
+  justify-content: space-between;
+  gap: 16px;
+  padding: 24px 24px 16px;
+}
+.rs-header [data-slot="dialog-title"] {
+  font: 650 24px/1.2 var(--font-ui);
+  letter-spacing: -0.035em;
+}
+.rs-header [data-slot="dialog-description"] {
+  margin-top: 8px;
+  font-size: 14px;
+  color: var(--workspace-muted);
+}
+.rs-tabs {
+  flex: 1;
+  min-height: 0;
+  gap: 0;
+}
+.rs-tab-list[data-slot="tabs-list"] {
+  width: 100%;
+  height: auto;
+  padding: 0 24px;
+  gap: 16px;
+  border-bottom: 1px solid var(--workspace-line);
+  border-radius: 0;
+}
+.rs-tab-list [data-slot="tabs-trigger"] {
+  flex: 1 1 auto;
+  min-width: 0;
+  min-height: 48px;
+  padding: 12px 0;
+  border: 0;
+  border-radius: 0;
+  font-size: 14px;
+  font-weight: 600;
+  color: var(--workspace-muted);
+  white-space: normal;
+  line-height: 1.35;
+}
+.rs-tab-list [data-state="active"] {
+  color: var(--workspace-action);
+  font-weight: 600;
+}
+.rs-tab-list [data-slot="tabs-trigger"]::after {
+  bottom: 0;
+  background: var(--workspace-action);
+}
+.rs-body {
+  flex: 1;
+  min-height: 0;
+  overflow-y: auto;
+  overscroll-behavior: contain;
+  padding: 24px;
+  scroll-padding-block: 24px;
+}
+.rs-panel[hidden] {
+  display: none !important;
+}
+.rs-panel {
+  display: grid;
+  align-items: start;
+  gap: 24px;
+}
+.rs-fields {
+  margin: 0;
+  padding: 0;
+  border: 0;
+  min-width: 0;
+}
+.rs-panel[data-settings-group="details"] {
+  grid-template-columns: minmax(0, 1fr) minmax(0, 1fr);
+}
+.rs-panel[data-settings-group="details"] > .field:first-child {
+  grid-column: 1/-1;
+}
+.rs-dialog .field {
+  margin: 0;
+  display: grid;
+  align-content: start;
+  gap: 8px;
+  font-size: 14px;
+  color: var(--workspace-ink);
+}
+.rs-dialog
+  .field
+  :is(input, select, textarea):not([type="checkbox"]):not([type="color"]):not(
+    [type="range"]
+  ) {
+  min-height: 44px;
+  border: 1px solid var(--workspace-control);
+  border-radius: 8px;
+  background: white;
+  color: var(--workspace-ink);
+  padding: 10px 12px;
+  font-size: 16px;
+  width: 100%;
+}
+.rs-dialog .field small {
+  font-size: 13px;
+  font-weight: 400;
+  color: var(--workspace-muted);
+}
+.rs-logo {
+  width: 100%;
+  max-width: 180px;
+  height: 72px;
+  object-fit: contain;
+  object-position: left;
+}
+.rs-dialog .cx-brand-editor {
+  margin: 0;
+}
+.rs-dialog .hours-row {
+  grid-template-columns: 36px minmax(0, 1fr) minmax(0, 1fr) 96px;
+  gap: 8px;
+  margin-top: 16px;
+}
+.rs-dialog .hours-row > label {
+  min-height: 44px;
+  align-items: center;
+  gap: 8px;
+}
+.rs-dialog .hours-row > input {
+  min-width: 0;
+  max-width: 100%;
+  font-size: 16px;
+  min-height: 44px;
+  padding: 8px;
+  border: 1px solid var(--workspace-control);
+  border-radius: 8px;
+  background: var(--workspace-surface);
+  color: var(--workspace-ink);
+}
+.rs-dialog .hours-row input[type="checkbox"] {
+  width: 18px;
+  height: 18px;
+  accent-color: var(--workspace-action);
+}
+.rs-dialog .dish-options {
+  margin: 0;
+  padding: 8px 0;
+}
+.rs-dialog .dish-options > summary {
+  min-height: 44px;
+}
+.rs-dialog .dish-options > .fine {
+  margin: 8px 0 16px;
+  text-align: left;
+  font-size: 14px;
+  line-height: 1.5;
+  color: var(--workspace-muted);
+}
+.rs-footer {
+  flex-shrink: 0;
+  border-top: 1px solid var(--workspace-line);
+  padding: 16px 24px;
+  background: var(--workspace-surface);
+}
+.rs-save-row {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  gap: 16px;
+}
+.rs-save-row > span {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  font-size: 14px;
+  color: var(--workspace-muted);
+}
+.rs-save-row > button {
+  min-width: 9.5em;
+}
+.rs-footer > p:not(.rs-error) {
+  font-size: 13px;
+  color: var(--workspace-muted);
+  margin-top: 8px;
+}
+.rs-error {
+  margin-bottom: 12px;
+  font-size: 14px;
+  color: var(--workspace-error);
+}
+.rs-dialog :focus-visible {
+  outline: 2px solid var(--workspace-focus);
+  outline-offset: 3px;
+}
+@media (max-width: 600px) {
+  .rs-dialog.restaurant-dialog {
+    width: 100%;
+    max-width: 100%;
+    height: 100dvh;
+    max-height: 100dvh;
+    border: 0;
+    border-radius: 0;
+  }
+  .rs-header {
+    padding: max(16px, env(safe-area-inset-top)) 16px 12px;
+  }
+  .rs-tab-list[data-slot="tabs-list"] {
+    padding-inline: 16px;
+    gap: 12px;
+  }
+  .rs-body {
+    padding: 16px;
+  }
+  .rs-panel[data-settings-group="details"] {
+    grid-template-columns: minmax(0, 1fr);
+  }
+  .rs-dialog .hours-row {
+    grid-template-columns: 36px minmax(0, 1fr) minmax(0, 1fr);
+  }
+  .rs-dialog .hours-row > label {
+    grid-column: 2/-1;
+  }
+  .rs-footer {
+    padding: 12px 16px max(12px, env(safe-area-inset-bottom));
+  }
+  .rs-save-row {
+    gap: 12px;
+  }
+  .rs-save-row > span {
+    max-width: 45%;
+  }
+}
+@media (max-width: 360px) {
+  .rs-dialog .hours-row {
+    grid-template-columns: minmax(0, 1fr) minmax(0, 1fr);
+  }
+  .rs-dialog .hours-row > b,
+  .rs-dialog .hours-row > label {
+    grid-column: 1/-1;
+  }
+}

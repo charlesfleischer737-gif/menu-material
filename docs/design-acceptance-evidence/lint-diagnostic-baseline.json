@@ -1,0 +1,246 @@
+{
+  "candidate": "Working tree based on 657a2c6, September 17",
+  "errors": 84,
+  "warnings": 1698,
+  "files": [
+    {
+      "file": "app/components/auth.tsx",
+      "currentErrors": 2,
+      "baselineErrors": 2,
+      "evidence": "Same configuration; HEAD source via stdin. Compare complete error diagnostic including code frames, normalizing only absolute project path and location numbers.",
+      "unmatched": [],
+      "manualReview": [],
+      "introducedDiagnostics": []
+    },
+    {
+      "file": "app/components/creation-shared.tsx",
+      "currentErrors": 7,
+      "baselineErrors": 7,
+      "evidence": "Same configuration; HEAD source via stdin. Compare complete error diagnostic including code frames, normalizing only absolute project path and location numbers.",
+      "unmatched": [],
+      "manualReview": [],
+      "introducedDiagnostics": []
+    },
+    {
+      "file": "app/components/menu-sharing.tsx",
+      "currentErrors": 2,
+      "evidence": "Identical file to HEAD",
+      "unmatched": [],
+      "manualReview": [],
+      "introducedDiagnostics": []
+    },
+    {
+      "file": "app/components/photo-downloads.tsx",
+      "currentErrors": 1,
+      "evidence": "Identical file to HEAD",
+      "unmatched": [],
+      "manualReview": [],
+      "introducedDiagnostics": []
+    },
+    {
+      "file": "app/components/photo-finish-sheet.tsx",
+      "currentErrors": 1,
+      "baselineErrors": 1,
+      "evidence": "Same configuration; HEAD source via stdin. Compare complete error diagnostic including code frames, normalizing only absolute project path and location numbers.",
+      "unmatched": [],
+      "manualReview": [],
+      "introducedDiagnostics": []
+    },
+    {
+      "file": "app/components/photo-inspiration-sheet.tsx",
+      "currentErrors": 4,
+      "evidence": "Identical file to HEAD",
+      "unmatched": [],
+      "manualReview": [],
+      "introducedDiagnostics": []
+    },
+    {
+      "file": "app/components/photo-studio.tsx",
+      "currentErrors": 3,
+      "baselineErrors": 3,
+      "evidence": "Same configuration; HEAD source via stdin. Compare complete error diagnostic including code frames, normalizing only absolute project path and location numbers.",
+      "unmatched": [],
+      "manualReview": [],
+      "introducedDiagnostics": []
+    },
+    {
+      "file": "app/components/print-preview.tsx",
+      "currentErrors": 2,
+      "evidence": "Identical file to HEAD",
+      "unmatched": [],
+      "manualReview": [],
+      "introducedDiagnostics": []
+    },
+    {
+      "file": "app/components/restaurant-look-editor.tsx",
+      "currentErrors": 1,
+      "evidence": "Identical file to HEAD",
+      "unmatched": [],
+      "manualReview": [],
+      "introducedDiagnostics": []
+    },
+    {
+      "file": "app/components/studio-onboarding.tsx",
+      "currentErrors": 1,
+      "evidence": "Identical file to HEAD",
+      "unmatched": [],
+      "manualReview": [],
+      "introducedDiagnostics": []
+    },
+    {
+      "file": "app/components/studio-workbench.tsx",
+      "currentErrors": 3,
+      "baselineErrors": 3,
+      "evidence": "Same configuration; HEAD source via stdin. Compare complete error diagnostic including code frames, normalizing only absolute project path and location numbers.",
+      "unmatched": [],
+      "manualReview": [],
+      "introducedDiagnostics": []
+    },
+    {
+      "file": "app/components/use-inspiration-availability.ts",
+      "currentErrors": 1,
+      "evidence": "Identical file to HEAD",
+      "unmatched": [],
+      "manualReview": [],
+      "introducedDiagnostics": []
+    },
+    {
+      "file": "app/components/use-studio-library.ts",
+      "currentErrors": 2,
+      "evidence": "Identical file to HEAD",
+      "unmatched": [],
+      "manualReview": [],
+      "introducedDiagnostics": []
+    },
+    {
+      "file": "app/components/use-studio-navigation.ts",
+      "currentErrors": 1,
+      "evidence": "Identical file to HEAD",
+      "unmatched": [],
+      "manualReview": [],
+      "introducedDiagnostics": []
+    },
+    {
+      "file": "app/m/[slug]/page.tsx",
+      "currentErrors": 7,
+      "evidence": "Identical file to HEAD",
+      "unmatched": [],
+      "manualReview": [],
+      "introducedDiagnostics": []
+    },
+    {
+      "file": "app/page.tsx",
+      "currentErrors": 3,
+      "baselineErrors": 3,
+      "evidence": "Same configuration; HEAD source via stdin. Compare complete error diagnostic including code frames, normalizing only absolute project path and location numbers.",
+      "unmatched": [],
+      "manualReview": [],
+      "introducedDiagnostics": []
+    },
+    {
+      "file": "lib/client.ts",
+      "currentErrors": 1,
+      "evidence": "Identical file to HEAD",
+      "unmatched": [],
+      "manualReview": [],
+      "introducedDiagnostics": []
+    },
+    {
+      "file": "lib/local-runtime.ts",
+      "currentErrors": 6,
+      "evidence": "Identical file to HEAD",
+      "unmatched": [],
+      "manualReview": [],
+      "introducedDiagnostics": []
+    },
+    {
+      "file": "lib/restaurant-look.ts",
+      "currentErrors": 7,
+      "evidence": "Identical file to HEAD",
+      "unmatched": [],
+      "manualReview": [],
+      "introducedDiagnostics": []
+    },
+    {
+      "file": "lib/server/core.ts",
+      "currentErrors": 6,
+      "evidence": "Identical file to HEAD",
+      "unmatched": [],
+      "manualReview": [],
+      "introducedDiagnostics": []
+    },
+    {
+      "file": "lib/server/generation.ts",
+      "currentErrors": 3,
+      "evidence": "Identical file to HEAD",
+      "unmatched": [],
+      "manualReview": [],
+      "introducedDiagnostics": []
+    },
+    {
+      "file": "lib/studio-discovery.ts",
+      "currentErrors": 1,
+      "evidence": "Identical file to HEAD",
+      "unmatched": [],
+      "manualReview": [],
+      "introducedDiagnostics": []
+    },
+    {
+      "file": "lib/studio-events.ts",
+      "currentErrors": 3,
+      "evidence": "Identical file to HEAD",
+      "unmatched": [],
+      "manualReview": [],
+      "introducedDiagnostics": []
+    },
+    {
+      "file": "lib/studio-library.ts",
+      "currentErrors": 2,
+      "evidence": "Identical file to HEAD",
+      "unmatched": [],
+      "manualReview": [],
+      "introducedDiagnostics": []
+    },
+    {
+      "file": "lib/studio-onboarding.ts",
+      "currentErrors": 3,
+      "evidence": "Identical file to HEAD",
+      "unmatched": [],
+      "manualReview": [],
+      "introducedDiagnostics": []
+    },
+    {
+      "file": "lib/studio.ts",
+      "currentErrors": 3,
+      "evidence": "Identical file to HEAD",
+      "unmatched": [],
+      "manualReview": [],
+      "introducedDiagnostics": []
+    },
+    {
+      "file": "lib/workspace-navigation.ts",
+      "currentErrors": 1,
+      "baselineErrors": 1,
+      "evidence": "Same configuration; HEAD source via stdin. Compare complete error diagnostic including code frames, normalizing only absolute project path and location numbers.",
+      "unmatched": [],
+      "manualReview": [],
+      "introducedDiagnostics": []
+    },
+    {
+      "file": "public/pdf.worker.min.mjs",
+      "currentErrors": 6,
+      "evidence": "Identical file to HEAD",
+      "unmatched": [],
+      "manualReview": [],
+      "introducedDiagnostics": []
+    },
+    {
+      "file": "tests/deferred-workspace.mjs",
+      "currentErrors": 1,
+      "evidence": "Identical file to HEAD",
+      "unmatched": [],
+      "manualReview": [],
+      "introducedDiagnostics": []
+    }
+  ]
+}

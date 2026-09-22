@@ -22,34 +22,75 @@
   padding-block: 12px;
 }
 .pw-information {
-  width: min(800px, calc(100% - 40px));
-  margin: 65px auto 90px;
+  --reading-measure: 62ch;
+  width: min(800px, calc(100% - 32px));
+  margin: 32px auto 64px;
 }
 .pw-information h1 {
-  font-size: clamp(2.25rem, 5vw, 3.9rem);
-  line-height: 1.04;
+  font-size: clamp(1.75rem, 3.2vw, 2.5rem);
+  line-height: 1.15;
   letter-spacing: -0.04em;
-  margin: 15px 0 25px;
+  margin: 12px 0 16px;
 }
 .pw-information-intro {
-  font-size: 1.15rem;
-  line-height: 1.7;
-  color: #4f6052;
+  font-size: 1rem;
+  line-height: 1.6;
+  max-width: 70ch;
+  color: var(--workspace-muted);
 }
 .pw-information section {
-  margin-top: 36px;
-  border-top: 1px solid #d6decf;
-  padding-top: 25px;
+  margin-top: 32px;
+  border-top: 1px solid var(--workspace-line);
+  padding-top: 24px;
 }
 .pw-information h2 {
   font-size: 1.45rem;
-  margin-bottom: 14px;
+  margin-bottom: 16px;
+  scroll-margin-top: 24px;
+}
+.pw-information h2:focus-visible {
+  outline: 2px solid var(--workspace-focus);
+  outline-offset: 4px;
+}
+.pw-information-nav {
+  margin-block: 24px;
+  padding: 16px;
+  border: 1px solid var(--workspace-line);
+  border-radius: 12px;
+  background: var(--workspace-canvas);
+}
+.pw-information-nav > p {
+  margin: 0 0 8px;
+  font-size: 14px;
+  font-weight: 650;
+}
+.pw-information-nav ul {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 8px 24px;
+  margin: 0;
+  padding: 0;
+  list-style: none;
+}
+.pw-information-nav a {
+  display: flex;
+  align-items: center;
+  min-height: 44px;
+  padding-block: 8px;
+  color: var(--workspace-action);
+  font-size: 14px;
+  line-height: 1.5;
 }
 .pw-information section p {
   margin: 12px 0;
-  line-height: 1.8;
+  line-height: 1.65;
+  max-width: var(--reading-measure);
 }
 .pw-info-back {
+  display: inline-flex;
+  align-items: center;
+  min-height: 44px;
+  padding-block: 12px;
   font-size: 0.875rem;
   text-decoration: underline;
   text-underline-offset: 4px;
@@ -202,8 +243,8 @@
 }
 .pw-site :is(button, a, input, select):focus-visible,
 .cx-tool :is(button, a, input, select):focus-visible {
-  outline: 3px solid #a35d25;
-  outline-offset: 4px;
+  outline: 2px solid var(--workspace-focus);
+  outline-offset: 3px;
 }
 @media (max-width: 600px) {
   .pw-header {
@@ -220,7 +261,7 @@
     white-space: normal;
     height: auto;
     min-height: 44px;
-    line-height: 1.2;
+    line-height: 1.4;
     padding: 8px 12px;
   }
   .pw-header .plateworthy-wordmark {
@@ -239,10 +280,10 @@
   }
   .auth-dialog .mode-tabs button {
     padding-inline: 9px;
-    font-size: 0.8125rem;
+    font-size: 14px;
   }
   .pw-information {
-    margin-top: 35px;
+    margin-top: 32px;
   }
 }
 @media (prefers-reduced-motion: reduce) {
@@ -308,32 +349,36 @@
 .pw-plan-grid {
   display: grid;
   grid-template-columns: repeat(2, minmax(0, 1fr));
-  gap: 22px;
-  margin: 30px 0;
+  gap: 24px;
+  margin: 24px 0;
 }
 .pw-plan-card {
   display: flex;
   flex-direction: column;
-  padding: 30px;
-  border: 1px solid #d8d9cd;
-  border-radius: 18px;
-  background: #fffdf8;
+  padding: 24px;
+  border: 1px solid var(--workspace-line);
+  border-radius: var(--radius-panel);
+  background: var(--workspace-surface);
 }
 .pw-plan-card.is-pro {
-  border: 2px solid #71835c;
-  background: #f1f4e9;
+  border-color: var(--workspace-control);
+  background: var(--workspace-canvas);
 }
 .pw-plan-card h2 {
   font:
     500 32px/1.2 Georgia,
     serif;
-  margin: 10px 0;
+  margin: 8px 0;
+}
+.pw-plan-card > .pw-eyebrow {
+  margin: 0 0 8px;
 }
 .pw-plan-card .pw-plan-price {
   font-size: 42px;
-  color: #263624;
+  color: var(--workspace-ink);
   font-weight: 650;
-  margin: 10px 0;
+  margin: 8px 0;
+  line-height: 1.2;
   letter-spacing: -1.4px;
 }
 .pw-plan-price span {
@@ -343,51 +388,87 @@
 }
 .pw-plan-card ul {
   padding-left: 18px;
-  margin: 20px 0 28px;
+  margin: 16px 0 24px;
   flex: 1;
 }
 .pw-plan-card li {
-  margin-bottom: 10px;
+  margin-bottom: 8px;
   line-height: 1.5;
 }
+.pw-plan-card li:last-child {
+  margin-bottom: 0;
+}
 .pw-plan-card .cx-btn {
+  width: 100%;
+  min-height: 48px;
   justify-content: center;
   text-decoration: none;
 }
+.pw-plan-action {
+  display: grid;
+  gap: 12px;
+  margin-top: auto;
+}
 .pw-plan-card .fine {
-  margin: 12px 0 0;
-  font-size: 12px;
+  margin: 0;
+  color: var(--workspace-muted);
+  font-size: 14px;
 }
 .pw-plans-dialog {
+  display: flex;
+  flex-direction: column;
+  gap: 0;
   width: min(940px, calc(100vw - 24px));
   max-width: 940px !important;
   max-height: 90dvh;
-  overflow: auto;
-  padding: 30px;
+  overflow: hidden;
+  padding: 0;
+}
+.pw-plans-dialog > [data-slot="dialog-header"] {
+  flex: 0 0 auto;
+  padding: 20px 64px 16px 24px;
+  border-bottom: 1px solid var(--workspace-line);
+  text-align: left;
+}
+.pw-plans-body {
+  flex: 1;
+  min-height: 0;
+  overflow-y: auto;
+  padding: 0 24px 24px;
+}
+.pw-plans-body .pw-plan-grid {
+  margin-block: 16px;
 }
 .pw-plan-current {
   padding: 20px;
-  border: 1px solid #d8d9cd;
+  border: 1px solid var(--workspace-line);
   border-radius: 12px;
 }
 .pw-plan-current p {
   margin: 12px 0;
 }
 .cx-pilot .cx-link {
-  padding: 10px 0 0;
+  grid-column: 1 / -1;
+  padding: 8px 0 0;
   color: inherit;
-  font-size: 12px;
+  font-size: 14px;
 }
 @media (max-width: 650px) {
   .pw-plan-grid {
     grid-template-columns: 1fr;
-    gap: 15px;
+    gap: 16px;
   }
   .pw-plan-card {
-    padding: 22px;
+    padding: 16px;
   }
   .pw-plans-dialog {
-    padding: 24px 18px;
+    padding: 0;
+  }
+  .pw-plans-dialog > [data-slot="dialog-header"] {
+    padding-left: 16px;
+  }
+  .pw-plans-body {
+    padding-inline: 16px;
   }
   .cx-guest .pw-header {
     padding: 16px;

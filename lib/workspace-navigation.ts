@@ -34,6 +34,7 @@ export function resolveWorkspace(
     "campaigns",
   ];
   const requested = hash.replace(/^#/, "");
+  if (/^promotion\/[^/]+$/.test(requested)) return "campaigns";
   if (requested === "home") return "studio";
   if (requested === "admin" && admin) return "admin";
   if (valid.includes(requested)) return requested;

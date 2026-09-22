@@ -1,0 +1,598 @@
+{
+  "views": [
+    {
+      "documentWidth": 1280,
+      "nav": [
+        {
+          "font": "14px",
+          "label": "Information we store",
+          "rect": {
+            "bottom": 378.3828125,
+            "height": 44,
+            "left": 257,
+            "right": 628,
+            "top": 334.3828125,
+            "width": 371,
+            "x": 257,
+            "y": 334.3828125
+          }
+        },
+        {
+          "font": "14px",
+          "label": "Publishing & sharing",
+          "rect": {
+            "bottom": 378.3828125,
+            "height": 44,
+            "left": 652,
+            "right": 1023,
+            "top": 334.3828125,
+            "width": 371,
+            "x": 652,
+            "y": 334.3828125
+          }
+        },
+        {
+          "font": "14px",
+          "label": "AI processing",
+          "rect": {
+            "bottom": 430.3828125,
+            "height": 44,
+            "left": 257,
+            "right": 628,
+            "top": 386.3828125,
+            "width": 371,
+            "x": 257,
+            "y": 386.3828125
+          }
+        },
+        {
+          "font": "14px",
+          "label": "Payments",
+          "rect": {
+            "bottom": 430.3828125,
+            "height": 44,
+            "left": 652,
+            "right": 1023,
+            "top": 386.3828125,
+            "width": 371,
+            "x": 652,
+            "y": 386.3828125
+          }
+        },
+        {
+          "font": "14px",
+          "label": "Saving & retention",
+          "rect": {
+            "bottom": 482.3828125,
+            "height": 44,
+            "left": 257,
+            "right": 628,
+            "top": 438.3828125,
+            "width": 371,
+            "x": 257,
+            "y": 438.3828125
+          }
+        },
+        {
+          "font": "14px",
+          "label": "Questions & requests",
+          "rect": {
+            "bottom": 482.3828125,
+            "height": 44,
+            "left": 652,
+            "right": 1023,
+            "top": 438.3828125,
+            "width": 371,
+            "x": 652,
+            "y": 438.3828125
+          }
+        }
+      ],
+      "page": "/privacy",
+      "paragraph": {
+        "font": "16px",
+        "lineHeight": "26.4px",
+        "maxWidth": "551.552px",
+        "width": 551.546875
+      },
+      "title": {
+        "font": "40px",
+        "left": 240,
+        "top": 151.1953125
+      },
+      "viewport": {
+        "height": 720,
+        "width": 1280
+      }
+    },
+    {
+      "documentWidth": 390,
+      "nav": [
+        {
+          "font": "14px",
+          "label": "Information we store",
+          "rect": {
+            "bottom": 384.7734375,
+            "height": 44,
+            "left": 33,
+            "right": 183,
+            "top": 340.7734375,
+            "width": 150,
+            "x": 33,
+            "y": 340.7734375
+          }
+        },
+        {
+          "font": "14px",
+          "label": "Publishing & sharing",
+          "rect": {
+            "bottom": 384.7734375,
+            "height": 44,
+            "left": 207,
+            "right": 357,
+            "top": 340.7734375,
+            "width": 150,
+            "x": 207,
+            "y": 340.7734375
+          }
+        },
+        {
+          "font": "14px",
+          "label": "AI processing",
+          "rect": {
+            "bottom": 436.7734375,
+            "height": 44,
+            "left": 33,
+            "right": 183,
+            "top": 392.7734375,
+            "width": 150,
+            "x": 33,
+            "y": 392.7734375
+          }
+        },
+        {
+          "font": "14px",
+          "label": "Payments",
+          "rect": {
+            "bottom": 436.7734375,
+            "height": 44,
+            "left": 207,
+            "right": 357,
+            "top": 392.7734375,
+            "width": 150,
+            "x": 207,
+            "y": 392.7734375
+          }
+        },
+        {
+          "font": "14px",
+          "label": "Saving & retention",
+          "rect": {
+            "bottom": 488.7734375,
+            "height": 44,
+            "left": 33,
+            "right": 183,
+            "top": 444.7734375,
+            "width": 150,
+            "x": 33,
+            "y": 444.7734375
+          }
+        },
+        {
+          "font": "14px",
+          "label": "Questions & requests",
+          "rect": {
+            "bottom": 488.7734375,
+            "height": 44,
+            "left": 207,
+            "right": 357,
+            "top": 444.7734375,
+            "width": 150,
+            "x": 207,
+            "y": 444.7734375
+          }
+        }
+      ],
+      "page": "/privacy",
+      "paragraph": {
+        "font": "16px",
+        "lineHeight": "26.4px",
+        "maxWidth": "551.552px",
+        "width": 358
+      },
+      "title": {
+        "font": "28px",
+        "left": 16,
+        "top": 139.1953125
+      },
+      "viewport": {
+        "height": 844,
+        "width": 390
+      }
+    },
+    {
+      "documentWidth": 320,
+      "nav": [
+        {
+          "font": "14px",
+          "label": "Information we store",
+          "rect": {
+            "bottom": 424.3671875,
+            "height": 58,
+            "left": 33,
+            "right": 148,
+            "top": 366.3671875,
+            "width": 115,
+            "x": 33,
+            "y": 366.3671875
+          }
+        },
+        {
+          "font": "14px",
+          "label": "Publishing & sharing",
+          "rect": {
+            "bottom": 424.3671875,
+            "height": 58,
+            "left": 172,
+            "right": 287,
+            "top": 366.3671875,
+            "width": 115,
+            "x": 172,
+            "y": 366.3671875
+          }
+        },
+        {
+          "font": "14px",
+          "label": "AI processing",
+          "rect": {
+            "bottom": 476.3671875,
+            "height": 44,
+            "left": 33,
+            "right": 148,
+            "top": 432.3671875,
+            "width": 115,
+            "x": 33,
+            "y": 432.3671875
+          }
+        },
+        {
+          "font": "14px",
+          "label": "Payments",
+          "rect": {
+            "bottom": 476.3671875,
+            "height": 44,
+            "left": 172,
+            "right": 287,
+            "top": 432.3671875,
+            "width": 115,
+            "x": 172,
+            "y": 432.3671875
+          }
+        },
+        {
+          "font": "14px",
+          "label": "Saving & retention",
+          "rect": {
+            "bottom": 528.3671875,
+            "height": 44,
+            "left": 33,
+            "right": 148,
+            "top": 484.3671875,
+            "width": 115,
+            "x": 33,
+            "y": 484.3671875
+          }
+        },
+        {
+          "font": "14px",
+          "label": "Questions & requests",
+          "rect": {
+            "bottom": 542.3671875,
+            "height": 58,
+            "left": 172,
+            "right": 287,
+            "top": 484.3671875,
+            "width": 115,
+            "x": 172,
+            "y": 484.3671875
+          }
+        }
+      ],
+      "page": "/privacy",
+      "paragraph": {
+        "font": "16px",
+        "lineHeight": "26.4px",
+        "maxWidth": "551.552px",
+        "width": 288
+      },
+      "title": {
+        "font": "28px",
+        "left": 16,
+        "top": 139.1953125
+      },
+      "viewport": {
+        "height": 740,
+        "width": 320
+      }
+    },
+    {
+      "documentWidth": 390,
+      "nav": [
+        {
+          "font": "14px",
+          "label": "Photo permissions",
+          "rect": {
+            "bottom": 359.1796875,
+            "height": 44,
+            "left": 33,
+            "right": 183,
+            "top": 315.1796875,
+            "width": 150,
+            "x": 33,
+            "y": 315.1796875
+          }
+        },
+        {
+          "font": "14px",
+          "label": "Review before sharing",
+          "rect": {
+            "bottom": 359.1796875,
+            "height": 44,
+            "left": 207,
+            "right": 357,
+            "top": 315.1796875,
+            "width": 150,
+            "x": 207,
+            "y": 315.1796875
+          }
+        },
+        {
+          "font": "14px",
+          "label": "Commercial use",
+          "rect": {
+            "bottom": 411.1796875,
+            "height": 44,
+            "left": 33,
+            "right": 183,
+            "top": 367.1796875,
+            "width": 150,
+            "x": 33,
+            "y": 367.1796875
+          }
+        },
+        {
+          "font": "14px",
+          "label": "Account security",
+          "rect": {
+            "bottom": 411.1796875,
+            "height": 44,
+            "left": 207,
+            "right": 357,
+            "top": 367.1796875,
+            "width": 150,
+            "x": 207,
+            "y": 367.1796875
+          }
+        }
+      ],
+      "page": "/guidelines",
+      "paragraph": {
+        "font": "16px",
+        "lineHeight": "26.4px",
+        "maxWidth": "551.552px",
+        "width": 358
+      },
+      "title": {
+        "font": "28px",
+        "left": 16,
+        "top": 139.1953125
+      },
+      "viewport": {
+        "height": 844,
+        "width": 390
+      }
+    },
+    {
+      "documentWidth": 1280,
+      "nav": [
+        {
+          "font": "14px",
+          "label": "Photo permissions",
+          "rect": {
+            "bottom": 352.7890625,
+            "height": 44,
+            "left": 257,
+            "right": 628,
+            "top": 308.7890625,
+            "width": 371,
+            "x": 257,
+            "y": 308.7890625
+          }
+        },
+        {
+          "font": "14px",
+          "label": "Review before sharing",
+          "rect": {
+            "bottom": 352.7890625,
+            "height": 44,
+            "left": 652,
+            "right": 1023,
+            "top": 308.7890625,
+            "width": 371,
+            "x": 652,
+            "y": 308.7890625
+          }
+        },
+        {
+          "font": "14px",
+          "label": "Commercial use",
+          "rect": {
+            "bottom": 404.7890625,
+            "height": 44,
+            "left": 257,
+            "right": 628,
+            "top": 360.7890625,
+            "width": 371,
+            "x": 257,
+            "y": 360.7890625
+          }
+        },
+        {
+          "font": "14px",
+          "label": "Account security",
+          "rect": {
+            "bottom": 404.7890625,
+            "height": 44,
+            "left": 652,
+            "right": 1023,
+            "top": 360.7890625,
+            "width": 371,
+            "x": 652,
+            "y": 360.7890625
+          }
+        }
+      ],
+      "page": "/guidelines",
+      "paragraph": {
+        "font": "16px",
+        "lineHeight": "26.4px",
+        "maxWidth": "551.552px",
+        "width": 551.546875
+      },
+      "title": {
+        "font": "40px",
+        "left": 240,
+        "top": 151.1953125
+      },
+      "viewport": {
+        "height": 720,
+        "width": 1280
+      }
+    }
+  ],
+  "keyboardFocus": [
+    {
+      "focusTag": "H2",
+      "heading": "Use photos you have permission to use",
+      "id": "permissions",
+      "outline": "rgb(23, 76, 60) solid 2px",
+      "page": "guidelines",
+      "top": 478.7890625,
+      "phase": "Immediately after Enter; top may be sampled before smooth scrolling settles"
+    },
+    {
+      "focusTag": "H2",
+      "heading": "Review before sharing",
+      "id": "review",
+      "outline": "rgb(23, 76, 60) solid 2px",
+      "page": "guidelines",
+      "top": 752.34375,
+      "phase": "Immediately after Enter; top may be sampled before smooth scrolling settles"
+    },
+    {
+      "focusTag": "H2",
+      "heading": "Commercial use and platform rules",
+      "id": "commercial",
+      "outline": "rgb(23, 76, 60) solid 2px",
+      "page": "guidelines",
+      "top": 999.5,
+      "phase": "Immediately after Enter; top may be sampled before smooth scrolling settles"
+    },
+    {
+      "focusTag": "H2",
+      "heading": "Keep access secure",
+      "id": "security",
+      "outline": "rgb(23, 76, 60) solid 2px",
+      "page": "guidelines",
+      "top": 1206.7578125,
+      "phase": "Immediately after Enter; top may be sampled before smooth scrolling settles"
+    }
+  ],
+  "settledExamples": {
+    "privacyDesktopRetention": {
+      "headerPosition": "static",
+      "id": "retention",
+      "outline": "rgb(23, 76, 60) solid 2px",
+      "tag": "H2",
+      "top": 128.8984375
+    },
+    "guidelinesDesktopSecurity": {
+      "focusTag": "H2",
+      "id": "security",
+      "top": 337.2578125
+    },
+    "privacySmallProcessing": {
+      "focusTag": "H2",
+      "height": 740,
+      "id": "processing",
+      "outline": "rgb(23, 76, 60) solid 2px",
+      "overflow": false,
+      "top": 23.875,
+      "width": 320
+    }
+  },
+  "footerLinks": {
+    "height": 45,
+    "paths": [
+      "/pricing",
+      "/privacy",
+      "/guidelines"
+    ],
+    "checkedNavigation": [
+      "Privacy → Usage guidelines",
+      "Guidelines → Photo privacy",
+      "Privacy → Plans & pricing",
+      "Homepage → Photo privacy"
+    ]
+  },
+  "guidelinesDesktopLineLengths": [
+    [
+      68,
+      71,
+      66
+    ],
+    [
+      66,
+      78,
+      56
+    ],
+    [
+      77,
+      70,
+      78,
+      14
+    ],
+    [
+      67,
+      75,
+      13
+    ],
+    [
+      66,
+      78,
+      74,
+      73,
+      33
+    ],
+    [
+      71,
+      71,
+      36
+    ],
+    [
+      73,
+      71,
+      64
+    ]
+  ],
+  "homepageFooter": {
+    "desktop": {
+      "brandWidth": 220,
+      "brandHeight": 41.765625,
+      "linkFont": 14,
+      "linkHeight": 45
+    },
+    "phoneCapture": "homepage-footer-phone.png",
+    "preserved": "Copyright and original-photo license credits"
+  }
+}

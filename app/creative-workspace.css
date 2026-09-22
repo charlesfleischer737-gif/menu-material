@@ -20,9 +20,9 @@
   flex-wrap: wrap;
 }
 .mm-header h1 {
-  font-family: var(--font-serif, Georgia, serif);
+  font-family: var(--font-ui);
   font-size: 30px;
-  font-weight: 500;
+  font-weight: 650;
   letter-spacing: -0.035em;
   margin: 0;
   outline: none;
@@ -89,6 +89,8 @@
   gap: 24px;
 }
 .mm-dish-card {
+  display: flex;
+  flex-direction: column;
   border: 1px solid var(--mm-line);
   border-radius: 10px;
   overflow: hidden;
@@ -97,6 +99,10 @@
   box-shadow: 0 3px 12px #20262406;
 }
 .mm-dish-open {
+  display: flex;
+  flex-direction: column;
+  align-items: stretch;
+  flex: 1;
   width: 100%;
   text-align: left;
   background: none;
@@ -104,8 +110,7 @@
   padding: 0;
   cursor: pointer;
 }
-.mm-dish-open > img,
-.mm-dish-placeholder {
+.mm-dish-open > img {
   width: 100%;
   aspect-ratio: 1;
   object-fit: cover;
@@ -114,7 +119,21 @@
   align-items: center;
   justify-content: center;
 }
+.mm-dish-placeholder {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 8px;
+  min-height: 72px;
+  margin: 16px;
+  padding: 12px;
+  border: 1px dashed var(--workspace-line);
+  border-radius: 8px;
+  color: var(--workspace-muted);
+  font-size: 14px;
+}
 .mm-dish-open > span {
+  margin-top: auto;
   padding: 16px 16px 10px;
   display: grid;
   gap: 5px;
@@ -123,13 +142,17 @@
   font-size: 16px;
   line-height: 1.35;
   overflow-wrap: anywhere;
+  display: -webkit-box;
+  -webkit-line-clamp: 2;
+  -webkit-box-orient: vertical;
+  overflow: hidden;
+  min-height: 2.7em;
 }
 .mm-dish-title {
-  display: flex;
-  align-items: baseline;
-  justify-content: space-between;
-  flex-wrap: wrap;
-  gap: 6px 12px;
+  display: grid;
+  grid-template-rows: auto 1.5em;
+  align-items: start;
+  gap: 8px;
 }
 .mm-dish-price {
   color: var(--workspace-ink);
@@ -149,10 +172,10 @@
   color: var(--mm-muted);
 }
 .mm-dish-card footer {
-  display: flex;
-  align-items: center;
-  justify-content: space-between;
-  gap: 8px;
+  display: grid;
+  grid-template-rows: minmax(21px, auto) 44px;
+  align-items: start;
+  gap: 4px;
   padding: 12px 0 0;
   flex-wrap: wrap;
   padding-top: 12px;
@@ -181,7 +204,11 @@
   left: 12px;
   background: white;
   border-radius: 6px;
-  padding: 5px;
+  display: grid;
+  place-items: center;
+  width: 44px;
+  height: 44px;
+  padding: 10px;
 }
 .mm-card-select input {
   width: 20px;
@@ -640,7 +667,7 @@
   display: flex;
   margin: 10px 0;
 }
-.mm-mobile-edit {
+.cx-app .mm-mobile-edit {
   display: none;
 }
 @media (min-width: 1450px) {
@@ -694,7 +721,7 @@
   .mm-inspector.is-open {
     display: block;
   }
-  .mm-mobile-edit {
+  .cx-app .mm-mobile-edit {
     display: flex;
   }
   .mm-post-start {
@@ -761,7 +788,7 @@
     border-top: 1px solid var(--workspace-line);
   }
   .mm-dish-open strong {
-    font-size: 14px;
+    font-size: 16px;
   }
   .mm-detail-grid {
     grid-template-columns: 1fr;
@@ -1355,27 +1382,59 @@
 .mm-guest-nav input {
   box-sizing: border-box;
   width: 100%;
-  font-size: 14px;
+  font-size: 16px;
+  min-height: 44px;
   padding: 10px;
   border: 1px solid #ccd6c3;
-  border-radius: 5px;
+  border-radius: 8px;
   color: #253b29;
   background: #fff;
 }
-.mm-guest-nav > div {
+.mm-guest-nav > .mm-guest-section-navigation {
   display: flex;
+  align-items: flex-start;
   gap: 8px;
-  overflow: auto;
+  min-width: 0;
   margin-top: 10px;
+}
+.mm-guest-section-links {
+  display: flex;
+  flex: 1;
+  min-width: 0;
+  gap: 8px;
+  overflow-x: auto;
+  overscroll-behavior-x: contain;
+  scrollbar-width: thin;
+  padding: 4px 3px;
+  margin: -4px -3px;
 }
 .mm-guest-nav button {
   border: 1px solid #d5dec9;
-  border-radius: 20px;
+  border-radius: 8px;
   background: #fff;
   color: #2f482e;
-  font-size: 12px;
+  font-size: 14px;
+  min-height: 44px;
   padding: 8px 12px;
   white-space: nowrap;
+}
+.mm-guest-section-links button[aria-current="location"] {
+  font-weight: 700;
+  border-color: currentColor;
+  text-decoration: underline;
+  text-underline-offset: 4px;
+}
+.mm-guest-nav .mm-guest-sections-more {
+  display: grid;
+  place-items: center;
+  flex: 0 0 44px;
+  width: 44px;
+  height: 44px;
+  padding: 0;
+  border-color: currentColor;
+}
+.menu-section-heading h2 {
+  scroll-margin-top: 132px;
 }
 .mm-menu-no-results {
   padding: 30px 0;

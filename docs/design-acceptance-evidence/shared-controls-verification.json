@@ -1,0 +1,260 @@
+{
+  "environment": "Local dev server, Codex in-app browser; engine/version not exposed",
+  "checks": [
+    {
+      "page": "homepage",
+      "viewport": "1280x720",
+      "controls": [
+        {
+          "background": "rgba(0, 0, 0, 0)",
+          "color": "rgb(32, 38, 36)",
+          "font": "16px / 24px \"Helvetica Neue\", Arial, sans-serif",
+          "gap": "normal",
+          "height": 47.4609375,
+          "name": "Menu Material home",
+          "padding": "0px",
+          "radius": "0px",
+          "width": 250
+        },
+        {
+          "background": "rgb(255, 255, 255)",
+          "color": "rgb(32, 38, 36)",
+          "font": "600 14px / 21px \"Helvetica Neue\", Arial, sans-serif",
+          "gap": "normal",
+          "height": 44,
+          "name": "Log in",
+          "padding": "10px 8px",
+          "radius": "8px",
+          "width": 57.21875
+        },
+        {
+          "background": "rgb(23, 76, 60)",
+          "color": "rgb(255, 255, 255)",
+          "font": "600 14px / 19.6px \"Helvetica Neue\", Arial, sans-serif",
+          "gap": "8px",
+          "height": 44,
+          "name": "Try it free",
+          "padding": "10px 16px",
+          "radius": "8px",
+          "width": 94.234375
+        },
+        {
+          "background": "rgb(23, 76, 60)",
+          "color": "rgb(255, 255, 255)",
+          "font": "600 16px / 22.4px \"Helvetica Neue\", Arial, sans-serif",
+          "gap": "8px",
+          "height": 52,
+          "name": "Try it free",
+          "padding": "12px 24px",
+          "radius": "8px",
+          "width": 143.125
+        },
+        {
+          "background": "rgb(23, 76, 60)",
+          "color": "rgb(255, 255, 255)",
+          "font": "600 16px / 22.4px \"Helvetica Neue\", Arial, sans-serif",
+          "gap": "8px",
+          "height": 52,
+          "name": "Try it free",
+          "padding": "12px 24px",
+          "radius": "8px",
+          "width": 143.125
+        },
+        {
+          "background": "rgba(0, 0, 0, 0)",
+          "color": "rgb(32, 38, 36)",
+          "font": "16px / 24px \"Helvetica Neue\", Arial, sans-serif",
+          "gap": "normal",
+          "height": 44,
+          "name": "Menu Material home",
+          "padding": "0px",
+          "radius": "0px",
+          "width": 220
+        }
+      ]
+    },
+    {
+      "page": "homepage",
+      "viewport": "390x844",
+      "controls": {
+        "controls": [
+          {
+            "background": "rgba(0, 0, 0, 0)",
+            "color": "rgb(32, 38, 36)",
+            "font": "16px / 24px \"Helvetica Neue\", Arial, sans-serif",
+            "gap": "normal",
+            "height": 44,
+            "name": "Menu Material home",
+            "padding": "0px",
+            "radius": "0px",
+            "width": 180
+          },
+          {
+            "background": "rgb(23, 76, 60)",
+            "color": "rgb(255, 255, 255)",
+            "font": "600 14px / 19.6px \"Helvetica Neue\", Arial, sans-serif",
+            "gap": "8px",
+            "height": 44,
+            "name": "Try it free",
+            "padding": "8px 12px",
+            "radius": "8px",
+            "width": 86.234375
+          },
+          {
+            "background": "rgba(0, 0, 0, 0)",
+            "color": "rgb(32, 38, 36)",
+            "font": "14px / 21px \"Helvetica Neue\", Arial, sans-serif",
+            "gap": "normal",
+            "height": 44,
+            "name": "Open navigation",
+            "padding": "0px",
+            "radius": "0px",
+            "width": 44
+          },
+          {
+            "background": "rgb(23, 76, 60)",
+            "color": "rgb(255, 255, 255)",
+            "font": "600 16px / 22.4px \"Helvetica Neue\", Arial, sans-serif",
+            "gap": "8px",
+            "height": 52,
+            "name": "Try it free",
+            "padding": "12px 24px",
+            "radius": "8px",
+            "width": 143.125
+          },
+          {
+            "background": "rgba(0, 0, 0, 0)",
+            "color": "rgb(89, 98, 95)",
+            "font": "500 14px / 20px \"Helvetica Neue\", Arial, sans-serif",
+            "gap": "6px",
+            "height": 44,
+            "name": "Before",
+            "padding": "8px 12px",
+            "radius": "6px",
+            "width": 168
+          },
+          {
+            "background": "rgb(23, 76, 60)",
+            "color": "rgb(255, 255, 255)",
+            "font": "500 14px / 20px \"Helvetica Neue\", Arial, sans-serif",
+            "gap": "6px",
+            "height": 44,
+            "name": "After",
+            "padding": "8px 12px",
+            "radius": "6px",
+            "width": 168
+          },
+          {
+            "background": "rgb(23, 76, 60)",
+            "color": "rgb(255, 255, 255)",
+            "font": "600 16px / 22.4px \"Helvetica Neue\", Arial, sans-serif",
+            "gap": "8px",
+            "height": 52,
+            "name": "Try it free",
+            "padding": "12px 24px",
+            "radius": "8px",
+            "width": 143.125
+          },
+          {
+            "background": "rgba(0, 0, 0, 0)",
+            "color": "rgb(32, 38, 36)",
+            "font": "16px / 24px \"Helvetica Neue\", Arial, sans-serif",
+            "gap": "normal",
+            "height": 44,
+            "name": "Menu Material home",
+            "padding": "0px",
+            "radius": "0px",
+            "width": 220
+          }
+        ],
+        "overflow": false
+      }
+    },
+    {
+      "page": "homepage",
+      "viewport": "320x740",
+      "controls": {
+        "header": [
+          {
+            "h": 44,
+            "name": "Menu Material home",
+            "w": 135.765625,
+            "x": 20,
+            "y": 16
+          },
+          {
+            "h": 44,
+            "name": "Try it free",
+            "w": 86.234375,
+            "x": 165.765625,
+            "y": 16
+          },
+          {
+            "h": 44,
+            "name": "Open navigation",
+            "w": 44,
+            "x": 256,
+            "y": 16
+          }
+        ],
+        "overflow": false
+      }
+    },
+    {
+      "page": "settings discard dialog",
+      "viewport": "390x844",
+      "controls": [
+        {
+          "background": "rgb(255, 255, 255)",
+          "color": "rgb(32, 38, 36)",
+          "focus": "rgb(32, 38, 36) none 3px",
+          "focusOffset": "0px",
+          "focused": false,
+          "font": "600 14px / 19.6px \"Helvetica Neue\", Arial, sans-serif",
+          "h": 44,
+          "name": "Keep editing",
+          "radius": "8px",
+          "w": 308
+        },
+        {
+          "background": "rgb(161, 45, 50)",
+          "color": "rgb(255, 255, 255)",
+          "focus": "rgb(246, 248, 248) solid 2.5px",
+          "focusOffset": "0.5px",
+          "focused": true,
+          "font": "600 14px / 19.6px \"Helvetica Neue\", Arial, sans-serif",
+          "h": 44,
+          "name": "Discard changes",
+          "radius": "8px",
+          "w": 308
+        }
+      ]
+    },
+    {
+      "page": "public pricing",
+      "viewport": "390x844",
+      "controls": [
+        {
+          "background": "rgb(23, 76, 60)",
+          "color": "rgb(255, 255, 255)",
+          "disabled": false,
+          "font": "600 14px / 19.6px \"Helvetica Neue\", Arial, sans-serif",
+          "gap": "8px",
+          "height": 48,
+          "name": "Try it free",
+          "radius": "8px"
+        },
+        {
+          "background": "rgb(228, 231, 233)",
+          "color": "rgb(89, 98, 95)",
+          "disabled": true,
+          "font": "600 14px / 19.6px \"Helvetica Neue\", Arial, sans-serif",
+          "gap": "8px",
+          "height": 48,
+          "name": "Pro is coming soon",
+          "radius": "8px"
+        }
+      ]
+    }
+  ]
+}

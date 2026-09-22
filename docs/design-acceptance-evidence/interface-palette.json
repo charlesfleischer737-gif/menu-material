@@ -1,0 +1,123 @@
+{
+  "source": "app/globals.css :root",
+  "tokens": [
+    {
+      "token": "--workspace-canvas",
+      "definition": "#f4f5f6",
+      "resolved": "#f4f5f6"
+    },
+    {
+      "token": "--workspace-surface",
+      "definition": "#ffffff",
+      "resolved": "#ffffff"
+    },
+    {
+      "token": "--workspace-ink",
+      "definition": "#202624",
+      "resolved": "#202624"
+    },
+    {
+      "token": "--workspace-muted",
+      "definition": "#59625f",
+      "resolved": "#59625f"
+    },
+    {
+      "token": "--workspace-action",
+      "definition": "#174c3c",
+      "resolved": "#174c3c"
+    },
+    {
+      "token": "--workspace-action-hover",
+      "definition": "#103c2e",
+      "resolved": "#103c2e"
+    },
+    {
+      "token": "--workspace-action-pressed",
+      "definition": "#0b2e23",
+      "resolved": "#0b2e23"
+    },
+    {
+      "token": "--workspace-focus",
+      "definition": "var(--workspace-action)",
+      "resolved": "#174c3c"
+    },
+    {
+      "token": "--workspace-selected",
+      "definition": "#e5efea",
+      "resolved": "#e5efea"
+    },
+    {
+      "token": "--workspace-line",
+      "definition": "#d6dcda",
+      "resolved": "#d6dcda"
+    },
+    {
+      "token": "--workspace-control",
+      "definition": "#7c8681",
+      "resolved": "#7c8681"
+    },
+    {
+      "token": "--workspace-stage",
+      "definition": "#e4e7e9",
+      "resolved": "#e4e7e9"
+    },
+    {
+      "token": "--workspace-disabled",
+      "definition": "var(--workspace-stage)",
+      "resolved": "#e4e7e9"
+    },
+    {
+      "token": "--workspace-warning",
+      "definition": "#8a4b08",
+      "resolved": "#8a4b08"
+    },
+    {
+      "token": "--workspace-warning-surface",
+      "definition": "#fff4df",
+      "resolved": "#fff4df"
+    },
+    {
+      "token": "--workspace-error",
+      "definition": "#a12d32",
+      "resolved": "#a12d32"
+    },
+    {
+      "token": "--workspace-error-hover",
+      "definition": "#842329",
+      "resolved": "#842329"
+    },
+    {
+      "token": "--workspace-error-pressed",
+      "definition": "#6b1a20",
+      "resolved": "#6b1a20"
+    },
+    {
+      "token": "--workspace-error-surface",
+      "definition": "#fff2f1",
+      "resolved": "#fff2f1"
+    },
+    {
+      "token": "--workspace-success",
+      "definition": "var(--workspace-action)",
+      "resolved": "#174c3c"
+    },
+    {
+      "token": "--workspace-success-surface",
+      "definition": "var(--workspace-selected)",
+      "resolved": "#e5efea"
+    },
+    {
+      "token": "--workspace-loading",
+      "definition": "var(--workspace-muted)",
+      "resolved": "#59625f"
+    },
+    {
+      "token": "--workspace-loading-surface",
+      "definition": "var(--workspace-stage)",
+      "resolved": "#e4e7e9"
+    }
+  ],
+  "undefinedColorReferences": [],
+  "layoutException": "--workspace-action-height is measured and assigned by WorkspaceActionBar; it is not a color token.",
+  "note": "The workspace/cx/mm/md-ui/pw CSS reference families were checked for definitions. A defined variable alone does not prove every legacy visual role has been migrated; UX-09.1 remains open."
+}

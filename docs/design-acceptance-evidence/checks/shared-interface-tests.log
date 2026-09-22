@@ -1,0 +1,163 @@
+$ node --disable-warning=ExperimentalWarning --experimental-loader ./tests/runtime-loader.mjs tests/integration.mjs
+PASS: 89 API assertions; invitation access, tenant isolation, persistent storage, image privacy, atomic quota/idempotency, partial-failure refunds, revisions, approvals, caption editing, menu snapshot isolation, publish/republish/unpublish, deletion, and password-reset session revocation.
+Provider HTTP calls used deterministic fixtures. Live OpenAI quality, latency and billing are NOT verified.
+$ node --disable-warning=ExperimentalWarning --experimental-loader ./tests/runtime-loader.mjs tests/expansion.mjs
+PASS: 89 expansion API/timezone checks plus persistence, price/photo isolation, publication snapshots, exact expiry, DST transitions, staff scope, import review, engagement deduplication and partial batch recovery assertions.
+All provider responses in this test are isolated fixtures. No live generation or sales results claimed.
+$ node --disable-warning=ExperimentalWarning --experimental-loader ./tests/runtime-loader.mjs tests/creation.mjs
+PASS: 67 core-creation API checks plus one-result default, zero-call previews/edits, cache, draft conflicts, identity lineage, immutable versions, sample-first batches, print settings and tenant-boundary assertions.
+Provider responses are explicit isolated fixtures. Live image fidelity and billing require the service connection.
+PASS: coordinated restaurant looks, visual export identity, and published-only sharing metadata.
+$ node --disable-warning=ExperimentalWarning --experimental-loader ./tests/runtime-loader.mjs tests/post-flow.mjs
+PASS: destination preferences, safe file names, and actual-photo lineage across generated and edited versions.
+Post flow: 18 assertions passed
+$ node --disable-warning=ExperimentalWarning --experimental-loader ./tests/runtime-loader.mjs tests/creative-catalog.mjs
+PASS: 56 distinct style photos and generation prompts; 7 categories with 8 styles each; 10 template examples; customer facts and legacy drafts preserved.
+$ node --disable-warning=ExperimentalWarning --experimental-loader ./tests/runtime-loader.mjs tests/launch-readiness.mjs
+PASS: 83 launch checks: access requests, pagination, archived drafts, conflict/idempotency, queue fairness/backoff, pause, no-session runner, cancellation, deadlines, atomic budgets/storage, bounded bodies, login abuse and tenant isolation. Provider calls are fixtures.
+$ node --disable-warning=ExperimentalWarning --experimental-loader ./tests/runtime-loader.mjs tests/plans.mjs
+PASS: 91 plan checks: open signup, five free credits, atomic monthly quota, payment verification, signatures, duplicate/out-of-order webhooks, renewals, cancellation, checkout reuse, tenant isolation and loss-safe guest photo handoff. Stripe and AI are fixtures; no payments were made.
+$ node --disable-warning=ExperimentalWarning --experimental-loader ./tests/runtime-loader.mjs tests/workspace-upgrade.mjs
+PASS: 42 workspace API checks, main-photo validation, archived reuse, stale details and revision conflicts, menu snapshot framing, voice rewrites, uncertain imports and tenant boundaries. Provider responses are fixtures.
+$ node --disable-warning=ExperimentalWarning --experimental-loader ./tests/runtime-loader.mjs tests/studio-experience.mjs
+Photo Studio: discovery, override preservation, immutable look recipes, 60 API checks, restaurant isolation and output-format compatibility passed.
+$ node --disable-warning=ExperimentalWarning --experimental-loader ./tests/runtime-loader.mjs tests/studio-release.mjs
+Photo Studio release controls: 40 API checks plus unknown-look, captured-recipe, legacy compatibility, scoped access, queue withdrawal, recovery, export and conflict assertions passed. Provider responses are fixtures.
+$ node --disable-warning=ExperimentalWarning --experimental-loader ./tests/runtime-loader.mjs tests/studio-measurement.mjs
+Photo Studio measurement checks passed: 40 API checks plus privacy, identity, deduplication and recovery assertions.
+$ node --disable-warning=ExperimentalWarning --experimental-loader ./tests/runtime-loader.mjs tests/studio-progress.mjs
+Photo Studio progress: 50 API checks plus source-version, seven-day cohort, exact-export, cached-reuse, legacy and access assertions passed.
+$ node --disable-warning=ExperimentalWarning --experimental-loader ./tests/runtime-loader.mjs tests/studio-search.mjs
+Search: 40/40 query fixtures, 56/56 exact names, scoped matching and control routes passed.
+Local CPU only: 200 styles + 100 saved looks; p95 4.9 ms. No network or provider calls.
+$ node --disable-warning=ExperimentalWarning --experimental-loader ./tests/runtime-loader.mjs tests/deferred-workspace.mjs
+Deferred workspaces: on-demand loading, concurrent reuse, cached revisits and failure/retry isolation passed.
+$ node --disable-warning=ExperimentalWarning --experimental-loader ./tests/runtime-loader.mjs tests/photo-preview-lifecycle.mjs
+Photo preview lifecycle: latest-frame coalescing, invalidated callbacks and download/decode cancellation passed.
+$ node --disable-warning=ExperimentalWarning --experimental-loader ./tests/runtime-loader.mjs tests/studio-recents.mjs
+Studio recents: 51 API checks; accepted/rejected creation, cache/replay, concurrent retry, server-owned ordering, repeatable backfill and isolation passed. No provider calls.
+Request failed Error: Fixture use-receipt failure
+    at Statement.executeAll (file:///Users/charlesfleischer/Documents/ChatGPT/AI%20Restaurant%20Project/lib/local-runtime.ts:40:47)
+    at Object.batch (file:///Users/charlesfleischer/Documents/ChatGPT/AI%20Restaurant%20Project/lib/local-runtime.ts:65:55)
+    at enqueue (file:///Users/charlesfleischer/Documents/ChatGPT/AI%20Restaurant%20Project/lib/server/generation.ts:235:20)
+    at async handle (file:///Users/charlesfleischer/Documents/ChatGPT/AI%20Restaurant%20Project/lib/server/api.ts:765:25)
+    at async call (file:///Users/charlesfleischer/Documents/ChatGPT/AI%20Restaurant%20Project/tests/studio-recents.mjs:27:20)
+    at async file:///Users/charlesfleischer/Documents/ChatGPT/AI%20Restaurant%20Project/tests/studio-recents.mjs:383:3 {
+  code: 'ERR_SQLITE_ERROR',
+  errcode: 1811,
+  errstr: 'constraint failed'
+}
+$ node --disable-warning=ExperimentalWarning --experimental-loader ./tests/runtime-loader.mjs tests/studio-references.mjs
+Studio references: 54 API checks; full-reference readiness, unavailable/storage recovery, ownership, pre-reservation checks, queue races, replay and cached reuse passed. No provider calls.
+Generation recovery 6759898e-d630-4861-bb01-768b715e5760 An inspiration photo is unavailable. Replace your inspiration or choose another look.
+Generation recovery 3e621556-8379-4dca-962b-a27f59c01220 An inspiration photo is unavailable. Replace your inspiration or choose another look.
+$ node --disable-warning=ExperimentalWarning --experimental-loader ./tests/runtime-loader.mjs tests/menu-documents.mjs
+67 menu document API checks passed: independent content, draft privacy, named publication, stable QR, revision conflicts, history, ownership, and reviewed AI suggestions.
+Request failed Error: simulated interrupted migration
+    at Statement.executeAll (file:///Users/charlesfleischer/Documents/ChatGPT/AI%20Restaurant%20Project/lib/local-runtime.ts:40:47)
+    at Object.batch (file:///Users/charlesfleischer/Documents/ChatGPT/AI%20Restaurant%20Project/lib/local-runtime.ts:65:55)
+    at menuDocumentsRoute (file:///Users/charlesfleischer/Documents/ChatGPT/AI%20Restaurant%20Project/lib/server/menu-documents.ts:166:24)
+    at process.processTicksAndRejections (node:internal/process/task_queues:104:5)
+    at async handle (file:///Users/charlesfleischer/Documents/ChatGPT/AI%20Restaurant%20Project/lib/server/api.ts:574:38)
+    at async call (file:///Users/charlesfleischer/Documents/ChatGPT/AI%20Restaurant%20Project/tests/menu-documents.mjs:41:15)
+    at async file:///Users/charlesfleischer/Documents/ChatGPT/AI%20Restaurant%20Project/tests/menu-documents.mjs:112:3 {
+  code: 'ERR_SQLITE_ERROR',
+  errcode: 1811,
+  errstr: 'constraint failed'
+}
+$ node --disable-warning=ExperimentalWarning --experimental-loader ./tests/runtime-loader.mjs tests/menu-design-v2.mjs
+60 measured menu compositions passed, plus price variants, visibility, page breaks, print dimensions, review gating, and unsupported glyph diagnostics. Proofs: /private/tmp/menu-design-v2
+$ node --disable-warning=ExperimentalWarning --experimental-loader ./tests/runtime-loader.mjs tests/menu-proof-queue.mjs
+Menu proof queue: shared work, bounded concurrency/cache, priority, cancellation, fresh retries, and failure recovery passed.
+$ node --disable-warning=ExperimentalWarning --experimental-loader ./tests/runtime-loader.mjs tests/menu-worker.mjs
+Menu worker: real off-thread composition with photos, exact layout/profile parity, PDF export reuse, warm-worker reuse, termination, recovery, and reviewed export gating passed. Canvas uses a test adapter; browser/device latency is not asserted.
+$ node --disable-warning=ExperimentalWarning --experimental-loader ./tests/runtime-loader.mjs tests/menu-purpose-quality.mjs
+[
+  {
+    "purpose": "dive-bar",
+    "paper": "letter",
+    "items": 11,
+    "pages": 1,
+    "warnings": []
+  },
+  {
+    "purpose": "dive-bar",
+    "paper": "a4",
+    "items": 11,
+    "pages": 1,
+    "warnings": []
+  },
+  {
+    "purpose": "cocktail-bar",
+    "paper": "letter",
+    "items": 8,
+    "pages": 1,
+    "warnings": []
+  },
+  {
+    "purpose": "cocktail-bar",
+    "paper": "a4",
+    "items": 8,
+    "pages": 1,
+    "warnings": []
+  },
+  {
+    "purpose": "smoothie-truck",
+    "paper": "letter",
+    "items": 8,
+    "pages": 1,
+    "warnings": []
+  },
+  {
+    "purpose": "smoothie-truck",
+    "paper": "a4",
+    "items": 8,
+    "pages": 1,
+    "warnings": []
+  },
+  {
+    "purpose": "cafe",
+    "paper": "letter",
+    "items": 12,
+    "pages": 1,
+    "warnings": []
+  },
+  {
+    "purpose": "cafe",
+    "paper": "a4",
+    "items": 12,
+    "pages": 1,
+    "warnings": []
+  },
+  {
+    "purpose": "wine",
+    "paper": "letter",
+    "items": 8,
+    "pages": 1,
+    "warnings": [
+      "Spacing was gently tightened to meet your page preference. Text sizes are unchanged."
+    ]
+  },
+  {
+    "purpose": "wine",
+    "paper": "a4",
+    "items": 8,
+    "pages": 1,
+    "warnings": []
+  },
+  {
+    "purpose": "tasting",
+    "paper": "letter",
+    "items": 5,
+    "pages": 1,
+    "warnings": []
+  },
+  {
+    "purpose": "tasting",
+    "paper": "a4",
+    "items": 5,
+    "pages": 1,
+    "warnings": []
+  }
+]
+Purpose-specific menu proofs passed: content, prices, text bounds, collisions, readable type, and actual PDF page counts. Artifacts: /private/tmp/menu-purpose-quality

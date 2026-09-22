@@ -24,8 +24,12 @@
   width: 100%;
   height: auto;
 }
-.pw-header > a:has(.menu-material-wordmark) {
+.pw-header > a:has(.menu-material-wordmark),
+.pw-footer > a:has(.menu-material-wordmark) {
+  display: inline-flex;
+  align-items: center;
   min-width: 0;
+  min-height: 44px;
 }
 .pw-header:has(.menu-material-wordmark) > nav {
   flex-shrink: 0;
@@ -45,10 +49,10 @@
   }
 }
 .pw-site {
-  --pw-ink: #202820;
-  --pw-muted: #657064;
-  --pw-line: #e3e6df;
-  background: #fff;
+  --pw-ink: var(--workspace-ink);
+  --pw-muted: var(--workspace-muted);
+  --pw-line: var(--workspace-line);
+  background: var(--workspace-surface);
   color: var(--pw-ink);
   font-family: "Helvetica Neue", Arial, sans-serif;
   -webkit-font-smoothing: antialiased;
@@ -65,25 +69,8 @@
   -webkit-tap-highlight-color: transparent;
 }
 .pw-site :is(a, button):focus-visible {
-  outline: 2px solid #59715b;
-  outline-offset: 5px;
-}
-.pw-site button[data-slot="button"] {
-  min-height: 52px;
-  height: auto;
-  padding: 14px 24px;
-  border-radius: 6px;
-  background: var(--pw-ink);
-  color: #fff;
-  border: 1px solid var(--pw-ink);
-  font-size: 1rem;
-  font-weight: 500;
-  box-shadow: none;
-  gap: 20px;
-  transition: background-color 0.15s;
-}
-.pw-site button[data-slot="button"]:hover {
-  background: #394436;
+  outline: 2px solid var(--workspace-focus);
+  outline-offset: 3px;
 }
 .pw-header,
 .pw-hero,
@@ -110,15 +97,8 @@
 .pw-header nav a {
   padding-block: 12px;
 }
-.pw-header nav button {
-  border: 1px solid #d6dbd2;
-  border-radius: 5px;
-  padding: 10px 19px;
-  min-height: 44px;
-  background: white;
-}
-.pw-header nav :is(a, button):hover {
-  color: #536847;
+.pw-header nav :is(a, button:not([data-slot="button"])):hover {
+  color: var(--workspace-action);
 }
 .pw-hero-intro {
   position: relative;
@@ -633,14 +613,18 @@
     row-gap: 0;
   }
 }
-.pw-header .pw-login {
+.pw-header nav button.pw-login {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
   border: 0;
-  padding-inline: 0;
-}
-.pw-header button.pw-header-cta {
+  min-width: 44px;
   min-height: 44px;
-  padding: 10px 17px;
-  font-size: 0.9375rem;
+  padding: 10px 8px;
+  border-radius: 8px;
+  background: var(--workspace-surface);
+  font-size: 14px;
+  font-weight: 600;
 }
 .pw-start > div {
   max-width: 790px;
@@ -660,14 +644,6 @@
     min-height: 44px;
     align-items: center;
   }
-  .pw-header button.pw-header-cta {
-    padding-inline: 14px;
-    font-size: 0.875rem;
-  }
-}
-.pw-header button.pw-header-cta,
-.pw-header button.pw-header-cta:hover {
-  color: #fff;
 }
 
 /* Food-led use cases and interactive feature examples. */

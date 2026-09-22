@@ -16,6 +16,9 @@ import "./menu-templates.css";
 import "./menu-studio.css";
 import "./studio-experience.css";
 import "./explore.css";
+import "./restaurant-settings.css";
+import "./library-filters.css";
+import "./workspace-patterns.css";
 export async function generateMetadata(): Promise<Metadata> {
   const origin = config("APP_ORIGIN");
   const images = origin
@@ -29,7 +32,7 @@ export async function generateMetadata(): Promise<Metadata> {
   return {
     title: "Menu Material — Food photos worth ordering from.",
     description:
-      "Turn real dish photos into professional images and matching posts for Toast, delivery apps, your website, and Instagram. Start with 5 free image generations. Pro is $9.99/month for 100 images.",
+      "Turn real dish photos into professional images and matching posts for Toast, delivery apps, your website, and Instagram. Start with 5 free image generations.",
     icons: {
       icon: "/favicon.svg?v=menu-material",
       shortcut: "/favicon.svg?v=menu-material",

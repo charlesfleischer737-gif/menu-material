@@ -1,6 +1,13 @@
 "use client";
-import { useEffect, useRef, useState } from "react";
+import { useEffect, useLayoutEffect, useRef, useState } from "react";
 import { ChevronLeft, ChevronRight, Minus, Plus } from "lucide-react";
+import {
+  DropdownMenu,
+  DropdownMenuContent,
+  DropdownMenuRadioGroup,
+  DropdownMenuRadioItem,
+  DropdownMenuTrigger,
+} from "@/components/ui/dropdown-menu";
 import type { DesignedMenu } from "@/lib/menu-document";
 import type { MenuPdfResult } from "@/lib/menu-pdf-v2";
 import { prepareMenuProof } from "@/lib/menu-proof-client";
@@ -9,12 +16,14 @@ function ProofPage({
   page,
   onSelect,
   selected,
+  entryNames,
   thumbnail = false,
 }: {
   result: MenuPdfResult;
   page: number;
   onSelect?: (id: string) => void;
   selected?: string;
+  entryNames?: Record<string, string>;
   thumbnail?: boolean;
 }) {
   const canvas = useRef<HTMLCanvasElement>(null),
@@ -70,7 +79,8 @@ function ProofPage({
           <button
             key={`${hit.entryId}-${i}`}
             className={`md-proof-hit ${selected === hit.entryId ? "is-selected" : ""}`}
-            aria-label={`Edit ${result.layout.pages[page - 1].elements.find((el) => el.kind === "text" && el.entryId === hit.entryId && el.role === "item")?.kind === "text" ? (result.layout.pages[page - 1].elements.find((el) => el.kind === "text" && el.entryId === hit.entryId && el.role === "item") as { text: string }).text : "dish"}`}
+            aria-label={`Edit ${entryNames?.[hit.entryId] || "untitled dish"}`}
+            aria-pressed={selected === hit.entryId}
             onClick={() => onSelect(hit.entryId)}
             style={{
               left: `${(hit.x / result.layout.width) * 100}%`,
@@ -102,7 +112,10 @@ export default function MenuProof({
     [error, setError] = useState(""),
     [busy, setBusy] = useState(false),
     [page, setPage] = useState(1),
-    [zoom, setZoom] = useState(100);
+    [zoom, setZoom] = useState(100),
+    [fit, setFit] = useState<"width" | "page" | "custom">("width"),
+    [space, setSpace] = useState({ width: 0, height: 0 });
+  const scroller = useRef<HTMLDivElement>(null);
   const key = JSON.stringify({
       ...menu,
       printProfile: production ? menu.printProfile : "home",
@@ -147,6 +160,61 @@ export default function MenuProof({
       controller.abort();
     };
   }, [key, compact]);
+  useLayoutEffect(() => {
+    const element = scroller.current;
+    if (!element || compact) return;
+    const measure = () => {
+      const layout = element.closest<HTMLElement>("[data-action-layout]");
+      const footer = layout
+        ? parseFloat(
+            getComputedStyle(layout).getPropertyValue(
+              "--workspace-action-height",
+            ),
+          ) || 0
+        : 0;
+      const style = getComputedStyle(element);
+      const width =
+        element.clientWidth -
+        parseFloat(style.paddingLeft) -
+        parseFloat(style.paddingRight);
+      const height = Math.max(
+        300,
+        window.innerHeight - element.getBoundingClientRect().top - footer - 24,
+      );
+      setSpace((previous) =>
+        previous.width === width && previous.height === height
+          ? previous
+          : { width, height },
+      );
+    };
+    const observer = new ResizeObserver(measure);
+    observer.observe(element);
+    window.addEventListener("resize", measure);
+    measure();
+    return () => {
+      observer.disconnect();
+      window.removeEventListener("resize", measure);
+    };
+  }, [compact, result?.layout.width, result?.layout.height]);
+  const pageWidth =
+    result && space.width
+      ? Math.min(
+          space.width,
+          ((space.height - 24) * result.layout.width) / result.layout.height,
+        )
+      : space.width;
+  const effectiveZoom =
+    fit === "page" && space.width
+      ? (pageWidth / space.width) * 100
+      : fit === "width"
+        ? 100
+        : zoom;
+  function changeZoom(amount: number) {
+    setZoom(
+      Math.max(25, Math.min(200, Math.round(effectiveZoom / 10) * 10 + amount)),
+    );
+    setFit("custom");
+  }
   if (compact)
     return (
       <div className="md-proof-mini" aria-busy={busy}>
@@ -175,9 +243,7 @@ export default function MenuProof({
           >
             <ChevronLeft size={16} />
           </button>
-          <span>
-            {result ? `${page} of ${result.pages}` : "Preparing pages…"}
-          </span>
+          <span>{result ? `${page} / ${result.pages}` : "…"}</span>
           <button
             aria-label="Next page"
             disabled={!result || page >= result.pages}
@@ -186,7 +252,7 @@ export default function MenuProof({
             <ChevronRight size={16} />
           </button>
         </div>
-        <span className="md-proof-updating" role="status">
+        <span className="md-proof-updating sr-only" role="status">
           {busy
             ? "Updating…"
             : menu.paper === "a4"
@@ -196,16 +262,39 @@ export default function MenuProof({
         <div>
           <button
             aria-label="Zoom out"
-            disabled={zoom <= 60}
-            onClick={() => setZoom((z) => z - 20)}
+            disabled={effectiveZoom <= 25}
+            onClick={() => changeZoom(-20)}
           >
             <Minus size={14} />
           </button>
-          <button onClick={() => setZoom(100)}>{zoom}%</button>
+          <DropdownMenu>
+            <DropdownMenuTrigger asChild>
+              <button className="md-fit-control" aria-label="Preview size">
+                {fit === "page"
+                  ? "Fit page"
+                  : fit === "width"
+                    ? "Fit width"
+                    : `${zoom}%`}
+              </button>
+            </DropdownMenuTrigger>
+            <DropdownMenuContent className="workspace-action-menu" align="end">
+              <DropdownMenuRadioGroup
+                value={fit}
+                onValueChange={(value) => setFit(value as "width" | "page")}
+              >
+                <DropdownMenuRadioItem value="page">
+                  Fit page
+                </DropdownMenuRadioItem>
+                <DropdownMenuRadioItem value="width">
+                  Fit width
+                </DropdownMenuRadioItem>
+              </DropdownMenuRadioGroup>
+            </DropdownMenuContent>
+          </DropdownMenu>
           <button
             aria-label="Zoom in"
-            disabled={zoom >= 180}
-            onClick={() => setZoom((z) => z + 20)}
+            disabled={effectiveZoom >= 200}
+            onClick={() => changeZoom(20)}
           >
             <Plus size={14} />
           </button>
@@ -233,15 +322,27 @@ export default function MenuProof({
               ))}
             </div>
           )}
-          <div className="md-proof-scroll">
+          <div
+            ref={scroller}
+            className="md-proof-scroll"
+            style={{ maxHeight: space.height || undefined }}
+          >
             <div
               className="md-proof-sheet"
               style={{
-                width: `${zoom}%`,
-                minWidth: zoom > 100 ? `${zoom}%` : undefined,
+                width:
+                  fit === "page" && pageWidth
+                    ? `${pageWidth}px`
+                    : `${effectiveZoom}%`,
+                minWidth: effectiveZoom > 100 ? `${effectiveZoom}%` : undefined,
               }}
             >
               <ProofPage
+                entryNames={Object.fromEntries(
+                  menu.sections.flatMap((section) =>
+                    section.items.map((item) => [item.id, item.name]),
+                  ),
+                )}
                 result={result}
                 page={page}
                 onSelect={

@@ -1,0 +1,53 @@
+[
+  {
+    "at": "2026-09-18T07:30:32.329Z",
+    "id": "447386a9-a615-4a57-870c-d2894422677e",
+    "phase": "received",
+    "method": "POST",
+    "path": "/api/auth/login",
+    "query": "",
+    "delayMs": 5000,
+    "fixture": "controls-auth-pending-failure"
+  },
+  {
+    "at": "2026-09-18T07:30:37.334Z",
+    "id": "447386a9-a615-4a57-870c-d2894422677e",
+    "phase": "completed",
+    "status": 503,
+    "fixture": "controls-auth-pending-failure"
+  },
+  {
+    "at": "2026-09-18T07:32:15.316Z",
+    "id": "d8f0ded0-218d-4782-b90d-79119e449446",
+    "phase": "received",
+    "method": "POST",
+    "path": "/api/auth/login",
+    "query": "",
+    "delayMs": 5000,
+    "fixture": "controls-auth-pending-failure"
+  },
+  {
+    "at": "2026-09-18T07:32:20.318Z",
+    "id": "d8f0ded0-218d-4782-b90d-79119e449446",
+    "phase": "completed",
+    "status": 503,
+    "fixture": "controls-auth-pending-failure"
+  },
+  {
+    "at": "2026-09-18T07:37:13.345Z",
+    "id": "d2fcc6bf-faed-4d7f-a34a-28943057426c",
+    "phase": "received",
+    "method": "POST",
+    "path": "/api/auth/login",
+    "query": "",
+    "delayMs": 5000,
+    "fixture": "controls-auth-pending-failure"
+  },
+  {
+    "at": "2026-09-18T07:37:18.348Z",
+    "id": "d2fcc6bf-faed-4d7f-a34a-28943057426c",
+    "phase": "completed",
+    "status": 503,
+    "fixture": "controls-auth-pending-failure"
+  }
+]

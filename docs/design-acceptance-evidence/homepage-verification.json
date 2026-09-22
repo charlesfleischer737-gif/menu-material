@@ -1,0 +1,2913 @@
+{
+  "environment": "Local Codex in-app browser; default zoom and text size",
+  "views": [
+    {
+      "label": "controls-desktop",
+      "bubbleTextIntersections": [
+        {
+          "bubble": 0,
+          "text": "Make your food lookas good as it tastes."
+        }
+      ],
+      "bubbles": [
+        {
+          "bottom": 218.09083557128903,
+          "h": 112.58168029785156,
+          "right": 261.69085693359375,
+          "w": 112.58169555664062,
+          "x": 149.10916137695312,
+          "y": 105.5091552734375
+        },
+        {
+          "bottom": 313.56866455078125,
+          "h": 87.05732727050781,
+          "right": 316.9886779785156,
+          "w": 87.05732727050781,
+          "x": 229.9313507080078,
+          "y": 226.51133728027344
+        },
+        {
+          "bottom": 409.2463989257813,
+          "h": 68.4927978515625,
+          "right": 236.36642456054688,
+          "w": 68.49282836914062,
+          "x": 167.87359619140625,
+          "y": 340.75360107421875
+        },
+        {
+          "bottom": 216.41322326660156,
+          "h": 94.4664535522461,
+          "right": 1121.0133056640625,
+          "w": 94.466552734375,
+          "x": 1026.5467529296875,
+          "y": 121.94676971435548
+        },
+        {
+          "bottom": 333.0946350097656,
+          "h": 112.98927307128906,
+          "right": 1074.5146484375,
+          "w": 112.98931884765624,
+          "x": 961.5253295898438,
+          "y": 220.10536193847656
+        },
+        {
+          "bottom": 411.7064208984375,
+          "h": 68.49282836914062,
+          "right": 1121.9664306640625,
+          "w": 68.4927978515625,
+          "x": 1053.4736328125,
+          "y": 343.2135925292969
+        }
+      ],
+      "cards": [
+        {
+          "copy": "Grilled steak, rich herb butter, and a generous side of golden fries.",
+          "copyRect": {
+            "bottom": 1271.2265625,
+            "h": 40.59375,
+            "right": 384.6640625,
+            "w": 292,
+            "x": 92.6640625,
+            "y": 1230.6328125
+          },
+          "rect": {
+            "bottom": 1480.21875,
+            "h": 547.1875,
+            "right": 427.328125,
+            "w": 401.328125,
+            "x": 26,
+            "y": 933.03125
+          },
+          "title": "Delivery apps",
+          "titleRect": {
+            "bottom": 1421.03125,
+            "h": 30,
+            "right": 427.328125,
+            "w": 377.328125,
+            "x": 50,
+            "y": 1391.03125
+          }
+        },
+        {
+          "copy": "Crispy fish, fresh slaw, a squeeze of lime. Meet your next favorite bite.",
+          "copyRect": {
+            "bottom": 1334.578125,
+            "h": 40.59375,
+            "right": 764.9921875,
+            "w": 250,
+            "x": 514.9921875,
+            "y": 1293.984375
+          },
+          "rect": {
+            "bottom": 1480.21875,
+            "h": 547.1875,
+            "right": 828.65625,
+            "w": 401.328125,
+            "x": 427.328125,
+            "y": 933.03125
+          },
+          "title": "Social media",
+          "titleRect": {
+            "bottom": 1421.03125,
+            "h": 30,
+            "right": 828.65625,
+            "w": 377.328125,
+            "x": 451.328125,
+            "y": 1391.03125
+          }
+        },
+        {
+          "copy": "Tomato sauce, fresh basil & Parmesan.",
+          "copyRect": {
+            "bottom": 1265.828125,
+            "h": 21,
+            "right": 1184.3203125,
+            "w": 286,
+            "x": 898.3203125,
+            "y": 1244.828125
+          },
+          "rect": {
+            "bottom": 1480.21875,
+            "h": 547.1875,
+            "right": 1229.984375,
+            "w": 401.328125,
+            "x": 828.65625,
+            "y": 933.03125
+          },
+          "title": "Your existing menu",
+          "titleRect": {
+            "bottom": 1421.03125,
+            "h": 30,
+            "right": 1229.984375,
+            "w": 377.328125,
+            "x": 852.65625,
+            "y": 1391.03125
+          }
+        }
+      ],
+      "controls": [
+        {
+          "background": "rgb(255, 255, 255)",
+          "bottom": 66,
+          "font": "600 14px / 21px \"Helvetica Neue\", Arial, sans-serif",
+          "gap": "normal",
+          "h": 44,
+          "name": "Log in",
+          "radius": "8px",
+          "right": 1101.765625,
+          "w": 57.21875,
+          "x": 1044.546875,
+          "y": 22
+        },
+        {
+          "background": "rgb(23, 76, 60)",
+          "bottom": 66,
+          "font": "600 14px / 19.6px \"Helvetica Neue\", Arial, sans-serif",
+          "gap": "8px",
+          "h": 44,
+          "name": "Try it free",
+          "radius": "8px",
+          "right": 1230,
+          "w": 94.234375,
+          "x": 1135.765625,
+          "y": 22
+        },
+        {
+          "background": "rgb(23, 76, 60)",
+          "bottom": 355.34375,
+          "font": "600 16px / 22.4px \"Helvetica Neue\", Arial, sans-serif",
+          "gap": "8px",
+          "h": 52,
+          "name": "Try it free",
+          "radius": "8px",
+          "right": 711.5625,
+          "w": 143.125,
+          "x": 568.4375,
+          "y": 303.34375
+        },
+        {
+          "background": "rgb(23, 76, 60)",
+          "bottom": 2259.1015625,
+          "font": "600 16px / 22.4px \"Helvetica Neue\", Arial, sans-serif",
+          "gap": "8px",
+          "h": 52,
+          "name": "Try it free",
+          "radius": "8px",
+          "right": 1230,
+          "w": 143.125,
+          "x": 1086.875,
+          "y": 2207.1015625
+        }
+      ],
+      "documentWidth": 1280,
+      "frames": [
+        {
+          "bottom": 819.171875,
+          "h": 389.328125,
+          "right": 634,
+          "w": 584,
+          "x": 50,
+          "y": 429.84375
+        },
+        {
+          "bottom": 819.171875,
+          "h": 389.328125,
+          "right": 1230,
+          "w": 584,
+          "x": 646,
+          "y": 429.84375
+        }
+      ],
+      "text": [
+        {
+          "bottom": 217.34375,
+          "color": "rgb(32, 38, 36)",
+          "font": "500 52.48px / 56.6784px \"Helvetica Neue\", Arial, sans-serif",
+          "h": 113.34375,
+          "name": "Make your food lookas good as it tastes.",
+          "right": 1025,
+          "w": 770,
+          "x": 255,
+          "y": 104
+        },
+        {
+          "bottom": 287.34375,
+          "color": "rgb(89, 98, 95)",
+          "font": "18px / 27px \"Helvetica Neue\", Arial, sans-serif",
+          "h": 54,
+          "name": "Turn a phone photo into studio-quality images for your menu, delivery listings, and social posts.",
+          "right": 940,
+          "w": 600,
+          "x": 340,
+          "y": 233.34375
+        },
+        {
+          "bottom": 355.34375,
+          "color": "rgb(255, 255, 255)",
+          "font": "600 16px / 22.4px \"Helvetica Neue\", Arial, sans-serif",
+          "h": 52,
+          "name": "Try it free",
+          "right": 711.5625,
+          "w": 143.125,
+          "x": 568.4375,
+          "y": 303.34375
+        },
+        {
+          "bottom": 388.84375,
+          "color": "rgb(89, 98, 95)",
+          "font": "15px / 22.5px \"Helvetica Neue\", Arial, sans-serif",
+          "h": 22.5,
+          "name": "5 free images · No credit card",
+          "right": 1025,
+          "w": 770,
+          "x": 255,
+          "y": 366.34375
+        }
+      ],
+      "viewport": {
+        "height": 720,
+        "width": 1280
+      },
+      "bubbleTextCollisions": [],
+      "paintedTextRects": [
+        {
+          "bottom": 163.5,
+          "label": "Make your food lookas good as it tastes.",
+          "right": 862.984375,
+          "x": 417.0078125,
+          "y": 101
+        },
+        {
+          "bottom": 220.171875,
+          "label": "Make your food lookas good as it tastes.",
+          "right": 855.90625,
+          "x": 424.09375,
+          "y": 157.671875
+        },
+        {
+          "bottom": 257.34375,
+          "label": "Turn a phone photo into studio-quality images for your menu, delivery listings, and social posts.",
+          "right": 919.578125,
+          "x": 360.421875,
+          "y": 236.34375
+        },
+        {
+          "bottom": 284.34375,
+          "label": "Turn a phone photo into studio-quality images for your menu, delivery listings, and social posts.",
+          "right": 741.3515625,
+          "x": 538.6484375,
+          "y": 263.34375
+        },
+        {
+          "bottom": 338.640625,
+          "label": "Try it free",
+          "right": 663.5625,
+          "x": 592.4375,
+          "y": 319.640625
+        },
+        {
+          "bottom": 386.34375,
+          "label": "5 free images · No credit card",
+          "right": 739.0546875,
+          "x": 540.9453125,
+          "y": 368.84375
+        }
+      ]
+    },
+    {
+      "label": "large-desktop",
+      "bubbleTextIntersections": [
+        {
+          "bubble": 0,
+          "text": "Make your food lookas good as it tastes."
+        },
+        {
+          "bubble": 1,
+          "text": "Make your food lookas good as it tastes."
+        },
+        {
+          "bubble": 4,
+          "text": "Make your food lookas good as it tastes."
+        }
+      ],
+      "bubbles": [
+        {
+          "bottom": 218.09083557128903,
+          "h": 112.58168029785156,
+          "right": 341.69085693359375,
+          "w": 112.58169555664062,
+          "x": 229.10916137695312,
+          "y": 105.5091552734375
+        },
+        {
+          "bottom": 313.56866455078125,
+          "h": 87.05732727050781,
+          "right": 396.9886779785156,
+          "w": 87.05734252929688,
+          "x": 309.93133544921875,
+          "y": 226.51133728027344
+        },
+        {
+          "bottom": 409.2463989257813,
+          "h": 68.4927978515625,
+          "right": 316.3664245605469,
+          "w": 68.49282836914062,
+          "x": 247.87359619140625,
+          "y": 340.75360107421875
+        },
+        {
+          "bottom": 216.41322326660156,
+          "h": 94.4664535522461,
+          "right": 1201.0133056640625,
+          "w": 94.466552734375,
+          "x": 1106.5467529296875,
+          "y": 121.94676971435548
+        },
+        {
+          "bottom": 333.0946350097656,
+          "h": 112.98927307128906,
+          "right": 1154.5146484375,
+          "w": 112.9892578125,
+          "x": 1041.525390625,
+          "y": 220.10536193847656
+        },
+        {
+          "bottom": 411.7064208984375,
+          "h": 68.49282836914062,
+          "right": 1201.9664306640625,
+          "w": 68.4927978515625,
+          "x": 1133.4736328125,
+          "y": 343.2135925292969
+        }
+      ],
+      "cards": [
+        {
+          "copy": "Grilled steak, rich herb butter, and a generous side of golden fries.",
+          "copyRect": {
+            "bottom": 1286.9375,
+            "h": 40.59375,
+            "right": 464.6640625,
+            "w": 292,
+            "x": 172.6640625,
+            "y": 1246.34375
+          },
+          "rect": {
+            "bottom": 1495.9296875,
+            "h": 547.1875,
+            "right": 507.328125,
+            "w": 401.328125,
+            "x": 106,
+            "y": 948.7421875
+          },
+          "title": "Delivery apps",
+          "titleRect": {
+            "bottom": 1436.7421875,
+            "h": 30,
+            "right": 507.328125,
+            "w": 377.328125,
+            "x": 130,
+            "y": 1406.7421875
+          }
+        },
+        {
+          "copy": "Crispy fish, fresh slaw, a squeeze of lime. Meet your next favorite bite.",
+          "copyRect": {
+            "bottom": 1350.2890625,
+            "h": 40.59375,
+            "right": 844.9921875,
+            "w": 250,
+            "x": 594.9921875,
+            "y": 1309.6953125
+          },
+          "rect": {
+            "bottom": 1495.9296875,
+            "h": 547.1875,
+            "right": 908.65625,
+            "w": 401.328125,
+            "x": 507.328125,
+            "y": 948.7421875
+          },
+          "title": "Social media",
+          "titleRect": {
+            "bottom": 1436.7421875,
+            "h": 30,
+            "right": 908.65625,
+            "w": 377.328125,
+            "x": 531.328125,
+            "y": 1406.7421875
+          }
+        },
+        {
+          "copy": "Tomato sauce, fresh basil & Parmesan.",
+          "copyRect": {
+            "bottom": 1281.5390625,
+            "h": 21,
+            "right": 1264.3203125,
+            "w": 286,
+            "x": 978.3203125,
+            "y": 1260.5390625
+          },
+          "rect": {
+            "bottom": 1495.9296875,
+            "h": 547.1875,
+            "right": 1309.984375,
+            "w": 401.328125,
+            "x": 908.65625,
+            "y": 948.7421875
+          },
+          "title": "Your existing menu",
+          "titleRect": {
+            "bottom": 1436.7421875,
+            "h": 30,
+            "right": 1309.984375,
+            "w": 377.328125,
+            "x": 932.65625,
+            "y": 1406.7421875
+          }
+        }
+      ],
+      "controls": [
+        {
+          "background": "rgb(255, 255, 255)",
+          "bottom": 66,
+          "font": "600 14px / 21px \"Helvetica Neue\", Arial, sans-serif",
+          "gap": "normal",
+          "h": 44,
+          "name": "Log in",
+          "radius": "8px",
+          "right": 1181.765625,
+          "w": 57.21875,
+          "x": 1124.546875,
+          "y": 22
+        },
+        {
+          "background": "rgb(23, 76, 60)",
+          "bottom": 66,
+          "font": "600 14px / 19.6px \"Helvetica Neue\", Arial, sans-serif",
+          "gap": "8px",
+          "h": 44,
+          "name": "Try it free",
+          "radius": "8px",
+          "right": 1310,
+          "w": 94.234375,
+          "x": 1215.765625,
+          "y": 22
+        },
+        {
+          "background": "rgb(23, 76, 60)",
+          "bottom": 369.515625,
+          "font": "600 16px / 22.4px \"Helvetica Neue\", Arial, sans-serif",
+          "gap": "8px",
+          "h": 52,
+          "name": "Try it free",
+          "radius": "8px",
+          "right": 791.5625,
+          "w": 143.125,
+          "x": 648.4375,
+          "y": 317.515625
+        },
+        {
+          "background": "rgb(23, 76, 60)",
+          "bottom": 2277.1171875,
+          "font": "600 16px / 22.4px \"Helvetica Neue\", Arial, sans-serif",
+          "gap": "8px",
+          "h": 52,
+          "name": "Try it free",
+          "radius": "8px",
+          "right": 1310,
+          "w": 143.125,
+          "x": 1166.875,
+          "y": 2225.1171875
+        }
+      ],
+      "documentWidth": 1440,
+      "frames": [
+        {
+          "bottom": 833.34375,
+          "h": 389.328125,
+          "right": 714,
+          "w": 584,
+          "x": 130,
+          "y": 444.015625
+        },
+        {
+          "bottom": 833.34375,
+          "h": 389.328125,
+          "right": 1310,
+          "w": 584,
+          "x": 726,
+          "y": 444.015625
+        }
+      ],
+      "text": [
+        {
+          "bottom": 231.515625,
+          "color": "rgb(32, 38, 36)",
+          "font": "500 59.04px / 63.7632px \"Helvetica Neue\", Arial, sans-serif",
+          "h": 127.515625,
+          "name": "Make your food lookas good as it tastes.",
+          "right": 1105,
+          "w": 770,
+          "x": 335,
+          "y": 104
+        },
+        {
+          "bottom": 301.515625,
+          "color": "rgb(89, 98, 95)",
+          "font": "18px / 27px \"Helvetica Neue\", Arial, sans-serif",
+          "h": 54,
+          "name": "Turn a phone photo into studio-quality images for your menu, delivery listings, and social posts.",
+          "right": 1020,
+          "w": 600,
+          "x": 420,
+          "y": 247.515625
+        },
+        {
+          "bottom": 369.515625,
+          "color": "rgb(255, 255, 255)",
+          "font": "600 16px / 22.4px \"Helvetica Neue\", Arial, sans-serif",
+          "h": 52,
+          "name": "Try it free",
+          "right": 791.5625,
+          "w": 143.125,
+          "x": 648.4375,
+          "y": 317.515625
+        },
+        {
+          "bottom": 403.015625,
+          "color": "rgb(89, 98, 95)",
+          "font": "15px / 22.5px \"Helvetica Neue\", Arial, sans-serif",
+          "h": 22.5,
+          "name": "5 free images · No credit card",
+          "right": 1105,
+          "w": 770,
+          "x": 335,
+          "y": 380.515625
+        }
+      ],
+      "viewport": {
+        "height": 900,
+        "width": 1440
+      },
+      "bubbleTextCollisions": [],
+      "paintedTextRects": [
+        {
+          "bottom": 171,
+          "label": "Make your food lookas good as it tastes.",
+          "right": 970.859375,
+          "x": 469.1328125,
+          "y": 100.5
+        },
+        {
+          "bottom": 234.7578125,
+          "label": "Make your food lookas good as it tastes.",
+          "right": 962.890625,
+          "x": 477.109375,
+          "y": 164.2578125
+        },
+        {
+          "bottom": 271.515625,
+          "label": "Turn a phone photo into studio-quality images for your menu, delivery listings, and social posts.",
+          "right": 999.578125,
+          "x": 440.421875,
+          "y": 250.515625
+        },
+        {
+          "bottom": 298.515625,
+          "label": "Turn a phone photo into studio-quality images for your menu, delivery listings, and social posts.",
+          "right": 821.3515625,
+          "x": 618.6484375,
+          "y": 277.515625
+        },
+        {
+          "bottom": 352.8125,
+          "label": "Try it free",
+          "right": 743.5625,
+          "x": 672.4375,
+          "y": 333.8125
+        },
+        {
+          "bottom": 400.515625,
+          "label": "5 free images · No credit card",
+          "right": 819.0546875,
+          "x": 620.9453125,
+          "y": 383.015625
+        }
+      ]
+    },
+    {
+      "label": "tablet-landscape-before-ornament-clearance",
+      "bubbleTextIntersections": [
+        {
+          "bubble": 0,
+          "text": "Make your food lookas good as it tastes."
+        },
+        {
+          "bubble": 1,
+          "text": "Turn a phone photo into studio-quality images for your menu, delivery listings, and social posts."
+        },
+        {
+          "bubble": 2,
+          "text": "5 free images · No credit card"
+        },
+        {
+          "bubble": 3,
+          "text": "Make your food lookas good as it tastes."
+        },
+        {
+          "bubble": 4,
+          "text": "Turn a phone photo into studio-quality images for your menu, delivery listings, and social posts."
+        },
+        {
+          "bubble": 5,
+          "text": "5 free images · No credit card"
+        }
+      ],
+      "bubbles": [
+        {
+          "bottom": 184.68540954589844,
+          "h": 76.93081665039062,
+          "right": 203.60540771484375,
+          "w": 76.93082427978516,
+          "x": 126.6745834350586,
+          "y": 107.7545928955078
+        },
+        {
+          "bottom": 293.22265625,
+          "h": 61.125335693359375,
+          "right": 233.42266845703125,
+          "w": 61.12535095214844,
+          "x": 172.2973175048828,
+          "y": 232.09732055664065
+        },
+        {
+          "bottom": 377.1929626464844,
+          "h": 48.665924072265625,
+          "right": 184.5529632568359,
+          "w": 48.66593933105469,
+          "x": 135.88702392578125,
+          "y": 328.52703857421875
+        },
+        {
+          "bottom": 177.20724487304688,
+          "h": 68.53449249267578,
+          "right": 896.4072265625,
+          "w": 68.534423828125,
+          "x": 827.872802734375,
+          "y": 108.6727523803711
+        },
+        {
+          "bottom": 318.7779541015625,
+          "h": 77.7958984375,
+          "right": 875.617919921875,
+          "w": 77.7958984375,
+          "x": 797.822021484375,
+          "y": 240.9820556640625
+        },
+        {
+          "bottom": 385.3929748535156,
+          "h": 48.665924072265625,
+          "right": 886.4730224609375,
+          "w": 48.666015625,
+          "x": 837.8070068359375,
+          "y": 336.72705078125
+        }
+      ],
+      "cards": [
+        {
+          "copy": "Grilled steak, rich herb butter, and a generous side of golden fries.",
+          "copyRect": {
+            "bottom": 1191.8828125,
+            "h": 40.59375,
+            "right": 309.328125,
+            "w": 229.328125,
+            "x": 80,
+            "y": 1151.2890625
+          },
+          "rect": {
+            "bottom": 1426.46875,
+            "h": 572.78125,
+            "right": 341.328125,
+            "w": 317.328125,
+            "x": 24,
+            "y": 853.6875
+          },
+          "title": "Delivery apps",
+          "titleRect": {
+            "bottom": 1341.6875,
+            "h": 30,
+            "right": 341.328125,
+            "w": 293.328125,
+            "x": 48,
+            "y": 1311.6875
+          }
+        },
+        {
+          "copy": "Crispy fish, fresh slaw, a squeeze of lime. Meet your next favorite bite.",
+          "copyRect": {
+            "bottom": 1253.5625,
+            "h": 40.59375,
+            "right": 635.65625,
+            "w": 247.328125,
+            "x": 388.328125,
+            "y": 1212.96875
+          },
+          "rect": {
+            "bottom": 1426.46875,
+            "h": 572.78125,
+            "right": 658.65625,
+            "w": 317.328125,
+            "x": 341.328125,
+            "y": 853.6875
+          },
+          "title": "Social media",
+          "titleRect": {
+            "bottom": 1341.6875,
+            "h": 30,
+            "right": 658.65625,
+            "w": 293.328125,
+            "x": 365.328125,
+            "y": 1311.6875
+          }
+        },
+        {
+          "copy": "Tomato sauce, fresh basil & Parmesan.",
+          "copyRect": {
+            "bottom": 1196.984375,
+            "h": 42,
+            "right": 935.984375,
+            "w": 213.328125,
+            "x": 722.65625,
+            "y": 1154.984375
+          },
+          "rect": {
+            "bottom": 1426.46875,
+            "h": 572.78125,
+            "right": 975.984375,
+            "w": 317.328125,
+            "x": 658.65625,
+            "y": 853.6875
+          },
+          "title": "Your existing menu",
+          "titleRect": {
+            "bottom": 1341.6875,
+            "h": 30,
+            "right": 975.984375,
+            "w": 293.328125,
+            "x": 682.65625,
+            "y": 1311.6875
+          }
+        }
+      ],
+      "controls": [
+        {
+          "background": "rgb(255, 255, 255)",
+          "bottom": 66,
+          "font": "600 14px / 21px \"Helvetica Neue\", Arial, sans-serif",
+          "gap": "normal",
+          "h": 44,
+          "name": "Log in",
+          "radius": "8px",
+          "right": 857.765625,
+          "w": 57.21875,
+          "x": 800.546875,
+          "y": 22
+        },
+        {
+          "background": "rgb(23, 76, 60)",
+          "bottom": 66,
+          "font": "600 14px / 19.6px \"Helvetica Neue\", Arial, sans-serif",
+          "gap": "8px",
+          "h": 44,
+          "name": "Try it free",
+          "radius": "8px",
+          "right": 976,
+          "w": 94.234375,
+          "x": 881.765625,
+          "y": 22
+        },
+        {
+          "background": "rgb(23, 76, 60)",
+          "bottom": 345.671875,
+          "font": "600 16px / 22.4px \"Helvetica Neue\", Arial, sans-serif",
+          "gap": "8px",
+          "h": 52,
+          "name": "Try it free",
+          "radius": "8px",
+          "right": 583.5625,
+          "w": 143.125,
+          "x": 440.4375,
+          "y": 293.671875
+        },
+        {
+          "background": "rgb(23, 76, 60)",
+          "bottom": 2196.8515625,
+          "font": "600 16px / 22.4px \"Helvetica Neue\", Arial, sans-serif",
+          "gap": "8px",
+          "h": 52,
+          "name": "Try it free",
+          "radius": "8px",
+          "right": 976,
+          "w": 143.125,
+          "x": 832.875,
+          "y": 2144.8515625
+        }
+      ],
+      "documentWidth": 1024,
+      "frames": [
+        {
+          "bottom": 725.5,
+          "h": 305.328125,
+          "right": 506,
+          "w": 458,
+          "x": 48,
+          "y": 420.171875
+        },
+        {
+          "bottom": 725.5,
+          "h": 305.328125,
+          "right": 976,
+          "w": 458,
+          "x": 518,
+          "y": 420.171875
+        }
+      ],
+      "text": [
+        {
+          "bottom": 207.671875,
+          "color": "rgb(32, 38, 36)",
+          "font": "500 48px / 51.84px \"Helvetica Neue\", Arial, sans-serif",
+          "h": 103.671875,
+          "name": "Make your food lookas good as it tastes.",
+          "right": 841,
+          "w": 658,
+          "x": 183,
+          "y": 104
+        },
+        {
+          "bottom": 277.671875,
+          "color": "rgb(89, 98, 95)",
+          "font": "18px / 27px \"Helvetica Neue\", Arial, sans-serif",
+          "h": 54,
+          "name": "Turn a phone photo into studio-quality images for your menu, delivery listings, and social posts.",
+          "right": 812,
+          "w": 600,
+          "x": 212,
+          "y": 223.671875
+        },
+        {
+          "bottom": 345.671875,
+          "color": "rgb(255, 255, 255)",
+          "font": "600 16px / 22.4px \"Helvetica Neue\", Arial, sans-serif",
+          "h": 52,
+          "name": "Try it free",
+          "right": 583.5625,
+          "w": 143.125,
+          "x": 440.4375,
+          "y": 293.671875
+        },
+        {
+          "bottom": 379.171875,
+          "color": "rgb(89, 98, 95)",
+          "font": "15px / 22.5px \"Helvetica Neue\", Arial, sans-serif",
+          "h": 22.5,
+          "name": "5 free images · No credit card",
+          "right": 841,
+          "w": 658,
+          "x": 183,
+          "y": 356.671875
+        }
+      ],
+      "viewport": {
+        "height": 768,
+        "width": 1024
+      },
+      "bubbleTextCollisions": [
+        {
+          "bubble": 1,
+          "text": "Turn a phone photo into studio-quality images for your menu, delivery listings, and social posts."
+        }
+      ],
+      "paintedTextRects": [
+        {
+          "bottom": 158.5,
+          "label": "Make your food lookas good as it tastes.",
+          "right": 715.953125,
+          "x": 308.046875,
+          "y": 101
+        },
+        {
+          "bottom": 210.3359375,
+          "label": "Make your food lookas good as it tastes.",
+          "right": 709.46875,
+          "x": 314.5234375,
+          "y": 152.8359375
+        },
+        {
+          "bottom": 247.671875,
+          "label": "Turn a phone photo into studio-quality images for your menu, delivery listings, and social posts.",
+          "right": 791.578125,
+          "x": 232.421875,
+          "y": 226.671875
+        },
+        {
+          "bottom": 274.671875,
+          "label": "Turn a phone photo into studio-quality images for your menu, delivery listings, and social posts.",
+          "right": 613.3515625,
+          "x": 410.6484375,
+          "y": 253.671875
+        },
+        {
+          "bottom": 328.96875,
+          "label": "Try it free",
+          "right": 535.5625,
+          "x": 464.4375,
+          "y": 309.96875
+        },
+        {
+          "bottom": 376.671875,
+          "label": "5 free images · No credit card",
+          "right": 611.0546875,
+          "x": 412.9453125,
+          "y": 359.171875
+        }
+      ]
+    },
+    {
+      "label": "tablet-portrait",
+      "bubbleTextIntersections": [],
+      "bubbles": [
+        {
+          "bottom": 190.18841552734375,
+          "h": 82.37683868408203,
+          "right": 201.18841552734375,
+          "w": 82.37683868408203,
+          "x": 118.81157684326172,
+          "y": 107.81157684326172
+        },
+        {
+          "bottom": 188.82485961914065,
+          "h": 101.64971160888672,
+          "right": 310.7154846191406,
+          "w": 101.64971923828124,
+          "x": 209.06576538085935,
+          "y": 87.1751480102539
+        },
+        {
+          "bottom": 191.77340698242188,
+          "h": 61.54681396484375,
+          "right": 365.9687194824219,
+          "w": 61.54681396484375,
+          "x": 304.4219055175781,
+          "y": 130.22659301757812
+        },
+        {
+          "bottom": 189.65988159179688,
+          "h": 81.31976318359375,
+          "right": 648.659912109375,
+          "w": 81.31982421875,
+          "x": 567.340087890625,
+          "y": 108.34011840820312
+        },
+        {
+          "bottom": 188.82485961914065,
+          "h": 101.64971160888672,
+          "right": 558.0357666015625,
+          "w": 101.64968872070312,
+          "x": 456.3860778808594,
+          "y": 87.1751480102539
+        },
+        {
+          "bottom": 191.77340698242188,
+          "h": 61.54681396484375,
+          "right": 463.5780944824219,
+          "w": 61.54681396484375,
+          "x": 402.0312805175781,
+          "y": 130.22659301757812
+        }
+      ],
+      "cards": [
+        {
+          "copy": "Grilled steak, rich herb butter, and a generous side of golden fries.",
+          "copyRect": {
+            "bottom": 1275.59375,
+            "h": 40.59375,
+            "right": 325.2734375,
+            "w": 265.2734375,
+            "x": 60,
+            "y": 1235
+          },
+          "rect": {
+            "bottom": 1510.1796875,
+            "h": 572.78125,
+            "right": 357.2734375,
+            "w": 353.2734375,
+            "x": 4,
+            "y": 937.3984375
+          },
+          "title": "Delivery apps",
+          "titleRect": {
+            "bottom": 1425.3984375,
+            "h": 30,
+            "right": 357.2734375,
+            "w": 329.2734375,
+            "x": 28,
+            "y": 1395.3984375
+          }
+        },
+        {
+          "copy": "Crispy fish, fresh slaw, a squeeze of lime. Meet your next favorite bite.",
+          "copyRect": {
+            "bottom": 1338.9453125,
+            "h": 40.59375,
+            "right": 670.90625,
+            "w": 250,
+            "x": 420.90625,
+            "y": 1298.3515625
+          },
+          "rect": {
+            "bottom": 1510.1796875,
+            "h": 572.78125,
+            "right": 710.546875,
+            "w": 353.2734375,
+            "x": 357.2734375,
+            "y": 937.3984375
+          },
+          "title": "Social media",
+          "titleRect": {
+            "bottom": 1425.3984375,
+            "h": 30,
+            "right": 710.546875,
+            "w": 329.2734375,
+            "x": 381.2734375,
+            "y": 1395.3984375
+          }
+        },
+        {
+          "copy": "Tomato sauce, fresh basil & Parmesan.",
+          "copyRect": {
+            "bottom": 1270.1953125,
+            "h": 21,
+            "right": 1023.8203125,
+            "w": 249.2734375,
+            "x": 774.546875,
+            "y": 1249.1953125
+          },
+          "rect": {
+            "bottom": 1510.1796875,
+            "h": 572.78125,
+            "right": 1063.8203125,
+            "w": 353.2734375,
+            "x": 710.546875,
+            "y": 937.3984375
+          },
+          "title": "Your existing menu",
+          "titleRect": {
+            "bottom": 1425.3984375,
+            "h": 30,
+            "right": 1063.8203125,
+            "w": 329.2734375,
+            "x": 734.546875,
+            "y": 1395.3984375
+          }
+        }
+      ],
+      "controls": [
+        {
+          "background": "rgb(255, 255, 255)",
+          "bottom": 66,
+          "font": "600 14px / 21px \"Helvetica Neue\", Arial, sans-serif",
+          "gap": "normal",
+          "h": 44,
+          "name": "Log in",
+          "radius": "8px",
+          "right": 621.765625,
+          "w": 57.21875,
+          "x": 564.546875,
+          "y": 22
+        },
+        {
+          "background": "rgb(23, 76, 60)",
+          "bottom": 66,
+          "font": "600 14px / 19.6px \"Helvetica Neue\", Arial, sans-serif",
+          "gap": "8px",
+          "h": 44,
+          "name": "Try it free",
+          "radius": "8px",
+          "right": 740,
+          "w": 94.234375,
+          "x": 645.765625,
+          "y": 22
+        },
+        {
+          "background": "rgb(23, 76, 60)",
+          "bottom": 443.78125,
+          "font": "600 16px / 22.4px \"Helvetica Neue\", Arial, sans-serif",
+          "gap": "8px",
+          "h": 52,
+          "name": "Try it free",
+          "radius": "8px",
+          "right": 455.5625,
+          "w": 143.125,
+          "x": 312.4375,
+          "y": 391.78125
+        },
+        {
+          "background": "rgb(228, 231, 233)",
+          "bottom": 1570.1796875,
+          "font": "600 14px / 19.6px \"Helvetica Neue\", Arial, sans-serif",
+          "gap": "8px",
+          "h": 44,
+          "name": "Previous slide",
+          "radius": "6px",
+          "right": 688,
+          "w": 44,
+          "x": 644,
+          "y": 1526.1796875
+        },
+        {
+          "background": "rgb(255, 255, 255)",
+          "bottom": 1570.1796875,
+          "font": "600 14px / 19.6px \"Helvetica Neue\", Arial, sans-serif",
+          "gap": "8px",
+          "h": 44,
+          "name": "Next slide",
+          "radius": "6px",
+          "right": 740,
+          "w": 44,
+          "x": 696,
+          "y": 1526.1796875
+        },
+        {
+          "background": "rgb(23, 76, 60)",
+          "bottom": 2272.5625,
+          "font": "600 16px / 22.4px \"Helvetica Neue\", Arial, sans-serif",
+          "gap": "8px",
+          "h": 52,
+          "name": "Try it free",
+          "radius": "8px",
+          "right": 740,
+          "w": 143.125,
+          "x": 596.875,
+          "y": 2220.5625
+        }
+      ],
+      "documentWidth": 768,
+      "frames": [
+        {
+          "bottom": 787.609375,
+          "h": 233.328125,
+          "right": 378,
+          "w": 350,
+          "x": 28,
+          "y": 554.28125
+        },
+        {
+          "bottom": 787.609375,
+          "h": 233.328125,
+          "right": 740,
+          "w": 350,
+          "x": 390,
+          "y": 554.28125
+        }
+      ],
+      "text": [
+        {
+          "bottom": 287.1875,
+          "color": "rgb(32, 38, 36)",
+          "font": "500 40px / 43.6px \"Helvetica Neue\", Arial, sans-serif",
+          "h": 87.1875,
+          "name": "Make your food lookas good as it tastes.",
+          "right": 740,
+          "w": 712,
+          "x": 28,
+          "y": 200
+        },
+        {
+          "bottom": 366.78125,
+          "color": "rgb(89, 98, 95)",
+          "font": "18px / 28.8px \"Helvetica Neue\", Arial, sans-serif",
+          "h": 57.59375,
+          "name": "Turn a phone photo into studio-quality images for your menu, delivery listings, and social posts.",
+          "right": 684,
+          "w": 600,
+          "x": 84,
+          "y": 309.1875
+        },
+        {
+          "bottom": 443.78125,
+          "color": "rgb(255, 255, 255)",
+          "font": "600 16px / 22.4px \"Helvetica Neue\", Arial, sans-serif",
+          "h": 52,
+          "name": "Try it free",
+          "right": 455.5625,
+          "w": 143.125,
+          "x": 312.4375,
+          "y": 391.78125
+        },
+        {
+          "bottom": 477.28125,
+          "color": "rgb(89, 98, 95)",
+          "font": "15px / 22.5px \"Helvetica Neue\", Arial, sans-serif",
+          "h": 22.5,
+          "name": "5 free images · No credit card",
+          "right": 740,
+          "w": 712,
+          "x": 28,
+          "y": 454.78125
+        }
+      ],
+      "viewport": {
+        "height": 1024,
+        "width": 768
+      },
+      "bubbleTextCollisions": [],
+      "paintedTextRects": [
+        {
+          "bottom": 245.5,
+          "label": "Make your food lookas good as it tastes.",
+          "right": 553.9609375,
+          "x": 214.0390625,
+          "y": 198
+        },
+        {
+          "bottom": 289.09375,
+          "label": "Make your food lookas good as it tastes.",
+          "right": 548.5625,
+          "x": 219.4375,
+          "y": 241.59375
+        },
+        {
+          "bottom": 333.6875,
+          "label": "Turn a phone photo into studio-quality images for your menu, delivery listings, and social posts.",
+          "right": 663.578125,
+          "x": 104.421875,
+          "y": 312.6875
+        },
+        {
+          "bottom": 362.484375,
+          "label": "Turn a phone photo into studio-quality images for your menu, delivery listings, and social posts.",
+          "right": 485.3515625,
+          "x": 282.6484375,
+          "y": 341.484375
+        },
+        {
+          "bottom": 427.078125,
+          "label": "Try it free",
+          "right": 407.5625,
+          "x": 336.4375,
+          "y": 408.078125
+        },
+        {
+          "bottom": 474.78125,
+          "label": "5 free images · No credit card",
+          "right": 483.0546875,
+          "x": 284.9453125,
+          "y": 457.28125
+        }
+      ]
+    },
+    {
+      "label": "controls-phone",
+      "bubbleTextIntersections": [],
+      "bubbles": [
+        {
+          "bottom": 127.450439453125,
+          "h": 39.54087829589844,
+          "right": 106.05043029785156,
+          "w": 39.54087829589844,
+          "x": 66.50955200195312,
+          "y": 87.90956115722656
+        },
+        {
+          "bottom": 123.52912902832033,
+          "h": 50.41825866699219,
+          "right": 155.0828857421875,
+          "w": 50.41827392578125,
+          "x": 104.66461181640624,
+          "y": 73.11087036132812
+        },
+        {
+          "bottom": 132.93763732910156,
+          "h": 33.23527526855469,
+          "right": 183.89764404296875,
+          "w": 33.23529052734375,
+          "x": 150.662353515625,
+          "y": 99.70236206054688
+        },
+        {
+          "bottom": 125.94314575195312,
+          "h": 42.286285400390625,
+          "right": 323.42315673828125,
+          "w": 42.286285400390625,
+          "x": 281.1368713378906,
+          "y": 83.6568603515625
+        },
+        {
+          "bottom": 123.52912902832033,
+          "h": 50.41825866699219,
+          "right": 282.3428955078125,
+          "w": 50.41827392578125,
+          "x": 231.92462158203125,
+          "y": 73.11087036132812
+        },
+        {
+          "bottom": 130.70632934570312,
+          "h": 31.65264892578125,
+          "right": 237.82632446289065,
+          "w": 31.65264892578125,
+          "x": 206.17367553710935,
+          "y": 99.05368041992188
+        }
+      ],
+      "cards": [
+        {
+          "copy": "Grilled steak, rich herb butter, and a generous side of golden fries.",
+          "copyRect": {
+            "bottom": 1234.2421875,
+            "h": 40.59375,
+            "right": 294.078125,
+            "w": 242.078125,
+            "x": 52,
+            "y": 1193.6484375
+          },
+          "rect": {
+            "bottom": 1462.828125,
+            "h": 566.78125,
+            "right": 326.078125,
+            "w": 322.078125,
+            "x": 4,
+            "y": 896.046875
+          },
+          "title": "Delivery apps",
+          "titleRect": {
+            "bottom": 1380.046875,
+            "h": 30,
+            "right": 326.078125,
+            "w": 306.078125,
+            "x": 20,
+            "y": 1350.046875
+          }
+        },
+        {
+          "copy": "Crispy fish, fresh slaw, a squeeze of lime. Meet your next favorite bite.",
+          "copyRect": {
+            "bottom": 1297.59375,
+            "h": 40.59375,
+            "right": 620.1171875,
+            "w": 250,
+            "x": 370.1171875,
+            "y": 1257
+          },
+          "rect": {
+            "bottom": 1462.828125,
+            "h": 566.78125,
+            "right": 648.15625,
+            "w": 322.078125,
+            "x": 326.078125,
+            "y": 896.046875
+          },
+          "title": "Social media",
+          "titleRect": {
+            "bottom": 1380.046875,
+            "h": 30,
+            "right": 648.15625,
+            "w": 306.078125,
+            "x": 342.078125,
+            "y": 1350.046875
+          }
+        },
+        {
+          "copy": "Tomato sauce, fresh basil & Parmesan.",
+          "copyRect": {
+            "bottom": 1239.34375,
+            "h": 42,
+            "right": 936.234375,
+            "w": 238.078125,
+            "x": 698.15625,
+            "y": 1197.34375
+          },
+          "rect": {
+            "bottom": 1462.828125,
+            "h": 566.78125,
+            "right": 970.234375,
+            "w": 322.078125,
+            "x": 648.15625,
+            "y": 896.046875
+          },
+          "title": "Your existing menu",
+          "titleRect": {
+            "bottom": 1380.046875,
+            "h": 30,
+            "right": 970.234375,
+            "w": 306.078125,
+            "x": 664.15625,
+            "y": 1350.046875
+          }
+        }
+      ],
+      "controls": [
+        {
+          "background": "rgb(23, 76, 60)",
+          "bottom": 60,
+          "font": "600 14px / 19.6px \"Helvetica Neue\", Arial, sans-serif",
+          "gap": "8px",
+          "h": 44,
+          "name": "Try it free",
+          "radius": "8px",
+          "right": 322,
+          "w": 86.234375,
+          "x": 235.765625,
+          "y": 16
+        },
+        {
+          "background": "rgba(0, 0, 0, 0)",
+          "bottom": 60,
+          "font": "14px / 21px \"Helvetica Neue\", Arial, sans-serif",
+          "gap": "normal",
+          "h": 44,
+          "name": "Open navigation",
+          "radius": "0px",
+          "right": 370,
+          "w": 44,
+          "x": 326,
+          "y": 16
+        },
+        {
+          "background": "rgb(23, 76, 60)",
+          "bottom": 382.234375,
+          "font": "600 16px / 22.4px \"Helvetica Neue\", Arial, sans-serif",
+          "gap": "8px",
+          "h": 52,
+          "name": "Try it free",
+          "radius": "8px",
+          "right": 266.5625,
+          "w": 143.125,
+          "x": 123.4375,
+          "y": 330.234375
+        },
+        {
+          "background": "rgba(0, 0, 0, 0)",
+          "bottom": 488.734375,
+          "font": "500 14px / 20px \"Helvetica Neue\", Arial, sans-serif",
+          "gap": "6px",
+          "h": 44,
+          "name": "Before",
+          "radius": "6px",
+          "right": 193,
+          "w": 168,
+          "x": 25,
+          "y": 444.734375
+        },
+        {
+          "background": "rgb(23, 76, 60)",
+          "bottom": 488.734375,
+          "font": "500 14px / 20px \"Helvetica Neue\", Arial, sans-serif",
+          "gap": "6px",
+          "h": 44,
+          "name": "After",
+          "radius": "6px",
+          "right": 365,
+          "w": 168,
+          "x": 197,
+          "y": 444.734375
+        },
+        {
+          "background": "rgb(228, 231, 233)",
+          "bottom": 1522.828125,
+          "font": "600 14px / 19.6px \"Helvetica Neue\", Arial, sans-serif",
+          "gap": "8px",
+          "h": 44,
+          "name": "Previous slide",
+          "radius": "6px",
+          "right": 318,
+          "w": 44,
+          "x": 274,
+          "y": 1478.828125
+        },
+        {
+          "background": "rgb(255, 255, 255)",
+          "bottom": 1522.828125,
+          "font": "600 14px / 19.6px \"Helvetica Neue\", Arial, sans-serif",
+          "gap": "8px",
+          "h": 44,
+          "name": "Next slide",
+          "radius": "6px",
+          "right": 370,
+          "w": 44,
+          "x": 326,
+          "y": 1478.828125
+        },
+        {
+          "background": "rgb(23, 76, 60)",
+          "bottom": 2379.1953125,
+          "font": "600 16px / 22.4px \"Helvetica Neue\", Arial, sans-serif",
+          "gap": "8px",
+          "h": 52,
+          "name": "Try it free",
+          "radius": "8px",
+          "right": 163.125,
+          "w": 143.125,
+          "x": 20,
+          "y": 2327.1953125
+        }
+      ],
+      "documentWidth": 390,
+      "frames": [
+        {
+          "bottom": 739.0625,
+          "h": 233.328125,
+          "right": 370,
+          "w": 350,
+          "x": 20,
+          "y": 505.734375
+        }
+      ],
+      "text": [
+        {
+          "bottom": 219.453125,
+          "color": "rgb(32, 38, 36)",
+          "font": "500 32.8px / 36.736px \"Helvetica Neue\", Arial, sans-serif",
+          "h": 73.453125,
+          "name": "Make your food lookas good as it tastes.",
+          "right": 370,
+          "w": 350,
+          "x": 20,
+          "y": 146
+        },
+        {
+          "bottom": 310.234375,
+          "color": "rgb(89, 98, 95)",
+          "font": "16px / 25.6px \"Helvetica Neue\", Arial, sans-serif",
+          "h": 76.78125,
+          "name": "Turn a phone photo into studio-quality images for your menu, delivery listings, and social posts.",
+          "right": 365,
+          "w": 340,
+          "x": 25,
+          "y": 233.453125
+        },
+        {
+          "bottom": 382.234375,
+          "color": "rgb(255, 255, 255)",
+          "font": "600 16px / 22.4px \"Helvetica Neue\", Arial, sans-serif",
+          "h": 52,
+          "name": "Try it free",
+          "right": 266.5625,
+          "w": 143.125,
+          "x": 123.4375,
+          "y": 330.234375
+        },
+        {
+          "bottom": 415.734375,
+          "color": "rgb(89, 98, 95)",
+          "font": "15px / 22.5px \"Helvetica Neue\", Arial, sans-serif",
+          "h": 22.5,
+          "name": "5 free images · No credit card",
+          "right": 370,
+          "w": 350,
+          "x": 20,
+          "y": 393.234375
+        }
+      ],
+      "viewport": {
+        "height": 844,
+        "width": 390
+      },
+      "bubbleTextCollisions": [],
+      "paintedTextRects": [
+        {
+          "bottom": 183.5,
+          "label": "Make your food lookas good as it tastes.",
+          "right": 335.921875,
+          "x": 54.0703125,
+          "y": 144.5
+        },
+        {
+          "bottom": 220.2265625,
+          "label": "Make your food lookas good as it tastes.",
+          "right": 331.6640625,
+          "x": 58.3359375,
+          "y": 181.2265625
+        },
+        {
+          "bottom": 255.453125,
+          "label": "Turn a phone photo into studio-quality images for your menu, delivery listings, and social posts.",
+          "right": 331.484375,
+          "x": 58.5078125,
+          "y": 236.953125
+        },
+        {
+          "bottom": 281.046875,
+          "label": "Turn a phone photo into studio-quality images for your menu, delivery listings, and social posts.",
+          "right": 349.8515625,
+          "x": 40.1484375,
+          "y": 262.546875
+        },
+        {
+          "bottom": 306.640625,
+          "label": "Turn a phone photo into studio-quality images for your menu, delivery listings, and social posts.",
+          "right": 240.0390625,
+          "x": 149.953125,
+          "y": 288.140625
+        },
+        {
+          "bottom": 365.53125,
+          "label": "Try it free",
+          "right": 218.5625,
+          "x": 147.4375,
+          "y": 346.53125
+        },
+        {
+          "bottom": 413.234375,
+          "label": "5 free images · No credit card",
+          "right": 294.0546875,
+          "x": 95.9453125,
+          "y": 395.734375
+        }
+      ]
+    },
+    {
+      "label": "controls-small-phone",
+      "bubbleTextIntersections": [],
+      "bubbles": [
+        {
+          "bottom": 127.450439453125,
+          "h": 39.54087829589844,
+          "right": 96.2504425048828,
+          "w": 39.54088592529297,
+          "x": 56.70955657958984,
+          "y": 87.90956115722656
+        },
+        {
+          "bottom": 123.52912902832033,
+          "h": 50.41825866699219,
+          "right": 137.57101440429688,
+          "w": 50.41826629638672,
+          "x": 87.15274810791016,
+          "y": 73.11087036132812
+        },
+        {
+          "bottom": 132.93763732910156,
+          "h": 33.23527526855469,
+          "right": 151.4176483154297,
+          "w": 33.23529052734375,
+          "x": 118.18235778808594,
+          "y": 99.70236206054688
+        },
+        {
+          "bottom": 125.94314575195312,
+          "h": 42.286285400390625,
+          "right": 263.22314453125,
+          "w": 42.286285400390625,
+          "x": 220.93685913085935,
+          "y": 83.6568603515625
+        },
+        {
+          "bottom": 123.52912902832033,
+          "h": 50.41825866699219,
+          "right": 239.3778839111328,
+          "w": 50.41825866699219,
+          "x": 188.95962524414065,
+          "y": 73.11087036132812
+        },
+        {
+          "bottom": 130.70632934570312,
+          "h": 31.65264892578125,
+          "right": 200.3063201904297,
+          "w": 31.652633666992188,
+          "x": 168.6536865234375,
+          "y": 99.05368041992188
+        }
+      ],
+      "cards": [
+        {
+          "copy": "Grilled steak, rich herb butter, and a generous side of golden fries.",
+          "copyRect": {
+            "bottom": 1195.9140625,
+            "h": 60.890625,
+            "right": 232.4765625,
+            "w": 180.4765625,
+            "x": 52,
+            "y": 1135.0234375
+          },
+          "rect": {
+            "bottom": 1419.6953125,
+            "h": 577.46875,
+            "right": 264.4765625,
+            "w": 260.4765625,
+            "x": 4,
+            "y": 842.2265625
+          },
+          "title": "Delivery apps",
+          "titleRect": {
+            "bottom": 1336.9140625,
+            "h": 30,
+            "right": 264.4765625,
+            "w": 244.4765625,
+            "x": 20,
+            "y": 1306.9140625
+          }
+        },
+        {
+          "copy": "Crispy fish, fresh slaw, a squeeze of lime. Meet your next favorite bite.",
+          "copyRect": {
+            "bottom": 1229.21875,
+            "h": 60.890625,
+            "right": 507.953125,
+            "w": 210.4765625,
+            "x": 297.4765625,
+            "y": 1168.328125
+          },
+          "rect": {
+            "bottom": 1419.6953125,
+            "h": 577.46875,
+            "right": 524.953125,
+            "w": 260.4765625,
+            "x": 264.4765625,
+            "y": 842.2265625
+          },
+          "title": "Social media",
+          "titleRect": {
+            "bottom": 1326.2265625,
+            "h": 30,
+            "right": 524.953125,
+            "w": 244.4765625,
+            "x": 280.4765625,
+            "y": 1296.2265625
+          }
+        },
+        {
+          "copy": "Tomato sauce, fresh basil & Parmesan.",
+          "copyRect": {
+            "bottom": 1175.7265625,
+            "h": 42,
+            "right": 751.4296875,
+            "w": 176.4765625,
+            "x": 574.953125,
+            "y": 1133.7265625
+          },
+          "rect": {
+            "bottom": 1419.6953125,
+            "h": 577.46875,
+            "right": 785.4296875,
+            "w": 260.4765625,
+            "x": 524.953125,
+            "y": 842.2265625
+          },
+          "title": "Your existing menu",
+          "titleRect": {
+            "bottom": 1326.2265625,
+            "h": 30,
+            "right": 785.4296875,
+            "w": 244.4765625,
+            "x": 540.953125,
+            "y": 1296.2265625
+          }
+        }
+      ],
+      "controls": [
+        {
+          "background": "rgb(23, 76, 60)",
+          "bottom": 60,
+          "font": "600 14px / 19.6px \"Helvetica Neue\", Arial, sans-serif",
+          "gap": "8px",
+          "h": 44,
+          "name": "Try it free",
+          "radius": "8px",
+          "right": 252,
+          "w": 86.234375,
+          "x": 165.765625,
+          "y": 16
+        },
+        {
+          "background": "rgba(0, 0, 0, 0)",
+          "bottom": 60,
+          "font": "14px / 21px \"Helvetica Neue\", Arial, sans-serif",
+          "gap": "normal",
+          "h": 44,
+          "name": "Open navigation",
+          "radius": "0px",
+          "right": 300,
+          "w": 44,
+          "x": 256,
+          "y": 16
+        },
+        {
+          "background": "rgb(23, 76, 60)",
+          "bottom": 375.078125,
+          "font": "600 16px / 22.4px \"Helvetica Neue\", Arial, sans-serif",
+          "gap": "8px",
+          "h": 52,
+          "name": "Try it free",
+          "radius": "8px",
+          "right": 231.5625,
+          "w": 143.125,
+          "x": 88.4375,
+          "y": 323.078125
+        },
+        {
+          "background": "rgba(0, 0, 0, 0)",
+          "bottom": 481.578125,
+          "font": "500 14px / 20px \"Helvetica Neue\", Arial, sans-serif",
+          "gap": "6px",
+          "h": 44,
+          "name": "Before",
+          "radius": "6px",
+          "right": 158,
+          "w": 133,
+          "x": 25,
+          "y": 437.578125
+        },
+        {
+          "background": "rgb(23, 76, 60)",
+          "bottom": 481.578125,
+          "font": "500 14px / 20px \"Helvetica Neue\", Arial, sans-serif",
+          "gap": "6px",
+          "h": 44,
+          "name": "After",
+          "radius": "6px",
+          "right": 295,
+          "w": 133,
+          "x": 162,
+          "y": 437.578125
+        },
+        {
+          "background": "rgb(228, 231, 233)",
+          "bottom": 1479.6953125,
+          "font": "600 14px / 19.6px \"Helvetica Neue\", Arial, sans-serif",
+          "gap": "8px",
+          "h": 44,
+          "name": "Previous slide",
+          "radius": "6px",
+          "right": 248,
+          "w": 44,
+          "x": 204,
+          "y": 1435.6953125
+        },
+        {
+          "background": "rgb(255, 255, 255)",
+          "bottom": 1479.6953125,
+          "font": "600 14px / 19.6px \"Helvetica Neue\", Arial, sans-serif",
+          "gap": "8px",
+          "h": 44,
+          "name": "Next slide",
+          "radius": "6px",
+          "right": 300,
+          "w": 44,
+          "x": 256,
+          "y": 1435.6953125
+        },
+        {
+          "background": "rgb(23, 76, 60)",
+          "bottom": 2294.859375,
+          "font": "600 16px / 22.4px \"Helvetica Neue\", Arial, sans-serif",
+          "gap": "8px",
+          "h": 52,
+          "name": "Try it free",
+          "radius": "8px",
+          "right": 163.125,
+          "w": 143.125,
+          "x": 20,
+          "y": 2242.859375
+        }
+      ],
+      "documentWidth": 320,
+      "frames": [
+        {
+          "bottom": 685.2421875,
+          "h": 186.6640625,
+          "right": 300,
+          "w": 280,
+          "x": 20,
+          "y": 498.578125
+        }
+      ],
+      "text": [
+        {
+          "bottom": 212.296875,
+          "color": "rgb(32, 38, 36)",
+          "font": "500 29.6px / 33.152px \"Helvetica Neue\", Arial, sans-serif",
+          "h": 66.296875,
+          "name": "Make your food lookas good as it tastes.",
+          "right": 300,
+          "w": 280,
+          "x": 20,
+          "y": 146
+        },
+        {
+          "bottom": 303.078125,
+          "color": "rgb(89, 98, 95)",
+          "font": "16px / 25.6px \"Helvetica Neue\", Arial, sans-serif",
+          "h": 76.78125,
+          "name": "Turn a phone photo into studio-quality images for your menu, delivery listings, and social posts.",
+          "right": 300,
+          "w": 280,
+          "x": 20,
+          "y": 226.296875
+        },
+        {
+          "bottom": 375.078125,
+          "color": "rgb(255, 255, 255)",
+          "font": "600 16px / 22.4px \"Helvetica Neue\", Arial, sans-serif",
+          "h": 52,
+          "name": "Try it free",
+          "right": 231.5625,
+          "w": 143.125,
+          "x": 88.4375,
+          "y": 323.078125
+        },
+        {
+          "bottom": 408.578125,
+          "color": "rgb(89, 98, 95)",
+          "font": "15px / 22.5px \"Helvetica Neue\", Arial, sans-serif",
+          "h": 22.5,
+          "name": "5 free images · No credit card",
+          "right": 300,
+          "w": 280,
+          "x": 20,
+          "y": 386.078125
+        }
+      ],
+      "viewport": {
+        "height": 740,
+        "width": 320
+      },
+      "bubbleTextCollisions": [],
+      "paintedTextRects": [
+        {
+          "bottom": 180,
+          "label": "Make your food lookas good as it tastes.",
+          "right": 287.1796875,
+          "x": 32.8203125,
+          "y": 144.5
+        },
+        {
+          "bottom": 213.1484375,
+          "label": "Make your food lookas good as it tastes.",
+          "right": 283.328125,
+          "x": 36.6640625,
+          "y": 177.6484375
+        },
+        {
+          "bottom": 248.296875,
+          "label": "Turn a phone photo into studio-quality images for your menu, delivery listings, and social posts.",
+          "right": 296.484375,
+          "x": 23.5078125,
+          "y": 229.796875
+        },
+        {
+          "bottom": 273.890625,
+          "label": "Turn a phone photo into studio-quality images for your menu, delivery listings, and social posts.",
+          "right": 299.1328125,
+          "x": 20.859375,
+          "y": 255.390625
+        },
+        {
+          "bottom": 299.484375,
+          "label": "Turn a phone photo into studio-quality images for your menu, delivery listings, and social posts.",
+          "right": 220.75,
+          "x": 99.2421875,
+          "y": 280.984375
+        },
+        {
+          "bottom": 358.375,
+          "label": "Try it free",
+          "right": 183.5625,
+          "x": 112.4375,
+          "y": 339.375
+        },
+        {
+          "bottom": 406.078125,
+          "label": "5 free images · No credit card",
+          "right": 259.0546875,
+          "x": 60.9453125,
+          "y": 388.578125
+        }
+      ]
+    },
+    {
+      "label": "tablet-landscape",
+      "bubbleTextIntersections": [],
+      "bubbles": [
+        {
+          "bottom": 184.68540954589844,
+          "h": 76.93081665039062,
+          "right": 138.00540161132812,
+          "w": 76.93081665039062,
+          "x": 61.0745849609375,
+          "y": 107.7545928955078
+        },
+        {
+          "bottom": 293.22265625,
+          "h": 61.125335693359375,
+          "right": 167.82266235351562,
+          "w": 61.12535095214844,
+          "x": 106.6973114013672,
+          "y": 232.09732055664065
+        },
+        {
+          "bottom": 377.1929626464844,
+          "h": 48.665924072265625,
+          "right": 118.95296478271484,
+          "w": 48.66594696044922,
+          "x": 70.28701782226562,
+          "y": 328.52703857421875
+        },
+        {
+          "bottom": 177.20724487304688,
+          "h": 68.53449249267578,
+          "right": 962.0072021484376,
+          "w": 68.534423828125,
+          "x": 893.4727783203125,
+          "y": 108.6727523803711
+        },
+        {
+          "bottom": 318.7779541015625,
+          "h": 77.7958984375,
+          "right": 941.2178955078124,
+          "w": 77.7958984375,
+          "x": 863.4219970703125,
+          "y": 240.9820556640625
+        },
+        {
+          "bottom": 385.3929748535156,
+          "h": 48.665924072265625,
+          "right": 952.072998046875,
+          "w": 48.666015625,
+          "x": 903.406982421875,
+          "y": 336.72705078125
+        }
+      ],
+      "cards": [
+        {
+          "copy": "Grilled steak, rich herb butter, and a generous side of golden fries.",
+          "copyRect": {
+            "bottom": 1191.8828125,
+            "h": 40.59375,
+            "right": 309.328125,
+            "w": 229.328125,
+            "x": 80,
+            "y": 1151.2890625
+          },
+          "rect": {
+            "bottom": 1426.46875,
+            "h": 572.78125,
+            "right": 341.328125,
+            "w": 317.328125,
+            "x": 24,
+            "y": 853.6875
+          },
+          "title": "Delivery apps",
+          "titleRect": {
+            "bottom": 1341.6875,
+            "h": 30,
+            "right": 341.328125,
+            "w": 293.328125,
+            "x": 48,
+            "y": 1311.6875
+          }
+        },
+        {
+          "copy": "Crispy fish, fresh slaw, a squeeze of lime. Meet your next favorite bite.",
+          "copyRect": {
+            "bottom": 1253.5625,
+            "h": 40.59375,
+            "right": 635.65625,
+            "w": 247.328125,
+            "x": 388.328125,
+            "y": 1212.96875
+          },
+          "rect": {
+            "bottom": 1426.46875,
+            "h": 572.78125,
+            "right": 658.65625,
+            "w": 317.328125,
+            "x": 341.328125,
+            "y": 853.6875
+          },
+          "title": "Social media",
+          "titleRect": {
+            "bottom": 1341.6875,
+            "h": 30,
+            "right": 658.65625,
+            "w": 293.328125,
+            "x": 365.328125,
+            "y": 1311.6875
+          }
+        },
+        {
+          "copy": "Tomato sauce, fresh basil & Parmesan.",
+          "copyRect": {
+            "bottom": 1196.984375,
+            "h": 42,
+            "right": 935.984375,
+            "w": 213.328125,
+            "x": 722.65625,
+            "y": 1154.984375
+          },
+          "rect": {
+            "bottom": 1426.46875,
+            "h": 572.78125,
+            "right": 975.984375,
+            "w": 317.328125,
+            "x": 658.65625,
+            "y": 853.6875
+          },
+          "title": "Your existing menu",
+          "titleRect": {
+            "bottom": 1341.6875,
+            "h": 30,
+            "right": 975.984375,
+            "w": 293.328125,
+            "x": 682.65625,
+            "y": 1311.6875
+          }
+        }
+      ],
+      "controls": [
+        {
+          "background": "rgb(255, 255, 255)",
+          "bottom": 66,
+          "font": "600 14px / 21px \"Helvetica Neue\", Arial, sans-serif",
+          "gap": "normal",
+          "h": 44,
+          "name": "Log in",
+          "radius": "8px",
+          "right": 857.765625,
+          "w": 57.21875,
+          "x": 800.546875,
+          "y": 22
+        },
+        {
+          "background": "rgb(23, 76, 60)",
+          "bottom": 66,
+          "font": "600 14px / 19.6px \"Helvetica Neue\", Arial, sans-serif",
+          "gap": "8px",
+          "h": 44,
+          "name": "Try it free",
+          "radius": "8px",
+          "right": 976,
+          "w": 94.234375,
+          "x": 881.765625,
+          "y": 22
+        },
+        {
+          "background": "rgb(23, 76, 60)",
+          "bottom": 345.671875,
+          "font": "600 16px / 22.4px \"Helvetica Neue\", Arial, sans-serif",
+          "gap": "8px",
+          "h": 52,
+          "name": "Try it free",
+          "radius": "8px",
+          "right": 583.5625,
+          "w": 143.125,
+          "x": 440.4375,
+          "y": 293.671875
+        },
+        {
+          "background": "rgb(23, 76, 60)",
+          "bottom": 2196.8515625,
+          "font": "600 16px / 22.4px \"Helvetica Neue\", Arial, sans-serif",
+          "gap": "8px",
+          "h": 52,
+          "name": "Try it free",
+          "radius": "8px",
+          "right": 976,
+          "w": 143.125,
+          "x": 832.875,
+          "y": 2144.8515625
+        }
+      ],
+      "documentWidth": 1024,
+      "frames": [
+        {
+          "bottom": 725.5,
+          "h": 305.328125,
+          "right": 506,
+          "w": 458,
+          "x": 48,
+          "y": 420.171875
+        },
+        {
+          "bottom": 725.5,
+          "h": 305.328125,
+          "right": 976,
+          "w": 458,
+          "x": 518,
+          "y": 420.171875
+        }
+      ],
+      "text": [
+        {
+          "bottom": 207.671875,
+          "color": "rgb(32, 38, 36)",
+          "font": "500 48px / 51.84px \"Helvetica Neue\", Arial, sans-serif",
+          "h": 103.671875,
+          "name": "Make your food lookas good as it tastes.",
+          "right": 841,
+          "w": 658,
+          "x": 183,
+          "y": 104
+        },
+        {
+          "bottom": 277.671875,
+          "color": "rgb(89, 98, 95)",
+          "font": "18px / 27px \"Helvetica Neue\", Arial, sans-serif",
+          "h": 54,
+          "name": "Turn a phone photo into studio-quality images for your menu, delivery listings, and social posts.",
+          "right": 812,
+          "w": 600,
+          "x": 212,
+          "y": 223.671875
+        },
+        {
+          "bottom": 345.671875,
+          "color": "rgb(255, 255, 255)",
+          "font": "600 16px / 22.4px \"Helvetica Neue\", Arial, sans-serif",
+          "h": 52,
+          "name": "Try it free",
+          "right": 583.5625,
+          "w": 143.125,
+          "x": 440.4375,
+          "y": 293.671875
+        },
+        {
+          "bottom": 379.171875,
+          "color": "rgb(89, 98, 95)",
+          "font": "15px / 22.5px \"Helvetica Neue\", Arial, sans-serif",
+          "h": 22.5,
+          "name": "5 free images · No credit card",
+          "right": 841,
+          "w": 658,
+          "x": 183,
+          "y": 356.671875
+        }
+      ],
+      "viewport": {
+        "height": 768,
+        "width": 1024
+      },
+      "bubbleTextCollisions": [],
+      "paintedTextRects": [
+        {
+          "bottom": 158.5,
+          "label": "Make your food lookas good as it tastes.",
+          "right": 715.953125,
+          "x": 308.046875,
+          "y": 101
+        },
+        {
+          "bottom": 210.3359375,
+          "label": "Make your food lookas good as it tastes.",
+          "right": 709.46875,
+          "x": 314.5234375,
+          "y": 152.8359375
+        },
+        {
+          "bottom": 247.671875,
+          "label": "Turn a phone photo into studio-quality images for your menu, delivery listings, and social posts.",
+          "right": 791.578125,
+          "x": 232.421875,
+          "y": 226.671875
+        },
+        {
+          "bottom": 274.671875,
+          "label": "Turn a phone photo into studio-quality images for your menu, delivery listings, and social posts.",
+          "right": 613.3515625,
+          "x": 410.6484375,
+          "y": 253.671875
+        },
+        {
+          "bottom": 328.96875,
+          "label": "Try it free",
+          "right": 535.5625,
+          "x": 464.4375,
+          "y": 309.96875
+        },
+        {
+          "bottom": 376.671875,
+          "label": "5 free images · No credit card",
+          "right": 611.0546875,
+          "x": 412.9453125,
+          "y": 359.171875
+        }
+      ]
+    }
+  ],
+  "interactions": [
+    {
+      "action": "Pointer select Before",
+      "result": {
+        "image": "Original, unstyled burger photograph",
+        "selected": "Before"
+      }
+    },
+    {
+      "action": "ArrowRight from Before",
+      "result": {
+        "focusOutline": "rgb(100, 127, 119) solid 2.5px",
+        "focused": "After",
+        "image": "Illustrative AI edit of the burger with studio lighting and a clean background",
+        "selected": "After"
+      }
+    },
+    {
+      "action": "ArrowLeft from After",
+      "result": {
+        "focused": "Before",
+        "image": "Original, unstyled burger photograph",
+        "selected": "Before"
+      }
+    },
+    {
+      "action": "Advance through all three phone use cases; return with mobile Use cases navigation",
+      "result": {
+        "cards": [
+          {
+            "rect": {
+              "bottom": 751.828125,
+              "height": 566.78125,
+              "left": -596,
+              "right": -273.921875,
+              "top": 185.046875,
+              "width": 322.078125,
+              "x": -596,
+              "y": 185.046875
+            },
+            "title": "Delivery apps"
+          },
+          {
+            "rect": {
+              "bottom": 751.828125,
+              "height": 566.78125,
+              "left": -273.921875,
+              "right": 48.15625,
+              "top": 185.046875,
+              "width": 322.078125,
+              "x": -273.921875,
+              "y": 185.046875
+            },
+            "title": "Social media"
+          },
+          {
+            "rect": {
+              "bottom": 751.828125,
+              "height": 566.78125,
+              "left": 48.15625,
+              "right": 370.234375,
+              "top": 185.046875,
+              "width": 322.078125,
+              "x": 48.15625,
+              "y": 185.046875
+            },
+            "title": "Your existing menu"
+          }
+        ],
+        "focusedId": "use-cases",
+        "nextDisabled": true,
+        "previousDisabled": false
+      }
+    }
+  ],
+  "breakpointChecks": [
+    {
+      "width": 1000,
+      "bubbleTextCollisions": [],
+      "paintedTextRects": [
+        {
+          "bottom": 253.5,
+          "label": "Make your food lookas good as it tastes.",
+          "right": 699.703125,
+          "x": 300.296875,
+          "y": 197.5
+        },
+        {
+          "bottom": 304.7265625,
+          "label": "Make your food lookas good as it tastes.",
+          "right": 693.359375,
+          "x": 306.640625,
+          "y": 248.7265625
+        },
+        {
+          "bottom": 348.953125,
+          "label": "Turn a phone photo into studio-quality images for your menu, delivery listings, and social posts.",
+          "right": 779.578125,
+          "x": 220.421875,
+          "y": 327.953125
+        },
+        {
+          "bottom": 377.75,
+          "label": "Turn a phone photo into studio-quality images for your menu, delivery listings, and social posts.",
+          "right": 601.3515625,
+          "x": 398.6484375,
+          "y": 356.75
+        },
+        {
+          "bottom": 442.34375,
+          "label": "Try it free",
+          "right": 523.5625,
+          "x": 452.4375,
+          "y": 423.34375
+        },
+        {
+          "bottom": 490.046875,
+          "label": "5 free images · No credit card",
+          "right": 599.0546875,
+          "x": 400.9453125,
+          "y": 472.546875
+        }
+      ],
+      "pageWidth": 1000
+    },
+    {
+      "width": 1001,
+      "bubbleTextCollisions": [],
+      "paintedTextRects": [
+        {
+          "bottom": 158.5,
+          "label": "Make your food lookas good as it tastes.",
+          "right": 704.453125,
+          "x": 296.546875,
+          "y": 101
+        },
+        {
+          "bottom": 210.3359375,
+          "label": "Make your food lookas good as it tastes.",
+          "right": 697.96875,
+          "x": 303.0234375,
+          "y": 152.8359375
+        },
+        {
+          "bottom": 247.671875,
+          "label": "Turn a phone photo into studio-quality images for your menu, delivery listings, and social posts.",
+          "right": 780.078125,
+          "x": 220.921875,
+          "y": 226.671875
+        },
+        {
+          "bottom": 274.671875,
+          "label": "Turn a phone photo into studio-quality images for your menu, delivery listings, and social posts.",
+          "right": 601.8515625,
+          "x": 399.1484375,
+          "y": 253.671875
+        },
+        {
+          "bottom": 328.96875,
+          "label": "Try it free",
+          "right": 524.0625,
+          "x": 452.9375,
+          "y": 309.96875
+        },
+        {
+          "bottom": 376.671875,
+          "label": "5 free images · No credit card",
+          "right": 599.5546875,
+          "x": 401.4453125,
+          "y": 359.171875
+        }
+      ],
+      "pageWidth": 1001
+    },
+    {
+      "width": 1099,
+      "bubbleTextCollisions": [],
+      "paintedTextRects": [
+        {
+          "bottom": 158.5,
+          "label": "Make your food lookas good as it tastes.",
+          "right": 753.453125,
+          "x": 345.546875,
+          "y": 101
+        },
+        {
+          "bottom": 210.3359375,
+          "label": "Make your food lookas good as it tastes.",
+          "right": 746.96875,
+          "x": 352.0234375,
+          "y": 152.8359375
+        },
+        {
+          "bottom": 247.671875,
+          "label": "Turn a phone photo into studio-quality images for your menu, delivery listings, and social posts.",
+          "right": 829.078125,
+          "x": 269.921875,
+          "y": 226.671875
+        },
+        {
+          "bottom": 274.671875,
+          "label": "Turn a phone photo into studio-quality images for your menu, delivery listings, and social posts.",
+          "right": 650.8515625,
+          "x": 448.1484375,
+          "y": 253.671875
+        },
+        {
+          "bottom": 328.96875,
+          "label": "Try it free",
+          "right": 573.0625,
+          "x": 501.9375,
+          "y": 309.96875
+        },
+        {
+          "bottom": 376.671875,
+          "label": "5 free images · No credit card",
+          "right": 648.5546875,
+          "x": 450.4453125,
+          "y": 359.171875
+        }
+      ],
+      "pageWidth": 1099
+    },
+    {
+      "width": 1100,
+      "bubbleTextCollisions": [],
+      "paintedTextRects": [
+        {
+          "bottom": 158.5,
+          "label": "Make your food lookas good as it tastes.",
+          "right": 753.953125,
+          "x": 346.046875,
+          "y": 101
+        },
+        {
+          "bottom": 210.3359375,
+          "label": "Make your food lookas good as it tastes.",
+          "right": 747.46875,
+          "x": 352.5234375,
+          "y": 152.8359375
+        },
+        {
+          "bottom": 247.671875,
+          "label": "Turn a phone photo into studio-quality images for your menu, delivery listings, and social posts.",
+          "right": 829.578125,
+          "x": 270.421875,
+          "y": 226.671875
+        },
+        {
+          "bottom": 274.671875,
+          "label": "Turn a phone photo into studio-quality images for your menu, delivery listings, and social posts.",
+          "right": 651.3515625,
+          "x": 448.6484375,
+          "y": 253.671875
+        },
+        {
+          "bottom": 328.96875,
+          "label": "Try it free",
+          "right": 573.5625,
+          "x": 502.4375,
+          "y": 309.96875
+        },
+        {
+          "bottom": 376.671875,
+          "label": "5 free images · No credit card",
+          "right": 649.0546875,
+          "x": 450.9453125,
+          "y": 359.171875
+        }
+      ],
+      "pageWidth": 1100
+    },
+    {
+      "width": 1101,
+      "bubbleTextCollisions": [],
+      "paintedTextRects": [
+        {
+          "bottom": 158.5,
+          "label": "Make your food lookas good as it tastes.",
+          "right": 754.453125,
+          "x": 346.546875,
+          "y": 101
+        },
+        {
+          "bottom": 210.3359375,
+          "label": "Make your food lookas good as it tastes.",
+          "right": 747.96875,
+          "x": 353.0234375,
+          "y": 152.8359375
+        },
+        {
+          "bottom": 247.671875,
+          "label": "Turn a phone photo into studio-quality images for your menu, delivery listings, and social posts.",
+          "right": 830.078125,
+          "x": 270.921875,
+          "y": 226.671875
+        },
+        {
+          "bottom": 274.671875,
+          "label": "Turn a phone photo into studio-quality images for your menu, delivery listings, and social posts.",
+          "right": 651.8515625,
+          "x": 449.1484375,
+          "y": 253.671875
+        },
+        {
+          "bottom": 328.96875,
+          "label": "Try it free",
+          "right": 574.0625,
+          "x": 502.9375,
+          "y": 309.96875
+        },
+        {
+          "bottom": 376.671875,
+          "label": "5 free images · No credit card",
+          "right": 649.5546875,
+          "x": 451.4453125,
+          "y": 359.171875
+        }
+      ],
+      "pageWidth": 1101
+    },
+    {
+      "width": 1200,
+      "bubbleTextCollisions": [],
+      "paintedTextRects": [
+        {
+          "bottom": 159.5,
+          "label": "Make your food lookas good as it tastes.",
+          "right": 809.0546875,
+          "x": 390.9453125,
+          "y": 101
+        },
+        {
+          "bottom": 212.6328125,
+          "label": "Make your food lookas good as it tastes.",
+          "right": 802.40625,
+          "x": 397.5859375,
+          "y": 154.1328125
+        },
+        {
+          "bottom": 250.265625,
+          "label": "Turn a phone photo into studio-quality images for your menu, delivery listings, and social posts.",
+          "right": 879.578125,
+          "x": 320.421875,
+          "y": 229.265625
+        },
+        {
+          "bottom": 277.265625,
+          "label": "Turn a phone photo into studio-quality images for your menu, delivery listings, and social posts.",
+          "right": 701.3515625,
+          "x": 498.6484375,
+          "y": 256.265625
+        },
+        {
+          "bottom": 331.5625,
+          "label": "Try it free",
+          "right": 623.5625,
+          "x": 552.4375,
+          "y": 312.5625
+        },
+        {
+          "bottom": 379.265625,
+          "label": "5 free images · No credit card",
+          "right": 699.0546875,
+          "x": 500.9453125,
+          "y": 361.765625
+        }
+      ],
+      "pageWidth": 1200
+    },
+    {
+      "width": 1259,
+      "bubbleTextCollisions": [],
+      "paintedTextRects": [
+        {
+          "bottom": 162.5,
+          "label": "Make your food lookas good as it tastes.",
+          "right": 848.8125,
+          "x": 410.1875,
+          "y": 101
+        },
+        {
+          "bottom": 218.2421875,
+          "label": "Make your food lookas good as it tastes.",
+          "right": 841.84375,
+          "x": 417.15625,
+          "y": 156.7421875
+        },
+        {
+          "bottom": 255.484375,
+          "label": "Turn a phone photo into studio-quality images for your menu, delivery listings, and social posts.",
+          "right": 909.078125,
+          "x": 349.921875,
+          "y": 234.484375
+        },
+        {
+          "bottom": 282.484375,
+          "label": "Turn a phone photo into studio-quality images for your menu, delivery listings, and social posts.",
+          "right": 730.8515625,
+          "x": 528.1484375,
+          "y": 261.484375
+        },
+        {
+          "bottom": 336.78125,
+          "label": "Try it free",
+          "right": 653.0625,
+          "x": 581.9375,
+          "y": 317.78125
+        },
+        {
+          "bottom": 384.484375,
+          "label": "5 free images · No credit card",
+          "right": 728.5546875,
+          "x": 530.4453125,
+          "y": 366.984375
+        }
+      ],
+      "pageWidth": 1259
+    },
+    {
+      "width": 1280,
+      "bubbleTextCollisions": [],
+      "paintedTextRects": [
+        {
+          "bottom": 163.5,
+          "label": "Make your food lookas good as it tastes.",
+          "right": 862.984375,
+          "x": 417.0078125,
+          "y": 101
+        },
+        {
+          "bottom": 220.171875,
+          "label": "Make your food lookas good as it tastes.",
+          "right": 855.90625,
+          "x": 424.09375,
+          "y": 157.671875
+        },
+        {
+          "bottom": 257.34375,
+          "label": "Turn a phone photo into studio-quality images for your menu, delivery listings, and social posts.",
+          "right": 919.578125,
+          "x": 360.421875,
+          "y": 236.34375
+        },
+        {
+          "bottom": 284.34375,
+          "label": "Turn a phone photo into studio-quality images for your menu, delivery listings, and social posts.",
+          "right": 741.3515625,
+          "x": 538.6484375,
+          "y": 263.34375
+        },
+        {
+          "bottom": 338.640625,
+          "label": "Try it free",
+          "right": 663.5625,
+          "x": 592.4375,
+          "y": 319.640625
+        },
+        {
+          "bottom": 386.34375,
+          "label": "5 free images · No credit card",
+          "right": 739.0546875,
+          "x": 540.9453125,
+          "y": 368.84375
+        }
+      ],
+      "pageWidth": 1280
+    }
+  ],
+  "useCases": {
+    "viewport": "1280x720",
+    "cards": [
+      {
+        "card": {
+          "bottom": 689.21875,
+          "height": 547.1875,
+          "left": 26,
+          "right": 427.328125,
+          "top": 142.03125,
+          "width": 401.328125,
+          "x": 26,
+          "y": 142.03125
+        },
+        "description": "Put your best photo on the listing. Download images ready for your delivery menu.",
+        "descriptionRect": {
+          "bottom": 689.21875,
+          "height": 51.1875,
+          "left": 50,
+          "right": 405,
+          "top": 638.03125,
+          "width": 355,
+          "x": 50,
+          "y": 638.03125
+        },
+        "title": "Delivery apps",
+        "titleRect": {
+          "bottom": 630.03125,
+          "height": 30,
+          "left": 50,
+          "right": 427.328125,
+          "top": 600.03125,
+          "width": 377.328125,
+          "x": 50,
+          "y": 600.03125
+        }
+      },
+      {
+        "card": {
+          "bottom": 689.21875,
+          "height": 547.1875,
+          "left": 427.328125,
+          "right": 828.65625,
+          "top": 142.03125,
+          "width": 401.328125,
+          "x": 427.328125,
+          "y": 142.03125
+        },
+        "description": "Give today’s special its moment with a finished post and a caption you can make your own.",
+        "descriptionRect": {
+          "bottom": 689.21875,
+          "height": 51.1875,
+          "left": 451.328125,
+          "right": 806.328125,
+          "top": 638.03125,
+          "width": 355,
+          "x": 451.328125,
+          "y": 638.03125
+        },
+        "title": "Social media",
+        "titleRect": {
+          "bottom": 630.03125,
+          "height": 30,
+          "left": 451.328125,
+          "right": 828.65625,
+          "top": 600.03125,
+          "width": 377.328125,
+          "x": 451.328125,
+          "y": 600.03125
+        }
+      },
+      {
+        "card": {
+          "bottom": 689.21875,
+          "height": 547.1875,
+          "left": 828.65625,
+          "right": 1229.984375,
+          "top": 142.03125,
+          "width": 401.328125,
+          "x": 828.65625,
+          "y": 142.03125
+        },
+        "description": "Bring your dishes to life on Toast, your website, or the menu platform you already use.",
+        "descriptionRect": {
+          "bottom": 689.21875,
+          "height": 51.1875,
+          "left": 852.65625,
+          "right": 1207.65625,
+          "top": 638.03125,
+          "width": 355,
+          "x": 852.65625,
+          "y": 638.03125
+        },
+        "title": "Your existing menu",
+        "titleRect": {
+          "bottom": 630.03125,
+          "height": 30,
+          "left": 852.65625,
+          "right": 1229.984375,
+          "top": 600.03125,
+          "width": 377.328125,
+          "x": 852.65625,
+          "y": 600.03125
+        }
+      }
+    ]
+  }
+}

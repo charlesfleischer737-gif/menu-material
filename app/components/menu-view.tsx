@@ -1,11 +1,13 @@
 "use client";
-import { useCallback, useEffect, useRef, useState } from "react";
+import { useCallback, useEffect, useId, useRef, useState } from "react";
 import MenuPhoto from "./menu-photo";
 import { menuHero, menuAppearance } from "@/lib/menu-design";
 import { scheduleLabel } from "@/lib/promotions";
 import { money, Row } from "@/lib/client";
 import { brandTypeface, readableBrandInk } from "@/lib/restaurant-look";
 import MenuDocumentView from "./menu-document-view";
+import CustomerMenuSwitcher from "./customer-menu-switcher";
+import { ChevronLeft, ChevronRight } from "lucide-react";
 import type { DesignedMenu } from "@/lib/menu-document";
 export default function MenuView({
   menu,
@@ -53,14 +55,102 @@ function LegacyMenuView({
   onSelect?: (dishId: string) => void;
 }) {
   const [search, setSearch] = useState("");
+  const [sectionTarget, setSectionTarget] = useState<{ index: number } | null>(
+      null,
+    ),
+    [activeSection, setActiveSection] = useState("0"),
+    [sectionsOverflow, setSectionsOverflow] = useState(false),
+    [sectionsAtEnd, setSectionsAtEnd] = useState(false);
   const [liveMenu, setMenu] = useState(initialMenu),
     [time, setTime] = useState(serverNow),
     [unavailable, setUnavailable] = useState(false);
   const serverClock = useRef({ server: serverNow, local: 0 }),
     article = useRef<HTMLElement>(null),
+    sectionLinks = useRef<HTMLDivElement>(null),
     session = useRef("");
+  const menuId = useId();
   const menu = preview ? initialMenu : liveMenu;
   const hero = menuHero(menu);
+  useEffect(() => {
+    if (!sectionTarget) return;
+    const heading = article.current?.querySelector<HTMLElement>(
+      `[data-menu-section="${sectionTarget.index}"] h2`,
+    );
+    heading?.focus({ preventScroll: true });
+    heading?.scrollIntoView({
+      behavior: matchMedia("(prefers-reduced-motion: reduce)").matches
+        ? "instant"
+        : "smooth",
+      block: "start",
+    });
+  }, [sectionTarget]);
+  useEffect(() => {
+    const list = sectionLinks.current;
+    if (!list) return;
+    const measure = () => {
+      setSectionsOverflow(list.scrollWidth > list.clientWidth + 2);
+      setSectionsAtEnd(
+        list.scrollLeft + list.clientWidth >= list.scrollWidth - 2,
+      );
+    };
+    const observer = new ResizeObserver(measure);
+    observer.observe(list);
+    const frame = requestAnimationFrame(measure);
+    return () => {
+      observer.disconnect();
+      cancelAnimationFrame(frame);
+    };
+  }, [menu.sections]);
+  useEffect(() => {
+    const list = sectionLinks.current;
+    const current = list?.querySelector<HTMLElement>(
+      '[aria-current="location"]',
+    );
+    if (!list || !current) return;
+    const rail = list.getBoundingClientRect();
+    const button = current.getBoundingClientRect();
+    // Reveal the current section without moving the page or stealing focus.
+    if (button.left < rail.left + 3)
+      list.scrollBy({ left: button.left - rail.left - 3, behavior: "instant" });
+    else if (button.right > rail.right - 3)
+      list.scrollBy({
+        left: button.right - rail.right + 3,
+        behavior: "instant",
+      });
+  }, [activeSection]);
+  useEffect(() => {
+    if (preview || !article.current) return;
+    const targets = Array.from(
+      article.current.querySelectorAll<HTMLElement>("[data-menu-section]"),
+    );
+    let frame = 0;
+    const measure = () => {
+      frame = 0;
+      const atEnd =
+        window.scrollY + window.innerHeight >=
+        document.documentElement.scrollHeight - 2;
+      const current = atEnd
+        ? targets.at(-1)
+        : targets
+            .filter(
+              (target) =>
+                target.getBoundingClientRect().top <= window.innerHeight * 0.25,
+            )
+            .at(-1) || targets[0];
+      setActiveSection(current?.dataset.menuSection || "");
+    };
+    const schedule = () => {
+      if (!frame) frame = requestAnimationFrame(measure);
+    };
+    schedule();
+    window.addEventListener("scroll", schedule, { passive: true });
+    window.addEventListener("resize", schedule);
+    return () => {
+      cancelAnimationFrame(frame);
+      window.removeEventListener("scroll", schedule);
+      window.removeEventListener("resize", schedule);
+    };
+  }, [menu.sections, search, preview]);
   const track = useCallback(
     (kind: string, entityId?: string) => {
       if (preview || !slug || !session.current) return;
@@ -245,21 +335,14 @@ function LegacyMenuView({
         )}
       </header>
       {!preview && menu.menus?.length > 1 && (
-        <nav className="menu-document-switcher" aria-label="Our menus">
-          {menu.menus.map((m: Row) => (
-            <a
-              key={m.id}
-              href={`/m/${slug}?menu=${m.id}`}
-              aria-current={
-                m.id === menu.documentId || (!menu.documentId && m.isPrimary)
-                  ? "page"
-                  : undefined
-              }
-            >
-              {m.name}
-            </a>
-          ))}
-        </nav>
+        <CustomerMenuSwitcher
+          menus={menu.menus}
+          currentId={
+            menu.documentId || menu.menus.find((m: Row) => m.isPrimary)?.id
+          }
+          slug={slug!}
+          className="menu-document-switcher"
+        />
       )}
       {(menu.sections.length > 3 ||
         menu.sections.reduce((n: number, s: Row) => n + s.items.length, 0) >
@@ -269,25 +352,75 @@ function LegacyMenuView({
             aria-label="Search menu"
             type="search"
             placeholder="Find a dish…"
+            aria-controls={`${menuId}-items`}
             value={search}
             onChange={(e) => setSearch(e.target.value)}
           />
-          <div>
-            {menu.sections.map((s: Row, n: number) => (
+          <div className="mm-guest-section-navigation">
+            <div
+              className="mm-guest-section-links"
+              ref={sectionLinks}
+              onScroll={(event) => {
+                const list = event.currentTarget;
+                setSectionsAtEnd(
+                  list.scrollLeft + list.clientWidth >= list.scrollWidth - 2,
+                );
+              }}
+            >
+              {menu.sections.map((s: Row, n: number) => (
+                <button
+                  key={s.id}
+                  aria-current={
+                    activeSection === String(n) ? "location" : undefined
+                  }
+                  aria-controls={
+                    !search ||
+                    s.items.some((d: Row) =>
+                      `${d.name} ${d.description || ""} ${s.name}`
+                        .toLowerCase()
+                        .includes(search.toLowerCase()),
+                    )
+                      ? `${menuId}-section-${n}`
+                      : undefined
+                  }
+                  onClick={() => {
+                    setSearch("");
+                    setActiveSection(String(n));
+                    setSectionTarget({ index: n });
+                  }}
+                >
+                  {s.name}
+                </button>
+              ))}
+            </div>
+            {sectionsOverflow && (
               <button
-                key={s.id}
+                className="mm-guest-sections-more"
+                aria-label={
+                  sectionsAtEnd
+                    ? "Back to first sections"
+                    : "Show more sections"
+                }
                 onClick={() => {
-                  setSearch("");
-                  requestAnimationFrame(() =>
-                    article.current
-                      ?.querySelector(`[data-menu-section="${n}"]`)
-                      ?.scrollIntoView({ behavior: "smooth", block: "start" }),
-                  );
+                  const list = sectionLinks.current;
+                  if (!list) return;
+                  const behavior = matchMedia(
+                    "(prefers-reduced-motion: reduce)",
+                  ).matches
+                    ? "instant"
+                    : "smooth";
+                  if (sectionsAtEnd) list.scrollTo({ left: 0, behavior });
+                  else
+                    list.scrollBy({ left: list.clientWidth * 0.8, behavior });
                 }}
               >
-                {s.name}
+                {sectionsAtEnd ? (
+                  <ChevronLeft size={18} />
+                ) : (
+                  <ChevronRight size={18} />
+                )}
               </button>
-            ))}
+            )}
           </div>
         </nav>
       )}
@@ -329,7 +462,7 @@ function LegacyMenuView({
             </p>
           </section>
         ))}
-      <div className="menu-sections">
+      <div className="menu-sections" id={`${menuId}-items`}>
         {menu.sections.map((section: Row, sectionIndex: number) => {
           const dishes = section.items.filter((d: Row) =>
             `${d.name} ${d.description || ""} ${section.name}`
@@ -338,12 +471,16 @@ function LegacyMenuView({
           );
           return (
             !!dishes.length && (
-              <section key={section.id} data-menu-section={sectionIndex}>
+              <section
+                key={section.id}
+                id={`${menuId}-section-${sectionIndex}`}
+                data-menu-section={sectionIndex}
+              >
                 <header className="menu-section-heading">
                   <span aria-hidden="true">
                     {String(sectionIndex + 1).padStart(2, "0")}
                   </span>
-                  <h2>{section.name}</h2>
+                  <h2 tabIndex={-1}>{section.name}</h2>
                 </header>
                 <div className="menu-section-body">
                   {dishes.map((dish: Row, index: number) => {

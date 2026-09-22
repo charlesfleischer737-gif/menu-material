@@ -1,0 +1,19 @@
+{
+  "date": "2026-09-17",
+  "baseline": "657a2c6",
+  "method": "Compare normalized rendered section text after removing JSX tags and explicit JSX spaces. New navigation is outside the preserved sections.",
+  "results": [
+    {
+      "file": "app/privacy/page.tsx",
+      "sections": 6,
+      "sectionCopyUnchanged": true,
+      "normalizedSectionTextSha256": "c11a145c8ea4effaed3ebf33ed5c917d2f23c1aa18ec667222a09341db5f61d6"
+    },
+    {
+      "file": "app/guidelines/page.tsx",
+      "sections": 4,
+      "sectionCopyUnchanged": true,
+      "normalizedSectionTextSha256": "7941b89e7a484550199c7e335a5f4fdcb0aa1c4a688be32edb03a0cc08710df9"
+    }
+  ]
+}

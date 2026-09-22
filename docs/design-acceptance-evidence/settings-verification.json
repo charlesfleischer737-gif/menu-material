@@ -1,0 +1,531 @@
+{
+  "environment": "Local isolated Juniper fixture; no production edits",
+  "checks": [
+    {
+      "state": "details initial",
+      "viewport": "390x844",
+      "metrics": {
+        "body": {
+          "h": 613.703125,
+          "w": 390,
+          "x": 0,
+          "y": 133.796875
+        },
+        "fields": [
+          {
+            "gap": "8px",
+            "h": 73,
+            "label": "Restaurant name",
+            "y": 149.796875
+          },
+          {
+            "gap": "8px",
+            "h": 73,
+            "label": "Cuisine",
+            "y": 246.796875
+          },
+          {
+            "gap": "8px",
+            "h": 73,
+            "label": "Brand preferences",
+            "y": 343.796875
+          },
+          {
+            "gap": "8px",
+            "h": 73,
+            "label": "Menu currencyUSDGBPEURJPYCADAUD",
+            "y": 440.796875
+          },
+          {
+            "gap": "8px",
+            "h": 100.5,
+            "label": "Logo (optional)Logo uploads save immediately.",
+            "y": 537.796875
+          }
+        ],
+        "footer": {
+          "h": 96.5,
+          "w": 390,
+          "x": 0,
+          "y": 747.5
+        },
+        "header": {
+          "h": 84.796875,
+          "w": 390,
+          "x": 0,
+          "y": 0
+        },
+        "overflow": false
+      }
+    },
+    {
+      "state": "look scroll start",
+      "viewport": "390x844",
+      "metrics": {
+        ".rs-body": {
+          "clientHeight": 614,
+          "h": 613.703125,
+          "overflowY": "auto",
+          "scrollHeight": 1848,
+          "scrollTop": 0,
+          "y": 133.796875
+        },
+        ".rs-footer": {
+          "clientHeight": 96,
+          "h": 96.5,
+          "overflowY": "visible",
+          "scrollHeight": 96,
+          "scrollTop": 0,
+          "y": 747.5
+        },
+        ".rs-header": {
+          "clientHeight": 85,
+          "h": 84.796875,
+          "overflowY": "visible",
+          "scrollHeight": 85,
+          "scrollTop": 0,
+          "y": 0
+        }
+      }
+    },
+    {
+      "state": "look scroll end",
+      "viewport": "390x844",
+      "metrics": {
+        ".rs-body": {
+          "clientHeight": 614,
+          "h": 613.703125,
+          "scrollHeight": 1848,
+          "scrollTop": 1234,
+          "y": 133.796875
+        },
+        ".rs-footer": {
+          "clientHeight": 96,
+          "h": 96.5,
+          "scrollHeight": 96,
+          "scrollTop": 0,
+          "y": 747.5
+        },
+        ".rs-header": {
+          "clientHeight": 85,
+          "h": 84.796875,
+          "scrollHeight": 85,
+          "scrollTop": 0,
+          "y": 0
+        }
+      }
+    },
+    {
+      "state": "invalid timezone from hidden group",
+      "result": {
+        "error": "Choose a valid restaurant timezone, such as America/New_York.",
+        "focusName": "timezone",
+        "focusTag": "INPUT",
+        "focusValue": "Not/AZone",
+        "group": "ordering"
+      }
+    },
+    {
+      "state": "invalid ordering link from hidden group",
+      "result": {
+        "error": "Please enter a URL.",
+        "focusTag": "INPUT",
+        "focusType": "url",
+        "focusValue": "not-a-url",
+        "group": "ordering"
+      }
+    },
+    {
+      "state": "keep editing",
+      "result": {
+        "cuisine": "Seasonal American — acceptance review",
+        "group": "details",
+        "ordering": "https://example.com/order",
+        "status": "Unsaved changes",
+        "tone": "Warm, concise, and welcoming"
+      }
+    },
+    {
+      "state": "successful save",
+      "result": {
+        "error": null,
+        "saveDisabled": true,
+        "status": " Changes saved"
+      }
+    },
+    {
+      "state": "saved values after reopening",
+      "result": {
+        "cuisine": "Seasonal American — acceptance review",
+        "ordering": "https://example.com/order",
+        "status": "Your details are up to date",
+        "tone": "Warm, concise, and welcoming"
+      }
+    },
+    {
+      "state": "save rejected after session signed out in second tab",
+      "result": {
+        "brand": "Preserve this input through a failed save",
+        "error": "Sign in to your restaurant workspace.",
+        "footer": {
+          "bottom": 844,
+          "height": 129.5,
+          "left": 0,
+          "right": 390,
+          "top": 714.5,
+          "width": 390,
+          "x": 0,
+          "y": 714.5
+        },
+        "saveDisabled": false,
+        "status": "Unsaved changes"
+      }
+    },
+    {
+      "state": "retry after reauthentication",
+      "result": {
+        "brand": "Preserve this input through a failed save",
+        "error": null,
+        "saveDisabled": true,
+        "status": " Changes saved"
+      }
+    },
+    {
+      "state": "discard confirmed and reopened",
+      "result": {
+        "brand": "Preserve this input through a failed save",
+        "status": "Your details are up to date"
+      }
+    },
+    {
+      "state": "details aligned",
+      "viewport": "1280x720",
+      "metrics": {
+        "body": {
+          "bottom": 590.5,
+          "height": 419.703125,
+          "left": 221,
+          "right": 1059,
+          "top": 170.796875,
+          "width": 838,
+          "x": 221,
+          "y": 170.796875
+        },
+        "fields": [
+          {
+            "controlHeight": 44,
+            "controlTop": 223.796875,
+            "gap": "8px",
+            "height": 73,
+            "label": "Restaurant name",
+            "y": 194.796875
+          },
+          {
+            "controlHeight": 44,
+            "controlTop": 320.796875,
+            "gap": "8px",
+            "height": 73,
+            "label": "Cuisine",
+            "y": 291.796875
+          },
+          {
+            "controlHeight": 44,
+            "controlTop": 320.796875,
+            "gap": "8px",
+            "height": 73,
+            "label": "Brand preferences",
+            "y": 291.796875
+          },
+          {
+            "controlHeight": 44,
+            "controlTop": 417.796875,
+            "gap": "8px",
+            "height": 73,
+            "label": "Menu currencyUSDGBPEURJPYCADAUD",
+            "y": 388.796875
+          },
+          {
+            "controlHeight": 44,
+            "controlTop": 417.796875,
+            "gap": "8px",
+            "height": 100.5,
+            "label": "Logo (optional)Logo uploads save immediately.",
+            "y": 388.796875
+          }
+        ],
+        "footer": {
+          "bottom": 695,
+          "height": 104.5,
+          "left": 221,
+          "right": 1059,
+          "top": 590.5,
+          "width": 838,
+          "x": 221,
+          "y": 590.5
+        },
+        "header": {
+          "bottom": 121.796875,
+          "height": 96.796875,
+          "left": 221,
+          "right": 1059,
+          "top": 25,
+          "width": 838,
+          "x": 221,
+          "y": 25
+        },
+        "panelGap": "24px"
+      }
+    },
+    {
+      "state": "look scroll start",
+      "viewport": "1280x720",
+      "metrics": {
+        ".rs-body": {
+          "clientHeight": 420,
+          "h": 419.703125,
+          "overflowY": "auto",
+          "scrollHeight": 1685,
+          "scrollTop": 0,
+          "y": 170.796875
+        },
+        ".rs-footer": {
+          "clientHeight": 104,
+          "h": 104.5,
+          "overflowY": "visible",
+          "scrollHeight": 104,
+          "scrollTop": 0,
+          "y": 590.5
+        },
+        ".rs-header": {
+          "clientHeight": 97,
+          "h": 96.796875,
+          "overflowY": "visible",
+          "scrollHeight": 97,
+          "scrollTop": 0,
+          "y": 25
+        }
+      }
+    },
+    {
+      "state": "look scroll end",
+      "viewport": "1280x720",
+      "metrics": {
+        ".rs-body": {
+          "clientHeight": 420,
+          "h": 419.703125,
+          "overflowY": "auto",
+          "scrollHeight": 1685,
+          "scrollTop": 1265,
+          "y": 170.796875
+        },
+        ".rs-footer": {
+          "clientHeight": 104,
+          "h": 104.5,
+          "overflowY": "visible",
+          "scrollHeight": 104,
+          "scrollTop": 0,
+          "y": 590.5
+        },
+        ".rs-header": {
+          "clientHeight": 97,
+          "h": 96.796875,
+          "overflowY": "visible",
+          "scrollHeight": 97,
+          "scrollTop": 0,
+          "y": 25
+        }
+      }
+    },
+    {
+      "state": "ordering final controls visible",
+      "viewport": "1280x720",
+      "metrics": {
+        "applyHours": {
+          "bottom": 557.296875,
+          "height": 44,
+          "left": 245,
+          "right": 387.65625,
+          "top": 513.296875,
+          "width": 142.65625,
+          "x": 245,
+          "y": 513.296875
+        },
+        "footer": {
+          "bottom": 695,
+          "height": 104.5,
+          "left": 221,
+          "right": 1059,
+          "top": 590.5,
+          "width": 838,
+          "x": 221,
+          "y": 590.5
+        },
+        "lastClosed": {
+          "bottom": 513.296875,
+          "height": 44,
+          "left": 939,
+          "right": 1035,
+          "top": 469.296875,
+          "width": 96,
+          "x": 939,
+          "y": 469.296875
+        },
+        "lastTime": {
+          "bottom": 513.296875,
+          "height": 44,
+          "left": 614,
+          "right": 931,
+          "top": 469.296875,
+          "width": 317,
+          "x": 614,
+          "y": 469.296875
+        }
+      }
+    },
+    {
+      "state": "ordering final controls visible",
+      "viewport": "320x740",
+      "metrics": {
+        "applyHours": {
+          "bottom": 618.59375,
+          "height": 44,
+          "left": 16,
+          "right": 158.65625,
+          "top": 574.59375,
+          "width": 142.65625,
+          "x": 16,
+          "y": 574.59375
+        },
+        "footer": {
+          "bottom": 740,
+          "height": 96.5,
+          "left": 0,
+          "right": 320,
+          "top": 643.5,
+          "width": 320,
+          "x": 0,
+          "y": 643.5
+        },
+        "lastClosed": {
+          "bottom": 574.59375,
+          "height": 44,
+          "left": 16,
+          "right": 304,
+          "top": 530.59375,
+          "width": 288,
+          "x": 16,
+          "y": 530.59375
+        },
+        "lastTime": {
+          "bottom": 522.59375,
+          "height": 44,
+          "left": 164,
+          "right": 304,
+          "top": 478.59375,
+          "width": 140,
+          "x": 164,
+          "y": 478.59375
+        },
+        "overflow": false
+      }
+    },
+    {
+      "state": "final details alignment",
+      "viewport": "390x844",
+      "metrics": {
+        "fields": [
+          {
+            "controlHeight": 44,
+            "controlTop": 178.796875,
+            "gap": "8px",
+            "h": 73,
+            "label": "Restaurant name",
+            "y": 149.796875
+          },
+          {
+            "controlHeight": 44,
+            "controlTop": 275.796875,
+            "gap": "8px",
+            "h": 73,
+            "label": "Cuisine",
+            "y": 246.796875
+          },
+          {
+            "controlHeight": 44,
+            "controlTop": 372.796875,
+            "gap": "8px",
+            "h": 73,
+            "label": "Brand preferences",
+            "y": 343.796875
+          },
+          {
+            "controlHeight": 44,
+            "controlTop": 469.796875,
+            "gap": "8px",
+            "h": 73,
+            "label": "Menu currencyUSDGBPEURJPYCADAUD",
+            "y": 440.796875
+          },
+          {
+            "controlHeight": 44,
+            "controlTop": 566.796875,
+            "gap": "8px",
+            "h": 100.5,
+            "label": "Logo (optional)Logo uploads save immediately.",
+            "y": 537.796875
+          }
+        ],
+        "footer": {
+          "bottom": 844,
+          "height": 96.5,
+          "left": 0,
+          "right": 390,
+          "top": 747.5,
+          "width": 390,
+          "x": 0,
+          "y": 747.5
+        },
+        "header": {
+          "bottom": 84.796875,
+          "height": 84.796875,
+          "left": 0,
+          "right": 390,
+          "top": 0,
+          "width": 390,
+          "x": 0,
+          "y": 0
+        }
+      }
+    },
+    {
+      "state": "final look scroll end",
+      "viewport": "390x844",
+      "metrics": {
+        ".rs-body": {
+          "clientHeight": 614,
+          "h": 613.703125,
+          "overflowY": "auto",
+          "scrollHeight": 1848,
+          "scrollTop": 1234,
+          "y": 133.796875
+        },
+        ".rs-footer": {
+          "clientHeight": 96,
+          "h": 96.5,
+          "overflowY": "visible",
+          "scrollHeight": 96,
+          "scrollTop": 0,
+          "y": 747.5
+        },
+        ".rs-header": {
+          "clientHeight": 85,
+          "h": 84.796875,
+          "overflowY": "visible",
+          "scrollHeight": 85,
+          "scrollTop": 0,
+          "y": 0
+        }
+      }
+    }
+  ]
+}

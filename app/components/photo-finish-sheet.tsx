@@ -1,11 +1,9 @@
 "use client";
-import { useEffect, useRef, useState } from "react";
+import { useEffect, useId, useRef, useState } from "react";
 import {
-  ArrowRight,
   Check,
   ChevronDown,
   Download,
-  ImagePlus,
   Share2,
   SlidersHorizontal,
   X,
@@ -21,6 +19,13 @@ import {
   CollapsibleContent,
   CollapsibleTrigger,
 } from "@/components/ui/collapsible";
+import {
+  DropdownMenu,
+  DropdownMenuContent,
+  DropdownMenuItem,
+  DropdownMenuSeparator,
+  DropdownMenuTrigger,
+} from "@/components/ui/dropdown-menu";
 import { downloadBlob, type Row } from "@/lib/client";
 import { masterPhotoExport, photoExport } from "@/lib/photo-export";
 import { photoExportEventKey } from "@/lib/photo-export-identity";
@@ -99,6 +104,7 @@ export function PhotoFinishSheet({
       height: number;
     } | null>(null);
   const downloadLock = useRef(false);
+  const downloadHintId = useId();
   useEffect(() => {
     onBusyChange?.(busy);
     return () => onBusyChange?.(false);
@@ -220,10 +226,9 @@ export function PhotoFinishSheet({
       >
         <header className="ps2-dialog-header">
           <div>
-            <span className="ps2-kicker">READY FOR YOUR RESTAURANT</span>
-            <DialogTitle>Make it yours to use.</DialogTitle>
+            <DialogTitle>Download photo</DialogTitle>
             <DialogDescription>
-              One quick check. Then save the right size.
+              Choose a size and check your crop.
             </DialogDescription>
           </div>
           <button
@@ -310,6 +315,8 @@ export function PhotoFinishSheet({
                         setEdits(next);
                         setConfirmed(null);
                         setFinished(false);
+                        setError("");
+                        setNotice("");
                       }}
                     />
                   </fieldset>
@@ -326,6 +333,8 @@ export function PhotoFinishSheet({
               making a large print.
             </p>
           )}
+        </div>
+        <footer className="ps2-dialog-footer">
           {!checked || !finished ? (
             <label className="cx-check ps2-finish-check">
               <input
@@ -342,20 +351,19 @@ export function PhotoFinishSheet({
             </label>
           ) : (
             <p className="ps2-finish-checked">
-              <Check size={16} />
-              This version is reviewed and saved.
+              <Check size={16} /> This version is reviewed and saved.
             </p>
           )}
-          {!eligible && (
-            <p className="ps2-inline-note">
-              Ordering platforms need a photo of your actual dish. Choose
-              Website or menu, or start with a real dish photo.
-            </p>
-          )}
+          <p className="ps2-download-hint" id={downloadHintId} role="status">
+            {!eligible
+              ? "Choose Website or menu. Ordering platforms require a photo of your actual dish."
+              : !checked
+                ? "Confirm the crop above to download."
+                : "Saved privately in My Dishes."}
+          </p>
           {error && (
             <p className="ps2-inline-note" role="alert">
-              {error} Your saved photo is still available. Try the download
-              again.
+              {error} Your photo is saved. Try downloading again.
             </p>
           )}
           {notice && (
@@ -363,84 +371,78 @@ export function PhotoFinishSheet({
               {notice}
             </p>
           )}
-          {approved && (
-            <Collapsible className="ps2-finish-more">
-              <CollapsibleTrigger className="cx-link">
-                Use in a menu or post
-                <ChevronDown size={14} />
-              </CollapsibleTrigger>
-              <CollapsibleContent>
-                <button
-                  className="cx-link"
-                  disabled={busy}
-                  onClick={() => onDestination("post")}
-                >
-                  Make a post
-                  <ArrowRight size={14} />
-                </button>
-                <button
-                  className="cx-link"
-                  disabled={busy}
-                  onClick={() => onDestination("menu")}
-                >
-                  Add to a menu
-                  <ArrowRight size={14} />
-                </button>
-                <button
-                  className="cx-link"
-                  disabled={busy}
-                  onClick={() => onDestination("print")}
-                >
-                  Create a print menu
-                  <ArrowRight size={14} />
-                </button>
-              </CollapsibleContent>
-            </Collapsible>
-          )}
-          {(finished || approved) && (
-            <div className="ps2-finish-next">
-              <button className="cx-link" disabled={busy} onClick={onNew}>
-                <ImagePlus size={15} />
-                Add another photo
+          <div className="ps2-finish-actions">
+            {canShare ? (
+              <button
+                className="cx-btn cx-secondary"
+                aria-describedby={downloadHintId}
+                disabled={busy || !checked || !eligible}
+                onClick={() => void finish(true)}
+              >
+                <Share2 size={16} />
+                Share
               </button>
-              <button className="cx-link" disabled={busy} onClick={onReuse}>
-                Use this look again
-                <ArrowRight size={15} />
-              </button>
-              <button className="cx-link" disabled={busy} onClick={onSaveLook}>
-                Save this look
-              </button>
-              <button className="cx-link" disabled={busy} onClick={onBatch}>
-                Apply to more dishes
-              </button>
-            </div>
-          )}
-        </div>
-        <footer className="ps2-dialog-footer">
-          {canShare ? (
+            ) : (
+              <span />
+            )}
             <button
-              className="cx-link"
+              className="cx-btn"
+              aria-describedby={downloadHintId}
               disabled={busy || !checked || !eligible}
-              onClick={() => void finish(true)}
+              onClick={() => void finish()}
             >
-              <Share2 size={16} />
-              Share
+              <Download size={17} />
+              {busy
+                ? "Preparing…"
+                : finished
+                  ? "Download again"
+                  : "Download photo"}
             </button>
-          ) : (
-            <span>Saved privately in My Dishes</span>
+          </div>
+          {(finished || approved) && (
+            <DropdownMenu>
+              <DropdownMenuTrigger
+                className="cx-link ps2-finish-more"
+                disabled={busy}
+              >
+                More photo actions <ChevronDown size={16} />
+              </DropdownMenuTrigger>
+              <DropdownMenuContent
+                className="cx-workspace-popover ps2-finish-menu"
+                side="top"
+                align="end"
+                sideOffset={8}
+                collisionPadding={16}
+              >
+                {approved && (
+                  <>
+                    <DropdownMenuItem onSelect={() => onDestination("post")}>
+                      Make a post
+                    </DropdownMenuItem>
+                    <DropdownMenuItem onSelect={() => onDestination("menu")}>
+                      Add to a menu
+                    </DropdownMenuItem>
+                    <DropdownMenuItem onSelect={() => onDestination("print")}>
+                      Create a print menu
+                    </DropdownMenuItem>
+                    <DropdownMenuSeparator />
+                  </>
+                )}
+                <DropdownMenuItem onSelect={onNew}>
+                  Add another photo
+                </DropdownMenuItem>
+                <DropdownMenuItem onSelect={onReuse}>
+                  Use this look again
+                </DropdownMenuItem>
+                <DropdownMenuItem onSelect={onSaveLook}>
+                  Save this look
+                </DropdownMenuItem>
+                <DropdownMenuItem onSelect={onBatch}>
+                  Apply to more dishes
+                </DropdownMenuItem>
+              </DropdownMenuContent>
+            </DropdownMenu>
           )}
-          <button
-            className="cx-btn"
-            disabled={busy || !checked || !eligible}
-            onClick={() => void finish()}
-          >
-            <Download size={17} />
-            {busy
-              ? "Preparing…"
-              : finished
-                ? "Download again"
-                : "Download photo"}
-          </button>
         </footer>
       </DialogContent>
     </Dialog>

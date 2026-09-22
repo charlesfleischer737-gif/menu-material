@@ -1,24 +1,30 @@
 "use client";
 import { useEffect, useState } from "react";
 import { api, type Row } from "@/lib/client";
+import { Button } from "@/components/ui/button";
 
 export function StudioProgressPanel() {
   const [open, setOpen] = useState(false),
     [mode, setMode] = useState("production");
-  const [report, setReport] = useState<Row | null>(null),
-    [error, setError] = useState("");
+  const [result, setResult] = useState<{ mode: string; data: Row } | null>(
+      null,
+    ),
+    [error, setError] = useState(""),
+    [loading, setLoading] = useState(true);
+  const report = result?.mode === mode ? result.data : null;
   const [refresh, setRefresh] = useState(0);
   useEffect(() => {
     if (!open) return;
     let current = true;
-    setReport(null);
-    setError("");
     void api(`admin/studio-report?mode=${mode}&days=30`)
       .then((data) => {
-        if (current) setReport(data);
+        if (current) setResult({ mode, data });
       })
       .catch((e) => {
         if (current) setError(e.message);
+      })
+      .finally(() => {
+        if (current) setLoading(false);
       });
     return () => {
       current = false;
@@ -40,7 +46,14 @@ export function StudioProgressPanel() {
   return (
     <details
       className="admin-details studio-progress"
-      onToggle={(event) => setOpen(event.currentTarget.open)}
+      onToggle={(event) => {
+        const next = event.currentTarget.open;
+        if (next && !open) {
+          setLoading(true);
+          setError("");
+        }
+        setOpen(next);
+      }}
     >
       <summary>Photo Studio progress</summary>
       <div className="studio-progress-controls">
@@ -48,24 +61,49 @@ export function StudioProgressPanel() {
           Activity included
           <select
             value={mode}
-            onChange={(event) => setMode(event.target.value)}
+            disabled={loading}
+            onChange={(event) => {
+              setMode(event.target.value);
+              setLoading(true);
+              setError("");
+            }}
           >
             <option value="production">Production activity</option>
             <option value="internal">Internal QA only</option>
           </select>
         </label>
-        <button
-          className="cx-btn cx-secondary"
-          onClick={() => setRefresh((value) => value + 1)}
+        <Button
+          variant="outline"
+          disabled={loading}
+          className="admin-progress-refresh"
+          onClick={() => {
+            if (loading) return;
+            setLoading(true);
+            setError("");
+            setRefresh((value) => value + 1);
+          }}
         >
-          Refresh progress
-        </button>
+          {error ? "Retry progress" : "Refresh progress"}
+        </Button>
       </div>
-      {error ? (
-        <p role="alert">{error}</p>
-      ) : !report ? (
-        <p role="status">Loading photo progress…</p>
-      ) : (
+      <p
+        className="admin-operation-status"
+        role={error ? "alert" : "status"}
+        data-state={error ? "error" : "idle"}
+      >
+        {loading
+          ? "Loading photo progress…"
+          : error
+            ? `${error} Use Retry progress to try again.`
+            : "Photo progress is up to date."}
+      </p>
+      {!report && loading && (
+        <div className="admin-progress-placeholder" aria-hidden="true">
+          <span />
+          <span />
+        </div>
+      )}
+      {report && (
         <>
           <p>
             Source drafts started {new Date(report.since).toLocaleDateString()}–
@@ -88,7 +126,6 @@ export function StudioProgressPanel() {
                   : "Eligible Photo Studio activity will appear here."}
             </span>
           </div>
-          <p>{report.outcome}</p>
           {report.rows.length > 0 && (
             <p>
               Distinct source drafts at each stage. Free edits and reused
@@ -148,8 +185,12 @@ export function StudioProgressPanel() {
           ) : (
             <p>No eligible source drafts in this window.</p>
           )}
-          <p>{report.scope}</p>
-          <p className="studio-progress-note">{report.exclusions}</p>
+          <details className="admin-explanation">
+            <summary>How progress is measured</summary>
+            <p>{report.outcome}</p>
+            <p>{report.scope}</p>
+            <p className="studio-progress-note">{report.exclusions}</p>
+          </details>
         </>
       )}
     </details>

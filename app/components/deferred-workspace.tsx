@@ -7,10 +7,12 @@ import {
   type ComponentType,
 } from "react";
 import { deferredResource } from "@/lib/deferred-resource";
+import WorkspacePlaceholder from "./workspace-placeholder";
 
 export function deferredWorkspace<Props extends object>(
   name: string,
   loader: () => Promise<{ default: ComponentType<Props> }>,
+  contentOnly = false,
 ) {
   const resource = deferredResource(loader);
   return function DeferredWorkspace(props: Props) {
@@ -78,28 +80,20 @@ export function deferredWorkspace<Props extends object>(
         {Loaded ? (
           <Loaded {...props} />
         ) : (
-          <div className="cx-feedback">
-            <p
-              data-workspace-status
-              tabIndex={-1}
-              role={failed ? "alert" : "status"}
-            >
-              {failed
+          <WorkspacePlaceholder
+            title={name}
+            contentOnly={contentOnly}
+            failed={failed}
+            message={
+              failed
                 ? `${name} couldn’t open. Check your connection and try again.`
-                : `Opening ${name}…`}
-            </p>
-            {failed && (
-              <button
-                className="cx-btn cx-secondary"
-                onClick={() => {
-                  setFailed(false);
-                  setAttempt((value) => value + 1);
-                }}
-              >
-                Try again
-              </button>
-            )}
-          </div>
+                : `Opening ${name}…`
+            }
+            onRetry={() => {
+              setFailed(false);
+              setAttempt((value) => value + 1);
+            }}
+          />
         )}
       </div>
     );

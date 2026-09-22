@@ -5,14 +5,16 @@ export default function CreativeHeader({
   status,
   children,
   action,
+  className = "",
 }: {
   title: string;
   status?: string;
   children?: ReactNode;
   action?: ReactNode;
+  className?: string;
 }) {
   return (
-    <header className="mm-header">
+    <header className={`mm-header ${className}`.trim()}>
       <div className="mm-heading">
         <h1 tabIndex={-1}>{title}</h1>
         {status && (

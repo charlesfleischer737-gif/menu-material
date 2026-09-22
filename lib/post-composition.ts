@@ -467,22 +467,23 @@ export async function renderComposedPost(
             360,
           ).height;
       const stack = th + footerH + kickerH + (footerH ? 30 : 0);
-      const start = atTop ? top + 115 : bottom - stack;
+      const brandHeight = showBrand
+        ? Math.max(
+            restaurant.logo_id || restaurant.logoId ? 64 : 0,
+            measure(
+              restaurant.name,
+              restaurant.logo_id || restaurant.logoId ? 852 : 936,
+              36,
+              36,
+              "Post Sans",
+              150,
+            ).height,
+          )
+        : 0;
+      const start = atTop
+        ? top + (brandHeight ? brandHeight + 32 : 0)
+        : bottom - stack;
       if (!photoOnly || showBrand) {
-        const shade = gradient(
-          ctx,
-          0,
-          atTop ? 0 : H,
-          0,
-          atTop ? start + stack + 160 : -(H - start + 160),
-          [
-            [0, night ? "#100e18fa" : "#0c1712ef"],
-            [0.62, night ? "#201523ac" : "#172c2590"],
-            [1, "#10221a00"],
-          ],
-        );
-        ctx.fillStyle = shade;
-        ctx.fillRect(0, 0, W, H);
         if (night) {
           glow(
             ctx,
@@ -494,9 +495,36 @@ export async function renderComposedPost(
           );
           glow(ctx, -200, H * 0.3, 550, "#9f6453", 0.16);
         }
+        // Keep the full text region dark; fade only beyond the glyphs.
+        // An image-wide average cannot protect text over a bright plate or glass.
+        const shadeColor = night ? "#100e18e6" : "#0c1712e6";
+        if (!photoOnly) {
+          const depth = atTop ? start + stack + 160 : H - start + 160;
+          ctx.fillStyle = gradient(
+            ctx,
+            0,
+            atTop ? 0 : H,
+            0,
+            atTop ? depth : -depth,
+            [
+              [0, shadeColor],
+              [(depth - 160) / depth, shadeColor],
+              [1, "#10221a00"],
+            ],
+          );
+          ctx.fillRect(0, 0, W, H);
+        }
         if (showBrand) {
-          const isLight = photoCharacter(images[0]).topLight > 175;
-          await brand(72, top, 936, isLight ? "#18241c" : light);
+          if (!atTop || photoOnly) {
+            const depth = top + brandHeight + 100;
+            ctx.fillStyle = gradient(ctx, 0, 0, 0, depth, [
+              [0, shadeColor],
+              [(top + brandHeight) / depth, shadeColor],
+              [1, "#10221a00"],
+            ]);
+            ctx.fillRect(0, 0, W, depth);
+          }
+          await brand(72, top, 936, light);
         }
         let y = start;
         if (kicker)
@@ -660,7 +688,7 @@ export async function renderComposedPost(
         fh = copyHeight(936),
         stack = th + fh + kickerH + (th && fh ? 24 : 0);
       const py = top + bh,
-        ph = bottom - py - stack + 135;
+        ph = bottom - py - stack - (stack ? 24 : 0);
       photo(78, py, 1002, ph, undefined, [400, 0, 0, 0], "blend");
       if (showBrand) await brand(72, top, 936, ink);
       let y = bottom - stack;

@@ -1,0 +1,774 @@
+{
+  "phone": {
+    "controls": [
+      {
+        "font": "14px",
+        "height": 44,
+        "label": "Focus preview",
+        "width": 44
+      },
+      {
+        "font": "14px",
+        "height": 44,
+        "label": "Print",
+        "width": 78.6328125
+      },
+      {
+        "font": "14px",
+        "height": 44,
+        "label": "Phone",
+        "width": 89.5390625
+      },
+      {
+        "font": "14px",
+        "height": 44,
+        "label": "Design",
+        "width": 79.3046875
+      },
+      {
+        "font": "14px",
+        "height": 44,
+        "label": "Previous page",
+        "width": 44
+      },
+      {
+        "font": "14px",
+        "height": 44,
+        "label": "Next page",
+        "width": 44
+      },
+      {
+        "font": "14px",
+        "height": 44,
+        "label": "Zoom out",
+        "width": 44
+      },
+      {
+        "font": "14px",
+        "height": 44,
+        "label": "Preview size",
+        "width": 76
+      },
+      {
+        "font": "14px",
+        "height": 44,
+        "label": "Zoom in",
+        "width": 44
+      }
+    ],
+    "documentWidth": 390,
+    "footer": {
+      "bottom": 844,
+      "height": 73,
+      "top": 771
+    },
+    "proof": {
+      "height": 429.640625,
+      "top": 378.40625,
+      "width": 332
+    },
+    "viewport": {
+      "height": 844,
+      "width": 390
+    },
+    "visibleProof": 364.59375
+  },
+  "tabletSelections": [
+    {
+      "fields": [
+        {
+          "bottom": 246,
+          "top": 202,
+          "value": "Marinated olives"
+        },
+        {
+          "bottom": 498.375,
+          "top": 454.375,
+          "value": "7.00"
+        }
+      ],
+      "focus": "Menu editing controls",
+      "heading": "Marinated olives",
+      "height": 768,
+      "overflow": false,
+      "width": 1024
+    },
+    {
+      "fields": [
+        {
+          "bottom": 246,
+          "top": 202,
+          "value": "Sourdough & cultured butter — evening"
+        },
+        {
+          "bottom": 498.375,
+          "top": 454.375,
+          "value": "9.25"
+        }
+      ],
+      "focus": "Menu editing controls",
+      "heading": "Sourdough & cultured butter — evening",
+      "height": 768,
+      "overflow": false,
+      "width": 1024
+    },
+    {
+      "fields": [
+        {
+          "bottom": 246.5,
+          "top": 202.5,
+          "value": "Wood-roasted carrots"
+        },
+        {
+          "bottom": 498.875,
+          "top": 454.875,
+          "value": "15.00"
+        }
+      ],
+      "focus": "Menu editing controls",
+      "heading": "Wood-roasted carrots",
+      "height": 768,
+      "overflow": false,
+      "width": 1024
+    },
+    {
+      "fields": [
+        {
+          "bottom": 246.5,
+          "top": 202.5,
+          "value": "Roast chicken with charred spring leeks"
+        },
+        {
+          "bottom": 529.875,
+          "top": 485.875,
+          "value": "28.50"
+        }
+      ],
+      "focus": "Menu editing controls",
+      "heading": "Roast chicken with charred spring leeks",
+      "height": 768,
+      "overflow": false,
+      "width": 1024
+    },
+    {
+      "fields": [
+        {
+          "bottom": 246,
+          "top": 202,
+          "value": "Crisp potatoes"
+        },
+        {
+          "bottom": 498.375,
+          "top": 454.375,
+          "value": "8.00"
+        }
+      ],
+      "focus": "Menu editing controls",
+      "heading": "Crisp potatoes",
+      "height": 768,
+      "overflow": false,
+      "width": 1024
+    },
+    {
+      "fields": [
+        {
+          "bottom": 246.5,
+          "top": 202.5,
+          "value": "Olive oil cake"
+        },
+        {
+          "bottom": 498.875,
+          "top": 454.875,
+          "value": "11.00"
+        }
+      ],
+      "focus": "Menu editing controls",
+      "heading": "Olive oil cake",
+      "height": 768,
+      "overflow": false,
+      "width": 1024
+    },
+    {
+      "fields": [
+        {
+          "bottom": 246,
+          "top": 202,
+          "value": "Espresso"
+        },
+        {
+          "bottom": 498.375,
+          "top": 454.375,
+          "value": "3.50"
+        }
+      ],
+      "focus": "Menu editing controls",
+      "heading": "Espresso",
+      "height": 768,
+      "overflow": false,
+      "width": 1024
+    },
+    {
+      "fields": [
+        {
+          "bottom": 417.5,
+          "top": 373.5,
+          "value": "Marinated olives"
+        },
+        {
+          "bottom": 669.875,
+          "top": 625.875,
+          "value": "7.00"
+        }
+      ],
+      "focus": "Menu editing controls",
+      "heading": "Marinated olives",
+      "height": 1024,
+      "overflow": false,
+      "width": 768
+    },
+    {
+      "fields": [
+        {
+          "bottom": 370.5,
+          "top": 326.5,
+          "value": "Sourdough & cultured butter — evening"
+        },
+        {
+          "bottom": 622.875,
+          "top": 578.875,
+          "value": "9.25"
+        }
+      ],
+      "focus": "Menu editing controls",
+      "heading": "Sourdough & cultured butter — evening",
+      "height": 1024,
+      "overflow": false,
+      "width": 768
+    },
+    {
+      "fields": [
+        {
+          "bottom": 314,
+          "top": 270,
+          "value": "Wood-roasted carrots"
+        },
+        {
+          "bottom": 566.375,
+          "top": 522.375,
+          "value": "15.00"
+        }
+      ],
+      "focus": "Menu editing controls",
+      "heading": "Wood-roasted carrots",
+      "height": 1024,
+      "overflow": false,
+      "width": 768
+    },
+    {
+      "fields": [
+        {
+          "bottom": 314,
+          "top": 270,
+          "value": "Roast chicken with charred spring leeks"
+        },
+        {
+          "bottom": 597.375,
+          "top": 553.375,
+          "value": "28.50"
+        }
+      ],
+      "focus": "Menu editing controls",
+      "heading": "Roast chicken with charred spring leeks",
+      "height": 1024,
+      "overflow": false,
+      "width": 768
+    },
+    {
+      "fields": [
+        {
+          "bottom": 417.5,
+          "top": 373.5,
+          "value": "Crisp potatoes"
+        },
+        {
+          "bottom": 669.875,
+          "top": 625.875,
+          "value": "8.00"
+        }
+      ],
+      "focus": "Menu editing controls",
+      "heading": "Crisp potatoes",
+      "height": 1024,
+      "overflow": false,
+      "width": 768
+    },
+    {
+      "fields": [
+        {
+          "bottom": 336.5,
+          "top": 292.5,
+          "value": "Olive oil cake"
+        },
+        {
+          "bottom": 588.875,
+          "top": 544.875,
+          "value": "11.00"
+        }
+      ],
+      "focus": "Menu editing controls",
+      "heading": "Olive oil cake",
+      "height": 1024,
+      "overflow": false,
+      "width": 768
+    },
+    {
+      "fields": [
+        {
+          "bottom": 314,
+          "top": 270,
+          "value": "Espresso"
+        },
+        {
+          "bottom": 566.375,
+          "top": 522.375,
+          "value": "3.50"
+        }
+      ],
+      "focus": "Menu editing controls",
+      "heading": "Espresso",
+      "height": 1024,
+      "overflow": false,
+      "width": 768
+    }
+  ],
+  "desktop": {
+    "documentWidth": 1280,
+    "name": "Sourdough & cultured butter — evening",
+    "previewRegion": {
+      "bottom": 978.5,
+      "height": 1027.5,
+      "left": 455,
+      "right": 965,
+      "top": -49,
+      "width": 510,
+      "x": 455,
+      "y": -49
+    },
+    "scrollY": 159,
+    "selectedOutline": [
+      "Sourdough & cultured butter — evening\n$9.25"
+    ],
+    "selectedProof": [
+      "Edit Sourdough & cultured butter —"
+    ],
+    "viewport": {
+      "height": 720,
+      "width": 1280
+    }
+  },
+  "focus": {
+    "documentWidth": 1280,
+    "inspectorDisplay": "none",
+    "outlineDisplay": "none",
+    "regionWidth": 1010,
+    "selectedProof": [
+      "Edit Sourdough & cultured butter —"
+    ],
+    "viewport": {
+      "height": 720,
+      "width": 1280
+    }
+  },
+  "fitPage": {
+    "documentWidth": 1280,
+    "label": "Fit page",
+    "page": {
+      "bottom": 676.9921875,
+      "height": 400.4921875,
+      "left": 555.2578125,
+      "right": 864.734375,
+      "top": 276.5,
+      "width": 309.4765625,
+      "x": 555.2578125,
+      "y": 276.5
+    },
+    "scroll": {
+      "bottom": 690.9921875,
+      "height": 419.4921875,
+      "left": 479,
+      "right": 941,
+      "top": 271.5,
+      "width": 462,
+      "x": 479,
+      "y": 271.5
+    }
+  },
+  "selectionAgreement": {
+    "fields": [
+      "Sourdough & cultured butter — evening",
+      "9.25"
+    ],
+    "heading": "Sourdough & cultured butter — evening",
+    "outline": "Sourdough & cultured butter — evening\n$9.25",
+    "proof": "Edit Sourdough & cultured butter — evening"
+  },
+  "breakpoints": [
+    {
+      "documentWidth": 1440,
+      "focusTag": "INPUT",
+      "focusVisible": true,
+      "headingWidth": 159,
+      "name": "Sourdough & cultured butter — evening",
+      "visiblePanels": [
+        "md-outline",
+        "md-stage",
+        "md-inspector"
+      ],
+      "width": 1440
+    },
+    {
+      "documentWidth": 1251,
+      "focusTag": "INPUT",
+      "focusVisible": true,
+      "headingWidth": 159,
+      "name": "Sourdough & cultured butter — evening",
+      "visiblePanels": [
+        "md-outline",
+        "md-stage",
+        "md-inspector"
+      ],
+      "width": 1251
+    },
+    {
+      "documentWidth": 1250,
+      "focusTag": "INPUT",
+      "focusVisible": true,
+      "headingWidth": 147,
+      "name": "Sourdough & cultured butter — evening",
+      "visiblePanels": [
+        "md-outline",
+        "md-stage",
+        "md-inspector"
+      ],
+      "width": 1250
+    },
+    {
+      "documentWidth": 1249,
+      "focusTag": "INPUT",
+      "focusVisible": true,
+      "headingWidth": 147,
+      "name": "Sourdough & cultured butter — evening",
+      "visiblePanels": [
+        "md-outline",
+        "md-stage",
+        "md-inspector"
+      ],
+      "width": 1249
+    },
+    {
+      "documentWidth": 1101,
+      "focusTag": "INPUT",
+      "focusVisible": true,
+      "headingWidth": 147,
+      "name": "Sourdough & cultured butter — evening",
+      "visiblePanels": [
+        "md-outline",
+        "md-stage",
+        "md-inspector"
+      ],
+      "width": 1101
+    },
+    {
+      "documentWidth": 1100,
+      "focusTag": "INPUT",
+      "focusVisible": true,
+      "headingWidth": 373.3984375,
+      "name": "Sourdough & cultured butter — evening",
+      "visiblePanels": [
+        "md-inspector"
+      ],
+      "width": 1100
+    },
+    {
+      "documentWidth": 1099,
+      "focusTag": "INPUT",
+      "focusVisible": true,
+      "headingWidth": 373.3984375,
+      "name": "Sourdough & cultured butter — evening",
+      "visiblePanels": [
+        "md-inspector"
+      ],
+      "width": 1099
+    },
+    {
+      "documentWidth": 1051,
+      "focusTag": "INPUT",
+      "focusVisible": true,
+      "headingWidth": 373.3984375,
+      "name": "Sourdough & cultured butter — evening",
+      "visiblePanels": [
+        "md-inspector"
+      ],
+      "width": 1051
+    },
+    {
+      "documentWidth": 1050,
+      "focusTag": "INPUT",
+      "focusVisible": true,
+      "headingWidth": 373.3984375,
+      "name": "Sourdough & cultured butter — evening",
+      "visiblePanels": [
+        "md-inspector"
+      ],
+      "width": 1050
+    },
+    {
+      "documentWidth": 1049,
+      "focusTag": "INPUT",
+      "focusVisible": true,
+      "headingWidth": 373.3984375,
+      "name": "Sourdough & cultured butter — evening",
+      "visiblePanels": [
+        "md-inspector"
+      ],
+      "width": 1049
+    },
+    {
+      "documentWidth": 1024,
+      "focusTag": "INPUT",
+      "focusVisible": true,
+      "headingWidth": 373.3984375,
+      "name": "Sourdough & cultured butter — evening",
+      "visiblePanels": [
+        "md-inspector"
+      ],
+      "width": 1024
+    },
+    {
+      "documentWidth": 768,
+      "focusTag": "INPUT",
+      "focusVisible": true,
+      "headingWidth": 373.3984375,
+      "name": "Sourdough & cultured butter — evening",
+      "visiblePanels": [
+        "md-inspector"
+      ],
+      "width": 768
+    },
+    {
+      "documentWidth": 761,
+      "focusTag": "INPUT",
+      "focusVisible": true,
+      "headingWidth": 373.3984375,
+      "name": "Sourdough & cultured butter — evening",
+      "visiblePanels": [
+        "md-inspector"
+      ],
+      "width": 761
+    },
+    {
+      "documentWidth": 760,
+      "focusTag": "INPUT",
+      "focusVisible": true,
+      "headingWidth": 373.3984375,
+      "name": "Sourdough & cultured butter — evening",
+      "visiblePanels": [
+        "md-inspector"
+      ],
+      "width": 760
+    },
+    {
+      "documentWidth": 741,
+      "focusTag": "INPUT",
+      "focusVisible": true,
+      "headingWidth": 373.3984375,
+      "name": "Sourdough & cultured butter — evening",
+      "visiblePanels": [
+        "md-inspector"
+      ],
+      "width": 741
+    },
+    {
+      "documentWidth": 740,
+      "focusTag": "INPUT",
+      "focusVisible": true,
+      "headingWidth": 373.3984375,
+      "name": "Sourdough & cultured butter — evening",
+      "visiblePanels": [
+        "md-inspector"
+      ],
+      "width": 740
+    },
+    {
+      "documentWidth": 390,
+      "focusTag": "INPUT",
+      "focusVisible": true,
+      "headingWidth": 214,
+      "name": "Sourdough & cultured butter — evening",
+      "visiblePanels": [
+        "md-inspector"
+      ],
+      "width": 390
+    },
+    {
+      "documentWidth": 320,
+      "focusTag": "INPUT",
+      "focusVisible": true,
+      "headingWidth": 144,
+      "name": "Sourdough & cultured butter — evening",
+      "visiblePanels": [
+        "md-inspector"
+      ],
+      "width": 320
+    }
+  ],
+  "persistence": {
+    "name": "Sourdough & cultured butter — evening",
+    "price": "9.25",
+    "survivedReload": true,
+    "publication": "Live menu has an older version"
+  },
+  "drinkControls": {
+    "landscape": {
+      "documentWidth": 1024,
+      "fields": [
+        {
+          "bottom": 246.5,
+          "font": "16px",
+          "label": "Dish name",
+          "top": 202.5,
+          "value": "House lager",
+          "width": 716
+        },
+        {
+          "bottom": 598.375,
+          "font": "16px",
+          "label": "Option 1 name",
+          "top": 552.375,
+          "value": "Half pint",
+          "width": 452.40625
+        },
+        {
+          "bottom": 598.375,
+          "font": "16px",
+          "label": "Half pint price",
+          "top": 552.375,
+          "value": "3.50",
+          "width": 203.5859375
+        },
+        {
+          "bottom": 652.375,
+          "font": "16px",
+          "label": "Option 2 name",
+          "top": 606.375,
+          "value": "Pint",
+          "width": 452.40625
+        },
+        {
+          "bottom": 652.375,
+          "font": "16px",
+          "label": "Pint price",
+          "top": 606.375,
+          "value": "6.00",
+          "width": 203.5859375
+        },
+        {
+          "bottom": 875.875,
+          "font": "16px",
+          "label": "Dish name",
+          "top": 831.875,
+          "value": "",
+          "width": 716
+        }
+      ],
+      "headingFont": "650 16px / 22.4px \"Helvetica Neue\", Arial, sans-serif",
+      "height": 768,
+      "removeControls": [
+        {
+          "height": 44,
+          "label": "Remove Half pint",
+          "width": 44
+        },
+        {
+          "height": 44,
+          "label": "Remove Pint",
+          "width": 44
+        }
+      ],
+      "width": 1024
+    },
+    "portrait": {
+      "fields": [
+        {
+          "bottom": 746.875,
+          "font": "16px",
+          "label": "Option 1 name",
+          "top": 700.875
+        },
+        {
+          "bottom": 746.875,
+          "font": "16px",
+          "label": "Half pint price",
+          "top": 700.875
+        },
+        {
+          "bottom": 800.875,
+          "font": "16px",
+          "label": "Option 2 name",
+          "top": 754.875
+        },
+        {
+          "bottom": 800.875,
+          "font": "16px",
+          "label": "Pint price",
+          "top": 754.875
+        }
+      ],
+      "focused": "Menu editing controls",
+      "heading": "House lager",
+      "height": 1024,
+      "width": 768
+    }
+  },
+  "publication": {
+    "duringChange": {
+      "status": "Unsaved changes\n· Live menu has an older version",
+      "value": "7.25"
+    },
+    "afterSave": {
+      "status": "Draft saved\n· Live menu has an older version"
+    }
+  },
+  "finalPhone": {
+    "documentWidth": 390,
+    "footer": {
+      "bottom": 844,
+      "height": 73,
+      "top": 771
+    },
+    "proof": {
+      "height": 429.640625,
+      "top": 378.40625,
+      "width": 332
+    },
+    "scrollY": 0,
+    "viewport": {
+      "height": 844,
+      "width": 390
+    },
+    "visibleProof": 368.59375,
+    "zoom": "Fit width"
+  },
+  "resizePendingEdit": {
+    "value": "3.75",
+    "focusName": "Half pint price",
+    "pendingStatus": "Unsaved changes · Published",
+    "note": "Resize preserved value and focus before autosave. Publication cue was subsequently fixed and separately verified on Lunch."
+  },
+  "zoomRoundTrip": {
+    "in": "120%",
+    "out": "100%",
+    "canvasWidth": 446,
+    "selected": "Sourdough & cultured butter — evening"
+  }
+}

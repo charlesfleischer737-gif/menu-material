@@ -1,0 +1,362 @@
+{
+  "date": "2026-09-17",
+  "candidate": "working tree based on 657a2c6",
+  "errors": 92,
+  "warnings": 1699,
+  "note": "Existing errors remain; equal rule counts alone do not certify equivalence, and modified-file diagnostics must also be reviewed.",
+  "files": [
+    {
+      "file": "app/components/account-panels.tsx",
+      "currentErrors": 6,
+      "baselineErrors": 8,
+      "evidence": "ESLint on HEAD source via stdin with same filename/config",
+      "currentRules": {
+        "@typescript-eslint/no-explicit-any": 4,
+        "react-hooks/set-state-in-effect": 1,
+        "react-hooks/purity": 1
+      },
+      "baselineRules": {
+        "@typescript-eslint/no-explicit-any": 5,
+        "react-hooks/set-state-in-effect": 2,
+        "react-hooks/purity": 1
+      },
+      "addedRules": []
+    },
+    {
+      "file": "app/components/auth.tsx",
+      "currentErrors": 2,
+      "baselineErrors": 2,
+      "evidence": "ESLint on HEAD source via stdin with same filename/config",
+      "currentRules": {
+        "react-hooks/set-state-in-effect": 2
+      },
+      "baselineRules": {
+        "react-hooks/set-state-in-effect": 2
+      },
+      "addedRules": []
+    },
+    {
+      "file": "app/components/creation-shared.tsx",
+      "currentErrors": 7,
+      "baselineErrors": 7,
+      "evidence": "ESLint on HEAD source via stdin with same filename/config",
+      "currentRules": {
+        "react-hooks/set-state-in-effect": 3,
+        "react-hooks/refs": 4
+      },
+      "baselineRules": {
+        "react-hooks/set-state-in-effect": 3,
+        "react-hooks/refs": 4
+      },
+      "addedRules": []
+    },
+    {
+      "file": "app/components/menu-sharing.tsx",
+      "currentErrors": 2,
+      "baselineErrors": 2,
+      "evidence": "File identical to HEAD",
+      "rules": {
+        "react-hooks/set-state-in-effect": 2
+      },
+      "addedRules": []
+    },
+    {
+      "file": "app/components/photo-downloads.tsx",
+      "currentErrors": 1,
+      "baselineErrors": 1,
+      "evidence": "File identical to HEAD",
+      "rules": {
+        "react-hooks/set-state-in-effect": 1
+      },
+      "addedRules": []
+    },
+    {
+      "file": "app/components/photo-finish-sheet.tsx",
+      "currentErrors": 1,
+      "baselineErrors": 1,
+      "evidence": "ESLint on HEAD source via stdin with same filename/config",
+      "currentRules": {
+        "react-hooks/set-state-in-effect": 1
+      },
+      "baselineRules": {
+        "react-hooks/set-state-in-effect": 1
+      },
+      "addedRules": []
+    },
+    {
+      "file": "app/components/photo-inspiration-sheet.tsx",
+      "currentErrors": 4,
+      "baselineErrors": 4,
+      "evidence": "File identical to HEAD",
+      "rules": {
+        "react-hooks/refs": 3,
+        "react-hooks/set-state-in-effect": 1
+      },
+      "addedRules": []
+    },
+    {
+      "file": "app/components/photo-studio.tsx",
+      "currentErrors": 3,
+      "baselineErrors": 3,
+      "evidence": "ESLint on HEAD source via stdin with same filename/config",
+      "currentRules": {
+        "react-hooks/set-state-in-effect": 3
+      },
+      "baselineRules": {
+        "react-hooks/set-state-in-effect": 3
+      },
+      "addedRules": []
+    },
+    {
+      "file": "app/components/print-preview.tsx",
+      "currentErrors": 2,
+      "baselineErrors": 2,
+      "evidence": "File identical to HEAD",
+      "rules": {
+        "react-hooks/set-state-in-effect": 2
+      },
+      "addedRules": []
+    },
+    {
+      "file": "app/components/restaurant-look-editor.tsx",
+      "currentErrors": 1,
+      "baselineErrors": 1,
+      "evidence": "File identical to HEAD",
+      "rules": {
+        "react-hooks/set-state-in-effect": 1
+      },
+      "addedRules": []
+    },
+    {
+      "file": "app/components/studio-onboarding.tsx",
+      "currentErrors": 1,
+      "baselineErrors": 1,
+      "evidence": "File identical to HEAD",
+      "rules": {
+        "react-hooks/purity": 1
+      },
+      "addedRules": []
+    },
+    {
+      "file": "app/components/studio-progress-panel.tsx",
+      "currentErrors": 1,
+      "baselineErrors": 1,
+      "evidence": "File identical to HEAD",
+      "rules": {
+        "react-hooks/set-state-in-effect": 1
+      },
+      "addedRules": []
+    },
+    {
+      "file": "app/components/studio-release-panel.tsx",
+      "currentErrors": 1,
+      "baselineErrors": 1,
+      "evidence": "File identical to HEAD",
+      "rules": {
+        "@typescript-eslint/no-explicit-any": 1
+      },
+      "addedRules": []
+    },
+    {
+      "file": "app/components/studio-workbench.tsx",
+      "currentErrors": 3,
+      "baselineErrors": 3,
+      "evidence": "ESLint on HEAD source via stdin with same filename/config",
+      "currentRules": {
+        "react-hooks/immutability": 1,
+        "react-hooks/rules-of-hooks": 1,
+        "react-hooks/refs": 1
+      },
+      "baselineRules": {
+        "react-hooks/immutability": 1,
+        "react-hooks/rules-of-hooks": 1,
+        "react-hooks/refs": 1
+      },
+      "addedRules": []
+    },
+    {
+      "file": "app/components/use-inspiration-availability.ts",
+      "currentErrors": 1,
+      "baselineErrors": 1,
+      "evidence": "File identical to HEAD",
+      "rules": {
+        "react-hooks/set-state-in-effect": 1
+      },
+      "addedRules": []
+    },
+    {
+      "file": "app/components/use-studio-library.ts",
+      "currentErrors": 2,
+      "baselineErrors": 2,
+      "evidence": "File identical to HEAD",
+      "rules": {
+        "react-hooks/refs": 1,
+        "react-hooks/set-state-in-effect": 1
+      },
+      "addedRules": []
+    },
+    {
+      "file": "app/components/use-studio-navigation.ts",
+      "currentErrors": 1,
+      "baselineErrors": 1,
+      "evidence": "File identical to HEAD",
+      "rules": {
+        "react-hooks/refs": 1
+      },
+      "addedRules": []
+    },
+    {
+      "file": "app/m/[slug]/page.tsx",
+      "currentErrors": 7,
+      "baselineErrors": 7,
+      "evidence": "File identical to HEAD",
+      "rules": {
+        "react-hooks/error-boundaries": 7
+      },
+      "addedRules": []
+    },
+    {
+      "file": "app/page.tsx",
+      "currentErrors": 3,
+      "baselineErrors": 3,
+      "evidence": "ESLint on HEAD source via stdin with same filename/config",
+      "currentRules": {
+        "react-hooks/set-state-in-effect": 3
+      },
+      "baselineRules": {
+        "react-hooks/set-state-in-effect": 3
+      },
+      "addedRules": []
+    },
+    {
+      "file": "lib/client.ts",
+      "currentErrors": 1,
+      "baselineErrors": 1,
+      "evidence": "File identical to HEAD",
+      "rules": {
+        "@typescript-eslint/no-explicit-any": 1
+      },
+      "addedRules": []
+    },
+    {
+      "file": "lib/local-runtime.ts",
+      "currentErrors": 6,
+      "baselineErrors": 6,
+      "evidence": "File identical to HEAD",
+      "rules": {
+        "@typescript-eslint/no-explicit-any": 6
+      },
+      "addedRules": []
+    },
+    {
+      "file": "lib/restaurant-look.ts",
+      "currentErrors": 7,
+      "baselineErrors": 7,
+      "evidence": "File identical to HEAD",
+      "rules": {
+        "@typescript-eslint/no-explicit-any": 7
+      },
+      "addedRules": []
+    },
+    {
+      "file": "lib/server/core.ts",
+      "currentErrors": 6,
+      "baselineErrors": 6,
+      "evidence": "File identical to HEAD",
+      "rules": {
+        "@typescript-eslint/no-explicit-any": 6
+      },
+      "addedRules": []
+    },
+    {
+      "file": "lib/server/generation.ts",
+      "currentErrors": 3,
+      "baselineErrors": 3,
+      "evidence": "File identical to HEAD",
+      "rules": {
+        "@typescript-eslint/no-explicit-any": 3
+      },
+      "addedRules": []
+    },
+    {
+      "file": "lib/studio-discovery.ts",
+      "currentErrors": 1,
+      "baselineErrors": 1,
+      "evidence": "File identical to HEAD",
+      "rules": {
+        "@typescript-eslint/no-explicit-any": 1
+      },
+      "addedRules": []
+    },
+    {
+      "file": "lib/studio-events.ts",
+      "currentErrors": 3,
+      "baselineErrors": 3,
+      "evidence": "File identical to HEAD",
+      "rules": {
+        "@typescript-eslint/no-explicit-any": 3
+      },
+      "addedRules": []
+    },
+    {
+      "file": "lib/studio-library.ts",
+      "currentErrors": 2,
+      "baselineErrors": 2,
+      "evidence": "File identical to HEAD",
+      "rules": {
+        "@typescript-eslint/no-explicit-any": 2
+      },
+      "addedRules": []
+    },
+    {
+      "file": "lib/studio-onboarding.ts",
+      "currentErrors": 3,
+      "baselineErrors": 3,
+      "evidence": "File identical to HEAD",
+      "rules": {
+        "@typescript-eslint/no-explicit-any": 3
+      },
+      "addedRules": []
+    },
+    {
+      "file": "lib/studio.ts",
+      "currentErrors": 3,
+      "baselineErrors": 3,
+      "evidence": "File identical to HEAD",
+      "rules": {
+        "@typescript-eslint/no-explicit-any": 3
+      },
+      "addedRules": []
+    },
+    {
+      "file": "lib/workspace-navigation.ts",
+      "currentErrors": 1,
+      "baselineErrors": 1,
+      "evidence": "File identical to HEAD",
+      "rules": {
+        "@typescript-eslint/no-explicit-any": 1
+      },
+      "addedRules": []
+    },
+    {
+      "file": "public/pdf.worker.min.mjs",
+      "currentErrors": 6,
+      "baselineErrors": 6,
+      "evidence": "File identical to HEAD",
+      "rules": {
+        "@typescript-eslint/no-this-alias": 6
+      },
+      "addedRules": []
+    },
+    {
+      "file": "tests/deferred-workspace.mjs",
+      "currentErrors": 1,
+      "baselineErrors": 1,
+      "evidence": "File identical to HEAD",
+      "rules": {
+        "@next/next/no-assign-module-variable": 1
+      },
+      "addedRules": []
+    }
+  ]
+}

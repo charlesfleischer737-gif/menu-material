@@ -1,5 +1,5 @@
 "use client";
-import { useEffect, useState, type ReactNode } from "react";
+import { useEffect, useRef, useState, type ReactNode } from "react";
 import {
   ArrowRight,
   BookOpen,
@@ -22,16 +22,21 @@ import {
   workspacePreferenceKey,
 } from "@/lib/workspace-navigation";
 import Brand from "./brand";
+import CreativeHeader from "./creative-header";
+import WorkspacePlaceholder from "./workspace-placeholder";
 import PhotoStudio from "./photo-studio";
 import { deferredWorkspace } from "./deferred-workspace";
-import { Heading } from "./creation-shared";
 const DishLibrary = deferredWorkspace(
   "My Dishes",
   () => import("./dish-library"),
 );
 const MenuBuilder = deferredWorkspace("Menus", () => import("./menu-studio"));
 const PostMaker = deferredWorkspace("Post Maker", () => import("./post-maker"));
-const MenuTools = deferredWorkspace("menu tools", () => import("./menu-tools"));
+const MenuTools = deferredWorkspace(
+  "More tools",
+  () => import("./menu-tools"),
+  true,
+);
 const ExploreGallery = deferredWorkspace(
   "Explore",
   () => import("./explore-gallery"),
@@ -68,6 +73,8 @@ export default function CoreWorkspace({
     [legacySeed, setLegacySeed] = useState<Row | null>(null),
     [visited, setVisited] = useState<string[]>([]),
     [moreOpen, setMoreOpen] = useState(false);
+  const explorePosition = useRef(0);
+  const exploreReturnStyle = useRef<string | null>(null);
   useEffect(() => {
     let live = true;
     let request = 0;
@@ -75,7 +82,9 @@ export default function CoreWorkspace({
       setView(next);
       setVisited((v) => (v.includes(next) ? v : [...v, next]));
       if (next !== "admin") rememberPreference(preferenceKey, next);
-      if (location.hash !== "#" + next)
+      const campaignLink =
+        next === "campaigns" && /^#promotion\/[^/]+$/.test(location.hash);
+      if (!campaignLink && location.hash !== "#" + next)
         history.replaceState(null, "", "#" + next);
     };
     const read = async () => {
@@ -107,6 +116,7 @@ export default function CoreWorkspace({
     };
   }, [preferenceKey, state.user.role]);
   function navigate(next: string) {
+    if (view === "explore") explorePosition.current = window.scrollY;
     setMoreOpen(false);
     if (location.hash !== "#" + next) history.pushState(null, "", "#" + next);
     if (next !== "admin") rememberPreference(preferenceKey, next);
@@ -114,10 +124,28 @@ export default function CoreWorkspace({
     setVisited((v) => (v.includes(next) ? v : [...v, next]));
   }
   useEffect(() => {
-    document
-      .querySelector<HTMLElement>('.cx-main [aria-hidden="false"] h1')
-      ?.focus();
-    window.scrollTo({ top: 0, behavior: "instant" });
+    const heading = Array.from(
+      document.querySelectorAll<HTMLElement>(".cx-main h1"),
+    ).find((element) => !element.closest("[hidden], [aria-hidden='true']"));
+    const previousStyle =
+      view === "explore" && exploreReturnStyle.current
+        ? document.querySelector<HTMLElement>(
+            `[data-explore-style="${CSS.escape(exploreReturnStyle.current)}"]`,
+          )
+        : null;
+    (previousStyle || heading)?.focus({ preventScroll: true });
+    window.scrollTo({
+      top: view === "explore" ? explorePosition.current : 0,
+      behavior: "instant",
+    });
+  }, [view]);
+  useEffect(() => {
+    if (view !== "explore") return;
+    const remember = () => {
+      explorePosition.current = window.scrollY;
+    };
+    window.addEventListener("scroll", remember, { passive: true });
+    return () => window.removeEventListener("scroll", remember);
   }, [view]);
   function photo(dishId = "", photoId = "", destination = "menu") {
     setPhotoSeed({ token: crypto.randomUUID(), dishId, photoId, destination });
@@ -153,6 +181,13 @@ export default function CoreWorkspace({
     ["post", "Post Maker", Megaphone],
     ["menu", "Menus", BookOpen],
   ] as const;
+  const shortLabels: Record<string, string> = {
+    studio: "Studio",
+    explore: "Explore",
+    library: "Dishes",
+    post: "Post",
+    menu: "Menus",
+  };
   return (
     <div className="cx-app">
       <a className="cx-skip" href="#creation-main">
@@ -187,9 +222,17 @@ export default function CoreWorkspace({
                   : "Free · View plans"}
               </button>
               <button onClick={onSettings}>Restaurant look & settings</button>
-              <button onClick={() => navigate("tools")}>More tools</button>
+              <button
+                onClick={() => navigate("tools")}
+                aria-current={view === "tools" ? "page" : undefined}
+              >
+                More tools
+              </button>
               {state.user.role === "admin" && (
-                <button onClick={() => navigate("admin")}>
+                <button
+                  onClick={() => navigate("admin")}
+                  aria-current={view === "admin" ? "page" : undefined}
+                >
                   Administration
                 </button>
               )}
@@ -212,7 +255,10 @@ export default function CoreWorkspace({
                   <span className="cx-nav-dot" />
                 )}
               </span>
-              <span className="cx-nav-label">{label}</span>
+              <span className="cx-nav-label">
+                <span className="cx-nav-full">{label}</span>
+                <span className="cx-nav-short">{shortLabels[id]}</span>
+              </span>
             </button>
           ))}
         </nav>
@@ -228,19 +274,27 @@ export default function CoreWorkspace({
             <button className="cx-link" onClick={onPlans}>
               {state.billing?.plan === "pro"
                 ? "Manage plan"
-                : "Get Pro · $9.99/month"}
+                : state.billing?.enabled
+                  ? "Get Pro · $9.99/month"
+                  : "Pro coming soon · Plans"}
             </button>
           </div>
           <button onClick={onSettings}>
             <Settings size={18} />
             Restaurant look & settings
           </button>
-          <button onClick={() => navigate("tools")}>
+          <button
+            onClick={() => navigate("tools")}
+            aria-current={view === "tools" ? "page" : undefined}
+          >
             <SlidersHorizontal size={18} />
             More tools
           </button>
           {state.user.role === "admin" && (
-            <button onClick={() => navigate("admin")}>
+            <button
+              onClick={() => navigate("admin")}
+              aria-current={view === "admin" ? "page" : undefined}
+            >
               <ShieldCheck size={18} />
               Administration
             </button>
@@ -257,9 +311,10 @@ export default function CoreWorkspace({
           className={`cx-main${["studio", "menu", "post"].includes(view) ? " cx-feature-main" : ""}${view === "explore" ? " cx-explore-main" : ""}`}
         >
           {view === "loading" && (
-            <p className="cx-feedback" role="status">
-              Opening your workspace…
-            </p>
+            <WorkspacePlaceholder
+              title="Your workspace"
+              message="Opening your saved work…"
+            />
           )}
           {visited.includes("studio") && (
             <div hidden={view !== "studio"} aria-hidden={view !== "studio"}>
@@ -273,11 +328,13 @@ export default function CoreWorkspace({
               />
             </div>
           )}
-          {view === "explore" && (
-            <div aria-hidden={false}>
+          {visited.includes("explore") && (
+            <div hidden={view !== "explore"} aria-hidden={view !== "explore"}>
               <ExploreGallery
+                active={foreground && view === "explore"}
                 disabledStyleIds={state.studioAvailability?.disabledStyleIds}
                 onTryStyle={(styleId) => {
+                  exploreReturnStyle.current = styleId;
                   setPhotoSeed({ token: crypto.randomUUID(), styleId });
                   navigate("studio");
                 }}
@@ -299,6 +356,7 @@ export default function CoreWorkspace({
             <div hidden={view !== "post"} aria-hidden={view !== "post"}>
               <PostMaker
                 state={state}
+                active={view === "post"}
                 seed={postSeed}
                 onSeedUsed={() => setPostSeed(null)}
                 onPhoto={() => photo("", "", "social")}
@@ -330,19 +388,17 @@ export default function CoreWorkspace({
           )}
           {view === "tools" && (
             <>
-              <Heading
-                eyebrow="A LITTLE EXTRA HELP"
-                title="Keep your kitchen moving."
-              >
-                Import an existing menu to organize your photos, refresh several
-                dishes, or review your activity.
-              </Heading>
-              <button
-                className="cx-btn cx-secondary"
-                onClick={() => navigate("campaigns")}
-              >
-                Open existing campaigns <ArrowRight size={16} />
-              </button>
+              <CreativeHeader
+                title="More tools"
+                action={
+                  <button
+                    className="cx-link"
+                    onClick={() => navigate("campaigns")}
+                  >
+                    Campaigns <ArrowRight size={16} />
+                  </button>
+                }
+              />
               <div className="cx-legacy">
                 <MenuTools
                   state={state}

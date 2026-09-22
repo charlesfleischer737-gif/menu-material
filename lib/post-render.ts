@@ -287,14 +287,11 @@ export async function renderPost(
   function shade(edge: "top" | "bottom", depth: number, opacity = 0.72) {
     const y = edge === "top" ? 0 : H - depth;
     const g = ctx.createLinearGradient(0, y, 0, y + depth);
-    g.addColorStop(
-      0,
-      edge === "top" ? `rgba(0,0,0,${opacity})` : "rgba(0,0,0,0)",
-    );
-    g.addColorStop(
-      1,
-      edge === "top" ? "rgba(0,0,0,0)" : `rgba(0,0,0,${opacity})`,
-    );
+    const strength =
+      textMode === "photo" ? Math.max(opacity, 0.86) : opacity * 0.35;
+    const shade = `rgba(0,0,0,${strength})`;
+    g.addColorStop(0, edge === "top" ? shade : "rgba(0,0,0,0)");
+    g.addColorStop(1, edge === "top" ? "rgba(0,0,0,0)" : shade);
     ctx.fillStyle = g;
     ctx.fillRect(0, y, W, depth);
   }
@@ -345,6 +342,9 @@ export async function renderPost(
     } else photoGroup(0, 0, W, H);
 
     if (textMode !== "photo") {
+      // A continuous scrim keeps older saved overlays legible without separate
+      // dark bands cutting across the food. Edge shading remains gradual.
+      fill("rgba(0,0,0,0.58)");
       const white = "#fffdf7";
       const hasInfo = !!(
         price ||

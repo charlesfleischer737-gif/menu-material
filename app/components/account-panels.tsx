@@ -1,140 +1,102 @@
 "use client";
-import { useCallback, useEffect, useState } from "react";
+import { useCallback, useEffect, useRef, useState } from "react";
 import { Copy } from "lucide-react";
 import { Button } from "@/components/ui/button";
-import {
-  Dialog,
-  DialogContent,
-  DialogHeader,
-  DialogTitle,
-  DialogDescription,
-} from "@/components/ui/dialog";
-import { Pick } from "./controls";
 import { StudioReleasePanel } from "./studio-release-panel";
 import { StudioProgressPanel } from "./studio-progress-panel";
-import RestaurantStyle from "./restaurant-style";
-import { api, normalizePhoto, type Row } from "@/lib/client";
-export function SettingsPanel({ open, close, state, act, refresh, busy }: any) {
-  const [profile, setProfile] = useState<Row>({
-    name: "",
-    cuisine: "",
-    brand: "",
-    currency: "USD",
-  });
-  useEffect(() => {
-    if (state.restaurant)
-      setProfile({
-        name: state.restaurant.name,
-        cuisine: state.restaurant.cuisine,
-        brand: state.restaurant.brand,
-        currency: state.restaurant.currency,
-        style: state.restaurant.style,
-        timezone: state.restaurant.timezone,
-        orderingUrl: state.restaurant.ordering_url,
-        hours: state.restaurant.hours,
-      });
-  }, [open]);
-  return (
-    <Dialog open={open} onOpenChange={(v) => !v && close()}>
-      <DialogContent className="restaurant-dialog">
-        <DialogHeader>
-          <DialogTitle>Your restaurant</DialogTitle>
-          <DialogDescription>
-            A few details to keep your workspace and menu consistent.
-          </DialogDescription>
-        </DialogHeader>
-        {["name", "cuisine", "brand"].map((k) => (
-          <label className="field" key={k}>
-            {k === "name"
-              ? "Restaurant name"
-              : k === "cuisine"
-                ? "Cuisine"
-                : "Brand preferences"}
-            <input
-              value={profile[k]}
-              onChange={(e) => setProfile({ ...profile, [k]: e.target.value })}
-            />
-          </label>
-        ))}
-        <label className="field">
-          Menu currency
-          <Pick
-            label="Currency"
-            value={profile.currency}
-            onChange={(v) => setProfile({ ...profile, currency: v })}
-            options={["USD", "GBP", "EUR", "JPY", "CAD", "AUD"].map((v) => ({
-              value: v,
-              label: v,
-            }))}
-          />
-        </label>
-        <label className="field">
-          Logo (optional)
-          <input
-            type="file"
-            accept="image/jpeg,image/png,image/heic,.heic"
-            onChange={(e) => {
-              const f = e.target.files?.[0];
-              if (f)
-                act("Saving logo", async () => {
-                  const form = new FormData();
-                  form.set("file", f);
-                  form.set("normalized", await normalizePhoto(f), "logo.jpg");
-                  form.set("kind", "logo");
-                  await api("assets", form);
-                  await refresh();
-                });
-            }}
-          />
-        </label>
-        <RestaurantStyle
-          {...{ profile, setProfile, state, act, refresh, busy }}
-        />
-        <Button
-          disabled={!!busy}
-          onClick={() =>
-            act("Saving restaurant", async () => {
-              await api("restaurant", profile);
-              await refresh();
-              close();
-            })
-          }
-        >
-          Save restaurant
-        </Button>
-        <p className="fine">
-          Your published menu changes only when you republish.
-        </p>
-      </DialogContent>
-    </Dialog>
-  );
-}
-export function Admin({ act, refresh, busy }: any) {
+import { api, type Row } from "@/lib/client";
+import CreativeHeader from "./creative-header";
+import WorkspacePlaceholder from "./workspace-placeholder";
+import {
+  AdminOperationStatus,
+  useAdminOperation,
+  type AdminAction,
+} from "./admin-operation";
+export { default as SettingsPanel } from "./restaurant-settings";
+type AdminProps = {
+  act: AdminAction;
+  refresh: () => Promise<void>;
+  busy: string;
+};
+export function Admin({ act, refresh, busy }: AdminProps) {
   const [data, setData] = useState<Row | null>(null),
     [email, setEmail] = useState(""),
     [allowance, setAllowance] = useState(5),
     [link, setLink] = useState(""),
     [reset, setReset] = useState(false),
-    [loadError, setLoadError] = useState("");
-  const load = useCallback(async () => setData(await api("admin")), []);
+    [loadError, setLoadError] = useState(""),
+    [loading, setLoading] = useState(true),
+    [checkedAt, setCheckedAt] = useState(0);
+  const loadRequest = useRef<Promise<void> | null>(null);
+  const invite = useAdminOperation(act, busy);
+  const aiOperation = useAdminOperation(act, busy);
+  const availabilityOperation = useAdminOperation(act, busy);
+  const load = useCallback(() => {
+    if (loadRequest.current) return loadRequest.current;
+    const request = api("admin")
+      .then((next) => {
+        setData(next);
+        setCheckedAt(Date.now());
+        setLoadError("");
+      })
+      .catch((error) => {
+        setLoadError((error as Error).message);
+        throw error;
+      })
+      .finally(() => {
+        loadRequest.current = null;
+        setLoading(false);
+      });
+    loadRequest.current = request;
+    return request;
+  }, []);
   useEffect(() => {
-    load().catch((e) => setLoadError(e.message));
+    void load().catch(() => {});
   }, [load]);
+  function reload() {
+    setLoading(true);
+    void load().catch(() => {});
+  }
   return (
     <section className="admin-panel">
-      <div className="section-toolbar">
-        <h2>Administration</h2>
-        <Button
-          variant="outline"
-          onClick={() => act("Refreshing administration", load)}
+      <CreativeHeader
+        title="Administration"
+        action={
+          <Button
+            variant="outline"
+            className="admin-refresh"
+            disabled={!!busy || loading}
+            onClick={reload}
+          >
+            {loading ? "Refreshing…" : loadError ? "Retry" : "Refresh"}
+          </Button>
+        }
+      />
+      {!data && (
+        <WorkspacePlaceholder
+          title="Administration"
+          contentOnly
+          layout="operations"
+          failed={!loading && !!loadError}
+          message={loading ? "Loading restaurant operations…" : loadError}
+          failureDetail="Your restaurant data is kept. Use Retry above to load it again."
+        />
+      )}
+      {data && (
+        <p
+          className="admin-load-status"
+          role={loadError && !loading ? "alert" : "status"}
         >
-          Refresh
-        </Button>
-      </div>
-      {loadError && <p role="alert">{loadError}</p>}
+          {loading
+            ? "Refreshing restaurant operations…"
+            : loadError
+              ? `Administration couldn’t refresh. ${loadError} Use Retry above.`
+              : "Restaurant operations are up to date."}
+        </p>
+      )}
       {data && data.photoCorrections?.length > 0 && (
         <section className="cx-panel">
-          <h3>Food reports awaiting review</h3>
+          <h2>Food reports awaiting review</h2>
           <p>
             Review the original and reported photo before resolving the report.
             Restoring an image affects allowance only.
@@ -143,7 +105,7 @@ export function Admin({ act, refresh, busy }: any) {
             <FoodReportReview
               key={report.original_job_id}
               report={report}
-              busy={busy}
+              busy={busy || (loading ? "Refreshing administration" : "")}
               act={act}
               done={async () => {
                 await load();
@@ -157,17 +119,18 @@ export function Admin({ act, refresh, busy }: any) {
         <AiOperations
           key={JSON.stringify(data.controls)}
           data={data}
-          act={act}
-          busy={busy}
+          busy={busy || (loading ? "Refreshing administration" : "")}
           load={load}
+          operation={aiOperation}
+          checkedAt={checkedAt}
         />
       )}
       {data?.studioRelease && (
         <StudioReleasePanel
           key={data.studioRelease.revision}
           data={data}
-          busy={busy}
-          act={act}
+          busy={busy || (loading ? "Refreshing administration" : "")}
+          operation={availabilityOperation}
           done={async () => {
             await load();
             await refresh();
@@ -175,73 +138,124 @@ export function Admin({ act, refresh, busy }: any) {
         />
       )}
       {data && <StudioProgressPanel />}
-      <div className="admin-invite">
-        <label className="field">
-          Invite email
-          <input
-            id="admin-invite-email"
-            value={email}
-            type="email"
-            onChange={(e) => setEmail(e.target.value)}
-            placeholder="owner@restaurant.com"
-          />
-        </label>
-        <label className="field">
-          Free image allowance
-          <input
-            value={allowance}
-            min={0}
-            max={10000}
-            type="number"
-            onChange={(e) => setAllowance(Number(e.target.value))}
-          />
-        </label>
-        <Button
-          disabled={!!busy}
-          onClick={() =>
-            act("Creating invitation", async () => {
-              const r = await api("admin/invite", { email, allowance, reset });
-              setLink(location.origin + r.path);
-              await load();
-            })
-          }
-        >
-          {reset ? "Create password reset" : "Create invitation"}
-        </Button>
-      </div>
-      <label className="check-label">
-        <input
-          type="checkbox"
-          checked={reset}
-          onChange={(e) => setReset(e.target.checked)}
-        />
-        Create a password reset for an existing account
-      </label>
-      {link && (
-        <div className="invitation-result">
-          <p>
-            Share this invitation directly with the restaurant owner. It expires
-            in 7 days.
+      {data && (
+        <section className="admin-access-panel">
+          <h2>Account access</h2>
+          <p className="muted">
+            Create an invitation or a secure reset link to share directly with a
+            restaurant owner.
           </p>
-          <input aria-label="Invitation link" readOnly value={link} />
-          <Button
-            variant="outline"
-            onClick={() =>
-              act("Copying invite", async () =>
-                navigator.clipboard.writeText(link),
-              )
-            }
-          >
-            <Copy />
-            Copy invitation
-          </Button>
-        </div>
+          <div className="admin-invite">
+            <label className="field">
+              Invite email
+              <input
+                disabled={!!busy || loading}
+                id="admin-invite-email"
+                value={email}
+                type="email"
+                onChange={(e) => {
+                  setEmail(e.target.value);
+                  setLink("");
+                  invite.changed("");
+                }}
+                placeholder="owner@restaurant.com"
+              />
+            </label>
+            <label className="field">
+              Free image allowance
+              <input
+                disabled={!!busy || loading}
+                value={allowance}
+                min={0}
+                max={10000}
+                type="number"
+                onChange={(e) => {
+                  setAllowance(Number(e.target.value));
+                  setLink("");
+                  invite.changed("");
+                }}
+              />
+            </label>
+            <Button
+              disabled={!!busy || loading || !email.trim()}
+              onClick={() =>
+                invite.run(
+                  reset ? "Creating reset link" : "Creating invitation",
+                  reset
+                    ? "Reset link created. Share it directly with the owner."
+                    : "Invitation created. Share it directly with the owner.",
+                  async () => {
+                    const r = await api("admin/invite", {
+                      email,
+                      allowance,
+                      reset,
+                    });
+                    setLink(location.origin + r.path);
+                    await load();
+                  },
+                )
+              }
+            >
+              {reset ? "Create password reset" : "Create invitation"}
+            </Button>
+          </div>
+          <label className="check-label">
+            <input
+              disabled={!!busy || loading}
+              type="checkbox"
+              checked={reset}
+              onChange={(e) => {
+                setReset(e.target.checked);
+                setLink("");
+                invite.changed("");
+              }}
+            />
+            Create a password reset for an existing account
+          </label>
+          <AdminOperationStatus feedback={invite.feedback} />
+          {link && (
+            <div className="invitation-result">
+              <p>
+                Share this {reset ? "reset link" : "invitation"} directly with
+                the restaurant owner. It expires in 7 days.
+              </p>
+              <input
+                aria-label={reset ? "Reset link" : "Invitation link"}
+                readOnly
+                value={link}
+              />
+              <Button
+                variant="outline"
+                disabled={!!busy}
+                onClick={() =>
+                  invite.run("Copying link", "Link copied.", async () =>
+                    navigator.clipboard.writeText(link),
+                  )
+                }
+              >
+                <Copy />
+                {reset ? "Copy reset link" : "Copy invitation"}
+              </Button>
+            </div>
+          )}
+        </section>
+      )}
+      {data && (
+        <h2 className="admin-section-title">
+          Restaurants <span>{data.restaurants.length}</span>
+        </h2>
+      )}
+      {data && !data.restaurants.length && (
+        <p className="cx-empty">
+          No restaurants yet. Create an invitation to welcome the first owner.
+        </p>
       )}
       <div className="admin-restaurants">
         {data?.restaurants.map((r: Row) => (
           <AdminRestaurant
             key={r.id}
             restaurant={r}
+            busy={busy || (loading ? "Refreshing administration" : "")}
             act={act}
             refresh={async () => {
               await load();
@@ -250,41 +264,65 @@ export function Admin({ act, refresh, busy }: any) {
           />
         ))}
       </div>
-      <p className="fine">
-        Costs are estimates when a per-image estimate is configured. Provider
-        usage records are retained for invoice reconciliation, including
-        failures and retries.
-      </p>
+      {data && (
+        <p className="fine">
+          Costs are estimates when a per-image estimate is configured. Provider
+          usage records are retained for invoice reconciliation, including
+          failures and retries.
+        </p>
+      )}
       {data && (
         <details className="admin-details">
           <summary>Recent quality and usage events</summary>
-          <div className="table-scroll">
-            <table>
-              <thead>
-                <tr>
-                  <th>Time</th>
-                  <th>Event</th>
-                  <th>Details</th>
-                </tr>
-              </thead>
-              <tbody>
-                {data.events.map((e: Row) => (
-                  <tr key={e.id}>
-                    <td>{new Date(e.created_at).toLocaleString()}</td>
-                    <td>{e.kind}</td>
-                    <td>{e.details}</td>
+          {data.events.length ? (
+            <div
+              className="table-scroll"
+              role="region"
+              aria-label="Recent quality and usage events"
+              tabIndex={0}
+            >
+              <table>
+                <thead>
+                  <tr>
+                    <th>Time</th>
+                    <th>Event</th>
+                    <th>Details</th>
                   </tr>
-                ))}
-              </tbody>
-            </table>
-          </div>
+                </thead>
+                <tbody>
+                  {data.events.map((e: Row) => (
+                    <tr key={e.id}>
+                      <td>{new Date(e.created_at).toLocaleString()}</td>
+                      <td>{e.kind}</td>
+                      <td>{e.details}</td>
+                    </tr>
+                  ))}
+                </tbody>
+              </table>
+            </div>
+          ) : (
+            <p className="admin-empty-note">
+              No quality or usage events have been recorded yet.
+            </p>
+          )}
         </details>
       )}
     </section>
   );
 }
-function FoodReportReview({ report, busy, act, done }: any) {
+function FoodReportReview({
+  report,
+  busy,
+  act,
+  done,
+}: {
+  report: Row;
+  busy: string;
+  act: AdminAction;
+  done: () => Promise<void>;
+}) {
   const [resolution, setResolution] = useState("");
+  const operation = useAdminOperation(act, busy);
   return (
     <div className="ps2-review-report">
       <b>
@@ -293,59 +331,81 @@ function FoodReportReview({ report, busy, act, done }: any) {
       <p>{report.detail || "No additional detail."}</p>
       <div className="ps2-review-images">
         {report.source_id && (
+          <Button asChild variant="outline">
+            <a
+              href={`/api/admin/photo-correction/${report.original_job_id}/original`}
+              target="_blank"
+              rel="noreferrer"
+            >
+              Open original
+            </a>
+          </Button>
+        )}
+        <Button asChild variant="outline">
           <a
-            href={`/api/admin/photo-correction/${report.original_job_id}/original`}
+            href={`/api/admin/photo-correction/${report.original_job_id}/reported`}
             target="_blank"
             rel="noreferrer"
           >
-            Open original
+            Open reported photo
           </a>
-        )}
-        <a
-          href={`/api/admin/photo-correction/${report.original_job_id}/reported`}
-          target="_blank"
-          rel="noreferrer"
-        >
-          Open reported photo
-        </a>
+        </Button>
       </div>
       <label className="field">
         Reply visible to the owner
         <textarea
+          disabled={!!busy}
           value={resolution}
           maxLength={500}
-          onChange={(e) => setResolution(e.target.value)}
+          onChange={(e) => {
+            setResolution(e.target.value);
+            operation.changed("Reply not sent.");
+          }}
         />
       </label>
-      {["restore", "resolve"].map((action) => (
-        <Button
-          key={action}
-          variant="outline"
-          disabled={!!busy || resolution.trim().length < 5}
-          onClick={() =>
-            act("Resolving food report", async () => {
-              await api("admin/photo-correction", {
-                originalJobId: report.original_job_id,
-                action,
-                resolution,
-              });
-              await done();
-            })
-          }
-        >
-          {action === "restore"
-            ? "Restore 1 image and resolve"
-            : "Resolve with reply"}
-        </Button>
-      ))}
+      <div className="button-row">
+        {["restore", "resolve"].map((action) => (
+          <Button
+            key={action}
+            variant="outline"
+            disabled={!!busy || resolution.trim().length < 5}
+            onClick={() =>
+              operation.run(
+                "Resolving food report",
+                "Food report resolved.",
+                async () => {
+                  await api("admin/photo-correction", {
+                    originalJobId: report.original_job_id,
+                    action,
+                    resolution,
+                  });
+                  await done();
+                },
+              )
+            }
+          >
+            {action === "restore"
+              ? "Restore 1 image and resolve"
+              : "Resolve with reply"}
+          </Button>
+        ))}
+      </div>
+      <AdminOperationStatus feedback={operation.feedback} />
     </div>
   );
 }
-function AdminRestaurant({ restaurant: r, act, refresh }: any) {
+function AdminRestaurant({
+  restaurant: r,
+  act,
+  refresh,
+  busy,
+}: AdminProps & { restaurant: Row }) {
   const [allowance, setAllowance] = useState(r.allowance),
     [paused, setPaused] = useState(!!r.paused),
     [budget, setBudget] = useState(r.daily_budget_cents / 100),
     [minutes, setMinutes] = useState(15);
+  const settings = useAdminOperation(act, busy);
+  const support = useAdminOperation(act, busy);
   return (
     <div className="admin-restaurant">
       <div>
@@ -372,87 +432,138 @@ function AdminRestaurant({ restaurant: r, act, refresh }: any) {
         <label className="field">
           Daily AI budget (USD)
           <input
+            disabled={!!busy}
             aria-label={`Daily AI budget for ${r.name}`}
             type="number"
             min={0}
             max={10000}
             step="0.01"
             value={budget}
-            onChange={(e) => setBudget(Number(e.target.value))}
+            onChange={(e) => {
+              setBudget(Number(e.target.value));
+              settings.changed();
+            }}
           />
         </label>
         <label className="field">
           Total allowance
           <input
+            disabled={!!busy}
             aria-label={`Allowance for ${r.name}`}
             type="number"
             min={0}
             value={allowance}
-            onChange={(e) => setAllowance(Number(e.target.value))}
+            onChange={(e) => {
+              setAllowance(Number(e.target.value));
+              settings.changed();
+            }}
           />
         </label>
         <label className="check-label">
           <input
+            aria-label={`Pause new AI work for ${r.name}`}
+            disabled={!!busy}
             type="checkbox"
             checked={paused}
-            onChange={(e) => setPaused(e.target.checked)}
+            onChange={(e) => {
+              setPaused(e.target.checked);
+              settings.changed();
+            }}
           />
           Pause all new AI work
         </label>
         <Button
           variant="outline"
+          disabled={!!busy}
+          aria-label={`Save controls for ${r.name}`}
           onClick={() =>
-            act("Updating allowance", async () => {
-              await api("admin/restaurant", {
-                id: r.id,
-                allowance,
-                paused,
-                dailyBudgetCents: Math.round(budget * 100),
-              });
-              await refresh();
-            })
+            settings.run(
+              "Saving restaurant controls",
+              "Restaurant controls saved.",
+              async () => {
+                await api("admin/restaurant", {
+                  id: r.id,
+                  allowance,
+                  paused,
+                  dailyBudgetCents: Math.round(budget * 100),
+                });
+                await refresh();
+              },
+            )
           }
         >
-          Save
+          Save controls
         </Button>
       </div>
+      <AdminOperationStatus
+        feedback={settings.feedback}
+        dirty={
+          budget !== r.daily_budget_cents / 100 ||
+          allowance !== r.allowance ||
+          paused !== !!r.paused
+        }
+      />
       <div className="support-entry">
         <label className="field">
           Support minutes
           <input
+            aria-label={`Support minutes for ${r.name}`}
+            disabled={!!busy}
             type="number"
             min={1}
             max={600}
             value={minutes}
-            onChange={(e) => setMinutes(Number(e.target.value))}
+            onChange={(e) => {
+              setMinutes(Number(e.target.value));
+              support.changed("");
+            }}
           />
         </label>
         <Button
           variant="outline"
+          aria-label={`Log support time for ${r.name}`}
+          disabled={!!busy}
           onClick={() =>
-            act("Recording support time", async () => {
-              await api("admin/support", { restaurantId: r.id, minutes });
-              await refresh();
-            })
+            support.run(
+              "Recording support time",
+              "Support time recorded.",
+              async () => {
+                await api("admin/support", { restaurantId: r.id, minutes });
+                await refresh();
+              },
+            )
           }
         >
           Log time
         </Button>
       </div>
+      <AdminOperationStatus feedback={support.feedback} />
     </div>
   );
 }
 
-function AiOperations({ data, act, busy, load }: any) {
+function AiOperations({
+  data,
+  busy,
+  load,
+  operation,
+  checkedAt,
+}: {
+  data: Row;
+  busy: string;
+  load: () => Promise<void>;
+  operation: ReturnType<typeof useAdminOperation>;
+  checkedAt: number;
+}) {
   const [paused, setPaused] = useState(!!data.controls.paused),
     [budget, setBudget] = useState(data.controls.dailyBudgetCents / 100);
   const total =
     data.spend.reduce((sum: number, row: Row) => sum + Number(row.cents), 0) /
     100;
-  const fresh = data.worker.lastSeen > Date.now() - 120000;
+  const fresh = data.worker.lastSeen > checkedAt - 120000;
   return (
     <section className="cx-panel pw-ai-controls">
-      <h3>AI operations</h3>
+      <h2>AI operations</h2>
       <p role="status">
         {fresh
           ? "Background runner checked in recently."
@@ -465,51 +576,75 @@ function AiOperations({ data, act, busy, load }: any) {
       </p>
       <p>
         <strong>${total.toFixed(2)}</strong> reserved against today’s estimated
-        AI budget. Budgets reset at midnight UTC. Reservations include captions,
-        image guidance, menu reading and images; uncertain requests remain
-        counted.
+        AI budget.
       </p>
       <div className="admin-row-controls">
         <label className="field">
           Site-wide daily AI budget (USD)
           <input
+            disabled={!!busy}
             type="number"
             min={0}
             max={10000}
             step="0.01"
             value={budget}
-            onChange={(e) => setBudget(Number(e.target.value))}
+            onChange={(e) => {
+              setBudget(Number(e.target.value));
+              operation.changed();
+            }}
           />
         </label>
         <label className="check-label">
           <input
+            disabled={!!busy}
             type="checkbox"
             checked={paused}
-            onChange={(e) => setPaused(e.target.checked)}
+            onChange={(e) => {
+              setPaused(e.target.checked);
+              operation.changed();
+            }}
           />
           Pause all new AI work
         </label>
         <Button
           disabled={!!busy}
           onClick={() =>
-            act("Saving AI controls", async () => {
-              await api("admin/ai-controls", {
-                paused,
-                dailyBudgetCents: Math.round(budget * 100),
-              });
-              await load();
-            })
+            operation.run(
+              "Saving AI controls",
+              "AI controls saved.",
+              async () => {
+                await api("admin/ai-controls", {
+                  paused,
+                  dailyBudgetCents: Math.round(budget * 100),
+                });
+                await load();
+              },
+            )
           }
         >
           Save AI controls
         </Button>
       </div>
-      <p className="fine">
-        These limits use configured cost estimates, not invoice totals.
-        Completed and uncertain requests may still incur provider charges.
-        Pausing stops new submissions; results already in progress are still
-        recovered. Originals and image quality settings are unchanged.
-      </p>
+      <AdminOperationStatus
+        feedback={operation.feedback}
+        dirty={
+          budget !== data.controls.dailyBudgetCents / 100 ||
+          paused !== !!data.controls.paused
+        }
+      />
+      <details className="admin-explanation">
+        <summary>How budgets and pausing work</summary>
+        <p>
+          Budgets reset at midnight UTC. Reservations include captions, image
+          guidance, menu reading and images; uncertain requests remain counted.
+        </p>
+        <p>
+          These limits use configured cost estimates, not invoice totals.
+          Completed and uncertain requests may still incur provider charges.
+          Pausing stops new submissions; results already in progress are still
+          recovered. Originals and image quality settings are unchanged.
+        </p>
+      </details>
     </section>
   );
 }

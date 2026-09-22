@@ -1,0 +1,217 @@
+{
+  "dialogDesktop": {
+    "buttons": [
+      {
+        "background": "rgb(23, 76, 60)",
+        "color": "rgb(255, 255, 255)",
+        "disabled": false,
+        "font": "14px",
+        "label": "Continue free",
+        "rect": {
+          "bottom": 639.7890625,
+          "height": 48,
+          "left": 220,
+          "right": 603,
+          "top": 591.7890625,
+          "width": 383,
+          "x": 220,
+          "y": 591.7890625
+        },
+        "contrastRatio": 9.83
+      },
+      {
+        "background": "rgb(228, 231, 233)",
+        "color": "rgb(89, 98, 95)",
+        "disabled": true,
+        "font": "14px",
+        "label": "Pro is coming soon",
+        "rect": {
+          "bottom": 639.7890625,
+          "height": 48,
+          "left": 677,
+          "right": 1060,
+          "top": 591.7890625,
+          "width": 383,
+          "x": 677,
+          "y": 591.7890625
+        },
+        "contrastRatio": 5.07
+      }
+    ],
+    "header": {
+      "bottom": 129.296875,
+      "height": 92.296875,
+      "left": 171,
+      "right": 1109,
+      "top": 37,
+      "width": 938,
+      "x": 171,
+      "y": 37
+    },
+    "viewport": {
+      "height": 720,
+      "width": 1280
+    }
+  },
+  "dialogPhone": {
+    "buttons": [
+      {
+        "background": "rgb(23, 76, 60)",
+        "color": "rgb(255, 255, 255)",
+        "disabled": false,
+        "font": "14px",
+        "label": "Continue free",
+        "rect": {
+          "bottom": 642.6875,
+          "height": 48,
+          "left": 46,
+          "right": 344,
+          "top": 594.6875,
+          "width": 298,
+          "x": 46,
+          "y": 594.6875
+        },
+        "contrastRatio": 9.83
+      },
+      {
+        "background": "rgb(228, 231, 233)",
+        "color": "rgb(89, 98, 95)",
+        "disabled": true,
+        "font": "14px",
+        "label": "Pro is coming soon",
+        "rect": {
+          "bottom": 1253.578125,
+          "height": 48,
+          "left": 46,
+          "right": 344,
+          "top": 1205.578125,
+          "width": 298,
+          "x": 46,
+          "y": 1205.578125
+        },
+        "contrastRatio": 5.07
+      }
+    ],
+    "close": {
+      "bottom": 95.203125,
+      "height": 44,
+      "left": 325,
+      "right": 369,
+      "top": 51.203125,
+      "width": 44,
+      "x": 325,
+      "y": 51.203125
+    },
+    "dialog": {
+      "bottom": 801.796875,
+      "height": 759.59375,
+      "left": 12,
+      "right": 378,
+      "top": 42.203125,
+      "width": 366,
+      "x": 12,
+      "y": 42.203125
+    },
+    "documentWidth": 390,
+    "header": {
+      "bottom": 182.796875,
+      "height": 139.59375,
+      "left": 13,
+      "right": 377,
+      "top": 43.203125,
+      "width": 364,
+      "x": 13,
+      "y": 43.203125
+    },
+    "viewport": {
+      "height": 844,
+      "width": 390
+    }
+  },
+  "publicPhone": {
+    "buttons": [
+      {
+        "background": "rgb(23, 76, 60)",
+        "color": "rgb(255, 255, 255)",
+        "disabled": false,
+        "height": 48,
+        "href": "/#studio",
+        "label": "Try it free",
+        "width": 324,
+        "contrastRatio": 9.83
+      },
+      {
+        "background": "rgb(228, 231, 233)",
+        "color": "rgb(89, 98, 95)",
+        "disabled": true,
+        "height": 48,
+        "href": null,
+        "label": "Pro is coming soon",
+        "width": 324,
+        "contrastRatio": 5.07
+      }
+    ],
+    "documentWidth": 390,
+    "viewport": {
+      "height": 844,
+      "width": 390
+    }
+  },
+  "publicDesktop": {
+    "buttons": [
+      {
+        "background": "rgb(23, 76, 60)",
+        "color": "rgb(255, 255, 255)",
+        "disabled": false,
+        "href": "/#studio",
+        "label": "Try it free",
+        "rect": {
+          "bottom": 802.28125,
+          "height": 48,
+          "left": 265,
+          "right": 603,
+          "top": 754.28125,
+          "width": 338,
+          "x": 265,
+          "y": 754.28125
+        },
+        "contrastRatio": 9.83
+      },
+      {
+        "background": "rgb(228, 231, 233)",
+        "color": "rgb(89, 98, 95)",
+        "disabled": true,
+        "href": null,
+        "label": "Pro is coming soon",
+        "rect": {
+          "bottom": 802.28125,
+          "height": 48,
+          "left": 677,
+          "right": 1015,
+          "top": 754.28125,
+          "width": 338,
+          "x": 677,
+          "y": 754.28125
+        },
+        "contrastRatio": 5.07
+      }
+    ],
+    "documentWidth": 1280,
+    "viewport": {
+      "height": 720,
+      "width": 1280
+    }
+  },
+  "interactions": {
+    "dialogContinueFree": "Enter dismissed the plan dialog and returned to the menu workspace.",
+    "authenticatedPricingFree": "Enter on Try it free opened the signed-in Photo Studio.",
+    "loggedOutPricingFree": "Enter on Try it free opened the guest Photo Studio with photo/style controls; no paid operation started.",
+    "phoneHeaderAfterScroll": {
+      "headerTop": 43.203125,
+      "closeTop": 51.203125,
+      "bodyScroll": 582,
+      "proActionTop": 623.578125
+    },
+    "availability": "Pro action disabled; explicit adjacent unavailable explanation; no checkout or waitlist action in this state."
+  }
+}

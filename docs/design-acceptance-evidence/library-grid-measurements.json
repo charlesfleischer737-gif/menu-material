@@ -1,0 +1,392 @@
+{
+  "date": "2026-09-17",
+  "candidate": "Working tree based on 657a2c6",
+  "fixture": "Juniper: 12 active, 2 archived, 100-character maximum name, 4 photos with 2 approved. Extreme prices deliberately exercise the supported maximum; Espresso changed to 3.50 through the UI.",
+  "desktop": {
+    "cards": [
+      {
+        "footerY": 463.34375,
+        "h": 327.34375,
+        "nameY": 356,
+        "priceOverflow": false,
+        "priceY": 407.1953125,
+        "w": 235,
+        "x": 244,
+        "y": 235
+      },
+      {
+        "footerY": 463.34375,
+        "h": 327.34375,
+        "nameY": 356,
+        "priceOverflow": false,
+        "priceY": 407.1953125,
+        "w": 235,
+        "x": 503,
+        "y": 235
+      },
+      {
+        "footerY": 463.34375,
+        "h": 327.34375,
+        "nameY": 356,
+        "priceOverflow": false,
+        "priceY": 407.1953125,
+        "w": 235,
+        "x": 762,
+        "y": 235
+      },
+      {
+        "footerY": 463.34375,
+        "h": 327.34375,
+        "nameY": 356,
+        "priceOverflow": false,
+        "priceY": 407.1953125,
+        "w": 235,
+        "x": 1021,
+        "y": 235
+      },
+      {
+        "footerY": 943.6875,
+        "h": 456.34375,
+        "nameY": 836.34375,
+        "priceOverflow": false,
+        "priceY": 887.5390625,
+        "w": 235,
+        "x": 244,
+        "y": 586.34375
+      },
+      {
+        "footerY": 943.6875,
+        "h": 456.34375,
+        "nameY": 836.34375,
+        "priceOverflow": false,
+        "priceY": 887.5390625,
+        "w": 235,
+        "x": 503,
+        "y": 586.34375
+      },
+      {
+        "footerY": 943.6875,
+        "h": 456.34375,
+        "nameY": 836.34375,
+        "priceOverflow": false,
+        "priceY": 887.5390625,
+        "w": 235,
+        "x": 762,
+        "y": 586.34375
+      },
+      {
+        "footerY": 943.6875,
+        "h": 456.34375,
+        "nameY": 836.34375,
+        "priceOverflow": false,
+        "priceY": 887.5390625,
+        "w": 235,
+        "x": 1021,
+        "y": 586.34375
+      },
+      {
+        "footerY": 1424.03125,
+        "h": 456.34375,
+        "nameY": 1316.6875,
+        "priceOverflow": false,
+        "priceY": 1367.8828125,
+        "w": 235,
+        "x": 244,
+        "y": 1066.6875
+      },
+      {
+        "footerY": 1424.03125,
+        "h": 456.34375,
+        "nameY": 1316.6875,
+        "priceOverflow": false,
+        "priceY": 1367.8828125,
+        "w": 235,
+        "x": 503,
+        "y": 1066.6875
+      },
+      {
+        "footerY": 1424.03125,
+        "h": 456.34375,
+        "nameY": 1316.6875,
+        "priceOverflow": false,
+        "priceY": 1367.8828125,
+        "w": 235,
+        "x": 762,
+        "y": 1066.6875
+      },
+      {
+        "footerY": 1424.03125,
+        "h": 456.34375,
+        "nameY": 1316.6875,
+        "priceOverflow": false,
+        "priceY": 1367.8828125,
+        "w": 235,
+        "x": 1021,
+        "y": 1066.6875
+      }
+    ],
+    "documentWidth": 1280,
+    "viewport": [
+      1280,
+      720
+    ]
+  },
+  "phone": {
+    "cards": [
+      {
+        "footerY": 538.75,
+        "h": 313.34375,
+        "nameY": 433.40625,
+        "priceOverflow": false,
+        "priceY": 484.6015625,
+        "w": 173,
+        "x": 16,
+        "y": 324.40625
+      },
+      {
+        "footerY": 538.75,
+        "h": 313.34375,
+        "nameY": 433.40625,
+        "priceOverflow": false,
+        "priceY": 484.6015625,
+        "w": 173,
+        "x": 201,
+        "y": 324.40625
+      },
+      {
+        "footerY": 864.09375,
+        "h": 313.34375,
+        "nameY": 758.75,
+        "priceOverflow": false,
+        "priceY": 809.9453125,
+        "w": 173,
+        "x": 16,
+        "y": 649.75
+      },
+      {
+        "footerY": 864.09375,
+        "h": 313.34375,
+        "nameY": 758.75,
+        "priceOverflow": false,
+        "priceY": 809.9453125,
+        "w": 173,
+        "x": 201,
+        "y": 649.75
+      },
+      {
+        "footerY": 1189.4375,
+        "h": 313.34375,
+        "nameY": 1084.09375,
+        "priceOverflow": false,
+        "priceY": 1135.2890625,
+        "w": 173,
+        "x": 16,
+        "y": 975.09375
+      },
+      {
+        "footerY": 1189.4375,
+        "h": 313.34375,
+        "nameY": 1084.09375,
+        "priceOverflow": false,
+        "priceY": 1135.2890625,
+        "w": 173,
+        "x": 201,
+        "y": 975.09375
+      },
+      {
+        "footerY": 1589.78125,
+        "h": 388.34375,
+        "nameY": 1484.4375,
+        "priceOverflow": false,
+        "priceY": 1535.6328125,
+        "w": 173,
+        "x": 16,
+        "y": 1300.4375
+      },
+      {
+        "footerY": 1589.78125,
+        "h": 388.34375,
+        "nameY": 1484.4375,
+        "priceOverflow": false,
+        "priceY": 1535.6328125,
+        "w": 173,
+        "x": 201,
+        "y": 1300.4375
+      },
+      {
+        "footerY": 1990.125,
+        "h": 388.34375,
+        "nameY": 1884.78125,
+        "priceOverflow": false,
+        "priceY": 1935.9765625,
+        "w": 173,
+        "x": 16,
+        "y": 1700.78125
+      },
+      {
+        "footerY": 1990.125,
+        "h": 388.34375,
+        "nameY": 1884.78125,
+        "priceOverflow": false,
+        "priceY": 1935.9765625,
+        "w": 173,
+        "x": 201,
+        "y": 1700.78125
+      },
+      {
+        "footerY": 2390.46875,
+        "h": 388.34375,
+        "nameY": 2285.125,
+        "priceOverflow": false,
+        "priceY": 2336.3203125,
+        "w": 173,
+        "x": 16,
+        "y": 2101.125
+      },
+      {
+        "footerY": 2390.46875,
+        "h": 388.34375,
+        "nameY": 2285.125,
+        "priceOverflow": false,
+        "priceY": 2336.3203125,
+        "w": 173,
+        "x": 201,
+        "y": 2101.125
+      }
+    ],
+    "documentWidth": 390,
+    "viewport": [
+      390,
+      844
+    ]
+  },
+  "smallPhone": {
+    "cards": [
+      {
+        "footerY": 528.75,
+        "h": 313.34375,
+        "nameFont": "16px",
+        "price": "$3.50",
+        "priceOverflow": false,
+        "w": 288,
+        "x": 16,
+        "y": 314.40625
+      },
+      {
+        "footerY": 854.09375,
+        "h": 313.34375,
+        "nameFont": "16px",
+        "price": "$999,999.00",
+        "priceOverflow": false,
+        "w": 288,
+        "x": 16,
+        "y": 639.75
+      },
+      {
+        "footerY": 1179.4375,
+        "h": 313.34375,
+        "nameFont": "16px",
+        "price": "$1,100.00",
+        "priceOverflow": false,
+        "w": 288,
+        "x": 16,
+        "y": 965.09375
+      },
+      {
+        "footerY": 1504.78125,
+        "h": 313.34375,
+        "nameFont": "16px",
+        "price": "$2,600.00",
+        "priceOverflow": false,
+        "w": 288,
+        "x": 16,
+        "y": 1290.4375
+      },
+      {
+        "footerY": 1830.125,
+        "h": 313.34375,
+        "nameFont": "16px",
+        "price": "$1,500.00",
+        "priceOverflow": false,
+        "w": 288,
+        "x": 16,
+        "y": 1615.78125
+      },
+      {
+        "footerY": 2155.46875,
+        "h": 313.34375,
+        "nameFont": "16px",
+        "price": "$2,850.00",
+        "priceOverflow": false,
+        "w": 288,
+        "x": 16,
+        "y": 1941.125
+      },
+      {
+        "footerY": 2670.8125,
+        "h": 503.34375,
+        "nameFont": "16px",
+        "price": "$1,700.00",
+        "priceOverflow": false,
+        "w": 288,
+        "x": 16,
+        "y": 2266.46875
+      },
+      {
+        "footerY": 3186.15625,
+        "h": 503.34375,
+        "nameFont": "16px",
+        "price": "$900.00",
+        "priceOverflow": false,
+        "w": 288,
+        "x": 16,
+        "y": 2781.8125
+      },
+      {
+        "footerY": 3511.5,
+        "h": 313.34375,
+        "nameFont": "16px",
+        "price": "$1,000,000.00",
+        "priceOverflow": false,
+        "w": 288,
+        "x": 16,
+        "y": 3297.15625
+      },
+      {
+        "footerY": 4026.84375,
+        "h": 503.34375,
+        "nameFont": "16px",
+        "price": "$2,450.00",
+        "priceOverflow": false,
+        "w": 288,
+        "x": 16,
+        "y": 3622.5
+      },
+      {
+        "footerY": 4542.1875,
+        "h": 503.34375,
+        "nameFont": "16px",
+        "price": "$1,850.00",
+        "priceOverflow": false,
+        "w": 288,
+        "x": 16,
+        "y": 4137.84375
+      },
+      {
+        "footerY": 4867.53125,
+        "h": 313.34375,
+        "nameFont": "16px",
+        "price": "$700.00",
+        "priceOverflow": false,
+        "w": 288,
+        "x": 16,
+        "y": 4653.1875
+      }
+    ],
+    "documentWidth": 320,
+    "viewport": [
+      320,
+      740
+    ]
+  }
+}

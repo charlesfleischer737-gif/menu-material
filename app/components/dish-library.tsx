@@ -9,6 +9,7 @@ import {
   Archive,
   UtensilsCrossed,
   CircleAlert,
+  SlidersHorizontal,
 } from "lucide-react";
 import { api, money, normalizePhoto, type Row } from "@/lib/client";
 import { preferredPhoto, dishPhotos, dishStatus } from "@/lib/dish-library";
@@ -46,7 +47,8 @@ export default function DishLibrary({
   const [search, setSearch] = useState(""),
     [section, setSection] = useState(""),
     [status, setStatus] = useState(""),
-    [sort, setSort] = useState("recent");
+    [sort, setSort] = useState("recent"),
+    [filtersOpen, setFiltersOpen] = useState(false);
   const [selecting, setSelecting] = useState(false),
     [selected, setSelected] = useState<string[]>([]),
     [downloadIds, setDownloadIds] = useState<string[]>([]);
@@ -102,6 +104,20 @@ export default function DishLibrary({
         ? a.name.localeCompare(b.name)
         : (b.updated_at || b.created_at) - (a.updated_at || a.created_at),
     );
+  const filterCount = Number(!!section) + Number(!!status) + Number(archived);
+  const clearFilters = () => {
+    if (archived) {
+      setSelected([]);
+      setSelecting(false);
+      if (selected.length)
+        action.setNotice("Selection cleared when returning to active dishes.");
+    }
+    setSearch("");
+    setSection("");
+    setStatus("");
+    setSort("recent");
+    setArchived(false);
+  };
   const currentDish =
     detail && (allDishes.find((d) => d.id === detail.id) || detail);
   const photos = detail ? dishPhotos(detail, state.assets) : [];
@@ -109,15 +125,20 @@ export default function DishLibrary({
     photos.find((a) => a.id === chosen) ||
     (currentDish && preferredPhoto(currentDish, state.assets));
   function open(d: Row) {
+    action.setNotice("");
+    action.setError("");
     setDetail({ ...d, price: d.price / 100, available: !!d.available });
     setChosen(preferredPhoto(d, state.assets)?.id || "");
     setDirty(false);
   }
   function edit(p: Row) {
+    action.setNotice("");
+    action.setError("");
     setDetail((d) => ({ ...d, ...p }));
     setDirty(true);
   }
   function close() {
+    if (action.busy) return;
     if (!dirty || window.confirm("Discard unsaved dish details?")) {
       setDetail(null);
       setDirty(false);
@@ -259,59 +280,119 @@ export default function DishLibrary({
           </button>
         </div>
       )}
-      <div className="mm-toolbar">
+      <div className="mm-toolbar mm-library-toolbar">
         <input
           type="search"
           aria-label="Find a dish"
           placeholder="Find a dish…"
           value={search}
-          onChange={(e) => setSearch(e.target.value)}
+          onChange={(event) => setSearch(event.target.value)}
         />
-        <select
-          aria-label="Filter by section"
-          value={section}
-          onChange={(e) => setSection(e.target.value)}
-        >
-          <option value="">All sections</option>
-          {[...new Set(allDishes.map((d) => d.category))].map((s) => (
-            <option key={s}>{s}</option>
-          ))}
-        </select>
-        <select
-          aria-label="Filter by photo status"
-          value={status}
-          onChange={(e) => setStatus(e.target.value)}
-        >
-          <option value="">All photos</option>
-          {["Ready to use", "Needs review", "No photo"].map((s) => (
-            <option key={s}>{s}</option>
-          ))}
-        </select>
-        <select
-          aria-label="Sort dishes"
-          value={sort}
-          onChange={(e) => setSort(e.target.value)}
-        >
-          <option value="recent">Recently updated</option>
-          <option value="name">Name A–Z</option>
-        </select>
         <button
-          className="cx-link"
-          aria-pressed={archived}
-          onClick={() => setArchived(!archived)}
+          className="cx-btn cx-secondary"
+          onClick={() => setFiltersOpen(true)}
+          aria-label={`Filters${filterCount ? `, ${filterCount} active` : ""}`}
         >
-          {archived ? "Active dishes" : "Archived"}
+          <SlidersHorizontal size={16} /> Filters{" "}
+          {filterCount > 0 && (
+            <span className="mm-filter-count">{filterCount}</span>
+          )}
         </button>
         <button
-          className="cx-link"
+          className="cx-link mm-select-toggle"
+          aria-pressed={selecting}
           onClick={() => {
             setSelecting(!selecting);
             setSelected([]);
           }}
         >
-          {selecting ? "Done selecting" : "Select"}
+          {selecting ? "Done" : "Select"}
         </button>
       </div>
+      {(search || filterCount > 0 || sort !== "recent") && (
+        <div className="mm-filter-summary">
+          <span>
+            {dishes.length} {archived ? "archived " : ""}
+            {dishes.length === 1 ? "dish" : "dishes"}
+            {sort === "name" ? " · Name A–Z" : ""}
+          </span>
+          {dishes.length > 0 && (
+            <button className="cx-link" onClick={clearFilters}>
+              Clear filters
+            </button>
+          )}
+        </div>
+      )}
+      <Sheet open={filtersOpen} onOpenChange={setFiltersOpen}>
+        <SheetContent
+          className="cx-app mm-drawer mm-filter-drawer"
+          aria-describedby={undefined}
+        >
+          <SheetTitle>Filter your dishes</SheetTitle>
+          <div className="mm-filter-fields">
+            <Field label="Section">
+              <select
+                value={section}
+                onChange={(event) => setSection(event.target.value)}
+              >
+                <option value="">All sections</option>
+                {[...new Set(allDishes.map((dish) => dish.category))].map(
+                  (name) => (
+                    <option key={name}>{name}</option>
+                  ),
+                )}
+              </select>
+            </Field>
+            <Field label="Photo status">
+              <select
+                value={status}
+                onChange={(event) => setStatus(event.target.value)}
+              >
+                <option value="">All photos</option>
+                {["Ready to use", "Needs review", "No photo"].map((value) => (
+                  <option key={value}>{value}</option>
+                ))}
+              </select>
+            </Field>
+            <Field label="Sort dishes">
+              <select
+                value={sort}
+                onChange={(event) => setSort(event.target.value)}
+              >
+                <option value="recent">Recently updated</option>
+                <option value="name">Name A–Z</option>
+              </select>
+            </Field>
+            <label className="cx-check mm-archive-filter">
+              <input
+                type="checkbox"
+                checked={archived}
+                onChange={(event) => {
+                  setArchived(event.target.checked);
+                  setSelected([]);
+                  setSelecting(false);
+                  if (selected.length)
+                    action.setNotice(
+                      "Selection cleared when switching between active and archived dishes.",
+                    );
+                }}
+              />{" "}
+              Show archived dishes
+            </label>
+          </div>
+          <footer className="mm-filter-footer">
+            <p role="status">
+              {dishes.length} matching {dishes.length === 1 ? "dish" : "dishes"}
+            </p>
+            <button className="cx-btn" onClick={() => setFiltersOpen(false)}>
+              Show results
+            </button>
+            <button className="cx-link" onClick={clearFilters}>
+              Reset filters & sort
+            </button>
+          </footer>
+        </SheetContent>
+      </Sheet>
       {selected.length > 0 && (
         <div className="mm-bulk">
           <strong>{selected.length} selected</strong>
@@ -375,6 +456,8 @@ export default function DishLibrary({
                 setSearch("");
                 setSection("");
                 setStatus("");
+              } else if (archived) {
+                setArchived(false);
               } else {
                 setAdding(true);
                 setNewName("");
@@ -383,7 +466,9 @@ export default function DishLibrary({
           >
             {search || section || status
               ? "Clear filters"
-              : "Add your first dish"}
+              : archived
+                ? "View active dishes"
+                : "Add your first dish"}
           </button>
         </div>
       ) : (
@@ -396,8 +481,13 @@ export default function DishLibrary({
                 className="mm-dish-card"
                 key={d.id}
                 data-selected={selecting && selected.includes(d.id)}
+                data-has-photo={!!a}
               >
-                <button className="mm-dish-open" onClick={() => open(d)}>
+                <button
+                  className="mm-dish-open"
+                  aria-label={`Open ${d.name}`}
+                  onClick={() => open(d)}
+                >
                   {a ? (
                     <img
                       src={`/api/assets/${a.id}`}
@@ -406,7 +496,8 @@ export default function DishLibrary({
                     />
                   ) : (
                     <div className="mm-dish-placeholder">
-                      <UtensilsCrossed size={32} />
+                      <UtensilsCrossed size={20} />
+                      <span>No photo yet</span>
                     </div>
                   )}
                   <span>
@@ -472,284 +563,309 @@ export default function DishLibrary({
           if (!v) close();
         }}
       >
-        <SheetContent className="cx-app mm-drawer" aria-describedby={undefined}>
+        <SheetContent
+          className="cx-app mm-drawer mm-dish-detail-drawer"
+          aria-describedby={undefined}
+          closeDisabled={!!action.busy}
+        >
           <SheetTitle>{detail?.name}</SheetTitle>
-          {detail && (
-            <>
-              <Feedback {...action} />
-              <div className="mm-detail-grid">
-                <div>
-                  {current ? (
-                    <img
-                      className="mm-detail-photo"
-                      src={`/api/assets/${current.id}`}
-                      alt={detail.name}
-                    />
-                  ) : (
-                    <div className="mm-detail-photo mm-empty">
-                      <Images size={40} />
-                      <p>No photo yet</p>
-                    </div>
-                  )}
-                  <div className="mm-version-list" aria-label="Photo versions">
-                    {photos.map((a, n) => (
-                      <button
-                        key={a.id}
-                        aria-pressed={current?.id === a.id}
-                        onClick={() => setChosen(a.id)}
+          <fieldset className="mm-dish-detail-body" disabled={!!action.busy}>
+            {detail && (
+              <>
+                <div className="mm-detail-grid">
+                  <div>
+                    {current ? (
+                      <img
+                        className="mm-detail-photo"
+                        src={`/api/assets/${current.id}`}
+                        alt={detail.name}
+                      />
+                    ) : (
+                      <div className="mm-detail-photo mm-empty">
+                        <Images size={40} />
+                        <p>No photo yet</p>
+                      </div>
+                    )}
+                    {!!photos.length && (
+                      <div
+                        className="mm-version-list"
+                        aria-label="Photo versions"
                       >
-                        <img
-                          src={`/api/assets/${a.id}`}
-                          alt={
-                            a.kind === "source"
-                              ? "Original"
-                              : `Version ${n + 1}`
-                          }
-                        />
-                        <small>
-                          {a.id === currentDish?.preferred_photo_id
-                            ? "Main photo"
-                            : a.kind === "source"
-                              ? "Original"
-                              : a.approved_at
-                                ? "Approved"
-                                : "Needs review"}
-                        </small>
-                      </button>
-                    ))}
-                  </div>
-                  {current && (
-                    <p className="mm-muted">
-                      {new Date(current.created_at).toLocaleDateString()} ·{" "}
-                      {current.kind === "source"
-                        ? "Original photo"
-                        : current.kind === "edited"
-                          ? "Adjusted version"
-                          : "Studio version"}
-                    </p>
-                  )}
-                  <div className="mm-detail-actions">
-                    {current?.approved_at ? (
-                      <>
-                        <UsePhoto dish={detail} photo={current} />
-                        <button
-                          className="cx-link"
-                          disabled={
-                            current.id === currentDish?.preferred_photo_id ||
-                            !!action.busy
-                          }
-                          onClick={() =>
-                            action.act("Setting main photo", async () => {
-                              await api(`library/${detail.id}`, {
-                                preferredPhotoId: current.id,
-                              });
-                              await refresh();
-                              action.setNotice(
-                                "Main photo updated for new creations.",
-                              );
-                            })
-                          }
-                        >
-                          <Star size={15} />
-                          {current.id === currentDish?.preferred_photo_id
-                            ? "Main photo"
-                            : "Make main photo"}
-                        </button>
-                      </>
-                    ) : current ? (
-                      <label className="cx-check">
-                        <input
-                          type="checkbox"
-                          checked={false}
-                          disabled={!!action.busy}
-                          onChange={() =>
-                            action.act("Approving photo", async () => {
-                              await api(`assets/${current.id}/approve`, {
-                                accurate: true,
-                              });
-                              await refresh();
-                              action.setNotice(
-                                "Photo approved and ready to use.",
-                              );
-                            })
-                          }
-                        />
-                        This photo accurately shows the dish I serve
-                      </label>
-                    ) : null}
-                    <button
-                      className="cx-link"
-                      onClick={() => {
-                        if (
-                          dirty &&
-                          !window.confirm(
-                            "Discard unsaved dish details and continue?",
-                          )
-                        )
-                          return;
-                        setDetail(null);
-                        setDirty(false);
-                        onPhoto(detail.id, current?.id);
-                      }}
-                    >
-                      {current ? "Open in Photo Studio" : "Add a photo"}
-                    </button>
-                  </div>
-                  {photos.some((a) => a.kind === "source") && (
-                    <a
-                      className="cx-link"
-                      download
-                      href={`/api/assets/${photos.find((a) => a.kind === "source")!.id}?original=1&download=1`}
-                    >
-                      Download untouched original
-                    </a>
-                  )}
-                  <div className="mm-divider">
-                    <h3>Used in</h3>
-                    {usageError ? (
-                      <p role="alert" className="mm-muted">
-                        {usageError}
+                        {photos.map((a, n) => (
+                          <button
+                            key={a.id}
+                            aria-pressed={current?.id === a.id}
+                            onClick={() => setChosen(a.id)}
+                          >
+                            <img
+                              src={`/api/assets/${a.id}`}
+                              alt={
+                                a.kind === "source"
+                                  ? "Original"
+                                  : `Version ${n + 1}`
+                              }
+                            />
+                            <small>
+                              {a.id === currentDish?.preferred_photo_id
+                                ? "Main photo"
+                                : a.kind === "source"
+                                  ? "Original"
+                                  : a.approved_at
+                                    ? "Approved"
+                                    : "Needs review"}
+                            </small>
+                          </button>
+                        ))}
+                      </div>
+                    )}
+                    {current && (
+                      <p className="mm-muted">
+                        {new Date(current.created_at).toLocaleDateString()} ·{" "}
+                        {current.kind === "source"
+                          ? "Original photo"
+                          : current.kind === "edited"
+                            ? "Adjusted version"
+                            : "Studio version"}
                       </p>
-                    ) : usage.length ? (
-                      usage.map((u) => (
-                        <div key={u.id} className="mm-inline">
+                    )}
+                    <div className="mm-detail-actions">
+                      {current?.approved_at ? (
+                        <>
+                          <UsePhoto dish={detail} photo={current} />
                           <button
                             className="cx-link"
-                            onClick={() => {
-                              if (
-                                dirty &&
-                                !window.confirm(
-                                  "Discard unsaved dish details and continue?",
-                                )
-                              )
-                                return;
-                              setDetail(null);
-                              setDirty(false);
-                              onOpenWork(u.kind, u.id);
-                            }}
+                            disabled={
+                              current.id === currentDish?.preferred_photo_id ||
+                              !!action.busy
+                            }
+                            onClick={() =>
+                              action.act("Setting main photo", async () => {
+                                await api(`library/${detail.id}`, {
+                                  preferredPhotoId: current.id,
+                                });
+                                await refresh();
+                                action.setNotice(
+                                  "Main photo updated for new creations.",
+                                );
+                              })
+                            }
                           >
-                            {u.title}
+                            <Star size={15} />
+                            {current.id === currentDish?.preferred_photo_id
+                              ? "Main photo"
+                              : "Make main photo"}
                           </button>
-                          <span className="mm-muted">
-                            {u.kind === "post" ? "Post" : "Menu"}
-                            {u.changed ? " · Details changed" : ""}
-                          </span>
-                        </div>
-                      ))
-                    ) : (
+                        </>
+                      ) : current ? (
+                        <label className="cx-check">
+                          <input
+                            type="checkbox"
+                            checked={false}
+                            disabled={!!action.busy}
+                            onChange={() =>
+                              action.act("Approving photo", async () => {
+                                await api(`assets/${current.id}/approve`, {
+                                  accurate: true,
+                                });
+                                await refresh();
+                                action.setNotice(
+                                  "Photo approved and ready to use.",
+                                );
+                              })
+                            }
+                          />
+                          This photo accurately shows the dish I serve
+                        </label>
+                      ) : null}
+                      <button
+                        className="cx-link"
+                        onClick={() => {
+                          if (
+                            dirty &&
+                            !window.confirm(
+                              "Discard unsaved dish details and continue?",
+                            )
+                          )
+                            return;
+                          setDetail(null);
+                          setDirty(false);
+                          onPhoto(detail.id, current?.id);
+                        }}
+                      >
+                        {current ? "Open in Photo Studio" : "Add a photo"}
+                      </button>
+                    </div>
+                    {photos.some((a) => a.kind === "source") && (
+                      <a
+                        className="cx-link"
+                        download
+                        href={`/api/assets/${photos.find((a) => a.kind === "source")!.id}?original=1&download=1`}
+                      >
+                        Download untouched original
+                      </a>
+                    )}
+                    <details className="mm-divider mm-dish-usage">
+                      <summary>
+                        Used in {usage.length} saved{" "}
+                        {usage.length === 1 ? "design" : "designs"}
+                      </summary>
+                      {usageError ? (
+                        <p role="alert" className="mm-muted">
+                          {usageError}
+                        </p>
+                      ) : usage.length ? (
+                        usage.map((u) => (
+                          <div key={u.id} className="mm-inline">
+                            <button
+                              className="cx-link"
+                              onClick={() => {
+                                if (
+                                  dirty &&
+                                  !window.confirm(
+                                    "Discard unsaved dish details and continue?",
+                                  )
+                                )
+                                  return;
+                                setDetail(null);
+                                setDirty(false);
+                                onOpenWork(u.kind, u.id);
+                              }}
+                            >
+                              {u.title}
+                            </button>
+                            <span className="mm-muted">
+                              {u.kind === "post" ? "Post" : "Menu"}
+                              {u.changed ? " · Details changed" : ""}
+                            </span>
+                          </div>
+                        ))
+                      ) : (
+                        <p className="mm-muted">
+                          No saved posts or menus use this dish yet.
+                        </p>
+                      )}
                       <p className="mm-muted">
-                        No saved posts or menus use this dish yet.
+                        Saved designs keep their details. Publish menu changes
+                        when you’re ready.
+                      </p>
+                    </details>
+                  </div>
+                  <fieldset className="mm-dish-fields" disabled={!!action.busy}>
+                    <Field label="Dish name">
+                      <input
+                        maxLength={100}
+                        value={detail.name}
+                        onChange={(e) => edit({ name: e.target.value })}
+                      />
+                    </Field>
+                    <Field label={`Price (${state.restaurant.currency})`}>
+                      <input
+                        type="number"
+                        min="0"
+                        max="1000000"
+                        step=".01"
+                        value={detail.price}
+                        onChange={(e) => edit({ price: e.target.value })}
+                      />
+                    </Field>
+                    <Field label="Description">
+                      <textarea
+                        rows={4}
+                        maxLength={2000}
+                        value={detail.description}
+                        onChange={(e) => edit({ description: e.target.value })}
+                      />
+                    </Field>
+                    <Field label="Section">
+                      <input
+                        maxLength={100}
+                        value={detail.category}
+                        onChange={(e) => edit({ category: e.target.value })}
+                      />
+                    </Field>
+                    <label className="cx-check">
+                      <input
+                        type="checkbox"
+                        checked={detail.available}
+                        onChange={(e) => edit({ available: e.target.checked })}
+                      />
+                      Available
+                    </label>
+                    {dirty && (
+                      <p className="mm-muted">
+                        Changes will be flagged in linked designs. Your
+                        published menu stays as it is until you republish.
                       </p>
                     )}
-                    <p className="mm-muted">
-                      Saved designs keep their details. Publish menu changes
-                      when you’re ready.
-                    </p>
-                  </div>
+                    <div className="mm-divider">
+                      <button
+                        className="cx-link"
+                        disabled={!!action.busy}
+                        onClick={() =>
+                          action.act("Updating dish", () =>
+                            archiveDish(detail, !detail.archived_at),
+                          )
+                        }
+                      >
+                        <Archive size={16} />
+                        {detail.archived_at ? "Restore dish" : "Archive dish"}
+                      </button>
+                      {current && (
+                        <details>
+                          <summary className="mm-muted">
+                            Manage this photo
+                          </summary>
+                          <button
+                            className="cx-link"
+                            onClick={() => setDeleting(current.id)}
+                          >
+                            Delete photo permanently
+                          </button>
+                        </details>
+                      )}
+                    </div>
+                  </fieldset>
                 </div>
-                <div>
-                  <Field label="Dish name">
-                    <input
-                      maxLength={100}
-                      value={detail.name}
-                      onChange={(e) => edit({ name: e.target.value })}
-                    />
-                  </Field>
-                  <Field label="Description">
-                    <textarea
-                      rows={4}
-                      maxLength={2000}
-                      value={detail.description}
-                      onChange={(e) => edit({ description: e.target.value })}
-                    />
-                  </Field>
-                  <Field label="Section">
-                    <input
-                      maxLength={100}
-                      value={detail.category}
-                      onChange={(e) => edit({ category: e.target.value })}
-                    />
-                  </Field>
-                  <Field label={`Price (${state.restaurant.currency})`}>
-                    <input
-                      type="number"
-                      min="0"
-                      step=".01"
-                      value={detail.price}
-                      onChange={(e) => edit({ price: e.target.value })}
-                    />
-                  </Field>
-                  <label className="cx-check">
-                    <input
-                      type="checkbox"
-                      checked={detail.available}
-                      onChange={(e) => edit({ available: e.target.checked })}
-                    />
-                    Available
-                  </label>
-                  {dirty && (
-                    <p className="mm-muted">
-                      Changes will be flagged in linked designs. Your published
-                      menu stays as it is until you republish.
-                    </p>
-                  )}
-                  <button
-                    className="cx-btn"
-                    disabled={!dirty || !!action.busy}
-                    onClick={() =>
-                      action.act("Saving dish", async () => {
-                        if (
-                          detail.price === "" ||
-                          !Number.isFinite(Number(detail.price)) ||
-                          Number(detail.price) < 0
-                        )
-                          throw Error(
-                            "Enter a price. Use 0 only if this dish is free.",
-                          );
-                        const saved = await api(`dishes/${detail.id}`, {
-                          ...detail,
-                          price: Number(detail.price),
-                          confirmed: true,
-                        });
-                        await refresh();
-                        setDetail((d) => ({ ...d, revision: saved.revision }));
-                        setDirty(false);
-                        action.setNotice("Dish details saved.");
-                      })
-                    }
-                  >
-                    Save details
-                  </button>
-                  <div className="mm-divider">
-                    <button
-                      className="cx-link"
-                      disabled={!!action.busy}
-                      onClick={() =>
-                        action.act("Updating dish", () =>
-                          archiveDish(detail, !detail.archived_at),
-                        )
-                      }
-                    >
-                      <Archive size={16} />
-                      {detail.archived_at ? "Restore dish" : "Archive dish"}
-                    </button>
-                    {current && (
-                      <details>
-                        <summary className="mm-muted">
-                          Manage this photo
-                        </summary>
-                        <button
-                          className="cx-link"
-                          onClick={() => setDeleting(current.id)}
-                        >
-                          Delete photo permanently
-                        </button>
-                      </details>
-                    )}
-                  </div>
-                </div>
-              </div>
-            </>
+              </>
+            )}
+          </fieldset>
+          {detail && (
+            <footer className="mm-dish-detail-footer">
+              <Feedback {...action} />
+              {!action.notice && !action.error && !action.busy && (
+                <span className="mm-muted" role="status">
+                  {dirty ? "Unsaved changes" : "Details saved"}
+                </span>
+              )}
+              <button
+                className="cx-btn"
+                disabled={!dirty || !!action.busy}
+                onClick={() =>
+                  action.act("Saving dish", async () => {
+                    if (
+                      detail.price === "" ||
+                      !Number.isFinite(Number(detail.price)) ||
+                      Number(detail.price) < 0 ||
+                      Number(detail.price) > 1000000
+                    )
+                      throw Error(
+                        "Enter a price from 0 to 1,000,000. Use 0 only if this dish is free.",
+                      );
+                    const saved = await api(`dishes/${detail.id}`, {
+                      ...detail,
+                      price: Number(detail.price),
+                      confirmed: true,
+                    });
+                    await refresh();
+                    setDetail((d) => ({ ...d, revision: saved.revision }));
+                    setDirty(false);
+                    action.setNotice("Dish details saved.");
+                  })
+                }
+              >
+                Save details
+              </button>
+            </footer>
           )}
         </SheetContent>
       </Sheet>

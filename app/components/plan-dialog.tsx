@@ -91,7 +91,19 @@ export default function PlanDialog({
         if (!value && !busy) close();
       }}
     >
-      <DialogContent className="pw-plans-dialog">
+      <DialogContent
+        className="pw-plans-dialog"
+        closeDisabled={busy}
+        fallbackFocus={() =>
+          // The original plan trigger can disappear at the phone breakpoint.
+          // Keep keyboard users in the visible account navigation on dismissal.
+          [
+            ...document.querySelectorAll<HTMLElement>(
+              ".cx-pilot .cx-link, .cx-mobile-tools > summary",
+            ),
+          ].find((element) => element.getClientRects().length) || null
+        }
+      >
         <DialogHeader>
           <DialogTitle>
             {billing.plan === "pro"
@@ -107,65 +119,69 @@ export default function PlanDialog({
             .
           </DialogDescription>
         </DialogHeader>
-        {error && (
-          <p className="error" role="alert">
-            {error}
-          </p>
-        )}
-        {notice && <p role="status">{notice}</p>}
-        {billing.plan === "pro" ? (
-          <section className="pw-plan-current">
-            <h2>Pro · $9.99/month</h2>
-            <p>100 full-quality image generations each paid billing period.</p>
-            <p>
-              {billing.cancelAtPeriodEnd
-                ? "Your subscription ends"
-                : "Your allowance renews"}{" "}
-              {billing.renewsAt
-                ? new Date(billing.renewsAt).toLocaleDateString()
-                : "at the end of this billing period"}
-              .
+        <div className="pw-plans-body">
+          {error && (
+            <p className="error" role="alert">
+              {error}
             </p>
+          )}
+          {notice && <p role="status">{notice}</p>}
+          {billing.plan === "pro" ? (
+            <section className="pw-plan-current">
+              <h2>Pro · $9.99/month</h2>
+              <p>
+                100 full-quality image generations each paid billing period.
+              </p>
+              <p>
+                {billing.cancelAtPeriodEnd
+                  ? "Your subscription ends"
+                  : "Your allowance renews"}{" "}
+                {billing.renewsAt
+                  ? new Date(billing.renewsAt).toLocaleDateString()
+                  : "at the end of this billing period"}
+                .
+              </p>
+              <button
+                className="cx-btn"
+                disabled={busy || !billing.canManage}
+                onClick={() => void visit("portal")}
+              >
+                Manage billing
+              </button>
+            </section>
+          ) : (
+            <PlanCards
+              enabled={billing.enabled}
+              onUpgrade={() => void visit("checkout")}
+              onFree={close}
+              busy={busy}
+            />
+          )}
+          {billing.canManage && billing.plan !== "pro" && (
             <button
-              className="cx-btn"
-              disabled={busy || !billing.canManage}
+              className="cx-link"
+              disabled={busy}
               onClick={() => void visit("portal")}
             >
-              Manage billing
+              Manage existing billing or update payment
             </button>
-          </section>
-        ) : (
-          <PlanCards
-            enabled={billing.enabled}
-            onUpgrade={() => void visit("checkout")}
-            onFree={close}
-            busy={busy}
-          />
-        )}
-        {billing.canManage && billing.plan !== "pro" && (
-          <button
-            className="cx-link"
-            disabled={busy}
-            onClick={() => void visit("portal")}
-          >
-            Manage existing billing or update payment
-          </button>
-        )}
-        {billing.enabled && (
-          <button
-            className="cx-link"
-            disabled={busy}
-            onClick={() => void sync()}
-          >
-            Refresh payment status
-          </button>
-        )}
-        <p className="fine">
-          Prices in USD. Pro renews monthly until cancelled. Unused monthly
-          generations do not roll over. Failed generations return to the
-          allowance they used. Your saved work remains available when you
-          cancel.
-        </p>
+          )}
+          {billing.enabled && (
+            <button
+              className="cx-link"
+              disabled={busy}
+              onClick={() => void sync()}
+            >
+              Refresh payment status
+            </button>
+          )}
+          <p className="fine">
+            Prices in USD. Pro renews monthly until cancelled. Unused monthly
+            generations do not roll over. Failed generations return to the
+            allowance they used. Your saved work remains available when you
+            cancel.
+          </p>
+        </div>
       </DialogContent>
     </Dialog>
   );

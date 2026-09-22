@@ -1,4 +1,5 @@
 "use client";
+import WorkspaceTabs from "./workspace-tabs";
 import { useEffect, useEffectEvent, useRef, useState } from "react";
 import {
   BookOpen,
@@ -10,6 +11,9 @@ import {
   ImagePlus,
   LayoutTemplate,
   List,
+  Maximize2,
+  Minimize2,
+  MoreHorizontal,
   Plus,
   Redo2,
   Settings2,
@@ -37,6 +41,14 @@ import type { MenuPdfResult } from "@/lib/menu-pdf-v2";
 import { useMenuDocument, type SavedMenu } from "./use-menu-document";
 import MenuProof from "./menu-proof";
 import MenuDocumentView from "./menu-document-view";
+import WorkspaceActionBar from "./workspace-action-bar";
+import {
+  DropdownMenu,
+  DropdownMenuContent,
+  DropdownMenuItem,
+  DropdownMenuSeparator,
+  DropdownMenuTrigger,
+} from "@/components/ui/dropdown-menu";
 import {
   Field,
   MenuActionContext,
@@ -76,6 +88,7 @@ export default function MenuStudio({
     [dialog, setDialog] = useState(""),
     [source, setSource] = useState("file"),
     [mobilePanel, setMobilePanel] = useState("preview"),
+    [focusPreview, setFocusPreview] = useState(false),
     [busy, setBusy] = useState(""),
     [notice, setNotice] = useState(""),
     [error, setError] = useState(""),
@@ -85,6 +98,7 @@ export default function MenuStudio({
     [newName, setNewName] = useState(""),
     [query, setQuery] = useState("");
   const seedHandled = useRef(""),
+    inspectorRef = useRef<HTMLElement>(null),
     actionLock = useRef(false),
     noticeTimer = useRef<ReturnType<typeof setTimeout> | null>(null);
   const restaurant = {
@@ -134,9 +148,41 @@ export default function MenuStudio({
     }));
   }
   function select(id: string) {
+    setFocusPreview(false);
     setSelected(id);
     setPanel("content");
     setMobilePanel("details");
+    if (window.matchMedia("(max-width: 1100px)").matches) {
+      requestAnimationFrame(() => {
+        const inspector = inspectorRef.current;
+        if (!inspector) return;
+        const fields = [
+          ...inspector.querySelectorAll<HTMLInputElement>(
+            'input:not([type="checkbox"]):not([type="hidden"])',
+          ),
+        ].slice(0, 2);
+        const first = fields[0]?.getBoundingClientRect();
+        const last = fields.at(-1)?.getBoundingClientRect();
+        const safeTop =
+          window.innerWidth <= 760
+            ? (document.querySelector(".cx-sidebar")?.getBoundingClientRect()
+                .height || 0) + 16
+            : 16;
+        if (first && last) {
+          const offset =
+            first.top < safeTop
+              ? first.top - safeTop
+              : last.bottom > window.innerHeight - 24
+                ? Math.min(
+                    first.top - safeTop,
+                    last.bottom - window.innerHeight + 24,
+                  )
+                : 0;
+          if (offset) window.scrollBy({ top: offset, behavior: "instant" });
+        }
+        inspector.focus({ preventScroll: true });
+      });
+    }
   }
   function addItem(sectionId = section?.id) {
     const entry = newMenuEntry();
@@ -336,13 +382,13 @@ export default function MenuStudio({
   return (
     <MenuActionContext.Provider value={{ busy, error: error || store.error }}>
       <section
-        className={`md-studio md-mobile-${mobilePanel}`}
+        className={`md-studio md-mobile-${mobilePanel}${focusPreview ? " md-focus-preview" : ""}`}
         aria-label="Menu Studio"
         aria-busy={!!busy}
+        data-action-layout
       >
         <header className="md-studio-header">
           <div className="md-document-heading">
-            <span className="md-eyebrow">MENU STUDIO</span>
             <button
               className="md-document-picker"
               onClick={() => setDialog("library")}
@@ -356,14 +402,51 @@ export default function MenuStudio({
               {record.published && (
                 <span>
                   ·{" "}
-                  {record.publishedRevision === record.revision
+                  {!store.hasUnsavedChanges &&
+                  record.publishedRevision === record.revision
                     ? "Published"
-                    : "Unpublished changes"}
+                    : "Live menu has an older version"}
                 </span>
               )}
             </span>
           </div>
-          <div className="md-header-actions">
+          <WorkspaceActionBar className="md-header-actions">
+            <DropdownMenu>
+              <DropdownMenuTrigger asChild>
+                <button
+                  className="md-icon md-more-actions"
+                  aria-label="More menu actions"
+                >
+                  <MoreHorizontal size={20} />
+                </button>
+              </DropdownMenuTrigger>
+              <DropdownMenuContent
+                className="workspace-action-menu"
+                align="start"
+                side="top"
+              >
+                <DropdownMenuItem
+                  disabled={!store.canUndo || !!busy}
+                  onSelect={store.undo}
+                >
+                  <Undo2 size={16} /> Undo change
+                </DropdownMenuItem>
+                <DropdownMenuItem
+                  disabled={!store.canRedo || !!busy}
+                  onSelect={store.redo}
+                >
+                  <Redo2 size={16} /> Redo change
+                </DropdownMenuItem>
+                {record.published && (
+                  <>
+                    <DropdownMenuSeparator />
+                    <DropdownMenuItem onSelect={() => setDialog("share")}>
+                      <Share2 size={16} /> Share live menu
+                    </DropdownMenuItem>
+                  </>
+                )}
+              </DropdownMenuContent>
+            </DropdownMenu>
             <div className="md-undo">
               <button
                 className="md-icon"
@@ -406,7 +489,7 @@ export default function MenuStudio({
             >
               {record.published ? "Publish changes" : "Publish menu"}
             </button>
-          </div>
+          </WorkspaceActionBar>
         </header>
         {(error || store.error) && (
           <div className="md-notice md-error" role="alert">
@@ -574,6 +657,7 @@ export default function MenuStudio({
                   <div className="md-outline-section" key={s.id}>
                     <button
                       className={`md-section-name ${selected === s.id ? "is-selected" : ""}`}
+                      aria-pressed={selected === s.id}
                       onClick={() => select(s.id)}
                     >
                       <span>{s.name || "Untitled section"}</span>
@@ -591,6 +675,7 @@ export default function MenuStudio({
                         <button
                           key={i.id}
                           className={`md-outline-item ${selected === i.id ? "is-selected" : ""} ${!i.visible ? "is-hidden" : ""}`}
+                          aria-pressed={selected === i.id}
                           onClick={() => select(i.id)}
                         >
                           {i.photoId && (
@@ -606,6 +691,7 @@ export default function MenuStudio({
                       ))}
                     <button
                       className="md-outline-add"
+                      aria-label={`Add dish to ${s.name || "Untitled section"}`}
                       onClick={() => addItem(s.id)}
                     >
                       <Plus size={13} /> Add dish
@@ -654,6 +740,22 @@ export default function MenuStudio({
             </aside>
             <main className="md-stage">
               <div className="md-stage-toolbar">
+                <button
+                  className="md-text-button md-focus-toggle"
+                  aria-label={
+                    focusPreview ? "Exit focus preview" : "Focus preview"
+                  }
+                  title={focusPreview ? "Exit focus preview" : "Focus preview"}
+                  aria-pressed={focusPreview}
+                  onClick={() => setFocusPreview((value) => !value)}
+                >
+                  {focusPreview ? (
+                    <Minimize2 size={16} />
+                  ) : (
+                    <Maximize2 size={16} />
+                  )}
+                  <span>{focusPreview ? "Exit focus" : "Focus preview"}</span>
+                </button>
                 <div
                   className="md-segment"
                   role="group"
@@ -677,7 +779,8 @@ export default function MenuStudio({
                   onClick={() => setDialog("design")}
                 >
                   <LayoutTemplate size={15} />
-                  {spec.name}
+                  <span className="md-toolbar-design-name">{spec.name}</span>
+                  <span className="md-toolbar-design-short">Design</span>
                   <ChevronDown size={13} />
                 </button>
               </div>
@@ -731,151 +834,146 @@ export default function MenuStudio({
                 )}
               </div>
             </main>
-            <aside className="md-inspector" aria-label="Menu editing controls">
-              <div
-                className="md-inspector-tabs"
-                role="group"
-                aria-label="Editing options"
+            <aside
+              ref={inspectorRef}
+              tabIndex={-1}
+              className="md-inspector"
+              aria-label="Menu editing controls"
+            >
+              <WorkspaceTabs
+                value={panel}
+                onValueChange={setPanel}
+                label="Editing options"
+                options={[
+                  { value: "content", label: "Content" },
+                  { value: "design", label: "Design" },
+                  { value: "details", label: "Details" },
+                ]}
               >
-                <button
-                  aria-pressed={panel === "content"}
-                  onClick={() => setPanel("content")}
-                >
-                  Content
-                </button>
-                <button
-                  aria-pressed={panel === "design"}
-                  onClick={() => setPanel("design")}
-                >
-                  Design
-                </button>
-                <button
-                  aria-pressed={panel === "details"}
-                  onClick={() => setPanel("details")}
-                >
-                  Details
-                </button>
-              </div>
-              {panel === "design" ? (
-                <MenuDesignInspector
-                  menu={draft}
-                  change={patch}
-                  choose={() => setDialog("design")}
-                />
-              ) : panel === "details" ? (
-                <MenuDetailsInspector menu={draft} change={patch} />
-              ) : item && section ? (
-                <MenuItemInspector
-                  key={item.id}
-                  item={item}
-                  section={section}
-                  sections={draft.sections}
-                  assets={state.assets || []}
-                  menuId={record.id}
-                  onLibrary={() => setDialog("dish-library")}
-                  change={(v) => editItem(item.id, v)}
-                  onPhoto={() =>
-                    void act("Saving menu", async () => {
-                      await store.saveNow();
-                      onPhoto(item.dishId!, item.photoId || undefined);
-                    })
-                  }
-                  remove={() => {
-                    patch({
-                      sections: draft.sections.map((s) => ({
-                        ...s,
-                        items: s.items.filter((i) => i.id !== item.id),
-                      })),
-                    });
-                    select(section.id);
-                    tell("Dish removed. Use Undo to bring it back.");
-                  }}
-                  move={(id) =>
-                    patch({
-                      sections: draft.sections.map((s) => ({
-                        ...s,
-                        items:
-                          s.id === id
-                            ? [...s.items.filter((i) => i.id !== item.id), item]
-                            : s.items.filter((i) => i.id !== item.id),
-                      })),
-                    })
-                  }
-                  reorder={(direction) =>
-                    patch({
-                      sections: draft.sections.map((s) =>
-                        s.id === section.id
-                          ? {
-                              ...s,
-                              items: reorder(
-                                s.items,
-                                s.items.findIndex((i) => i.id === item.id),
-                                direction,
-                              ),
-                            }
-                          : s,
-                      ),
-                    })
-                  }
-                />
-              ) : section ? (
-                <MenuSectionInspector
-                  section={section}
-                  index={draft.sections.indexOf(section)}
-                  count={draft.sections.length}
-                  change={(v) =>
-                    patch({
-                      sections: draft.sections.map((s) =>
-                        s.id === section.id ? { ...s, ...v } : s,
-                      ),
-                    })
-                  }
-                  add={() => addItem(section.id)}
-                  reorder={(direction) =>
-                    patch({
-                      sections: reorder(
-                        draft.sections,
-                        draft.sections.indexOf(section),
-                        direction,
-                      ),
-                    })
-                  }
-                  remove={() => {
-                    patch({
-                      sections: draft.sections.filter(
-                        (s) => s.id !== section.id,
-                      ),
-                    });
-                    setSelected("");
-                    tell(
-                      "Section removed. Use Undo to restore it and its dishes.",
-                    );
-                  }}
-                />
-              ) : (
-                <div className="md-inspector-welcome">
-                  <span className="md-inspector-orbit">
-                    <Settings2 size={24} />
-                  </span>
-                  <h3>Make it yours.</h3>
-                  <p>
-                    Select a dish or section to edit its details, or explore the
-                    designs for a different point of view.
-                  </p>
-                  <button
-                    className="md-button md-secondary"
-                    onClick={() => setDialog("design")}
-                  >
-                    Explore designs
-                  </button>
-                  <button
-                    className="md-text-button"
-                    onClick={() => setPanel("details")}
-                  >
-                    Edit the menu title & notes
-                  </button>
-                </div>
-              )}
+                {panel === "design" ? (
+                  <MenuDesignInspector
+                    menu={draft}
+                    change={patch}
+                    choose={() => setDialog("design")}
+                  />
+                ) : panel === "details" ? (
+                  <MenuDetailsInspector menu={draft} change={patch} />
+                ) : item && section ? (
+                  <MenuItemInspector
+                    key={item.id}
+                    item={item}
+                    section={section}
+                    sections={draft.sections}
+                    assets={state.assets || []}
+                    menuId={record.id}
+                    onLibrary={() => setDialog("dish-library")}
+                    change={(v) => editItem(item.id, v)}
+                    onPhoto={() =>
+                      void act("Saving menu", async () => {
+                        await store.saveNow();
+                        onPhoto(item.dishId!, item.photoId || undefined);
+                      })
+                    }
+                    remove={() => {
+                      patch({
+                        sections: draft.sections.map((s) => ({
+                          ...s,
+                          items: s.items.filter((i) => i.id !== item.id),
+                        })),
+                      });
+                      select(section.id);
+                      tell("Dish removed. Use Undo to bring it back.");
+                    }}
+                    move={(id) =>
+                      patch({
+                        sections: draft.sections.map((s) => ({
+                          ...s,
+                          items:
+                            s.id === id
+                              ? [
+                                  ...s.items.filter((i) => i.id !== item.id),
+                                  item,
+                                ]
+                              : s.items.filter((i) => i.id !== item.id),
+                        })),
+                      })
+                    }
+                    reorder={(direction) =>
+                      patch({
+                        sections: draft.sections.map((s) =>
+                          s.id === section.id
+                            ? {
+                                ...s,
+                                items: reorder(
+                                  s.items,
+                                  s.items.findIndex((i) => i.id === item.id),
+                                  direction,
+                                ),
+                              }
+                            : s,
+                        ),
+                      })
+                    }
+                  />
+                ) : section ? (
+                  <MenuSectionInspector
+                    section={section}
+                    index={draft.sections.indexOf(section)}
+                    count={draft.sections.length}
+                    change={(v) =>
+                      patch({
+                        sections: draft.sections.map((s) =>
+                          s.id === section.id ? { ...s, ...v } : s,
+                        ),
+                      })
+                    }
+                    add={() => addItem(section.id)}
+                    reorder={(direction) =>
+                      patch({
+                        sections: reorder(
+                          draft.sections,
+                          draft.sections.indexOf(section),
+                          direction,
+                        ),
+                      })
+                    }
+                    remove={() => {
+                      patch({
+                        sections: draft.sections.filter(
+                          (s) => s.id !== section.id,
+                        ),
+                      });
+                      setSelected("");
+                      tell(
+                        "Section removed. Use Undo to restore it and its dishes.",
+                      );
+                    }}
+                  />
+                ) : (
+                  <div className="md-inspector-welcome">
+                    <span className="md-inspector-orbit">
+                      <Settings2 size={24} />
+                    </span>
+                    <h3>Make it yours.</h3>
+                    <p>
+                      Select a dish or section to edit its details, or explore
+                      the designs for a different point of view.
+                    </p>
+                    <button
+                      className="md-button md-secondary"
+                      onClick={() => setDialog("design")}
+                    >
+                      Explore designs
+                    </button>
+                    <button
+                      className="md-text-button"
+                      onClick={() => setPanel("details")}
+                    >
+                      Edit the menu title & notes
+                    </button>
+                  </div>
+                )}
+              </WorkspaceTabs>
             </aside>
           </div>
         )}

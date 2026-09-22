@@ -1,0 +1,57 @@
+{
+  "date": "2026-09-22",
+  "candidate": "5ed62e23e15a",
+  "environment": "Local development site at http://localhost:5173",
+  "browser": "Codex In-app Browser",
+  "fixture": "Juniper Kitchen & Bar local published customer fixture; five menus, six sections, seven Dinner items, and thirteen Drinks items",
+  "checks": [
+    {
+      "criterion": "UX-25.3",
+      "viewport": [390, 844],
+      "observations": {
+        "sectionRailClientWidth": 304,
+        "sectionRailScrollWidth": 750,
+        "overflowAction": "44px button present",
+        "initialCurrentSection": "Small plates",
+        "afterSectionActivation": "After dinner remained aria-current=location and its button stayed within the visible rail after smooth scrolling",
+        "search": "carrot returned one section (From the garden) and moved the current-section cue to that section",
+        "menuSwitch": "Switching from Dinner to Drinks navigated to the Drinks URL and cleared the search value"
+      },
+      "screenshots": [
+        "customer-dinner-phone-initial.jpg",
+        "customer-dinner-phone-last-section.jpg",
+        "customer-dinner-phone-search-carrot.jpg",
+        "customer-drinks-phone-after-switch.jpg"
+      ]
+    },
+    {
+      "criterion": "UX-25.4",
+      "viewport": [390, 844],
+      "observations": {
+        "longName": "Roast chicken with charred spring leeks wrapped to two lines with its price remaining in the separate right-aligned price column",
+        "drinkMenu": "House lager exposes Half pint and Pint labels with their associated prices",
+        "priceColumns": "At 320px, repeated drink option columns began at x=20 and x=162.5 with labels and prices aligned in each column"
+      },
+      "screenshots": [
+        "customer-drinks-phone-after-switch.jpg",
+        "customer-drinks-small-phone.png"
+      ]
+    },
+    {
+      "criterion": "UX-25.6",
+      "viewport": [320, 740],
+      "observations": {
+        "pageHorizontalOverflow": 0,
+        "menuContent": "Drink names, descriptions, and option prices reflow inside the 280px content column",
+        "intentionalRailOverflow": 467,
+        "intentionalRailOverflowNote": "Only the horizontally scrollable section rail overflows; the document itself does not"
+      },
+      "screenshots": ["customer-drinks-small-phone.png"]
+    }
+  ],
+  "limitations": [
+    "This evidence covers the local Chromium-like Codex in-app browser only.",
+    "Physical-device keyboard/safe-area behavior, separate Safari/Firefox checks, enlarged text, and independent human/customer review remain open.",
+    "Ordering/contact actions were not available on this fixture and remain unverified for UX-25.6."
+  ]
+}

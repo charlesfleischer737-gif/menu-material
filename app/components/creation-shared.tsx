@@ -1,4 +1,5 @@
 "use client";
+import { draftStatus } from "@/lib/workspace-status";
 import {
   useCallback,
   useEffect,
@@ -15,6 +16,8 @@ import {
   RotateCw,
 } from "lucide-react";
 import { api, type Row } from "@/lib/client";
+import WorkspacePlaceholder from "./workspace-placeholder";
+import CreativeHeader from "./creative-header";
 import { createPhotoPreviewRenderer, imageBitmap } from "@/lib/photo-export";
 import { latestFrame } from "@/lib/latest-frame";
 import { emptyAdjustments, type Adjustments } from "@/lib/studio";
@@ -154,7 +157,7 @@ export function useCreationDraft(
         recovered
           ? "Recovered unsaved changes. Saving…"
           : row
-            ? "All changes saved"
+            ? draftStatus.saved
             : "Ready when you are",
       );
     } catch (e) {
@@ -179,7 +182,7 @@ export function useCreationDraft(
         meta.current.id &&
         JSON.stringify(latest.current) !== saved.current
       ) {
-        setStatus("Saving…");
+        setStatus(draftStatus.saving);
         const content = JSON.stringify(latest.current);
         const data = await api("creation-drafts", {
           ...meta.current,
@@ -193,7 +196,7 @@ export function useCreationDraft(
       }
       forgetBackup();
       setSaveError("");
-      setStatus("All changes saved");
+      setStatus(draftStatus.saved);
     };
     const pending = run();
     saving.current = pending;
@@ -202,7 +205,7 @@ export function useCreationDraft(
     } catch (e) {
       backup();
       setSaveError((e as Error).message);
-      setStatus("Changes not saved yet");
+      setStatus(draftStatus.failed);
       throw e;
     } finally {
       if (saving.current === pending) saving.current = null;
@@ -217,10 +220,10 @@ export function useCreationDraft(
     if (content === saved.current && !saving.current) {
       forgetBackup();
       setSaveError("");
-      setStatus("All changes saved");
+      setStatus(draftStatus.saved);
     } else {
       backup();
-      setStatus("Saving…");
+      setStatus(draftStatus.saving);
     }
   }
   useEffect(() => {
@@ -256,7 +259,7 @@ export function useCreationDraft(
     latest.current = value;
     saved.current = row ? JSON.stringify(value) : "";
     setDraft(value);
-    setStatus("Saving…");
+    setStatus(draftStatus.saving);
     backup();
     await save();
     rememberPreference(preferenceKey, meta.current.id);
@@ -317,8 +320,10 @@ export function useCreationDraft(
 }
 export function DraftRecovery({
   store,
+  title = "Your saved work",
 }: {
   store: ReturnType<typeof useCreationDraft>;
+  title?: string;
 }) {
   const [busy, setBusy] = useState(false),
     [error, setError] = useState("");
@@ -335,11 +340,7 @@ export function DraftRecovery({
   }
   if (store.ready && !store.saveError) return null;
   if (!store.ready && !store.loadError)
-    return (
-      <p className="cx-feedback" role="status">
-        {store.status}
-      </p>
-    );
+    return <WorkspacePlaceholder title={title} message={store.status} />;
   return (
     <div className="cx-panel cx-draft-recovery" role="alert">
       <h2>
@@ -724,19 +725,9 @@ export function ToolHeader({
   children?: ReactNode;
 }) {
   return (
-    <header className="cx-feature-header">
-      <h1 tabIndex={-1}>{title}</h1>
-      <div className="cx-feature-actions">
-        <span
-          className="cx-save cx-header-status"
-          role="status"
-          aria-live="polite"
-        >
-          {status}
-        </span>
-        {children}
-      </div>
-    </header>
+    <CreativeHeader title={title} status={status} className="cx-feature-header">
+      {children}
+    </CreativeHeader>
   );
 }
 export function Heading({

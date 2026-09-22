@@ -1,0 +1,110 @@
+$ node --disable-warning=ExperimentalWarning --experimental-loader ./tests/runtime-loader.mjs tests/menu-documents.mjs
+67 menu document API checks passed: independent content, draft privacy, named publication, stable QR, revision conflicts, history, ownership, and reviewed AI suggestions.
+Request failed Error: simulated interrupted migration
+    at Statement.executeAll (file:///Users/charlesfleischer/Documents/ChatGPT/AI%20Restaurant%20Project/lib/local-runtime.ts:40:47)
+    at Object.batch (file:///Users/charlesfleischer/Documents/ChatGPT/AI%20Restaurant%20Project/lib/local-runtime.ts:65:55)
+    at menuDocumentsRoute (file:///Users/charlesfleischer/Documents/ChatGPT/AI%20Restaurant%20Project/lib/server/menu-documents.ts:166:24)
+    at process.processTicksAndRejections (node:internal/process/task_queues:104:5)
+    at async handle (file:///Users/charlesfleischer/Documents/ChatGPT/AI%20Restaurant%20Project/lib/server/api.ts:574:38)
+    at async call (file:///Users/charlesfleischer/Documents/ChatGPT/AI%20Restaurant%20Project/tests/menu-documents.mjs:41:15)
+    at async file:///Users/charlesfleischer/Documents/ChatGPT/AI%20Restaurant%20Project/tests/menu-documents.mjs:112:3 {
+  code: 'ERR_SQLITE_ERROR',
+  errcode: 1811,
+  errstr: 'constraint failed'
+}
+$ node --disable-warning=ExperimentalWarning --experimental-loader ./tests/runtime-loader.mjs tests/menu-design-v2.mjs
+60 measured menu compositions passed, plus price variants, visibility, page breaks, print dimensions, review gating, and unsupported glyph diagnostics. Proofs: /private/tmp/menu-design-v2
+$ node --disable-warning=ExperimentalWarning --experimental-loader ./tests/runtime-loader.mjs tests/menu-proof-queue.mjs
+Menu proof queue: shared work, bounded concurrency/cache, priority, cancellation, fresh retries, and failure recovery passed.
+$ node --disable-warning=ExperimentalWarning --experimental-loader ./tests/runtime-loader.mjs tests/menu-worker.mjs
+Menu worker: real off-thread composition with photos, exact layout/profile parity, PDF export reuse, warm-worker reuse, termination, recovery, and reviewed export gating passed. Canvas uses a test adapter; browser/device latency is not asserted.
+$ node --disable-warning=ExperimentalWarning --experimental-loader ./tests/runtime-loader.mjs tests/menu-purpose-quality.mjs
+[
+  {
+    "purpose": "dive-bar",
+    "paper": "letter",
+    "items": 11,
+    "pages": 1,
+    "warnings": []
+  },
+  {
+    "purpose": "dive-bar",
+    "paper": "a4",
+    "items": 11,
+    "pages": 1,
+    "warnings": []
+  },
+  {
+    "purpose": "cocktail-bar",
+    "paper": "letter",
+    "items": 8,
+    "pages": 1,
+    "warnings": []
+  },
+  {
+    "purpose": "cocktail-bar",
+    "paper": "a4",
+    "items": 8,
+    "pages": 1,
+    "warnings": []
+  },
+  {
+    "purpose": "smoothie-truck",
+    "paper": "letter",
+    "items": 8,
+    "pages": 1,
+    "warnings": []
+  },
+  {
+    "purpose": "smoothie-truck",
+    "paper": "a4",
+    "items": 8,
+    "pages": 1,
+    "warnings": []
+  },
+  {
+    "purpose": "cafe",
+    "paper": "letter",
+    "items": 12,
+    "pages": 1,
+    "warnings": []
+  },
+  {
+    "purpose": "cafe",
+    "paper": "a4",
+    "items": 12,
+    "pages": 1,
+    "warnings": []
+  },
+  {
+    "purpose": "wine",
+    "paper": "letter",
+    "items": 8,
+    "pages": 1,
+    "warnings": [
+      "Spacing was gently tightened to meet your page preference. Text sizes are unchanged."
+    ]
+  },
+  {
+    "purpose": "wine",
+    "paper": "a4",
+    "items": 8,
+    "pages": 1,
+    "warnings": []
+  },
+  {
+    "purpose": "tasting",
+    "paper": "letter",
+    "items": 5,
+    "pages": 1,
+    "warnings": []
+  },
+  {
+    "purpose": "tasting",
+    "paper": "a4",
+    "items": 5,
+    "pages": 1,
+    "warnings": []
+  }
+]
+Purpose-specific menu proofs passed: content, prices, text bounds, collisions, readable type, and actual PDF page counts. Artifacts: /private/tmp/menu-purpose-quality

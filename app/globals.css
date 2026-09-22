@@ -2,27 +2,55 @@
 @import "tw-animate-css";
 @import "../vendor/shadcn-tailwind-4.13.0.css";
 :root {
-  --background: #f8f8f5;
-  --foreground: #20201e;
-  --card: #fff;
-  --card-foreground: #20201e;
-  --popover: #fff;
-  --popover-foreground: #20201e;
-  --primary: #202820;
-  --primary-foreground: #fff;
-  --secondary: #f0f0eb;
-  --secondary-foreground: #20201e;
-  --muted: #f0f0eb;
-  --muted-foreground: #717168;
-  --accent: #edede6;
-  --accent-foreground: #20201e;
-  --destructive: #bd4039;
-  --border: #e1e1d9;
-  --input: #d8d8cf;
-  --ring: #59715b;
-  --radius: 0.7rem;
-  --sidebar: #fff;
-  --sidebar-foreground: #20201e;
+  /* Interface roles also resolve in public pages and portalled controls.
+     Restaurant artwork continues to use its own explicit palette. */
+  --workspace-canvas: #f4f5f6;
+  --workspace-surface: #ffffff;
+  --workspace-ink: #202624;
+  --workspace-muted: #59625f;
+  --workspace-action: #174c3c;
+  --workspace-action-hover: #103c2e;
+  --workspace-action-pressed: #0b2e23;
+  --workspace-focus: var(--workspace-action);
+  --workspace-selected: #e5efea;
+  --workspace-line: #d6dcda;
+  --workspace-control: #7c8681;
+  --workspace-stage: #e4e7e9;
+  --workspace-disabled: var(--workspace-stage);
+  --workspace-warning: #8a4b08;
+  --workspace-warning-surface: #fff4df;
+  --workspace-error: #a12d32;
+  --workspace-error-hover: #842329;
+  --workspace-error-pressed: #6b1a20;
+  --workspace-error-surface: #fff2f1;
+  --workspace-success: var(--workspace-action);
+  --workspace-success-surface: var(--workspace-selected);
+  --workspace-loading: var(--workspace-muted);
+  --workspace-loading-surface: var(--workspace-stage);
+  --background: var(--workspace-canvas);
+  --foreground: var(--workspace-ink);
+  --card: var(--workspace-surface);
+  --card-foreground: var(--workspace-ink);
+  --popover: var(--workspace-surface);
+  --popover-foreground: var(--workspace-ink);
+  --primary: var(--workspace-action);
+  --primary-foreground: var(--workspace-surface);
+  --secondary: var(--workspace-canvas);
+  --secondary-foreground: var(--workspace-ink);
+  --muted: var(--workspace-canvas);
+  --muted-foreground: var(--workspace-muted);
+  --accent: var(--workspace-canvas);
+  --accent-foreground: var(--workspace-ink);
+  --destructive: var(--workspace-error);
+  --border: var(--workspace-line);
+  --input: var(--workspace-control);
+  --ring: var(--workspace-focus);
+  --radius: 0.5rem;
+  --font-ui: "Helvetica Neue", Arial, sans-serif;
+  --radius-panel: 0.75rem;
+  --shadow-panel: 0 8px 32px rgb(20 38 30 / 8%);
+  --sidebar: var(--workspace-surface);
+  --sidebar-foreground: var(--workspace-ink);
 }
 @theme inline {
   --color-background: var(--background);
@@ -53,8 +81,9 @@ body {
   margin: 0;
   background: var(--background);
   color: var(--foreground);
-  font-family: "Helvetica Neue", Arial, sans-serif;
+  font-family: var(--font-ui);
   font-size: 16px;
+  line-height: 1.5;
   -webkit-font-smoothing: antialiased;
 }
 button,
@@ -71,11 +100,115 @@ a {
   text-decoration: none;
   color: inherit;
 }
-button[data-slot="button"] {
-  min-height: 42px;
+[data-ui-button] {
+  min-height: 44px;
+  height: auto;
+  font-family: var(--font-ui);
   font-size: 14px;
-  padding: 0 19px;
-  border-radius: 5px;
+  font-weight: 600;
+  line-height: 1.4;
+  padding: 10px 16px;
+  gap: 8px;
+  border-radius: 8px;
+  white-space: normal;
+  text-align: center;
+}
+[data-ui-button][data-size="lg"] {
+  min-height: 48px;
+}
+[data-ui-button][data-size="marketing"] {
+  min-height: 52px;
+  padding: 12px 24px;
+  font-size: 16px;
+}
+[data-ui-button][data-size^="icon"] {
+  min-width: 44px;
+  width: 44px;
+  padding: 8px;
+}
+[data-ui-button][data-variant="default"] {
+  background: var(--workspace-action);
+  color: #fff;
+}
+[data-ui-button][data-variant="default"]:not(:disabled):hover {
+  background: var(--workspace-action-hover);
+}
+[data-ui-button][data-variant="default"]:not(:disabled):active {
+  background: var(--workspace-action-pressed);
+}
+[data-ui-button][data-variant="outline"] {
+  background: var(--workspace-surface);
+  border: 1px solid var(--workspace-control);
+  color: var(--workspace-ink);
+  box-shadow: none;
+}
+[data-ui-button][data-variant="secondary"] {
+  background: var(--workspace-canvas);
+  color: var(--workspace-ink);
+}
+[data-ui-button]:is([data-variant="outline"], [data-variant="ghost"]):not(
+    :disabled
+  ):hover {
+  background: var(--workspace-canvas);
+}
+[data-ui-button][data-variant="secondary"]:not(:disabled):hover {
+  background: var(--workspace-stage);
+}
+[data-ui-button][data-variant="ghost"] {
+  background: transparent;
+  color: var(--workspace-ink);
+}
+[data-ui-button][data-variant="destructive"] {
+  background: var(--workspace-error);
+  color: #fff;
+}
+[data-ui-button][data-variant="destructive"]:not(:disabled):hover {
+  background: var(--workspace-error-hover);
+}
+[data-ui-button][data-variant="destructive"]:not(:disabled):active {
+  background: var(--workspace-error-pressed);
+}
+[data-ui-button]:is(
+    [data-variant="outline"],
+    [data-variant="secondary"],
+    [data-variant="ghost"]
+  ):not(:disabled):active {
+  background: var(--workspace-selected);
+}
+[data-ui-button]:focus-visible {
+  outline: 2px solid var(--workspace-action);
+  outline-offset: 3px;
+  box-shadow: none;
+}
+button[data-ui-button]:disabled {
+  opacity: 1;
+  background: var(--workspace-disabled);
+  border-color: var(--workspace-line);
+  color: var(--workspace-muted);
+}
+:is([data-slot="dialog-content"], [data-slot="sheet-content"]) {
+  background: var(--workspace-surface);
+  color: var(--workspace-ink);
+  border-color: var(--workspace-line);
+}
+[data-slot="dialog-content"] {
+  border-radius: var(--radius-panel);
+  box-shadow: var(--shadow-panel);
+}
+:is([data-slot="dialog-close"], [data-slot="sheet-close"]) {
+  display: inline-grid;
+  place-items: center;
+  min-width: 44px;
+  min-height: 44px;
+  top: 8px;
+  right: 8px;
+  opacity: 1;
+  border-radius: 8px;
+}
+:is([data-slot="dialog-close"], [data-slot="sheet-close"]):disabled {
+  color: var(--workspace-muted);
+  background: var(--workspace-disabled);
+  cursor: not-allowed;
 }
 h1,
 h2,

@@ -244,7 +244,7 @@ function PriceOptions({
           />
           <button
             className="md-icon"
-            aria-label={`Remove ${v.label || "option"}`}
+            aria-label={`Remove ${kind === "variants" ? "option" : "add-on"} ${index + 1}${v.label ? `: ${v.label}` : ""}`}
             onClick={() => change(values.filter((o) => o.id !== v.id))}
           >
             <X size={14} />
@@ -308,11 +308,13 @@ export function MenuItemInspector({
   return (
     <div className="md-inspector-content">
       <div className="md-inspector-label">
-        <span>Dish details</span>
+        <h2 className="md-selected-item-heading">
+          {item.name || "Untitled dish"}
+        </h2>
         <div>
           <button
             className="md-icon"
-            aria-label="Move dish up"
+            aria-label={`Move ${item.name || "untitled dish"} earlier`}
             disabled={index === 0}
             onClick={() => reorder(-1)}
           >
@@ -320,7 +322,7 @@ export function MenuItemInspector({
           </button>
           <button
             className="md-icon"
-            aria-label="Move dish down"
+            aria-label={`Move ${item.name || "untitled dish"} later`}
             disabled={index === section.items.length - 1}
             onClick={() => reorder(1)}
           >
@@ -626,12 +628,14 @@ export function MenuItemInspector({
           </button>
         )}
       </details>
-      <button className="md-text-button" onClick={onLibrary}>
-        {item.dishId ? "Update My Dishes…" : "Save to My Dishes…"}
-      </button>
-      <button className="md-text-button md-danger" onClick={remove}>
-        <Trash2 size={14} /> Remove dish
-      </button>
+      <div className="md-inspector-actions">
+        <button className="md-text-button" onClick={onLibrary}>
+          {item.dishId ? "Update My Dishes…" : "Save to My Dishes…"}
+        </button>
+        <button className="md-text-button md-danger" onClick={remove}>
+          <Trash2 size={14} /> Remove dish
+        </button>
+      </div>
       <p className="md-help">
         Changes apply to this menu. Your dish library keeps its own details.
       </p>
@@ -662,7 +666,7 @@ export function MenuSectionInspector({
         <div>
           <button
             className="md-icon"
-            aria-label="Move section up"
+            aria-label={`Move ${section.name || "untitled section"} earlier`}
             disabled={!index}
             onClick={() => reorder(-1)}
           >
@@ -670,7 +674,7 @@ export function MenuSectionInspector({
           </button>
           <button
             className="md-icon"
-            aria-label="Move section down"
+            aria-label={`Move ${section.name || "untitled section"} later`}
             disabled={index === count - 1}
             onClick={() => reorder(1)}
           >
@@ -700,12 +704,14 @@ export function MenuSectionInspector({
         checked={section.pageBreakBefore}
         onChange={(pageBreakBefore) => change({ pageBreakBefore })}
       />
-      <button className="md-button" onClick={add}>
-        <Plus size={15} /> Add a dish
-      </button>
-      <button className="md-text-button md-danger" onClick={remove}>
-        <Trash2 size={14} /> Remove section & dishes
-      </button>
+      <div className="md-inspector-actions">
+        <button className="md-button" onClick={add}>
+          <Plus size={15} /> Add a dish
+        </button>
+        <button className="md-text-button md-danger" onClick={remove}>
+          <Trash2 size={14} /> Remove section & dishes
+        </button>
+      </div>
       <p className="md-help">You can undo a removal from the toolbar.</p>
     </div>
   );

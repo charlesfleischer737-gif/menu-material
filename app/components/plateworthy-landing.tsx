@@ -152,7 +152,7 @@ export default function Landing({
               Turn a phone photo into studio-quality images for your menu,
               delivery listings, and social posts.
             </p>
-            <Button onClick={onStart}>
+            <Button size="marketing" onClick={onStart}>
               {signedIn ? "Open my studio" : "Try it free"}
               <ArrowRight size={17} />
             </Button>
@@ -190,7 +190,7 @@ export default function Landing({
               presentation it deserves. Your first 5 images are free.
             </p>
           </div>
-          <Button onClick={onStart}>
+          <Button size="marketing" onClick={onStart}>
             {signedIn ? "Open my studio" : "Try it free"}
             <ArrowRight size={17} />
           </Button>

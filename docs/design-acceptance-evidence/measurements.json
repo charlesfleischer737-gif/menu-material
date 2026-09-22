@@ -1,0 +1,184 @@
+{
+  "date": "2026-09-17",
+  "candidate": "working tree based on 657a2c6",
+  "browser": "In-app Chromium; version not exposed in captured evidence",
+  "units": "CSS pixels at default zoom/text size",
+  "observations": [
+    {
+      "surface": "Signup",
+      "viewport": [
+        390,
+        844
+      ],
+      "requiredInputHeight": 44,
+      "inputFontSize": 16,
+      "actionY": 565.6328125,
+      "actionBottom": 613.6328125,
+      "actionHeight": 48,
+      "scope": "Current account mode-control refinement verified"
+    },
+    {
+      "surface": "Homepage",
+      "viewport": [
+        1280,
+        720
+      ],
+      "comparisonY": 430.6953125,
+      "visibleComparisonHeight": 289.3046875,
+      "horizontalOverflow": false
+    },
+    {
+      "surface": "More tools",
+      "viewport": [
+        390,
+        844
+      ],
+      "defaultActionY": 298.211,
+      "actionHeight": 48,
+      "horizontalOverflow": false
+    },
+    {
+      "surface": "More tools",
+      "viewport": [
+        1280,
+        720
+      ],
+      "defaultActionY": 199,
+      "actionHeight": 48,
+      "horizontalOverflow": false
+    },
+    {
+      "surface": "Customer Dinner",
+      "fixture": "Juniper Kitchen & Bar; five menus, six sections",
+      "viewport": [
+        390,
+        844
+      ],
+      "firstItemY": 347.6953125,
+      "headingHeight": 41.195,
+      "horizontalOverflow": false
+    },
+    {
+      "surface": "Customer Drinks",
+      "fixture": "Juniper Kitchen & Bar; five menus, six sections",
+      "viewport": [
+        390,
+        844
+      ],
+      "firstItemY": 374.890625,
+      "priceColumnX": [
+        20,
+        197.5
+      ],
+      "priceColumnWidth": 172.5,
+      "horizontalOverflow": false
+    },
+    {
+      "surface": "Customer Dinner",
+      "viewport": [
+        320,
+        740
+      ],
+      "firstItemY": 388.890625,
+      "headingHeight": 82.390625,
+      "documentWidth": 320
+    },
+    {
+      "surface": "Customer Drinks",
+      "viewport": [
+        320,
+        740
+      ],
+      "firstItemY": 414.0859375,
+      "priceColumnX": [
+        20,
+        162.5
+      ],
+      "priceColumnWidth": 137.5,
+      "documentWidth": 320
+    },
+    {
+      "surface": "Post inspector tabs",
+      "viewport": [
+        1280,
+        720
+      ],
+      "tabHeight": 44,
+      "tabWidth": 77.5,
+      "labelFontSize": 14,
+      "keyboard": "ArrowRight Details → Design; End → Caption; Home → Details. Focus, aria-selected and aria-labelledby agree."
+    },
+    {
+      "surface": "Menu inspector tabs",
+      "viewport": [
+        1280,
+        720
+      ],
+      "previewWidth": 510,
+      "titleX": 244,
+      "titleY": 24,
+      "titleFontSize": 30,
+      "addDishHeight": 44,
+      "addDishFontSize": 14,
+      "addDishForeground": "#174c3c",
+      "keyboard": "ArrowRight Content → Design; focus and aria-selected agree."
+    },
+    {
+      "surface": "Post inspector sheet",
+      "viewport": [
+        390,
+        844
+      ],
+      "reorderTarget": [
+        44,
+        44
+      ],
+      "removeTarget": [
+        44,
+        44
+      ],
+      "sheetHeight": 692.078125,
+      "sheetWidth": 390,
+      "documentWidth": 390
+    },
+    {
+      "surface": "Menu preview",
+      "viewport": [
+        390,
+        844
+      ],
+      "navigationHeight": 106.2109375,
+      "proofY": 378.40625,
+      "proofWidth": 332,
+      "proofHeight": 429.640625,
+      "documentWidth": 390,
+      "scope": "Before final segmented-control spacing refinement; refresh required"
+    },
+    {
+      "surface": "Library default",
+      "viewport": [
+        390,
+        844
+      ],
+      "firstCardY": 260.40625,
+      "fixture": "12 active / 2 archived dishes; 100-character name; wide supported prices"
+    },
+    {
+      "surface": "Library detail, maximum name",
+      "viewport": [
+        390,
+        844
+      ],
+      "emptyPhotoHeight": 96,
+      "nameInputY": 431.375,
+      "priceInputY": 524.375,
+      "priceInputBottom": 572.375,
+      "footerY": 743.5,
+      "closeTarget": [
+        44,
+        44
+      ],
+      "documentWidth": 390
+    }
+  ]
+}

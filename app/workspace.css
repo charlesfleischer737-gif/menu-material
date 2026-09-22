@@ -448,33 +448,96 @@
   border-radius: 4px;
 }
 .auth-dialog {
-  border-radius: 8px !important;
-  padding: 30px !important;
+  border-radius: 12px !important;
+  padding: 24px !important;
+  gap: 16px;
+  font-family: var(--font-ui);
+  background: var(--card);
+  color: var(--foreground);
   max-height: 92dvh;
   overflow-y: auto;
 }
 .auth-dialog > .plateworthy-wordmark {
-  margin-bottom: 18px;
-  font-size: 1.8rem;
+  margin: 0;
+  display: block;
+  width: 180px;
+  max-width: 180px;
 }
+.auth-dialog .menu-material-logo { width: 100%; min-width: 0; }
+.auth-dialog [data-slot="dialog-header"] { text-align: left; }
+.auth-dialog .mode-tabs[data-slot="tabs-list"] { display: grid; grid-template-columns: 1fr 1fr; gap: 4px; padding: 4px; border: 1px solid var(--border); border-radius: 8px; background: var(--muted); }
+.auth-dialog .mode-tabs [data-slot="tabs-trigger"] { border: 0; box-shadow: none; border-radius: 6px; color: var(--muted-foreground); background: transparent; }
+.auth-dialog .mode-tabs [data-slot="tabs-trigger"][data-state="active"] { color: var(--primary); background: var(--card); box-shadow: 0 1px 3px rgb(20 38 30 / 10%); }
 .auth-dialog [data-slot="dialog-title"] {
-  font-size: 1.75rem;
-  line-height: 1.15;
-  font-weight: 500;
-  letter-spacing: -0.045em;
+  font-size: 28px;
+  line-height: 1.2;
+  font-weight: 650;
+  letter-spacing: -0.035em;
 }
 .auth-dialog [data-slot="dialog-description"] {
   font-size: 0.875rem;
-  line-height: 1.6;
+  line-height: 1.5;
 }
 .auth-dialog .mode-tabs {
-  margin: 12px 0 0;
+  margin: 0;
+  height: auto;
 }
 .auth-dialog .field {
-  margin-top: 16px;
+  margin: 0;
+  gap: 8px;
+  font-size: 14px;
+}
+.auth-dialog form {
+  display: grid;
+  gap: 16px;
+}
+.auth-dialog .field input {
+  min-height: 44px;
+  font-size: 16px;
+  padding: 10px 12px;
+  border-color: var(--input);
+  border-radius: 8px;
+}
+.auth-dialog .mode-tabs button {
+  min-height: 44px;
+  height: auto;
+  font-size: 14px;
+}
+.auth-dialog .auth-submit {
+  min-height: 48px;
+  margin: 0;
+}
+.auth-optional > button {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  width: 100%;
+  min-height: 44px;
+  border: 0;
+  background: transparent;
+  color: var(--primary);
+  padding: 8px 0;
+  font-size: 14px;
+  text-align: left;
+}
+.auth-optional > button > span:first-child {
+  color: var(--muted-foreground);
+}
+.auth-optional > button > span:last-child {
+  margin-left: auto;
+  font-size: 20px;
+}
+.auth-optional > button[data-state="open"] > span:last-child {
+  transform: rotate(45deg);
+}
+.auth-optional [data-state="open"] .field {
+  margin-top: 8px;
 }
 .auth-dialog .fine {
   text-align: left;
+  margin: 0;
+  color: var(--muted-foreground);
+  font-size: 13px;
 }
 @media (min-width: 1441px) {
   .restaurant-strip,
@@ -817,7 +880,7 @@
 .restaurant-dialog {
   max-height: 90dvh;
   overflow: auto;
-  max-width: 640px !important;
+  max-width: 840px;
 }
 .style-heading {
   border-top: 1px solid var(--border);

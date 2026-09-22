@@ -14,6 +14,11 @@ assert.equal(resolveWorkspace("#library", "post", false), "library");
 assert.equal(resolveWorkspace("#explore", "studio", false), "explore");
 assert.equal(resolveWorkspace("", "explore", false), "explore");
 assert.equal(resolveWorkspace("#campaigns", "studio", false), "campaigns");
+assert.equal(
+  resolveWorkspace("#promotion/saved-campaign", "tools", false),
+  "campaigns",
+);
+assert.equal(resolveWorkspace("#promotion/", "tools", false), "tools");
 assert.equal(resolveWorkspace("", "menu", false), "menu");
 assert.equal(resolveWorkspace("#unknown", "post", false), "post");
 assert.equal(resolveWorkspace("#home", "menu", false), "studio");

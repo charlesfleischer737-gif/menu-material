@@ -136,6 +136,26 @@ export function StudioSavedLooks({
       </div>
     );
   }
+  if (!store.ready)
+    return (
+      <div className="ps2-empty-results" role="status" aria-busy={!store.error}>
+        <h3>
+          {store.error
+            ? "Your collection is unavailable"
+            : "Loading saved looks…"}
+        </h3>
+        <p>
+          {store.error
+            ? "Your saved looks haven’t been changed. Retry above, or browse the full collection."
+            : "Getting your restaurant looks and favorites."}
+        </p>
+        {store.error && (
+          <button className="cx-btn cx-secondary" onClick={onSearchAll}>
+            Browse all looks
+          </button>
+        )}
+      </div>
+    );
   if (query.trim() && resultCount === 0)
     return (
       <div className="ps2-empty-results">

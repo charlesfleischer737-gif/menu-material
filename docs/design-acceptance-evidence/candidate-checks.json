@@ -1,0 +1,308 @@
+{
+  "date": "2026-09-18",
+  "candidate": "Working tree on 657a2c6 after public/portal palette and plan-focus refinements",
+  "results": [
+    {
+      "name": "typecheck",
+      "exitCode": 0,
+      "durationMs": 2803,
+      "log": "checks/candidate-typecheck.log"
+    },
+    {
+      "name": "build",
+      "exitCode": 0,
+      "durationMs": 8097,
+      "log": "checks/candidate-build.log"
+    },
+    {
+      "name": "test-menus",
+      "exitCode": 0,
+      "durationMs": 18903,
+      "log": "checks/candidate-test-menus.log"
+    },
+    {
+      "name": "public-reading-typecheck",
+      "exitCode": 0,
+      "durationMs": 2118,
+      "log": "checks/public-reading-typecheck.log"
+    },
+    {
+      "name": "public-reading-build",
+      "exitCode": 0,
+      "durationMs": 7577,
+      "log": "checks/public-reading-build.log"
+    },
+    {
+      "name": "public-reading-lint",
+      "exitCode": 0,
+      "durationMs": 1708,
+      "log": "checks/public-reading-lint.json"
+    },
+    {
+      "name": "controls-settings-typecheck",
+      "exitCode": 0,
+      "durationMs": 4382,
+      "log": "checks/controls-settings-typecheck.log"
+    },
+    {
+      "name": "controls-settings-build",
+      "exitCode": 0,
+      "durationMs": 7581,
+      "log": "checks/controls-settings-build.log"
+    },
+    {
+      "name": "photo-finish-typecheck",
+      "exitCode": 0,
+      "durationMs": 3903,
+      "log": "checks/photo-finish-typecheck.log"
+    },
+    {
+      "name": "photo-finish-build",
+      "exitCode": 0,
+      "durationMs": 10090,
+      "log": "checks/photo-finish-build.log"
+    },
+    {
+      "name": "photo-finish-studio",
+      "exitCode": 0,
+      "durationMs": 617,
+      "log": "checks/photo-finish-studio.log"
+    },
+    {
+      "name": "photo-finish-release",
+      "exitCode": 0,
+      "durationMs": 575,
+      "log": "checks/photo-finish-release.log"
+    },
+    {
+      "name": "photo-finish-crop-pixels",
+      "exitCode": 0,
+      "durationMs": 1724,
+      "log": "checks/photo-finish-crop-pixels.log"
+    },
+    {
+      "name": "photo-finish-exports",
+      "exitCode": 0,
+      "durationMs": 28592,
+      "log": "checks/photo-finish-exports.log"
+    },
+    {
+      "name": "photo-finish-final-typecheck",
+      "exitCode": 0,
+      "durationMs": 2782,
+      "log": "checks/photo-finish-final-typecheck.log"
+    },
+    {
+      "name": "photo-finish-final-build",
+      "exitCode": 0,
+      "durationMs": 9265,
+      "log": "checks/photo-finish-final-build.log"
+    },
+    {
+      "name": "photo-finish-final-lint",
+      "exitCode": 1,
+      "durationMs": 13205,
+      "log": "checks/photo-finish-final-lint.json"
+    },
+    {
+      "name": "style-discovery-final-typecheck",
+      "exitCode": 0,
+      "durationMs": 3201,
+      "log": "checks/style-discovery-final-typecheck.log"
+    },
+    {
+      "name": "style-discovery-final-build",
+      "exitCode": 0,
+      "durationMs": 9951,
+      "log": "checks/style-discovery-final-build.log"
+    },
+    {
+      "name": "style-discovery-final-lint",
+      "exitCode": 1,
+      "durationMs": 14371,
+      "log": "checks/style-discovery-final-lint.json"
+    },
+    {
+      "name": "more-tools-final-typecheck",
+      "exitCode": 0,
+      "durationMs": 2440,
+      "log": "checks/more-tools-final-typecheck.log"
+    },
+    {
+      "name": "more-tools-final-build",
+      "exitCode": 0,
+      "durationMs": 9623,
+      "log": "checks/more-tools-final-build.log"
+    },
+    {
+      "name": "more-tools-final-lint",
+      "exitCode": 1,
+      "durationMs": 13815,
+      "log": "checks/more-tools-final-lint.json"
+    },
+    {
+      "name": "admin-final-typecheck",
+      "exitCode": 0,
+      "durationMs": 6146,
+      "log": "checks/admin-final-typecheck.log"
+    },
+    {
+      "name": "admin-final-build",
+      "exitCode": 0,
+      "durationMs": 10027,
+      "log": "checks/admin-final-build.log"
+    },
+    {
+      "name": "admin-final-lint",
+      "exitCode": 1,
+      "durationMs": 14465,
+      "log": "checks/admin-final-lint.json"
+    },
+    {
+      "name": "campaigns-final-typecheck",
+      "exitCode": 0,
+      "durationMs": 2950,
+      "log": "checks/campaigns-final-typecheck.log"
+    },
+    {
+      "name": "campaigns-final-build",
+      "exitCode": 0,
+      "durationMs": 9913,
+      "log": "checks/campaigns-final-build.log"
+    },
+    {
+      "name": "campaigns-final-lint",
+      "exitCode": 1,
+      "durationMs": 13743,
+      "log": "checks/campaigns-final-lint.json"
+    },
+    {
+      "name": "campaign-navigation",
+      "exitCode": 0,
+      "log": "checks/campaign-navigation.log"
+    },
+    {
+      "name": "test",
+      "exitCode": 0,
+      "durationMs": 7152,
+      "log": "checks/candidate-test.log"
+    },
+    {
+      "name": "staff-batch-final-typecheck",
+      "exitCode": 0,
+      "durationMs": 3358,
+      "log": "checks/staff-batch-final-typecheck.log"
+    },
+    {
+      "name": "staff-batch-final-lint",
+      "exitCode": 1,
+      "durationMs": 15193,
+      "log": "checks/staff-batch-final-lint.json"
+    },
+    {
+      "name": "staff-batch-final-build",
+      "exitCode": 0,
+      "durationMs": 7608,
+      "log": "checks/staff-batch-final-build.log"
+    },
+    {
+      "name": "shared-interface-tests",
+      "exitCode": 0,
+      "durationMs": 22840,
+      "log": "checks/shared-interface-tests.log"
+    },
+    {
+      "name": "shared-interface-typecheck",
+      "exitCode": 0,
+      "durationMs": 2370,
+      "log": "checks/shared-interface-typecheck.log"
+    },
+    {
+      "name": "shared-interface-lint",
+      "exitCode": 1,
+      "durationMs": 13886,
+      "log": "checks/shared-interface-lint.json"
+    },
+    {
+      "name": "shared-interface-build",
+      "exitCode": 0,
+      "durationMs": 8136,
+      "log": "checks/shared-interface-build.log"
+    },
+    {
+      "name": "controls-final-typecheck",
+      "exitCode": 0,
+      "durationMs": 4143,
+      "log": "checks/controls-final-typecheck.log"
+    },
+    {
+      "name": "controls-final-build",
+      "exitCode": 0,
+      "durationMs": 9520,
+      "log": "checks/controls-final-build.log"
+    },
+    {
+      "name": "controls-final-lint",
+      "exitCode": 1,
+      "durationMs": 13710,
+      "log": "checks/controls-final-lint.json"
+    },
+    {
+      "name": "controls-final-tests",
+      "exitCode": 0,
+      "durationMs": 22620,
+      "log": "checks/controls-final-tests.log"
+    },
+    {
+      "name": "targets-final-typecheck",
+      "exitCode": 0,
+      "durationMs": 2473,
+      "log": "checks/targets-final-typecheck.log"
+    },
+    {
+      "name": "targets-final-build",
+      "exitCode": 0,
+      "durationMs": 11824,
+      "log": "checks/targets-final-build.log"
+    },
+    {
+      "name": "targets-final-lint",
+      "exitCode": 1,
+      "durationMs": 16148,
+      "log": "checks/targets-final-lint.json"
+    },
+    {
+      "name": "targets-final-tests",
+      "exitCode": 0,
+      "durationMs": 27195,
+      "log": "checks/targets-final-tests.log"
+    },
+    {
+      "name": "palette-final-typecheck",
+      "exitCode": 0,
+      "durationMs": 3008,
+      "log": "checks/palette-final-typecheck.log"
+    },
+    {
+      "name": "palette-final-build",
+      "exitCode": 0,
+      "durationMs": 10411,
+      "log": "checks/palette-final-build.log"
+    },
+    {
+      "name": "palette-final-lint",
+      "exitCode": 1,
+      "durationMs": 14847,
+      "log": "checks/palette-final-lint.json"
+    },
+    {
+      "name": "palette-final-tests",
+      "exitCode": 0,
+      "durationMs": 22131,
+      "log": "checks/palette-final-tests.log"
+    }
+  ],
+  "sourceManifest": "source-manifest.json",
+  "sourceIdentity": "5ed62e23e15a",
+  "note": "Current customer-menu navigation candidate typecheck, production build and full application+menu suites pass. Lint remains 84 baseline errors and 1698 warnings with no unmatched error diagnostics."
+}
