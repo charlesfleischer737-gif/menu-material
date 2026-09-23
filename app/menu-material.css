@@ -124,7 +124,7 @@
   font-size: 0.8125rem;
   color: var(--pw-muted);
 }
-/* Phone photo vs. finished style: drag, keyboard, or pick a dish and style. */
+/* Phone photo vs. studio result: drag or use the keyboard. */
 .pw-compare-block {
   padding-bottom: clamp(40px, 6vw, 64px);
   scroll-margin-top: 24px;
@@ -155,14 +155,6 @@
 .pw-compare-before {
   z-index: 1;
   clip-path: inset(0 calc(100% - var(--pos)) 0 0);
-}
-.pw-compare-after.is-swapped {
-  animation: pw-compare-fade 0.35s ease;
-}
-@keyframes pw-compare-fade {
-  from {
-    opacity: 0;
-  }
 }
 .pw-compare-tag {
   position: absolute;
@@ -227,82 +219,9 @@
     0 0 0 3px var(--workspace-focus),
     0 6px 18px rgb(0 0 0 / 22%);
 }
-.pw-compare-bar {
-  display: flex;
-  flex-wrap: wrap;
-  justify-content: center;
-  align-items: center;
-  gap: 20px 32px;
-  margin-top: 26px;
-}
-.pw-compare-dishes {
-  display: inline-flex;
-  padding: 3px;
-  border-radius: 999px;
-  background: var(--workspace-stage);
-}
-.pw-compare-dishes button {
-  min-height: 38px;
-  padding: 0 18px;
-  border: 0;
-  border-radius: 999px;
-  background: none;
-  color: var(--pw-muted);
-  font: inherit;
-  font-size: 0.875rem;
-  font-weight: 500;
-  cursor: pointer;
-  transition:
-    background 0.15s,
-    color 0.15s;
-}
-.pw-compare-dishes button[aria-checked="true"] {
-  background: var(--workspace-surface);
-  color: var(--pw-ink);
-  box-shadow: 0 1px 3px rgb(0 0 0 / 12%);
-}
-.pw-compare-swatches {
-  display: flex;
-  gap: 8px;
-}
-.pw-compare-swatch {
-  width: 44px;
-  height: 44px;
-  padding: 5px;
-  border: 0;
-  border-radius: 50%;
-  background: none;
-  cursor: pointer;
-  transition: box-shadow 0.15s;
-}
-.pw-compare-swatch img {
-  display: block;
-  width: 34px;
-  height: 34px;
-  border-radius: 50%;
-  object-fit: cover;
-  box-shadow: 0 0 0 1px var(--pw-line);
-}
-.pw-compare-swatch[aria-checked="true"] {
-  box-shadow: 0 0 0 2px var(--pw-ink);
-}
-.pw-compare-dishes button:focus-visible,
-.pw-compare-swatch:focus-visible {
-  outline: 2px solid var(--workspace-focus);
-  outline-offset: 2px;
-}
 @media (max-width: 760px) {
   .pw-compare {
     aspect-ratio: 4 / 5;
-  }
-  .pw-compare-bar {
-    flex-direction: column;
-    gap: 16px;
-  }
-}
-@media (prefers-reduced-motion: reduce) {
-  .pw-compare-after.is-swapped {
-    animation: none;
   }
 }
 .pw-section-heading h2,
