@@ -14,7 +14,7 @@ import {
   QrCode,
   Upload,
 } from "lucide-react";
-import { api, downloadBlob, type Row } from "@/lib/client";
+import { api, dishCount, downloadBlob, type Row } from "@/lib/client";
 import {
   menuContentIssues,
   menuDocumentSchema,
@@ -88,8 +88,8 @@ export function MenuDesignPicker({
               </button>
             </div>
             <span>
-              {menu.sections.reduce((n, s) => n + s.items.length, 0)} dishes ·{" "}
-              {menu.purpose}
+              {dishCount(menu.sections.reduce((n, s) => n + s.items.length, 0))}{" "}
+              · {menu.purpose}
             </span>
           </div>
           <div className="md-design-grid">

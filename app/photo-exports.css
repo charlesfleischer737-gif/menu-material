@@ -139,11 +139,6 @@
 .cx-export-dialog > h2 {
   padding-right: 28px;
 }
-.cx-sidebar-bottom > button.active {
-  background: var(--workspace-action);
-  color: var(--workspace-surface);
-  font-weight: 700;
-}
 @media (max-width: 760px) {
   .cx-export-workspace {
     grid-template-columns: 1fr;

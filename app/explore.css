@@ -21,26 +21,37 @@
   align-items: center;
   gap: 8px;
   width: min(420px, 50%);
-  min-height: 48px;
-  padding: 0 12px;
-  border: 1px solid var(--workspace-control);
-  border-radius: 8px;
-  background: var(--workspace-surface);
+  min-height: 44px;
+  padding: 0 4px 0 13px;
+  border: 1px solid transparent;
+  border-radius: var(--radius-control);
+  background: var(--fill);
   color: var(--workspace-muted);
+  transition:
+    background-color var(--duration-fast) var(--ease),
+    border-color var(--duration-fast) var(--ease),
+    box-shadow var(--duration-fast) var(--ease);
+}
+.ex-search > svg {
+  flex: none;
+  width: 16px;
+  height: 16px;
 }
 .ex-search input {
   width: 100%;
   min-width: 0;
-  height: 46px;
+  height: 42px;
   border: 0;
   background: transparent;
-  font-size: 16px;
+  font: 400 var(--text-callout) / 1.3 var(--font-ui);
   color: var(--workspace-ink);
   outline: none;
 }
 .ex-search:focus-within {
-  outline: 2px solid var(--workspace-action);
-  outline-offset: 2px;
+  border-color: var(--workspace-focus);
+  background: var(--workspace-surface);
+  box-shadow: 0 0 0 3px
+    color-mix(in srgb, var(--workspace-focus) 22%, transparent);
 }
 .cx-app .ex-search input:focus-visible {
   outline: none;
@@ -48,14 +59,14 @@
 .ex-search button {
   display: grid;
   place-items: center;
-  flex: 0 0 44px;
-  width: 44px;
-  height: 44px;
+  flex: 0 0 36px;
+  width: 36px;
+  height: 36px;
   padding: 8px;
   border: 0;
-  border-radius: 8px;
+  border-radius: var(--radius-pill);
   background: transparent;
-  color: var(--workspace-ink);
+  color: var(--workspace-muted);
 }
 .ex-search-summary {
   margin: -8px 0 16px;
@@ -63,10 +74,10 @@
   font-size: 14px;
 }
 .ex-empty {
-  padding: 48px 24px;
+  padding: 56px 24px;
   text-align: center;
-  border: 1px dashed var(--workspace-line);
-  border-radius: 12px;
+  border-radius: var(--radius-card);
+  background: var(--gray-100);
 }
 .ex-empty h2 {
   font-size: 24px;
@@ -77,16 +88,16 @@
   color: var(--workspace-muted);
 }
 .ex-header h1 {
-  font-family: Georgia, "Times New Roman", serif;
+  font-family: var(--font-display);
   font-size: clamp(2.25rem, 3.2vw, 3rem);
-  font-weight: 400;
-  letter-spacing: -0.04em;
+  font-weight: 700;
+  letter-spacing: var(--tracking-display);
   line-height: 1.1;
 }
 .ex-grid {
   display: grid;
   grid-template-columns: repeat(4, minmax(0, 1fr));
-  gap: clamp(24px, 2.75vw, 44px);
+  gap: clamp(16px, 2vw, 28px);
 }
 .ex-tile {
   position: relative;
@@ -97,36 +108,97 @@
   width: 100%;
   padding: 0;
   border: 0;
-  border-radius: 12px;
+  border-radius: var(--radius-card);
   background: var(--workspace-surface);
   text-align: left;
   isolation: isolate;
-  transition: box-shadow 400ms ease;
+  transition: box-shadow var(--duration-slow) var(--ease);
 }
 .cx-app .ex-tile {
   cursor: zoom-in;
 }
+/* Tiles shimmer until their photo arrives, then fade it in. */
 .ex-tile-image {
   display: block;
   flex-shrink: 0;
   aspect-ratio: 1;
   overflow: hidden;
-  border-radius: 12px;
-  background: var(--workspace-canvas);
+  border-radius: var(--radius-card);
+  background: linear-gradient(
+      100deg,
+      var(--gray-100) 40%,
+      var(--gray-50) 50%,
+      var(--gray-100) 60%
+    )
+    0 0 / 300% 100%;
+  animation: ex-shimmer 1.4s linear infinite;
+}
+.ex-tile-image[data-loaded] {
+  background: var(--gray-100);
+  animation: none;
+}
+@keyframes ex-shimmer {
+  from {
+    background-position: 100% 0;
+  }
+  to {
+    background-position: 0 0;
+  }
 }
 .ex-tile img {
   display: block;
   width: 100%;
   height: 100%;
   object-fit: cover;
-  transition: transform 650ms cubic-bezier(0.2, 0.65, 0.3, 1);
+  opacity: 0;
+  transition:
+    opacity var(--duration-slow) var(--ease),
+    transform 600ms var(--ease);
+}
+.ex-tile-image[data-loaded] img {
+  opacity: 1;
+}
+/* The style name sits on the photo: on hover with a pointer, always on touch. */
+.ex-tile-name {
+  position: absolute;
+  inset: auto 0 0;
+  z-index: 1;
+  padding: 40px 14px 12px;
+  border-radius: 0 0 var(--radius-card) var(--radius-card);
+  background: linear-gradient(to top, rgb(0 0 0 / 52%), transparent);
+  color: #fff;
+  font-size: var(--text-footnote);
+  font-weight: 600;
+  line-height: 1.3;
+  text-shadow: 0 1px 2px rgb(0 0 0 / 25%);
+  pointer-events: none;
 }
 @media (hover: hover) and (pointer: fine) {
+  .ex-tile-name {
+    opacity: 0;
+    transform: translateY(4px);
+    transition:
+      opacity var(--duration) var(--ease),
+      transform var(--duration) var(--ease);
+  }
+  .ex-tile:is(:hover, :focus-visible) .ex-tile-name {
+    opacity: 1;
+    transform: none;
+  }
   .ex-tile:hover {
     box-shadow: 0 14px 30px -20px rgb(0 0 0 / 35%);
   }
   .ex-tile:hover img {
     transform: scale(1.018);
+  }
+}
+@media (prefers-reduced-motion: reduce) {
+  .ex-tile-image {
+    animation: none;
+  }
+  .ex-tile img,
+  .ex-tile-name {
+    transition: none;
   }
 }
 .ex-detail[data-slot="dialog-content"] {
@@ -140,7 +212,7 @@
   overscroll-behavior: contain;
   padding: 0;
   border: 0;
-  border-radius: 12px;
+  border-radius: var(--radius-card);
   color: var(--workspace-ink);
   background: var(--workspace-surface);
   font-family: var(--font-ui);
@@ -156,7 +228,7 @@
 .ex-detail-photo {
   display: flex;
   align-items: center;
-  background: #f5f5f3;
+  background: var(--gray-100);
   min-width: 0;
 }
 .ex-detail-photo img {
@@ -177,10 +249,10 @@
 }
 .ex-detail-title {
   margin: 0;
-  font-family: Georgia, "Times New Roman", serif;
+  font-family: var(--font-display);
   font-size: clamp(2rem, 3vw, 2.75rem);
-  font-weight: 400;
-  letter-spacing: -0.045em;
+  font-weight: 700;
+  letter-spacing: var(--tracking-display);
   line-height: 1.12;
 }
 .ex-description {
@@ -227,7 +299,7 @@
   min-height: 48px;
   padding: 12px 16px;
   border: 0;
-  border-radius: 8px;
+  border-radius: var(--radius-pill);
   background: var(--workspace-action);
   color: white;
   font: 600 14px/1.4 var(--font-ui);
@@ -240,9 +312,8 @@
   background: var(--workspace-action-pressed);
 }
 .ex-try:disabled {
-  background: var(--workspace-disabled);
-  color: var(--workspace-muted);
-  cursor: default;
+  opacity: 0.35;
+  cursor: not-allowed;
 }
 .ex-detail-action {
   display: grid;
@@ -269,11 +340,14 @@
   right: 14px;
   display: grid;
   place-items: center;
-  width: 44px;
-  height: 44px;
+  width: 40px;
+  height: 40px;
   border: 0;
-  border-radius: 8px;
-  background: var(--workspace-surface);
+  border-radius: 50%;
+  background: var(--glass);
+  -webkit-backdrop-filter: var(--glass-blur);
+  backdrop-filter: var(--glass-blur);
+  box-shadow: 0 0 0 0.5px rgb(0 0 0 / 6%);
   color: var(--workspace-ink);
   cursor: pointer;
 }
@@ -301,7 +375,7 @@
   .ex-detail[data-slot="dialog-content"] {
     width: calc(100vw - 24px);
     max-height: calc(100dvh - 24px);
-    border-radius: 12px;
+    border-radius: var(--radius-card);
   }
   .ex-detail-scroll {
     grid-template-columns: minmax(0, 1fr);

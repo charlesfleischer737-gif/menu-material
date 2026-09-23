@@ -1,97 +1,5 @@
 /* Launch clarity, recovery and accessible saved-work controls. */
-.pw-honeypot {
-  position: absolute;
-  left: -10000px;
-  width: 1px;
-  height: 1px;
-  overflow: hidden;
-}
-.pw-footer-links {
-  display: flex;
-  flex-wrap: wrap;
-  gap: 8px 22px;
-  font-size: 0.875rem;
-}
-.pw-footer-links a,
-.pw-information a,
 .auth-dialog .fine a {
-  text-decoration: underline;
-  text-underline-offset: 4px;
-}
-.pw-footer-links a {
-  padding-block: 12px;
-}
-.pw-information {
-  --reading-measure: 62ch;
-  width: min(800px, calc(100% - 32px));
-  margin: 32px auto 64px;
-}
-.pw-information h1 {
-  font-size: clamp(1.75rem, 3.2vw, 2.5rem);
-  line-height: 1.15;
-  letter-spacing: -0.04em;
-  margin: 12px 0 16px;
-}
-.pw-information-intro {
-  font-size: 1rem;
-  line-height: 1.6;
-  max-width: 70ch;
-  color: var(--workspace-muted);
-}
-.pw-information section {
-  margin-top: 32px;
-  border-top: 1px solid var(--workspace-line);
-  padding-top: 24px;
-}
-.pw-information h2 {
-  font-size: 1.45rem;
-  margin-bottom: 16px;
-  scroll-margin-top: 24px;
-}
-.pw-information h2:focus-visible {
-  outline: 2px solid var(--workspace-focus);
-  outline-offset: 4px;
-}
-.pw-information-nav {
-  margin-block: 24px;
-  padding: 16px;
-  border: 1px solid var(--workspace-line);
-  border-radius: 12px;
-  background: var(--workspace-canvas);
-}
-.pw-information-nav > p {
-  margin: 0 0 8px;
-  font-size: 14px;
-  font-weight: 650;
-}
-.pw-information-nav ul {
-  display: grid;
-  grid-template-columns: repeat(2, minmax(0, 1fr));
-  gap: 8px 24px;
-  margin: 0;
-  padding: 0;
-  list-style: none;
-}
-.pw-information-nav a {
-  display: flex;
-  align-items: center;
-  min-height: 44px;
-  padding-block: 8px;
-  color: var(--workspace-action);
-  font-size: 14px;
-  line-height: 1.5;
-}
-.pw-information section p {
-  margin: 12px 0;
-  line-height: 1.65;
-  max-width: var(--reading-measure);
-}
-.pw-info-back {
-  display: inline-flex;
-  align-items: center;
-  min-height: 44px;
-  padding-block: 12px;
-  font-size: 0.875rem;
   text-decoration: underline;
   text-underline-offset: 4px;
 }
@@ -128,18 +36,18 @@
 .cx-draft-recovery button {
   min-height: 44px;
   padding: 10px 14px;
-  border: 1px solid #416549;
+  border: 1px solid var(--gray-900);
   border-radius: 10px;
-  color: #244b35;
+  color: var(--gray-900);
   background: white;
   font-weight: 600;
 }
 .cx-draft-recovery .cx-button {
-  background: #24533c;
+  background: var(--gray-900);
   color: white;
 }
 .cx-saved-card {
-  border: 1px solid #d9e0d3;
+  border: 1px solid var(--gray-300);
   border-radius: 12px;
   overflow: hidden;
   background: white;
@@ -164,7 +72,7 @@
   font-size: 0.8125rem;
   text-decoration: underline;
   text-underline-offset: 3px;
-  color: #285239;
+  color: var(--gray-900);
 }
 .cx-draft-rename {
   display: flex;
@@ -180,7 +88,7 @@
 }
 .cx-analysis-retry {
   padding: 14px 18px;
-  background: #f5f2e8;
+  background: var(--gray-200);
   border-radius: 12px;
   margin-block: 16px;
   line-height: 1.5;
@@ -200,46 +108,17 @@
 .customer-menu.menu-appearance-dark .dish-title b {
   color: #f5f4e7;
 }
-.pw-site :is(button, a, input, select):focus-visible,
 .cx-tool :is(button, a, input, select):focus-visible {
   outline: 2px solid var(--workspace-focus);
   outline-offset: 3px;
 }
 @media (max-width: 600px) {
-  .pw-header {
-    gap: 10px;
-  }
-  .pw-header nav {
-    gap: 4px;
-  }
-  .pw-header nav button {
-    padding-inline: 9px;
-  }
-  .pw-header button.pw-header-cta {
-    max-width: 120px;
-    white-space: normal;
-    height: auto;
-    min-height: 44px;
-    line-height: 1.4;
-    padding: 8px 12px;
-  }
-  .pw-header .menu-material-wordmark {
-    font-size: 1.35rem;
-  }
-  .pw-header .pw-login {
-    padding-inline: 8px;
-    white-space: nowrap;
-  }
   .cx-draft-filters {
     grid-template-columns: 1fr;
     gap: 10px;
   }
-  .pw-information {
-    margin-top: 32px;
-  }
 }
 @media (prefers-reduced-motion: reduce) {
-  .pw-site *,
   .cx-tool *,
   .ps-render * {
     animation-duration: 0.01ms !important;
@@ -254,30 +133,26 @@
   min-height: 100vh;
   background: var(--workspace-canvas);
 }
-.cx-guest .pw-header {
-  position: static;
-}
 .cx-guest .cx-main {
   max-width: 1600px;
   margin: auto;
 }
-.cx-guest .pw-header nav {
-  display: flex;
-  align-items: center;
-  gap: 22px;
+/* The header lines up with the studio column below it. */
+.cx-guest .pw-header-inner {
+  max-width: 1220px;
+  padding-inline: 30px;
 }
-.cx-guest .pw-header nav a,
-.cx-guest .pw-header nav button {
-  display: inline-flex;
+.cx-guest .pw-brand {
+  width: 150px;
 }
 .cx-guest-free {
   display: inline-flex;
   gap: 6px;
   align-items: center;
-  border-radius: 100px;
-  background: var(--workspace-canvas);
-  padding: 9px 13px;
-  color: var(--workspace-ink);
+  border-radius: var(--radius-pill);
+  background: var(--green-soft);
+  padding: 6px 12px;
+  color: var(--green);
   font-size: 13px;
   font-weight: 600;
 }
@@ -289,149 +164,33 @@
   padding: 12px 0 24px;
 }
 .cx-guest-heading h1 {
-  font:
-    500 clamp(30px, 4vw, 44px)/1.2 Georgia,
-    serif;
+  font: 700 clamp(30px, 4vw, 44px) / 1.15 var(--font-display);
+  letter-spacing: var(--tracking-display);
   margin: 8px 0;
 }
 .cx-guest-heading p {
   color: var(--workspace-muted);
   max-width: 650px;
 }
-.pw-plan-grid {
-  display: grid;
-  grid-template-columns: repeat(2, minmax(0, 1fr));
-  gap: 24px;
-  margin: 24px 0;
-}
-.pw-plan-card {
-  display: flex;
-  flex-direction: column;
-  padding: 24px;
-  border: 1px solid var(--workspace-line);
-  border-radius: var(--radius-panel);
-  background: var(--workspace-surface);
-}
-.pw-plan-card.is-pro {
-  border-color: var(--workspace-control);
-  background: var(--workspace-canvas);
-}
-.pw-plan-card h2 {
-  font:
-    500 32px/1.2 Georgia,
-    serif;
-  margin: 8px 0;
-}
-.pw-plan-card > .pw-eyebrow {
-  margin: 0 0 8px;
-}
-.pw-plan-card .pw-plan-price {
-  font-size: 42px;
-  color: var(--workspace-ink);
-  font-weight: 650;
-  margin: 8px 0;
-  line-height: 1.2;
-  letter-spacing: -1.4px;
-}
-.pw-plan-price span {
-  font: 400 15px/1.5 sans-serif;
-  letter-spacing: normal;
-  margin-left: 5px;
-}
-.pw-plan-card ul {
-  padding-left: 18px;
-  margin: 16px 0 24px;
-  flex: 1;
-}
-.pw-plan-card li {
-  margin-bottom: 8px;
-  line-height: 1.5;
-}
-.pw-plan-card li:last-child {
-  margin-bottom: 0;
-}
-.pw-plan-card .cx-btn {
-  width: 100%;
-  min-height: 48px;
-  justify-content: center;
-  text-decoration: none;
-}
-.pw-plan-action {
-  display: grid;
-  gap: 12px;
-  margin-top: auto;
-}
-.pw-plan-card .fine {
-  margin: 0;
-  color: var(--workspace-muted);
-  font-size: 14px;
-}
-.pw-plans-dialog {
-  display: flex;
-  flex-direction: column;
-  gap: 0;
-  width: min(940px, calc(100vw - 24px));
-  max-width: 940px !important;
-  max-height: 90dvh;
-  overflow: hidden;
-  padding: 0;
-}
-.pw-plans-dialog > [data-slot="dialog-header"] {
-  flex: 0 0 auto;
-  padding: 20px 64px 16px 24px;
-  border-bottom: 1px solid var(--workspace-line);
-  text-align: left;
-}
-.pw-plans-body {
-  flex: 1;
-  min-height: 0;
-  overflow-y: auto;
-  padding: 0 24px 24px;
-}
-.pw-plans-body .pw-plan-grid {
-  margin-block: 16px;
-}
-.pw-plan-current {
-  padding: 20px;
-  border: 1px solid var(--workspace-line);
-  border-radius: 12px;
-}
-.pw-plan-current p {
-  margin: 12px 0;
-}
-.cx-pilot .cx-link {
-  grid-column: 1 / -1;
-  padding: 8px 0 0;
-  color: inherit;
-  font-size: 14px;
+@media (max-width: 760px) {
+  .cx-guest .pw-header-inner {
+    padding-inline: 20px;
+  }
+  /* The guest header has no menu button, so its links stay visible. */
+  .cx-guest .pw-nav {
+    gap: 20px;
+  }
+  .cx-guest .pw-nav > :is(a, .pw-login) {
+    display: inline-flex;
+  }
+  .cx-guest .pw-brand {
+    width: 136px;
+  }
 }
 @media (max-width: 650px) {
-  .pw-plan-grid {
-    grid-template-columns: 1fr;
-    gap: 16px;
-  }
-  .pw-plan-card {
-    padding: 16px;
-  }
-  .pw-plans-dialog {
-    padding: 0;
-  }
-  .pw-plans-dialog > [data-slot="dialog-header"] {
-    padding-left: 16px;
-  }
-  .pw-plans-body {
-    padding-inline: 16px;
-  }
-  .cx-guest .pw-header {
-    padding: 16px;
-    gap: 12px;
-  }
-  .cx-guest .pw-header nav {
-    gap: 12px;
-  }
   .cx-guest-free {
     font-size: 12px;
-    padding: 7px;
+    padding: 6px 10px;
   }
   .cx-guest-heading {
     align-items: flex-start;

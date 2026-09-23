@@ -4,7 +4,9 @@ import {
   ArrowRight,
   BookOpen,
   Camera,
+  ChevronsUpDown,
   Compass,
+  CreditCard,
   Images,
   Megaphone,
   Settings,
@@ -13,6 +15,14 @@ import {
   ShieldCheck,
   Sparkles,
 } from "lucide-react";
+import {
+  DropdownMenu,
+  DropdownMenuContent,
+  DropdownMenuItem,
+  DropdownMenuLabel,
+  DropdownMenuSeparator,
+  DropdownMenuTrigger,
+} from "@/components/ui/dropdown-menu";
 import { api, type Row } from "@/lib/client";
 import {
   hasSavedContent,
@@ -71,8 +81,7 @@ export default function CoreWorkspace({
     [menuSeed, setMenuSeed] = useState<Row | null>(null),
     [postSeed, setPostSeed] = useState<Row | null>(null),
     [legacySeed, setLegacySeed] = useState<Row | null>(null),
-    [visited, setVisited] = useState<string[]>([]),
-    [moreOpen, setMoreOpen] = useState(false);
+    [visited, setVisited] = useState<string[]>([]);
   const explorePosition = useRef(0);
   const exploreReturnStyle = useRef<string | null>(null);
   useEffect(() => {
@@ -117,7 +126,6 @@ export default function CoreWorkspace({
   }, [preferenceKey, state.user.role]);
   function navigate(next: string) {
     if (view === "explore") explorePosition.current = window.scrollY;
-    setMoreOpen(false);
     if (location.hash !== "#" + next) history.pushState(null, "", "#" + next);
     if (next !== "admin") rememberPreference(preferenceKey, next);
     setView(next);
@@ -188,6 +196,70 @@ export default function CoreWorkspace({
     post: "Post",
     menu: "Menus",
   };
+  const pro = state.billing?.plan === "pro";
+  const restaurantName = state.restaurant?.name || "Your restaurant";
+  const accountMenu = (
+    <DropdownMenu>
+      <DropdownMenuTrigger asChild>
+        <button className="cx-account" aria-label="Account and settings">
+          <span className="cx-avatar" aria-hidden="true">
+            {restaurantName.trim().charAt(0).toUpperCase() || "M"}
+          </span>
+          <span className="cx-account-name">{restaurantName}</span>
+          <ChevronsUpDown
+            className="cx-account-chevron"
+            size={16}
+            aria-hidden="true"
+          />
+        </button>
+      </DropdownMenuTrigger>
+      <DropdownMenuContent
+        className="cx-workspace-popover cx-account-menu"
+        align="start"
+        side="top"
+        sideOffset={8}
+      >
+        <DropdownMenuLabel className="cx-account-label">
+          <strong>{restaurantName}</strong>
+          <span>{state.user.email}</span>
+        </DropdownMenuLabel>
+        <DropdownMenuItem className="cx-account-credits" onSelect={onPlans}>
+          <Sparkles size={16} aria-hidden="true" />
+          {state.remaining} images left · {pro ? "Pro" : "Free"}
+        </DropdownMenuItem>
+        <DropdownMenuSeparator />
+        <DropdownMenuItem onSelect={onSettings}>
+          <Settings size={16} aria-hidden="true" />
+          Restaurant look & settings
+        </DropdownMenuItem>
+        <DropdownMenuItem onSelect={onPlans}>
+          <CreditCard size={16} aria-hidden="true" />
+          {pro ? "Manage plan" : "Plans"}
+        </DropdownMenuItem>
+        <DropdownMenuItem
+          onSelect={() => navigate("tools")}
+          aria-current={view === "tools" ? "page" : undefined}
+        >
+          <SlidersHorizontal size={16} aria-hidden="true" />
+          More tools
+        </DropdownMenuItem>
+        {state.user.role === "admin" && (
+          <DropdownMenuItem
+            onSelect={() => navigate("admin")}
+            aria-current={view === "admin" ? "page" : undefined}
+          >
+            <ShieldCheck size={16} aria-hidden="true" />
+            Administration
+          </DropdownMenuItem>
+        )}
+        <DropdownMenuSeparator />
+        <DropdownMenuItem onSelect={onLogout}>
+          <LogOut size={16} aria-hidden="true" />
+          Sign out
+        </DropdownMenuItem>
+      </DropdownMenuContent>
+    </DropdownMenu>
+  );
   return (
     <div className="cx-app">
       <a className="cx-skip" href="#creation-main">
@@ -202,46 +274,9 @@ export default function CoreWorkspace({
           >
             <Brand />
           </button>
-          <details
-            className="cx-mobile-tools"
-            open={moreOpen}
-            onToggle={(e) => setMoreOpen(e.currentTarget.open)}
-          >
-            <summary
-              role="button"
-              aria-expanded={moreOpen}
-              aria-label="More workspace options"
-            >
-              <SlidersHorizontal size={20} />
-            </summary>
-            <div>
-              <span>{state.remaining} images remaining</span>
-              <button onClick={onPlans}>
-                {state.billing?.plan === "pro"
-                  ? "Pro · Manage plan"
-                  : "Free · View plans"}
-              </button>
-              <button onClick={onSettings}>Restaurant look & settings</button>
-              <button
-                onClick={() => navigate("tools")}
-                aria-current={view === "tools" ? "page" : undefined}
-              >
-                More tools
-              </button>
-              {state.user.role === "admin" && (
-                <button
-                  onClick={() => navigate("admin")}
-                  aria-current={view === "admin" ? "page" : undefined}
-                >
-                  Administration
-                </button>
-              )}
-              <button onClick={onLogout}>Sign out</button>
-            </div>
-          </details>
+          <div className="cx-mobile-account">{accountMenu}</div>
         </div>
-        <p className="cx-sidebar-label">YOUR CREATIVE KITCHEN</p>
-        <nav aria-label="Workspace">
+        <nav className="cx-nav" aria-label="Workspace">
           {nav.map(([id, label, Icon]) => (
             <button
               key={id}
@@ -263,46 +298,12 @@ export default function CoreWorkspace({
           ))}
         </nav>
         <div className="cx-sidebar-bottom">
-          <div className="cx-pilot">
-            <Sparkles size={17} />
-            <b>{state.remaining} images remaining</b>
-            <small>
-              {state.billing?.plan === "pro"
-                ? "Pro · Monthly allowance"
-                : "Free · One-time allowance"}
-            </small>
-            <button className="cx-link" onClick={onPlans}>
-              {state.billing?.plan === "pro"
-                ? "Manage plan"
-                : state.billing?.enabled
-                  ? "Get Pro · $9.99/month"
-                  : "Pro coming soon · Plans"}
-            </button>
-          </div>
-          <button onClick={onSettings}>
-            <Settings size={18} />
-            Restaurant look & settings
+          <button className="cx-credits" onClick={onPlans}>
+            <Sparkles size={15} aria-hidden="true" />
+            <span>{state.remaining} images left</span>
+            <span className="cx-plan-chip">{pro ? "Pro" : "Free"}</span>
           </button>
-          <button
-            onClick={() => navigate("tools")}
-            aria-current={view === "tools" ? "page" : undefined}
-          >
-            <SlidersHorizontal size={18} />
-            More tools
-          </button>
-          {state.user.role === "admin" && (
-            <button
-              onClick={() => navigate("admin")}
-              aria-current={view === "admin" ? "page" : undefined}
-            >
-              <ShieldCheck size={18} />
-              Administration
-            </button>
-          )}
-          <button onClick={onLogout}>
-            <LogOut size={18} />
-            Sign out
-          </button>
+          {accountMenu}
         </div>
       </aside>
       <div className={`cx-body${view === "explore" ? " cx-explore-body" : ""}`}>
@@ -425,9 +426,6 @@ export default function CoreWorkspace({
           )}
           {view === "admin" && <div className="cx-legacy">{adminContent}</div>}
         </main>
-        <footer className="cx-footer">
-          Made for the people who make good food.
-        </footer>
       </div>
     </div>
   );

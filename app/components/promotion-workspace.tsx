@@ -1260,7 +1260,7 @@ export default function PromotionWorkspace({
                     Suggest caption
                   </Button>
                   <div className="hosted-special-preview">
-                    <span className="eyebrow">HOSTED MENU PREVIEW</span>
+                    <span className="eyebrow">Hosted menu preview</span>
                     <div>
                       <strong>{form.title || "Your special"}</strong>
                       <b>{money(form.price, r.currency)}</b>

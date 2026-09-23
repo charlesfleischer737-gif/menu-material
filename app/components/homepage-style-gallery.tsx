@@ -101,11 +101,7 @@ function StylePicker({
                 ? undefined
                 : `/homepage/styles/cheesecake-${style.asset}-160.webp 160w, /homepage/styles/cheesecake-${style.asset}-320.webp 320w`
             }
-            sizes={
-              compact
-                ? "40px"
-                : "(max-width: 700px) 44px, (max-width: 900px) 48px, 60px"
-            }
+            sizes={compact ? "48px" : "(max-width: 760px) 56px, 72px"}
             alt=""
             width={style.id === "original" ? 320 : 160}
             height={style.id === "original" ? 240 : 160}
@@ -159,7 +155,7 @@ function StyledPhoto({
           sizes={
             enlarged
               ? "(max-width: 700px) min(calc(100vw - 58px), 66vh), min(698px, 66vh)"
-              : "(max-width: 700px) calc(100vw - 58px), (max-width: 856px) calc(54vw - 31px), 430px"
+              : "(max-width: 760px) calc(100vw - 40px), 760px"
           }
           alt={
             photo.id === style.id
@@ -256,11 +252,9 @@ export default function HomepageStyleGallery() {
       className="pw-style-gallery"
       aria-labelledby="style-gallery-title"
     >
-      <div className="pw-section-heading pw-style-heading">
-        <div>
-          <h2 id="style-gallery-title">One photo. Endless possibilities.</h2>
-          <p>The same dish, reimagined. Find your favorite look.</p>
-        </div>
+      <div className="pw-section-heading">
+        <h2 id="style-gallery-title">One photo. Endless possibilities.</h2>
+        <p>The same dish, reimagined. Find your favorite look.</p>
       </div>
       <Dialog
         onOpenChange={() => {
@@ -294,12 +288,10 @@ export default function HomepageStyleGallery() {
             </DialogTrigger>
             <figcaption aria-live="polite" aria-atomic="true">
               <strong>{active.name}</strong>
+              <span>{active.detail}</span>
             </figcaption>
           </figure>
-          <div className="pw-style-choices">
-            <p className="pw-style-picker-label">Choose a style</p>
-            <StylePicker value={pending ?? selected} onChange={selectStyle} />
-          </div>
+          <StylePicker value={pending ?? selected} onChange={selectStyle} />
         </div>
         <DialogContent className="pw-style-dialog">
           <DialogHeader>

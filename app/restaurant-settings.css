@@ -1,31 +1,32 @@
 .rs-dialog.restaurant-dialog {
   display: flex;
   flex-direction: column;
-  width: min(840px, calc(100vw - 32px));
-  max-width: 840px;
-  height: min(800px, calc(100dvh - 48px));
-  max-height: calc(100dvh - 48px);
+  width: min(760px, calc(100vw - 32px));
+  max-width: 760px;
+  height: auto;
+  max-height: min(800px, calc(100dvh - 48px));
   padding: 0;
   gap: 0;
   overflow: hidden;
-  border: 1px solid var(--workspace-line);
+  border: 0;
   border-radius: var(--radius-panel);
   background: var(--workspace-surface);
+  box-shadow: var(--shadow-panel);
 }
 .rs-header {
   display: flex;
   align-items: flex-start;
   justify-content: space-between;
   gap: 16px;
-  padding: 24px 24px 16px;
+  padding: 24px 24px 20px;
 }
 .rs-header [data-slot="dialog-title"] {
-  font: 650 24px/1.2 var(--font-ui);
-  letter-spacing: -0.035em;
+  font: 700 var(--text-title2) / 1.2 var(--font-display);
+  letter-spacing: var(--tracking-display);
 }
 .rs-header [data-slot="dialog-description"] {
-  margin-top: 8px;
-  font-size: 14px;
+  margin-top: 6px;
+  font-size: var(--text-callout);
   color: var(--workspace-muted);
 }
 .rs-tabs {
@@ -33,41 +34,55 @@
   min-height: 0;
   gap: 0;
 }
+/* The three groups read as one segmented control. */
 .rs-tab-list[data-slot="tabs-list"] {
-  width: 100%;
+  width: auto;
   height: auto;
-  padding: 0 24px;
-  gap: 16px;
-  border-bottom: 1px solid var(--workspace-line);
-  border-radius: 0;
+  margin: 0 24px;
+  padding: 3px;
+  gap: 2px;
+  border: 0;
+  border-radius: var(--radius-pill);
+  background: var(--fill);
 }
 .rs-tab-list [data-slot="tabs-trigger"] {
-  flex: 1 1 auto;
+  flex: 1 1 0;
   min-width: 0;
-  min-height: 48px;
-  padding: 12px 0;
+  min-height: 36px;
+  padding: 7px 12px;
   border: 0;
-  border-radius: 0;
+  border-radius: var(--radius-pill);
+  background: transparent;
   font-size: 14px;
-  font-weight: 600;
-  color: var(--workspace-muted);
+  font-weight: 500;
+  color: var(--workspace-ink);
   white-space: normal;
-  line-height: 1.35;
+  line-height: 1.25;
+  box-shadow: none;
+  transition:
+    background-color var(--duration-fast) var(--ease),
+    box-shadow var(--duration-fast) var(--ease);
 }
-.rs-tab-list [data-state="active"] {
-  color: var(--workspace-action);
+.rs-tab-list [data-slot="tabs-trigger"]:hover:not([data-state="active"]) {
+  background: rgb(255 255 255 / 55%);
+}
+.rs-tab-list [data-slot="tabs-trigger"][data-state="active"] {
+  background: var(--workspace-surface);
+  color: var(--workspace-ink);
   font-weight: 600;
+  box-shadow:
+    0 1px 3px rgb(0 0 0 / 12%),
+    0 0 0 0.5px rgb(0 0 0 / 4%);
 }
 .rs-tab-list [data-slot="tabs-trigger"]::after {
-  bottom: 0;
-  background: var(--workspace-action);
+  display: none;
 }
 .rs-body {
   flex: 1;
   min-height: 0;
   overflow-y: auto;
   overscroll-behavior: contain;
-  padding: 24px;
+  padding: 24px 24px 28px;
   scroll-padding-block: 24px;
 }
 .rs-panel[hidden] {
@@ -102,15 +117,26 @@
   .field
   :is(input, select, textarea):not([type="checkbox"]):not([type="color"]):not(
     [type="range"]
-  ) {
+  ):not([type="file"]) {
   min-height: 44px;
   border: 1px solid var(--workspace-control);
-  border-radius: 8px;
-  background: white;
+  border-radius: var(--radius-control);
+  background-color: white;
   color: var(--workspace-ink);
-  padding: 10px 12px;
+  padding-block: 10px;
+  padding-inline-start: 14px;
   font-size: 16px;
   width: 100%;
+}
+.rs-dialog
+  .field
+  :is(input, select, textarea):not([type="checkbox"]):not([type="color"]):not(
+    [type="range"]
+  ):not([type="file"]):focus-visible {
+  outline: none;
+  border-color: var(--workspace-focus);
+  box-shadow: 0 0 0 3px
+    color-mix(in srgb, var(--workspace-focus) 22%, transparent);
 }
 .rs-dialog .field small {
   font-size: 13px;
@@ -144,7 +170,7 @@
   min-height: 44px;
   padding: 8px;
   border: 1px solid var(--workspace-control);
-  border-radius: 8px;
+  border-radius: var(--radius-control);
   background: var(--workspace-surface);
   color: var(--workspace-ink);
 }
@@ -188,11 +214,6 @@
 }
 .rs-save-row > button {
   min-width: 9.5em;
-}
-.rs-footer > p:not(.rs-error) {
-  font-size: 13px;
-  color: var(--workspace-muted);
-  margin-top: 8px;
 }
 .rs-error {
   margin-bottom: 12px;

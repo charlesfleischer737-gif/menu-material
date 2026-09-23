@@ -11,7 +11,7 @@ import {
   CircleAlert,
   SlidersHorizontal,
 } from "lucide-react";
-import { api, money, normalizePhoto, type Row } from "@/lib/client";
+import { api, dishCount, money, normalizePhoto, type Row } from "@/lib/client";
 import { preferredPhoto, dishPhotos, dishStatus } from "@/lib/dish-library";
 import { downloadPhotoItem } from "@/lib/photo-destinations";
 import { workspacePreferenceKey } from "@/lib/workspace-navigation";
@@ -233,7 +233,7 @@ export default function DishLibrary({
     <section className="mm-workspace mm-library">
       <CreativeHeader
         title="My Dishes"
-        status={`${allDishes.filter((d) => !d.archived_at).length} dishes`}
+        status={dishCount(allDishes.filter((d) => !d.archived_at).length)}
         action={
           <DropdownMenu>
             <DropdownMenuTrigger asChild>
@@ -299,7 +299,7 @@ export default function DishLibrary({
           )}
         </button>
         <button
-          className="cx-link mm-select-toggle"
+          className="cx-btn cx-secondary mm-select-toggle"
           aria-pressed={selecting}
           onClick={() => {
             setSelecting(!selecting);

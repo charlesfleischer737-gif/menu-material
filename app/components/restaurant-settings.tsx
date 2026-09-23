@@ -300,10 +300,10 @@ export default function RestaurantSettings({
                   "Unsaved changes"
                 ) : saved ? (
                   <>
-                    <Check size={16} /> Changes saved
+                    <Check size={16} /> Saved. Publish your menu to show guests.
                   </>
                 ) : (
-                  "Your details are up to date"
+                  "Menu changes go live when you publish."
                 )}
               </span>
               <button
@@ -316,7 +316,6 @@ export default function RestaurantSettings({
                 {saving ? "Saving…" : "Save changes"}
               </button>
             </div>
-            <p>Publish your menu to make its changes live.</p>
           </footer>
         </DialogContent>
       </Dialog>

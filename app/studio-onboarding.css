@@ -79,7 +79,7 @@
   z-index: 2;
   width: 2px;
   background: var(--workspace-surface);
-  box-shadow: 0 0 10px #20262433;
+  box-shadow: 0 0 10px rgb(29 29 31 / 20%);
   transform: translateX(-50%);
   pointer-events: none;
 }
@@ -97,7 +97,7 @@
   background: var(--workspace-surface);
   background-clip: padding-box;
   color: var(--workspace-ink);
-  box-shadow: 0 3px 16px #20262422;
+  box-shadow: 0 3px 16px rgb(29 29 31 / 13%);
 }
 .cx-guided-studio .cx-comparison-stage input[type="range"] {
   position: absolute;

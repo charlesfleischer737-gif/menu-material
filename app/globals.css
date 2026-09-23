@@ -2,31 +2,84 @@
 @import "tw-animate-css";
 @import "../vendor/shadcn-tailwind-4.13.0.css";
 :root {
-  /* Interface roles also resolve in public pages and portalled controls.
-     Restaurant artwork continues to use its own explicit palette. */
-  --workspace-canvas: #f4f5f6;
+  /* One interface system for public pages, the workspace and portalled
+     controls. Restaurant artwork (menus, posts) keeps its own palette. */
+  --font-ui:
+    -apple-system, BlinkMacSystemFont, "SF Pro Text", "Inter Variable",
+    "Segoe UI", Roboto, "Helvetica Neue", Arial, sans-serif;
+  --font-display:
+    -apple-system, BlinkMacSystemFont, "SF Pro Display", "Inter Variable",
+    "Segoe UI", Roboto, "Helvetica Neue", Arial, sans-serif;
+
+  /* Type scale */
+  --text-caption: 0.75rem;
+  --text-footnote: 0.8125rem;
+  --text-callout: 0.9375rem;
+  --text-body: 1.0625rem;
+  --text-title3: 1.25rem;
+  --text-title2: 1.625rem;
+  --text-title1: 2rem;
+  --text-display: clamp(2.25rem, 4.6vw, 3.5rem);
+  --text-hero: clamp(2.75rem, 7vw, 5rem);
+  --tracking-tight: -0.006em;
+  --tracking-display: -0.012em;
+  --tracking-hero: -0.018em;
+
+  /* Neutrals, with the logo's green as the only accent */
+  --gray-50: #fbfbfd;
+  --gray-100: #f5f5f7;
+  --gray-200: #e8e8ed;
+  --gray-300: #d2d2d7;
+  --gray-400: #aeaeb2;
+  --gray-500: #86868b;
+  --gray-600: #6e6e73;
+  --gray-900: #1d1d1f;
+  --green: #1e7a4c;
+  --green-bright: #3fbf7f;
+  --green-soft: #e8f5ee;
+  /* A translucent fill that reads on white and on the gray canvas. */
+  --fill: rgb(118 118 128 / 12%);
+
+  --workspace-canvas: var(--gray-100);
   --workspace-surface: #ffffff;
-  --workspace-ink: #202624;
-  --workspace-muted: #59625f;
-  --workspace-action: #174c3c;
-  --workspace-action-hover: #103c2e;
-  --workspace-action-pressed: #0b2e23;
-  --workspace-focus: var(--workspace-action);
-  --workspace-selected: #e5efea;
-  --workspace-line: #d6dcda;
-  --workspace-control: #7c8681;
-  --workspace-stage: #e4e7e9;
-  --workspace-disabled: var(--workspace-stage);
+  --workspace-ink: var(--gray-900);
+  --workspace-muted: var(--gray-600);
+  --workspace-action: var(--gray-900);
+  --workspace-action-hover: #3a3a3c;
+  --workspace-action-pressed: #000000;
+  --workspace-focus: var(--green);
+  --workspace-selected: var(--gray-200);
+  --workspace-line: var(--gray-300);
+  --workspace-control: var(--gray-500);
+  --workspace-stage: var(--gray-200);
+  --workspace-disabled: var(--gray-200);
   --workspace-warning: #8a4b08;
   --workspace-warning-surface: #fff4df;
-  --workspace-error: #a12d32;
-  --workspace-error-hover: #842329;
-  --workspace-error-pressed: #6b1a20;
-  --workspace-error-surface: #fff2f1;
-  --workspace-success: var(--workspace-action);
-  --workspace-success-surface: var(--workspace-selected);
+  --workspace-error: #b3261e;
+  --workspace-error-hover: #97201a;
+  --workspace-error-pressed: #7a1a15;
+  --workspace-error-surface: #fdf0ef;
+  --workspace-success: var(--green);
+  --workspace-success-surface: var(--green-soft);
   --workspace-loading: var(--workspace-muted);
-  --workspace-loading-surface: var(--workspace-stage);
+  --workspace-loading-surface: var(--gray-100);
+
+  /* Shape, depth and motion */
+  --radius: 0.75rem;
+  --radius-control: 12px;
+  --radius-card: 20px;
+  --radius-media: 28px;
+  --radius-pill: 999px;
+  --radius-panel: var(--radius-card);
+  --shadow-card: 0 1px 2px rgb(0 0 0 / 4%), 0 4px 16px rgb(0 0 0 / 4%);
+  --shadow-panel: 0 2px 8px rgb(0 0 0 / 6%), 0 24px 60px -12px rgb(0 0 0 / 22%);
+  --ease: cubic-bezier(0.25, 1, 0.5, 1);
+  --duration-fast: 150ms;
+  --duration: 240ms;
+  --duration-slow: 420ms;
+  --glass: rgb(255 255 255 / 72%);
+  --glass-blur: saturate(180%) blur(20px);
+
   --background: var(--workspace-canvas);
   --foreground: var(--workspace-ink);
   --card: var(--workspace-surface);
@@ -45,10 +98,6 @@
   --border: var(--workspace-line);
   --input: var(--workspace-control);
   --ring: var(--workspace-focus);
-  --radius: 0.5rem;
-  --font-ui: "Helvetica Neue", Arial, sans-serif;
-  --radius-panel: 0.75rem;
-  --shadow-panel: 0 8px 32px rgb(20 38 30 / 8%);
   --sidebar: var(--workspace-surface);
   --sidebar-foreground: var(--workspace-ink);
 }
@@ -72,7 +121,7 @@
   --color-input: var(--input);
   --color-ring: var(--ring);
   --radius-lg: var(--radius);
-  --font-sans: "Helvetica Neue", Arial, sans-serif;
+  --font-sans: var(--font-ui);
 }
 * {
   box-sizing: border-box;
@@ -84,7 +133,84 @@ body {
   font-family: var(--font-ui);
   font-size: 16px;
   line-height: 1.5;
+  letter-spacing: -0.011em;
+  font-optical-sizing: auto;
+  text-rendering: optimizeLegibility;
   -webkit-font-smoothing: antialiased;
+  -moz-osx-font-smoothing: grayscale;
+}
+::selection {
+  background: color-mix(in srgb, var(--green-bright) 32%, transparent);
+}
+:focus-visible {
+  outline-color: var(--workspace-focus);
+}
+/* Native disclosure triangles become one quiet chevron. Summaries that bring
+   their own icon keep it. */
+details > summary {
+  list-style: none;
+  cursor: pointer;
+}
+details > summary::-webkit-details-marker {
+  display: none;
+}
+details > summary:not(:has(svg, img)) {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+details > summary:not(:has(svg, img))::after {
+  content: "";
+  flex: none;
+  width: 12px;
+  height: 12px;
+  background: currentColor;
+  opacity: 0.6;
+  mask: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 12 12'%3E%3Cpath d='M2.5 4.25 6 7.75l3.5-3.5' fill='none' stroke='%23000' stroke-width='1.6' stroke-linecap='round' stroke-linejoin='round'/%3E%3C/svg%3E")
+    center / contain no-repeat;
+  transition: transform var(--duration) var(--ease);
+}
+details[open] > summary:not(:has(svg, img))::after {
+  transform: rotate(180deg);
+}
+/* Native file pickers read as a quiet secondary button. */
+input[type="file"] {
+  max-width: 100%;
+  min-height: 0;
+  padding: 0;
+  border: 0;
+  background: none;
+  color: var(--workspace-muted);
+  font: inherit;
+  font-size: var(--text-footnote);
+}
+input[type="file"]::file-selector-button {
+  margin-right: 12px;
+  min-height: 36px;
+  padding: 0 16px;
+  border: 0;
+  border-radius: var(--radius-pill);
+  background: var(--workspace-canvas);
+  color: var(--workspace-ink);
+  font: inherit;
+  font-size: var(--text-footnote);
+  font-weight: 500;
+  cursor: pointer;
+  transition: background var(--duration-fast) var(--ease);
+}
+input[type="file"]:hover::file-selector-button {
+  background: var(--workspace-stage);
+}
+/* Single selects share one chevron and control shape. */
+/* Older component rules reset the background shorthand, so the chevron's
+   background properties are marked important. */
+select:not([multiple]):not([size]) {
+  appearance: none;
+  background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 12 12'%3E%3Cpath d='M2.5 4.25 6 7.75l3.5-3.5' fill='none' stroke='%236e6e73' stroke-width='1.6' stroke-linecap='round' stroke-linejoin='round'/%3E%3C/svg%3E") !important;
+  background-repeat: no-repeat !important;
+  background-position: right 14px center !important;
+  background-size: 12px !important;
+  padding-right: 38px;
 }
 button,
 a,
@@ -104,22 +230,29 @@ a {
   min-height: 44px;
   height: auto;
   font-family: var(--font-ui);
-  font-size: 14px;
-  font-weight: 600;
-  line-height: 1.4;
-  padding: 10px 16px;
+  font-size: var(--text-callout);
+  font-weight: 500;
+  letter-spacing: -0.01em;
+  line-height: 1.3;
+  padding: 10px 20px;
   gap: 8px;
-  border-radius: 8px;
+  border-radius: var(--radius-pill);
   white-space: normal;
   text-align: center;
+  transition:
+    background-color var(--duration-fast) var(--ease),
+    transform var(--duration-fast) var(--ease);
+}
+[data-ui-button]:not(:disabled):active {
+  transform: scale(0.98);
 }
 [data-ui-button][data-size="lg"] {
   min-height: 48px;
 }
 [data-ui-button][data-size="marketing"] {
-  min-height: 52px;
-  padding: 12px 24px;
-  font-size: 16px;
+  min-height: 50px;
+  padding: 12px 28px;
+  font-size: var(--text-body);
 }
 [data-ui-button][data-size^="icon"] {
   min-width: 44px;
@@ -138,7 +271,7 @@ a {
 }
 [data-ui-button][data-variant="outline"] {
   background: var(--workspace-surface);
-  border: 1px solid var(--workspace-control);
+  border: 1px solid var(--workspace-line);
   color: var(--workspace-ink);
   box-shadow: none;
 }
@@ -176,15 +309,14 @@ a {
   background: var(--workspace-selected);
 }
 [data-ui-button]:focus-visible {
-  outline: 2px solid var(--workspace-action);
+  outline: 2px solid var(--workspace-focus);
   outline-offset: 3px;
   box-shadow: none;
 }
+/* Disabled buttons keep their shape and colour, dimmed. */
 button[data-ui-button]:disabled {
-  opacity: 1;
-  background: var(--workspace-disabled);
-  border-color: var(--workspace-line);
-  color: var(--workspace-muted);
+  opacity: 0.35;
+  cursor: not-allowed;
 }
 :is([data-slot="dialog-content"], [data-slot="sheet-content"]) {
   background: var(--workspace-surface);
@@ -192,8 +324,28 @@ button[data-ui-button]:disabled {
   border-color: var(--workspace-line);
 }
 [data-slot="dialog-content"] {
+  border: 0;
   border-radius: var(--radius-panel);
   box-shadow: var(--shadow-panel);
+}
+/* Dialogs and sheets enter with a short fade and a 98% scale. */
+:is(
+  [data-slot="dialog-content"],
+  [data-slot="alert-dialog-content"],
+  [data-slot="dialog-overlay"],
+  [data-slot="alert-dialog-overlay"],
+  [data-slot="sheet-content"],
+  [data-slot="sheet-overlay"]
+) {
+  --tw-duration: var(--duration);
+  --tw-ease: var(--ease);
+  --tw-enter-scale: 0.98;
+  --tw-exit-scale: 0.98;
+}
+:is([data-slot="dialog-overlay"], [data-slot="alert-dialog-overlay"]) {
+  background: rgb(0 0 0 / 32%);
+  -webkit-backdrop-filter: blur(4px);
+  backdrop-filter: blur(4px);
 }
 :is([data-slot="dialog-close"], [data-slot="sheet-close"]) {
   display: inline-grid;
@@ -203,12 +355,42 @@ button[data-ui-button]:disabled {
   top: 8px;
   right: 8px;
   opacity: 1;
-  border-radius: 8px;
+  border-radius: var(--radius-pill);
 }
 :is([data-slot="dialog-close"], [data-slot="sheet-close"]):disabled {
   color: var(--workspace-muted);
-  background: var(--workspace-disabled);
+  background: transparent;
+  opacity: 0.35;
   cursor: not-allowed;
+}
+/* Menus float on frosted glass and open quickly from 98%. */
+:is(
+  [data-slot="dropdown-menu-content"],
+  [data-slot="dropdown-menu-sub-content"]
+)[data-state] {
+  --tw-duration: var(--duration-fast);
+  --tw-ease: var(--ease);
+  --tw-enter-scale: 0.98;
+  --tw-exit-scale: 0.98;
+  --tw-enter-translate-y: 0;
+  --tw-enter-translate-x: 0;
+  padding: 6px;
+  border: 0;
+  border-radius: var(--radius-control);
+  background: rgb(255 255 255 / 84%);
+  -webkit-backdrop-filter: var(--glass-blur);
+  backdrop-filter: var(--glass-blur);
+  box-shadow:
+    var(--shadow-panel),
+    0 0 0 0.5px rgb(0 0 0 / 8%);
+}
+:is(
+  [data-slot="dropdown-menu-item"],
+  [data-slot="dropdown-menu-radio-item"],
+  [data-slot="dropdown-menu-checkbox-item"],
+  [data-slot="dropdown-menu-sub-trigger"]
+) {
+  border-radius: 7px;
 }
 h1,
 h2,
@@ -245,28 +427,31 @@ p {
   margin-bottom: 40px;
 }
 .eyebrow {
-  font-size: 12px;
+  font-size: var(--text-footnote);
   font-weight: 600;
-  letter-spacing: 2px;
-  color: #777772;
-  margin-bottom: 17px;
+  color: var(--workspace-muted);
+  margin-bottom: 12px;
+}
+h1,
+h2,
+h3 {
+  font-family: var(--font-display);
 }
 h1 {
   font-size: 46px;
-  line-height: 1.12;
-  font-weight: 500;
-  letter-spacing: -1.7px;
+  line-height: 1.1;
+  font-weight: 600;
+  letter-spacing: var(--tracking-display);
 }
 h1 em {
-  font-family: Georgia, serif;
-  font-weight: 400;
-  color: #64645f;
+  font-style: normal;
+  color: var(--workspace-muted);
 }
 h1 + p {
-  font-size: 16px;
-  line-height: 1.6;
-  color: #787873;
-  margin-top: 18px;
+  font-size: var(--text-body);
+  line-height: 1.5;
+  color: var(--workspace-muted);
+  margin-top: 16px;
 }
 .step {
   width: 39px;
@@ -280,9 +465,9 @@ h1 + p {
 }
 h2 {
   font-size: 21px;
-  line-height: 1.3;
-  font-weight: 500;
-  letter-spacing: -0.4px;
+  line-height: 1.25;
+  font-weight: 600;
+  letter-spacing: var(--tracking-tight);
 }
 .field {
   display: flex;
@@ -295,32 +480,48 @@ h2 {
 .field input,
 .field textarea,
 .field select {
-  background: white;
-  border: 1px solid var(--border);
-  border-radius: 7px;
-  min-height: 43px;
-  padding: 11px 13px;
+  background-color: var(--workspace-surface);
+  border: 1px solid var(--workspace-control);
+  border-radius: var(--radius-control);
+  min-height: 44px;
+  padding: 11px 14px;
   width: 100%;
-  font: 400 14px Arial;
-  color: #383833;
+  font: 400 var(--text-callout) var(--font-ui);
+  color: var(--workspace-ink);
   resize: vertical;
+  transition:
+    border-color var(--duration-fast) var(--ease),
+    box-shadow var(--duration-fast) var(--ease);
 }
 .field textarea {
   line-height: 1.5;
 }
+.field select {
+  padding-right: 38px;
+}
+.field input[type="file"] {
+  min-height: 0;
+  padding: 0;
+  border: 0;
+  border-radius: 0;
+  background: none;
+  box-shadow: none;
+}
 .field input::placeholder,
 .field textarea::placeholder {
-  color: #979792;
+  color: var(--workspace-muted);
 }
 .field input:focus,
 .field textarea:focus,
 .field select:focus {
-  outline: 2px solid #90908b;
-  outline-offset: 2px;
+  outline: none;
+  border-color: var(--workspace-focus);
+  box-shadow: 0 0 0 3px
+    color-mix(in srgb, var(--workspace-focus) 22%, transparent);
 }
 .fine {
-  font-size: 12px;
-  color: #90908b;
+  font-size: var(--text-caption);
+  color: var(--workspace-muted);
   text-align: center;
   line-height: 1.5;
   margin-top: 16px;
@@ -353,7 +554,7 @@ h2 {
   }
   h1 {
     font-size: 34px;
-    letter-spacing: -1.2px;
+    letter-spacing: var(--tracking-display);
   }
   h1 + p {
     font-size: 14px;
@@ -433,21 +634,19 @@ h2 {
 }
 .error,
 .notice {
-  border-radius: 8px;
-  padding: 13px 17px;
-  font-size: 14px;
-  line-height: 1.6;
+  border-radius: var(--radius-control);
+  padding: 12px 16px;
+  font-size: var(--text-footnote);
+  line-height: 1.5;
   margin-top: 16px;
 }
 .error {
-  color: #8f3029;
-  background: #fff1ed;
-  border: 1px solid #e9b9b0;
+  color: var(--workspace-error);
+  background: var(--workspace-error-surface);
 }
 .notice {
-  color: #54544f;
-  background: #f2f2ed;
-  border: 1px solid #d7d7d2;
+  color: var(--workspace-ink);
+  background: var(--workspace-canvas);
 }
 .job {
   position: relative;
@@ -514,9 +713,9 @@ h2 {
   display: block;
   width: 100%;
   text-align: left;
-  background: #f8f8f3;
+  background: var(--gray-100);
   border: 0;
-  border-radius: 5px;
+  border-radius: var(--radius-control);
   padding: 11px;
   margin-top: 10px;
   font-size: 12px;
@@ -535,9 +734,9 @@ h2 {
 }
 .empty {
   text-align: center;
-  border: 1px dashed #d4d4cf;
-  background: #f8f8f3;
-  border-radius: 12px;
+  border: 0;
+  background: var(--gray-100);
+  border-radius: var(--radius-card);
   padding: 55px 20px;
 }
 .empty > svg {
@@ -691,9 +890,9 @@ h2 {
 }
 .admin-restaurant {
   padding: 20px;
-  background: #f7f7f2;
-  border: 1px solid #e5e5e0;
-  border-radius: 9px;
+  background: var(--gray-100);
+  border: 0;
+  border-radius: var(--radius-card);
 }
 .admin-restaurant h3 {
   font-weight: 500;

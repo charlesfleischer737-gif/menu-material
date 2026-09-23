@@ -613,7 +613,7 @@ export function StudioWorkbench({
           aria-labelledby="studio-unavailable-title"
         >
           <div className="ps2-unavailable-copy">
-            <span className="ps2-kicker">YOUR WORK IS STILL HERE</span>
+            <span className="ps2-kicker">Your work is still here</span>
             <h2 id="studio-unavailable-title">
               Photo creation is unavailable.
             </h2>
@@ -702,7 +702,7 @@ export function StudioWorkbench({
                 </>
               ) : b.mode === "description" ? (
                 <div className="ps2-description">
-                  <span className="ps2-kicker">FROM A DESCRIPTION</span>
+                  <span className="ps2-kicker">From a description</span>
                   <h3>Imagine your dish.</h3>
                   <Field label="Dish name">
                     <input
@@ -822,7 +822,7 @@ export function StudioWorkbench({
                 disabled={!!busy}
                 onClick={() => update({ mode: "description" })}
               >
-                Don’t have a photo?
+                No photo? Describe your dish
               </button>
             )}
           </section>
@@ -904,7 +904,7 @@ export function StudioWorkbench({
             </button>
             <div className="ps2-selected">
               <div className="ps2-selected-heading">
-                <span className="ps2-kicker">YOUR LOOK</span>
+                <span className="ps2-kicker">Your look</span>
                 <button
                   ref={customizeTrigger}
                   className="cx-link"
