@@ -4,7 +4,6 @@ import { ArrowLeft, Sparkles } from "lucide-react";
 import { api, normalizePhoto, type Row } from "@/lib/client";
 import {
   emptyAdjustments,
-  looks,
   photoBrief,
   resolvePhotoLook,
   unavailablePhotoLook,

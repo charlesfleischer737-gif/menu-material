@@ -11,7 +11,7 @@ const root = mkdtempSync(join(tmpdir(), "menu-material-expansion-"));
 process.env.MENU_MATERIAL_DATA_DIR = root;
 process.env.OPENAI_API_KEY = "fixture-only";
 const { handle } = await import("../lib/server/api.ts");
-const { all, one, run } = await import("../lib/server/core.ts");
+const { all, one } = await import("../lib/server/core.ts");
 const { publicMenu } = await import("../lib/server/promotions.ts");
 const { localToInstant, localTime, defaultStyle } =
   await import("../lib/promotions.ts");

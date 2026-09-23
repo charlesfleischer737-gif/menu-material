@@ -3,7 +3,7 @@ import { studioOccasions } from "./studio-occasions";
 import type { SavedLook } from "./studio-library";
 
 export const maximumStyleQueryLength = 180;
-export const normalizeStyleQuery = (value: string) =>
+const normalizeStyleQuery = (value: string) =>
   value
     .toLowerCase()
     .normalize("NFD")
@@ -150,7 +150,7 @@ function literal(document: SearchDocument, token: string) {
     (synonyms[token] || []).some((term) => contains(document.text, term))
   );
 }
-export function styleMoods(style: PhotoStyle) {
+function styleMoods(style: PhotoStyle) {
   const text = documentFor(style).text;
   return [
     /bright|white|daylight|luminous|ivory/.test(text) && "Bright",

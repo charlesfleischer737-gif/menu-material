@@ -4,7 +4,6 @@ import "./globals.css";
 import "./workspace.css";
 import "./menu-material.css";
 import "./creation.css";
-import "./creative-collections.css";
 import "./studio-onboarding.css";
 import "./studio-workbench.css";
 import "./restaurant-look.css";

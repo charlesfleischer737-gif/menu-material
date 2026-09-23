@@ -1,4 +1,4 @@
-import { photoBrief, photoStyles } from "./studio";
+import { photoStyles } from "./studio";
 import type { Row } from "./client";
 export function capturedPhotoRecipe(context: Row): Row {
   const details = context.details || {},

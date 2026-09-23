@@ -95,7 +95,7 @@ function initial(r: Row, seed: Row = {}) {
     ...seed,
   };
 }
-export function OfferPreview({
+function OfferPreview({
   draft,
   restaurant,
   dishes,

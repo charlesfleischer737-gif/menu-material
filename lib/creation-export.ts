@@ -2,13 +2,7 @@ import { renderPost } from "./post-render";
 import { postSlideCount } from "./post-composition";
 import { type Row } from "./client";
 import { canvasBlob } from "./photo-export";
-export {
-  imageBitmap,
-  drawPhoto,
-  canvasBlob,
-  photoExport,
-  masterPhotoExport,
-} from "./photo-export";
+export { canvasBlob, photoExport, masterPhotoExport } from "./photo-export";
 export { renderPost } from "./post-render";
 export async function campaignZip(draft: Row, restaurant: Row) {
   const { zipSync, strToU8 } = await import("fflate");
@@ -27,11 +21,4 @@ export async function campaignZip(draft: Row, restaurant: Row) {
   return new Blob([zipSync(files, { level: 1 }) as Uint8Array<ArrayBuffer>], {
     type: "application/zip",
   });
-}
-export async function menuPdf(menu: Row) {
-  if (menu.version === 2)
-    return (await import("./menu-proof-client")).exportDesignedMenuPdf(
-      menu as import("./menu-document").DesignedMenu,
-    );
-  return (await import("./menu-print")).renderMenuPdf(menu);
 }

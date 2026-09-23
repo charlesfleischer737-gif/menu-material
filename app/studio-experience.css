@@ -873,18 +873,6 @@
 .ps2-card-detail:hover img {
   transform: scale(1.035);
 }
-.ps2-example {
-  position: absolute;
-  bottom: 9px;
-  left: 9px;
-  color: #fff;
-  font-size: 0.75rem;
-  font-weight: 650;
-  letter-spacing: 0.08em;
-  padding: 4px 6px;
-  background: #15221482;
-  border-radius: 4px;
-}
 .ps2-gallery-card[data-selected="true"] .ps2-card-detail {
   outline: 2px solid var(--workspace-action);
   outline-offset: 3px;
@@ -1067,18 +1055,6 @@
 .ps2-detail .ps2-look-description {
   margin-top: 14px;
   font-size: 1rem;
-}
-.ps2-traits {
-  display: flex;
-  flex-wrap: wrap;
-  gap: 6px;
-  margin-bottom: 20px;
-}
-.ps2-traits span {
-  font-size: 0.75rem;
-  border-radius: 14px;
-  background: #f0f3e9;
-  padding: 6px 9px;
 }
 .ps2-fidelity {
   display: flex;
@@ -1480,9 +1456,6 @@
     width: 36px;
     height: 36px;
   }
-  .ps2-example {
-    font-size: 0.75rem;
-  }
   .ps2-dialog-footer {
     padding: 14px 20px max(15px, env(safe-area-inset-bottom));
     flex-wrap: wrap;
@@ -1510,9 +1483,6 @@
   }
   .ps2-detail p {
     margin-bottom: 12px;
-  }
-  .ps2-detail .ps2-traits {
-    margin-bottom: 13px;
   }
   .ps2-custom-scroll {
     padding: 0 20px 24px;
@@ -2465,18 +2435,6 @@
 @media (max-width: 760px) and (max-height: 650px) {
   .ps2-upload-icon {
     display: none;
-  }
-}
-@media (max-width: 760px) {
-  .ps2-ready.ps2-action-in-flow {
-    padding-bottom: 24px;
-  }
-  .ps2-mobile-action.ps2-action-in-flow {
-    position: static;
-    box-shadow: none;
-    backdrop-filter: none;
-    border-radius: 16px;
-    margin-bottom: 24px;
   }
 }
 /* Short viewports must be able to scroll past enlarged headings and filters. */

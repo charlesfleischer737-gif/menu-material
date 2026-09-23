@@ -27,8 +27,7 @@ export async function renderPost(
     accent = draft.accent || template.accent;
   const layout = template.layout,
     top = story ? 185 : 72,
-    bottom = H - (story ? 180 : 66),
-    usable = bottom - top;
+    bottom = H - (story ? 180 : 66);
   const items: Row[] =
     channel === "carousel" ? draft.items.slice(slide, slide + 1) : draft.items;
   if (!items.length)
@@ -192,9 +191,6 @@ export async function renderPost(
         Math.min(...points.map((p) => p.y)),
     });
     ctx.textAlign = "left";
-  }
-  function rule(x: number, y: number, w: number, c: string) {
-    fill(c, x, y, w, 2);
   }
   function photo(
     index: number,

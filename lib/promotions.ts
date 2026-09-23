@@ -1,10 +1,3 @@
-// Shared, provider-independent rules for schedules and editable offer designs.
-export type OfferItem = {
-  dishId: string;
-  quantity: number;
-  photoId: string | null;
-  name?: string;
-};
 export type Style = {
   primary: string;
   accent: string;

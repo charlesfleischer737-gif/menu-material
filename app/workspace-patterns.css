@@ -400,11 +400,6 @@
   bottom: 0;
   background: var(--workspace-action);
 }
-.mm-tool-summary {
-  margin: 16px 0;
-  color: var(--workspace-muted);
-  font-size: 14px;
-}
 .cx-app .cx-main {
   padding-top: 24px;
 }

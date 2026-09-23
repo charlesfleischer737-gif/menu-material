@@ -366,8 +366,7 @@ assert(
 );
 assert(studioRenderProgress(60, false).takingLonger);
 
-const jpeg = readFileSync("public/pasta.jpg"),
-  png = readFileSync("public/og.png");
+const jpeg = readFileSync("public/pasta.jpg");
 let cookie = "",
   checks = 0,
   calls = 0;

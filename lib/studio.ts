@@ -90,7 +90,6 @@ export const looks: PhotoStyle[] = [
     legacy: !["keep", "restaurant", "reference"].includes(l.id),
   })),
 ];
-export type LookId = string;
 export function resolvePhotoLook(
   brief: Record<string, any>,
 ): PhotoStyle | null {
@@ -172,7 +171,7 @@ export const formats = {
   },
 } as const;
 export type PhotoFormat = keyof typeof formats;
-export const deliveryProfiles = {
+const deliveryProfiles = {
   doordash: {
     version: "2026-09-16",
     verified: "2026-09-16",

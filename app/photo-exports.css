@@ -115,24 +115,6 @@
   border-color: var(--cx-green);
   background: var(--workspace-canvas);
 }
-.cx-approved-summary {
-  padding: 22px;
-}
-.cx-app .cx-approved-summary p {
-  font-size: 1rem;
-  color: var(--workspace-muted);
-}
-.cx-app .cx-approved-summary .cx-link {
-  font-size: 0.875rem !important;
-}
-.cx-app .cx-approved-summary .cx-pill {
-  font-size: 0.875rem;
-}
-.cx-approved-summary > img {
-  width: 115px;
-  height: 115px;
-  object-fit: cover;
-}
 .cx-secondary-actions {
   margin-top: 26px;
   align-items: center;
@@ -143,28 +125,6 @@
 .cx-secondary-actions summary {
   cursor: pointer;
   padding: 12px 0;
-}
-.cx-library-shortcuts {
-  display: flex;
-  align-items: center;
-  justify-content: space-between;
-  gap: 20px;
-  margin: 24px 0;
-}
-.cx-library-shortcuts p {
-  font-size: 1rem;
-  max-width: 46ch;
-}
-.cx-library-actions {
-  border-top: 1px solid var(--cx-line);
-  padding: 12px;
-  display: flex;
-  flex-wrap: wrap;
-  gap: 12px;
-}
-.cx-library-actions .cx-link {
-  font-size: 0.875rem;
-  min-height: 32px;
 }
 .cx-app.cx-export-dialog {
   display: block;
@@ -184,52 +144,6 @@
   color: var(--workspace-surface);
   font-weight: 700;
 }
-.cx-quick-post-details {
-  margin: 20px 0 26px;
-  padding: 22px;
-  border: 1px solid var(--cx-line);
-  border-radius: 12px;
-  background: var(--workspace-surface);
-}
-.cx-quick-post-details > p {
-  margin-top: 7px;
-  font-size: 0.875rem;
-}
-.cx-quick-post-fields {
-  display: grid;
-  grid-template-columns: repeat(3, minmax(0, 1fr));
-  gap: 18px;
-  margin: 20px 0;
-  align-items: start;
-}
-.cx-quick-post-fields .cx-field {
-  margin: 0;
-}
-.pw-export-example {
-  flex-direction: column;
-  padding: 20px;
-  gap: 18px;
-}
-.pw-export-example > img {
-  width: 100%;
-  aspect-ratio: 5/3;
-  object-fit: cover;
-  border-radius: 6px;
-}
-.pw-export-example > div {
-  display: grid;
-  grid-template-columns: 24px 1fr;
-  gap: 5px 10px;
-  color: white;
-}
-.pw-export-example strong {
-  font-size: 1rem;
-}
-.pw-export-example span {
-  grid-column: 2;
-  font-size: 0.875rem;
-  line-height: 1.5;
-}
 @media (max-width: 760px) {
   .cx-export-workspace {
     grid-template-columns: 1fr;
@@ -238,8 +152,7 @@
   .cx-export-destinations {
     grid-template-columns: repeat(2, minmax(0, 1fr));
   }
-  .cx-reuse-next,
-  .cx-library-shortcuts {
+  .cx-reuse-next {
     flex-direction: column;
     align-items: stretch;
     gap: 16px;
@@ -250,12 +163,5 @@
   .cx-app.cx-export-dialog {
     padding: 20px 16px;
     background: var(--workspace-surface);
-  }
-  .cx-quick-post-fields {
-    grid-template-columns: 1fr;
-  }
-  .cx-approved-summary > img {
-    width: 85px;
-    height: 85px;
   }
 }

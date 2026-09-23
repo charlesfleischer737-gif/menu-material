@@ -95,36 +95,6 @@
   text-decoration: underline;
   text-underline-offset: 4px;
 }
-.pw-access-success {
-  padding: 18px 0;
-}
-.pw-access-success h2 {
-  font-size: 1.4rem;
-}
-.pw-access-success p {
-  margin: 12px 0 20px;
-  line-height: 1.7;
-}
-.pw-demo-placeholder {
-  position: relative;
-  width: 100%;
-  background: #214a36;
-  overflow: hidden;
-  color: white;
-}
-.pw-demo-placeholder img {
-  width: 100%;
-  height: 100%;
-  object-fit: cover;
-  opacity: 0.85;
-}
-.pw-demo-placeholder span {
-  position: absolute;
-  bottom: 8%;
-  left: 9%;
-  font-size: 2rem;
-  font-weight: 700;
-}
 .cx-draft-dialog {
   max-height: min(90dvh, 850px);
   overflow-y: auto;
@@ -215,8 +185,7 @@
   margin-block: 16px;
   line-height: 1.5;
 }
-.pw-ai-controls,
-.pw-access-list {
+.pw-ai-controls {
   margin: 24px 0;
 }
 .pw-ai-controls h3 {
@@ -226,16 +195,6 @@
 .pw-ai-controls p {
   line-height: 1.6;
   margin: 12px 0;
-}
-.pw-access-list > div {
-  display: flex;
-  justify-content: space-between;
-  align-items: center;
-  flex-wrap: wrap;
-  gap: 16px;
-  border-top: 1px solid #d7dfcf;
-  padding: 18px 0;
-  overflow-wrap: anywhere;
 }
 .customer-menu.menu-appearance-dark .dish-title span,
 .customer-menu.menu-appearance-dark .dish-title b {
@@ -274,13 +233,6 @@
   .cx-draft-filters {
     grid-template-columns: 1fr;
     gap: 10px;
-  }
-  .auth-dialog .mode-tabs {
-    gap: 0;
-  }
-  .auth-dialog .mode-tabs button {
-    padding-inline: 9px;
-    font-size: 14px;
   }
   .pw-information {
     margin-top: 32px;

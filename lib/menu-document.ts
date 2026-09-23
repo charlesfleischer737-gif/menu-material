@@ -1,7 +1,7 @@
 import { z } from "zod";
 import type { Row } from "./client";
 
-export const menuDesignIds = [
+const menuDesignIds = [
   "bistro",
   "cafe",
   "casual",
@@ -42,7 +42,7 @@ const priceOption = z.object({
   label: shortText,
   price,
 });
-export const menuEntrySchema = z.object({
+const menuEntrySchema = z.object({
   id: z.string().min(1).max(100),
   dishId: z.string().uuid().nullable().default(null),
   name: shortText,
@@ -73,7 +73,7 @@ export const menuEntrySchema = z.object({
     .max(4)
     .default([]),
 });
-export const menuSectionSchema = z.object({
+const menuSectionSchema = z.object({
   id: z.string().min(1).max(100),
   name: shortText,
   description: z.string().max(600).default(""),

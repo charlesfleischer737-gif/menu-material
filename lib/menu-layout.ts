@@ -68,7 +68,7 @@ export type MenuMeasure = (
   size: number,
 ) => number;
 
-export function wrapMenuText(
+function wrapMenuText(
   value: string,
   width: number,
   size: number,
