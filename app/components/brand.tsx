@@ -5,8 +5,8 @@ export default function Brand({ className = "" }: { className?: string }) {
         className="menu-material-logo"
         src="/brand/menu-material-logo.svg"
         alt="Menu Material"
-        width={1264}
-        height={240}
+        width={367}
+        height={53}
         decoding="async"
       />
     </span>

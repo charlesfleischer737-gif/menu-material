@@ -33,8 +33,9 @@ export async function generateMetadata(): Promise<Metadata> {
     description:
       "Turn real dish photos into professional images and matching posts for Toast, delivery apps, your website, and Instagram. Start with 5 free image generations.",
     icons: {
-      icon: "/favicon.svg?v=menu-material",
-      shortcut: "/favicon.svg?v=menu-material",
+      icon: "/favicon.svg?v=menu-material-2",
+      shortcut: "/favicon.svg?v=menu-material-2",
+      apple: "/apple-touch-icon.png?v=menu-material-2",
     },
     openGraph: {
       title: "Menu Material — Food photos worth ordering from.",

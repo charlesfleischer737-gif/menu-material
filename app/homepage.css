@@ -378,8 +378,7 @@
     transition: none;
   }
 }
-.pw-header .pw-mobile-menu-trigger,
-.pw-mobile-comparison {
+.pw-header .pw-mobile-menu-trigger {
   display: none;
 }
 .pw-mobile-menu {
@@ -689,28 +688,6 @@
     padding: 16px;
   }
 }
-.pw-mobile-comparison [data-slot="tabs-list"] {
-  display: flex;
-  width: 100%;
-  height: auto;
-  min-height: 48px;
-  padding: 4px;
-  gap: 4px;
-  background: var(--workspace-surface);
-  border: 1px solid var(--workspace-control);
-  border-radius: 8px;
-}
-.pw-mobile-comparison [data-slot="tabs-trigger"] {
-  min-height: 44px;
-  padding: 8px 12px;
-  color: var(--workspace-muted);
-  font-size: 14px;
-  box-shadow: none;
-}
-.pw-mobile-comparison [data-slot="tabs-trigger"][data-state="active"] {
-  background: var(--workspace-action);
-  color: #fff;
-}
 .pw-site [data-slot="tabs-trigger"]:focus-visible,
 .pw-site [data-slot="tabs-content"]:focus-visible,
 .pw-use-case-carousel:focus-visible {
@@ -765,19 +742,6 @@
   .pw-hero-intro > p {
     margin-top: 14px;
     margin-bottom: 20px;
-  }
-  .pw-desktop-comparison {
-    display: none;
-  }
-  .pw-mobile-comparison {
-    display: flex;
-    gap: 12px;
-  }
-  .pw-mobile-comparison figure {
-    margin: 0;
-  }
-  .pw-mobile-comparison .pw-photo-label {
-    display: none;
   }
   .pw-use-cases {
     padding-block: 32px;
