@@ -35,7 +35,7 @@
 }
 .studio-progress-outcome strong {
   font-size: 1.75rem;
-  letter-spacing: -0.03em;
+  letter-spacing: var(--tracking-display);
 }
 .studio-progress-outcome span {
   flex: 1 1 260px;
@@ -46,11 +46,11 @@
   min-width: 850px;
 }
 .studio-progress .table-scroll:focus-visible {
-  outline: 2px solid #315b39;
+  outline: 2px solid var(--gray-900);
   outline-offset: 4px;
 }
 .studio-progress-note {
-  color: #56604f;
+  color: var(--gray-600);
 }
 .ps2-unavailable {
   display: flex;
@@ -67,12 +67,12 @@
   margin: 12px 0;
   font-size: clamp(1.5rem, 3vw, 2rem);
   line-height: 1.15;
-  letter-spacing: -0.035em;
+  letter-spacing: var(--tracking-display);
 }
 .ps2-unavailable p {
   font-size: 1rem;
   line-height: 1.6;
-  color: #56604f;
+  color: var(--gray-600);
   margin: 12px 0;
 }
 .ps2-unavailable .cx-button-row {
@@ -90,7 +90,7 @@
   gap: 44px;
   align-items: start;
   padding: 28px 0 32px;
-  color: var(--cx-ink, #202820);
+  color: var(--cx-ink, var(--gray-900));
 }
 .ps2-workbench button,
 .ps2-dialog button {
@@ -116,14 +116,14 @@
 .ps2-section-heading h2 {
   font-size: 1.125rem;
   font-weight: 650;
-  letter-spacing: -0.025em;
+  letter-spacing: var(--tracking-tight);
   margin: 0;
 }
 .ps2-step {
   font-size: 0.75rem;
   letter-spacing: 0.04em;
-  color: #687267;
-  border: 1px solid #dbe0d8;
+  color: var(--gray-600);
+  border: 1px solid var(--gray-300);
   width: 25px;
   height: 25px;
   border-radius: 50%;
@@ -133,20 +133,24 @@
 .ps2-canvas {
   min-height: 480px;
   aspect-ratio: 1.2;
-  background: #f2f3ef;
-  border: 1px solid #e4e7df;
-  border-radius: 22px;
+  background: var(--workspace-surface);
+  border: 1.5px dashed var(--gray-300);
+  border-radius: var(--radius-media);
   position: relative;
   overflow: hidden;
   display: grid;
   place-items: center;
   transition:
-    background 0.16s,
-    border-color 0.16s;
+    background-color var(--duration) var(--ease),
+    border-color var(--duration) var(--ease);
+}
+.ps2-canvas.has-photo {
+  border: 1px solid rgb(0 0 0 / 6%);
+  background: var(--workspace-stage);
 }
 .ps2-canvas.is-dragging {
-  border: 2px solid #315b39;
-  background: #e7eee3;
+  border: 2px solid var(--green);
+  background: var(--green-soft);
 }
 .ps2-empty-photo {
   display: flex;
@@ -158,29 +162,30 @@
 .ps2-upload-icon {
   display: grid;
   place-items: center;
-  color: #64775e;
+  color: var(--gray-600);
   width: 60px;
   height: 60px;
   border-radius: 19px;
-  background: #e8ece2;
+  background: var(--gray-200);
   margin-bottom: 22px;
 }
 .ps2-empty-photo h3 {
   font-size: clamp(1.875rem, 3vw, 2.625rem);
   line-height: 1.08;
-  letter-spacing: -0.055em;
-  font-weight: 570;
+  letter-spacing: var(--tracking-display);
+  font-family: var(--font-display);
+  font-weight: 700;
   margin: 0 0 17px;
 }
 .ps2-empty-photo p {
   font-size: 0.875rem;
   line-height: 1.65;
-  color: #687065;
+  color: var(--gray-600);
   margin: 0 0 25px;
 }
 .ps2-empty-photo .cx-btn {
   min-height: 48px;
-  border-radius: 8px;
+  border-radius: var(--radius-pill);
   padding: 0 25px;
 }
 .ps2-photo-sources {
@@ -195,7 +200,7 @@
 }
 .ps2-empty-photo small {
   font-size: 0.75rem;
-  color: #6d7569;
+  color: var(--gray-600);
 }
 .ps2-original {
   width: 100%;
@@ -213,14 +218,14 @@
   border: 1px solid #fff;
   padding: 7px 11px;
   border-radius: 20px;
-  color: #3d453b;
+  color: var(--gray-900);
   font-size: 0.75rem;
   font-weight: 600;
 }
 .ps2-preparing {
   position: absolute;
   inset: 0;
-  background: #f3f5eff0;
+  background: rgb(232 232 237 / 94%);
   display: flex;
   flex-direction: column;
   align-items: center;
@@ -236,7 +241,7 @@
   justify-content: space-between;
   gap: 12px;
   margin: 14px 2px;
-  color: #677160;
+  color: var(--gray-600);
   font-size: 0.75rem;
 }
 .ps2-photo-foot > span {
@@ -249,8 +254,7 @@
 }
 .ps2-description-link {
   margin-top: 8px;
-  font-size: 0.75rem !important;
-  color: #66705e !important;
+  font-size: var(--text-footnote) !important;
 }
 .ps2-description {
   width: 100%;
@@ -259,15 +263,15 @@
 .ps2-description h3 {
   margin: 10px 0 24px;
   font-size: 1.75rem;
-  letter-spacing: -0.04em;
+  letter-spacing: var(--tracking-display);
 }
 .ps2-description p {
   font-size: 0.75rem;
   line-height: 1.5;
-  color: #65715e;
+  color: var(--gray-600);
 }
 .ps2-inline-note {
-  background: #f4f3e8;
+  background: var(--gray-200);
   border-radius: 12px;
   font-size: 0.8125rem;
   padding: 14px 17px;
@@ -275,7 +279,7 @@
 }
 .ps2-intro {
   margin: -8px 0 20px;
-  color: #66715f;
+  color: var(--gray-600);
   font-size: 0.75rem;
 }
 .ps2-starting-looks {
@@ -284,7 +288,7 @@
   gap: 9px;
 }
 .ps2-starting-look {
-  border: 1px solid #e1e5dc;
+  border: 1px solid var(--gray-300);
   border-radius: 14px;
   background: #fff;
   padding: 7px 11px 7px 7px;
@@ -295,17 +299,17 @@
   width: 100%;
   min-height: 80px;
   transition:
-    background 0.16s,
-    border-color 0.16s;
+    background-color var(--duration-fast) var(--ease),
+    border-color var(--duration-fast) var(--ease);
 }
 .ps2-starting-look:hover {
-  background: #f7f9f3;
-  border-color: #abb9a1;
+  background: var(--gray-100);
+  border-color: var(--gray-400);
 }
 .ps2-starting-look[aria-pressed="true"] {
-  border-color: #567748;
-  background: #f5f8f0;
-  box-shadow: 0 0 0 1px #567748;
+  border-color: var(--gray-900);
+  background: var(--gray-100);
+  box-shadow: 0 0 0 1px var(--gray-900);
 }
 .ps2-starting-look > img,
 .ps2-polish-icon {
@@ -318,8 +322,8 @@
 .ps2-polish-icon {
   display: grid;
   place-items: center;
-  background: #e8efdd;
-  color: #49673d;
+  background: var(--gray-200);
+  color: var(--gray-900);
 }
 .ps2-starting-look > span:nth-child(2) {
   display: flex;
@@ -336,7 +340,7 @@
 .ps2-starting-look small {
   font-size: 0.75rem;
   line-height: 1.5;
-  color: #66705f;
+  color: var(--gray-600);
 }
 .ps2-selection {
   display: grid;
@@ -344,13 +348,13 @@
   width: 18px;
   height: 18px;
   border-radius: 50%;
-  border: 1px solid #c6cfc0;
+  border: 1px solid var(--gray-300);
   flex-shrink: 0;
 }
 .ps2-starting-look[aria-pressed="true"] .ps2-selection {
-  background: #456338;
+  background: var(--gray-900);
   color: #fff;
-  border-color: #456338;
+  border-color: var(--gray-900);
 }
 .ps2-browse {
   display: flex;
@@ -359,7 +363,7 @@
   gap: 9px;
   margin: 13px 0 23px;
   padding: 10px 3px;
-  color: #344d2a;
+  color: var(--gray-900);
   font-size: 0.75rem;
   font-weight: 650;
   min-height: 44px;
@@ -371,7 +375,7 @@
   text-align: left;
 }
 .ps2-selected {
-  border-top: 1px solid #e1e6dc;
+  border-top: 1px solid var(--gray-300);
   padding-top: 18px;
 }
 .ps2-selected-heading {
@@ -384,7 +388,7 @@
 .ps2-kicker {
   font-size: 0.75rem;
   letter-spacing: 0.13em;
-  color: #65745d;
+  color: var(--gray-600);
   font-weight: 700;
 }
 .ps2-selected-heading .cx-link {
@@ -397,7 +401,7 @@
 }
 .ps2-selected p {
   font-size: 0.75rem;
-  color: #687360;
+  color: var(--gray-600);
   line-height: 1.65;
   margin: 7px 0 0;
 }
@@ -407,7 +411,7 @@
   justify-content: space-between;
   gap: 12px;
   font-size: 0.75rem;
-  color: #536449;
+  color: var(--gray-600);
   margin: 8px 0 17px;
   min-height: 6px;
 }
@@ -443,7 +447,7 @@
 .ps2-create {
   width: 100%;
   min-height: 48px;
-  border-radius: 8px;
+  border-radius: var(--radius-pill);
   gap: 8px;
   justify-content: center;
 }
@@ -453,7 +457,7 @@
 .ps2-cost {
   font-size: 0.75rem;
   line-height: 1.6;
-  color: #67715f;
+  color: var(--gray-600);
   text-align: center;
   margin: 10px 0 0;
 }
@@ -462,19 +466,19 @@
 }
 .ps2-dialog {
   font-family: var(--font-sans, Arial, sans-serif);
-  color: #24301f;
+  color: var(--gray-900);
   padding: 0 !important;
   gap: 0 !important;
   width: min(1060px, calc(100vw - 64px)) !important;
   max-width: none !important;
   max-height: calc(100dvh - 64px);
-  border: 1px solid #e0e5da;
+  border: 1px solid var(--gray-300);
   border-radius: 24px !important;
   overflow: hidden;
   display: flex !important;
   flex-direction: column;
   background: #fff !important;
-  box-shadow: 0 24px 100px #0b220e2b;
+  box-shadow: 0 24px 100px rgb(29 29 31 / 17%);
   transition-property: opacity;
 }
 .ps2-dialog-header {
@@ -492,13 +496,13 @@
 .ps2-dialog-header [data-slot="dialog-title"] {
   font-size: 1.75rem;
   font-weight: 550;
-  letter-spacing: -0.045em;
+  letter-spacing: var(--tracking-display);
   margin: 7px 0 9px;
   line-height: 1.15;
 }
 .ps2-dialog-header [data-slot="dialog-description"] {
   font-size: 1rem;
-  color: #697561;
+  color: var(--gray-600);
   line-height: 1.5;
 }
 .ps2-icon-button {
@@ -507,13 +511,13 @@
   display: grid;
   place-items: center;
   border-radius: 50%;
-  background: #f2f4ee;
-  color: #485740;
+  background: var(--gray-200);
+  color: var(--gray-900);
   flex-shrink: 0;
   border: 0;
 }
 .ps2-icon-button:hover {
-  background: #e5ecd9;
+  background: var(--gray-200);
 }
 .ps2-dialog-scroll {
   min-height: 0;
@@ -548,7 +552,7 @@
 }
 .ps2-inspiration-pair figcaption span,
 .ps2-inspiration-file-note {
-  color: #62705b;
+  color: var(--gray-600);
   font-size: 0.8125rem;
   line-height: 1.5;
 }
@@ -559,7 +563,7 @@
   width: 100%;
   aspect-ratio: 4 / 3;
   border-radius: 14px;
-  background: #f3f5ef;
+  background: var(--gray-200);
   object-fit: contain;
   overflow: hidden;
 }
@@ -605,14 +609,14 @@
   gap: 12px;
   padding: 18px;
   text-align: center;
-  color: #45573a;
+  color: var(--gray-900);
   font-size: 0.875rem;
   line-height: 1.5;
-  border: 1px dashed #a6b09d;
+  border: 1px dashed var(--gray-400);
 }
 .ps2-inspiration-upload:hover {
-  background: #eaf0e2;
-  border-color: #536c44;
+  background: var(--gray-200);
+  border-color: var(--gray-900);
 }
 .ps2-inspiration-description p {
   margin: 0;
@@ -658,15 +662,15 @@
 .ps2-reference-recovery {
   padding: 12px 14px;
   margin-top: 12px;
-  border: 1px solid #dde4d5;
-  background: #f5f7f0;
+  border: 1px solid var(--gray-300);
+  background: var(--gray-200);
   border-radius: 12px;
 }
 .ps2-reference-recovery p {
   font-size: 0.875rem;
   line-height: 1.5;
   margin: 0;
-  color: #46573d;
+  color: var(--gray-900);
 }
 .ps2-reference-recovery > div {
   display: flex;
@@ -722,12 +726,12 @@
   display: flex;
   align-items: center;
   gap: 10px;
-  background: #f5f6f2;
-  border: 1px solid #e2e7dc;
+  background: var(--gray-100);
+  border: 1px solid var(--gray-300);
   border-radius: 12px;
   padding: 0 14px;
   min-height: 47px;
-  color: #6f7b66;
+  color: var(--gray-600);
 }
 .ps2-search input {
   border: 0;
@@ -738,10 +742,10 @@
   min-width: 0;
   font-size: 0.875rem;
   padding: 12px 0;
-  color: #24301f;
+  color: var(--gray-900);
 }
 .ps2-search:focus-within {
-  outline: 2px solid #557648;
+  outline: 2px solid var(--gray-900);
   outline-offset: 2px;
 }
 .ps2-search button {
@@ -766,21 +770,21 @@
 }
 .ps2-moods button {
   min-height: 34px;
-  border: 1px solid #e1e6da;
+  border: 1px solid var(--gray-300);
   border-radius: 20px;
   background: #fff;
   padding: 7px 14px;
-  color: #5a6851;
+  color: var(--gray-600);
   font-size: 0.75rem;
 }
 .ps2-moods button[aria-pressed="true"] {
-  border-color: #38532c;
-  background: #38532c;
+  border-color: var(--gray-900);
+  background: var(--gray-900);
   color: #fff;
 }
 .ps2-filters select {
   border: 0;
-  background: #f4f6ef;
+  background: var(--gray-200);
   border-radius: 9px;
   font-size: 0.75rem;
   padding: 9px;
@@ -789,7 +793,7 @@
 }
 .ps2-result-count {
   font-size: 0.75rem;
-  color: #6a775f;
+  color: var(--gray-600);
   margin: 12px 0 15px;
 }
 .ps2-search-summary {
@@ -810,16 +814,16 @@
   display: flex;
   align-items: flex-start;
   gap: 15px;
-  border: 1px solid #dce3d3;
+  border: 1px solid var(--gray-300);
   border-radius: 16px;
-  background: #f5f7f0;
+  background: var(--gray-200);
   padding: 20px;
   margin-bottom: 24px;
 }
 .ps2-search-shortcut > svg {
   flex-shrink: 0;
   margin-top: 3px;
-  color: #38532c;
+  color: var(--gray-900);
 }
 .ps2-search-shortcut > div {
   min-width: 0;
@@ -827,11 +831,11 @@
 .ps2-search-shortcut h3 {
   margin: 0;
   font-size: 1.125rem;
-  letter-spacing: -0.025em;
+  letter-spacing: var(--tracking-tight);
 }
 .ps2-search-shortcut p {
   margin: 7px 0 9px;
-  color: #526047;
+  color: var(--gray-900);
   font-size: 0.875rem;
   line-height: 1.6;
 }
@@ -862,13 +866,13 @@
   border: 0;
   border-radius: 13px;
   aspect-ratio: 1;
-  background: #eef0e9;
+  background: var(--gray-200);
 }
 .ps2-card-detail img {
   width: 100%;
   height: 100%;
   object-fit: cover;
-  transition: transform 0.25s;
+  transition: transform var(--duration) var(--ease);
 }
 .ps2-card-detail:hover img {
   transform: scale(1.035);
@@ -907,7 +911,7 @@
   font-size: 0.75rem;
   line-height: 1.55;
   margin-top: 4px;
-  color: #637258;
+  color: var(--gray-600);
 }
 .ps2-card-bottom .ps2-card-use {
   width: 100%;
@@ -925,12 +929,12 @@
   justify-content: space-between;
   gap: 14px;
   padding: 18px 30px;
-  border-top: 1px solid #e7eade;
+  border-top: 1px solid var(--gray-300);
   flex-shrink: 0;
   background: #fff;
 }
 .ps2-dialog-footer > span {
-  color: #68765e;
+  color: var(--gray-600);
   font-size: 0.75rem;
 }
 .ps2-dialog-footer .cx-link {
@@ -938,7 +942,7 @@
   min-height: 35px;
 }
 .ps2-dialog .cx-btn {
-  border-radius: 8px;
+  border-radius: var(--radius-pill);
   min-height: 44px;
   font-size: 0.875rem;
   padding: 10px 16px;
@@ -952,13 +956,13 @@
   text-align: center;
   min-height: 260px;
   padding: 30px;
-  color: #627355;
+  color: var(--gray-600);
 }
 .ps2-empty-results h3 {
   margin: 0;
   font-size: 1.4375rem;
-  letter-spacing: -0.03em;
-  color: #293921;
+  letter-spacing: var(--tracking-display);
+  color: var(--gray-900);
 }
 .ps2-empty-results p {
   font-size: 0.8125rem;
@@ -1043,7 +1047,7 @@
 .ps2-detail h3 {
   font-size: 1.75rem;
   font-weight: 550;
-  letter-spacing: -0.04em;
+  letter-spacing: var(--tracking-display);
   margin: 12px 0 20px;
 }
 .ps2-detail p {
@@ -1060,7 +1064,7 @@
   display: flex;
   gap: 8px;
   padding-top: 17px;
-  border-top: 1px solid #e4e9dd;
+  border-top: 1px solid var(--gray-300);
   font-size: 1rem !important;
 }
 .ps2-fidelity svg {
@@ -1077,7 +1081,7 @@
   display: flex;
   gap: 13px;
   align-items: center;
-  background: #f5f7f0;
+  background: var(--gray-200);
   padding: 12px;
   border-radius: 12px;
   margin-bottom: 16px;
@@ -1091,11 +1095,11 @@
 .ps2-recipe p {
   font-size: 0.75rem;
   line-height: 1.6;
-  color: #546449;
+  color: var(--gray-600);
   margin: 0;
 }
 .ps2-control-group {
-  border-bottom: 1px solid #e5eade;
+  border-bottom: 1px solid var(--gray-300);
 }
 .ps2-control-heading {
   display: flex;
@@ -1113,7 +1117,7 @@
 }
 .ps2-control-heading span {
   margin-left: auto;
-  color: #6a7860;
+  color: var(--gray-600);
   font-size: 0.75rem;
 }
 .ps2-control-heading[data-state="open"] svg {
@@ -1129,16 +1133,16 @@
 }
 .ps2-visual-options button {
   background: #fff;
-  border: 1px solid #e2e7da;
+  border: 1px solid var(--gray-300);
   border-radius: 10px;
   padding: 5px;
   text-align: left;
 }
 .ps2-visual-options button[aria-pressed="true"],
 .ps2-ware-options button[aria-pressed="true"] {
-  border-color: #52733f;
-  box-shadow: 0 0 0 1px #52733f;
-  background: #f5f8f0;
+  border-color: var(--gray-900);
+  box-shadow: 0 0 0 1px var(--gray-900);
+  background: var(--gray-100);
 }
 .ps2-visual-options img {
   display: block;
@@ -1167,7 +1171,7 @@
   text-align: center;
   gap: 10px;
   padding: 16px 6px 13px;
-  border: 1px solid #e2e7da;
+  border: 1px solid var(--gray-300);
   border-radius: 10px;
   background: #fff;
 }
@@ -1175,21 +1179,21 @@
   border-radius: 50%;
   width: 53px;
   height: 53px;
-  background: #f2f1eb;
+  background: var(--gray-200);
   box-shadow:
     inset 0 0 0 6px #fff,
-    inset 0 0 0 7px #e0e0d6,
-    0 2px 4px #34452718;
+    inset 0 0 0 7px var(--gray-300),
+    0 2px 4px rgb(29 29 31 / 9%);
   display: grid;
   place-items: center;
-  color: #738065;
+  color: var(--gray-600);
 }
 .ps2-ware-style {
-  background: #b5ae9f;
+  background: var(--gray-400);
   box-shadow:
-    inset 0 0 0 6px #d8d0c0,
-    inset 0 0 0 7px #bdb6a6,
-    0 2px 4px #34452718;
+    inset 0 0 0 6px var(--gray-300),
+    inset 0 0 0 7px var(--gray-400),
+    0 2px 4px rgb(29 29 31 / 9%);
 }
 .ps2-ware-options b {
   font-size: 0.75rem;
@@ -1197,12 +1201,12 @@
 .ps2-ware-options small {
   font-size: 0.75rem;
   line-height: 1.5;
-  color: #6c795f;
+  color: var(--gray-600);
 }
 .ps2-control-help {
   font-size: 0.75rem;
   line-height: 1.7;
-  color: #637357;
+  color: var(--gray-600);
   margin: 14px 0 0;
 }
 .ps2-framing {
@@ -1228,8 +1232,8 @@
 }
 .ps2-library-photo {
   text-align: left;
-  background: #f6f7f2;
-  border: 1px solid #e2e7da;
+  background: var(--gray-100);
+  border: 1px solid var(--gray-300);
   border-radius: 12px;
   padding: 7px;
   font-size: 0.75rem;
@@ -1295,7 +1299,7 @@
   .ps2-canvas {
     min-height: 355px;
     aspect-ratio: auto;
-    border-radius: 17px;
+    border-radius: var(--radius-card);
   }
   .ps2-canvas.has-photo {
     min-height: 0;
@@ -1365,13 +1369,15 @@
     position: fixed;
     left: 0;
     right: 0;
-    bottom: 0;
-    padding: 12px 20px max(14px, env(safe-area-inset-bottom));
+    bottom: var(--cx-tabbar, 0px);
+    padding: 12px 20px
+      max(14px, calc(env(safe-area-inset-bottom) - var(--cx-tabbar, 0px)));
     z-index: 35;
-    border-top: 1px solid #dfe5d7;
-    background: #fffffff5;
-    backdrop-filter: blur(18px);
-    box-shadow: 0 -8px 24px #253c1610;
+    border-top: 0;
+    background: var(--glass);
+    -webkit-backdrop-filter: var(--glass-blur);
+    backdrop-filter: var(--glass-blur);
+    box-shadow: 0 -1px 0 rgb(0 0 0 / 6%);
   }
   .ps2-mobile-action > div {
     display: flex;
@@ -1384,7 +1390,7 @@
   }
   .ps2-mobile-action span {
     font-size: 0.75rem;
-    color: #67775b;
+    color: var(--gray-600);
     max-width: 65%;
     text-align: right;
   }
@@ -1475,7 +1481,7 @@
   .ps2-style-example img {
     max-height: 40dvh;
     object-fit: contain;
-    background: #f3f5ef;
+    background: var(--gray-200);
   }
   .ps2-detail h3 {
     margin: 9px 0 12px;
@@ -1537,18 +1543,16 @@
   margin-bottom: 5px;
 }
 .cx-guest .cx-guest-heading h1 {
-  font-family: inherit;
-  font-size: 2.125rem;
-  font-weight: 580;
-  letter-spacing: -0.045em;
+  font: 700 var(--text-title1) / 1.15 var(--font-display);
+  letter-spacing: var(--tracking-display);
   margin: 8px 0 12px;
 }
 .cx-guest .cx-guest-heading > div > p:last-child {
   font-size: 0.8125rem;
 }
 .cx-guest .cx-guest-heading .cx-eyebrow {
-  font-size: 0.75rem;
-  letter-spacing: 0.14em;
+  font-size: var(--text-footnote);
+  letter-spacing: normal;
 }
 .ps2-canvas {
   height: auto;
@@ -1573,7 +1577,7 @@
     padding: 22px 20px 40px;
   }
   .cx-guest .cx-guest-heading h1 {
-    font-size: 1.8125rem;
+    font-size: var(--text-title2);
   }
   .cx-guest .cx-guest-heading > div > p:last-child {
     font-size: 0.75rem;
@@ -1595,11 +1599,11 @@
   flex-wrap: wrap;
   gap: 8px 24px;
   margin: 0 0 20px;
-  border-bottom: 1px solid #e2e7dc;
+  border-bottom: 1px solid var(--gray-300);
 }
 .ps2-browser-tabs button {
   font-size: 0.875rem;
-  color: #6a765f;
+  color: var(--gray-600);
   font-weight: 600;
   border: 0;
   border-bottom: 2px solid transparent;
@@ -1608,8 +1612,8 @@
   min-height: 36px;
 }
 .ps2-browser-tabs button[aria-pressed="true"] {
-  color: #314d25;
-  border-bottom-color: #314d25;
+  color: var(--gray-900);
+  border-bottom-color: var(--gray-900);
 }
 .ps2-gallery-card {
   position: relative;
@@ -1627,11 +1631,11 @@
   backdrop-filter: blur(8px);
   display: grid;
   place-items: center;
-  color: #596e4f;
+  color: var(--gray-600);
 }
 .ps2-favorite[aria-pressed="true"] {
-  color: #395a2d;
-  background: #eff5e6;
+  color: var(--gray-900);
+  background: var(--gray-200);
 }
 .ps2-saved-panel h3 {
   font-size: 1rem;
@@ -1856,9 +1860,9 @@
   flex-wrap: wrap;
   gap: 15px;
   margin: 20px 0 0;
-  border: 1px solid #dce5d3;
+  border: 1px solid var(--gray-300);
   border-radius: 14px;
-  background: #f2f6eb;
+  background: var(--gray-200);
   padding: 17px 20px;
 }
 .ps2-guest-recovery > div {
@@ -1870,13 +1874,13 @@
 }
 .ps2-guest-recovery p {
   font-size: 0.75rem;
-  color: #607452;
+  color: var(--gray-600);
   margin: 5px 0 0;
 }
 .ps2-guest-recovery .cx-btn {
   min-height: 40px;
   font-size: 0.75rem;
-  border-radius: 22px;
+  border-radius: var(--radius-pill);
 }
 .ps2-guest-recovery .cx-link {
   font-size: 0.75rem;
@@ -1884,20 +1888,6 @@
 @media (max-width: 760px) {
   .cx-guest .cx-guest-free {
     display: none;
-  }
-  .cx-guest > .pw-header {
-    padding: 16px 20px;
-    gap: 12px;
-  }
-  .cx-guest > .pw-header nav {
-    gap: 12px;
-  }
-  .cx-guest > .pw-header .cx-brand {
-    min-width: 0;
-  }
-  .cx-guest > .pw-header .cx-brand img,
-  .cx-guest > .pw-header .cx-brand svg {
-    max-width: 158px;
   }
 }
 
@@ -2018,18 +2008,18 @@
   display: flex;
   gap: 15px;
   align-items: flex-start;
-  border: 1px solid #dbe5d2;
+  border: 1px solid var(--gray-300);
   border-radius: 16px;
   padding: 20px;
   margin: 24px 0;
-  background: #f4f7ef;
+  background: var(--gray-200);
 }
 .ps2-job-status b {
   font-size: 1rem;
 }
 .ps2-job-status p {
   font-size: 0.875rem;
-  color: #637257;
+  color: var(--gray-600);
   line-height: 1.6;
   margin: 7px 0 0;
 }
@@ -2038,7 +2028,7 @@
   height: 10px;
   flex-shrink: 0;
   border-radius: 50%;
-  background: #5a7949;
+  background: var(--gray-900);
   margin-top: 6px;
 }
 .ps2-finish {
@@ -2152,7 +2142,7 @@
   display: flex;
   align-items: center;
   gap: 8px;
-  color: #42672f;
+  color: var(--gray-900);
 }
 .ps2-result-primary {
   border-radius: 8px;
@@ -2188,7 +2178,9 @@
   }
   .ps2-result-primary {
     position: fixed;
-    bottom: max(18px, env(safe-area-inset-bottom));
+    bottom: calc(
+      var(--cx-tabbar, 0px) + max(18px, env(safe-area-inset-bottom))
+    );
     left: 20px;
     right: 20px;
     width: calc(100% - 40px) !important;
@@ -2196,7 +2188,7 @@
     min-height: 48px;
     box-shadow:
       0 0 0 12px #fffffff5,
-      0 -8px 28px #223f181c;
+      0 -8px 28px rgb(29 29 31 / 11%);
   }
   .ps2-finish .ps2-dialog-footer {
     flex-wrap: nowrap;
@@ -2321,7 +2313,7 @@
   display: flex;
   align-items: center;
   gap: 12px;
-  border: 1px solid #e4e7e5;
+  border: 1px solid var(--gray-300);
   padding: 12px;
   border-radius: 12px;
 }
@@ -2340,7 +2332,7 @@
   font-size: 0.875rem;
 }
 .ps2-batch-result {
-  border: 1px solid #e4e7e5;
+  border: 1px solid var(--gray-300);
   padding: 14px;
   border-radius: 16px;
 }
@@ -2350,7 +2342,7 @@
   object-fit: contain;
   border-radius: 10px;
   margin-bottom: 12px;
-  background: #f4f5f4;
+  background: var(--gray-100);
 }
 .ps2-batch-result > label {
   display: flex;
@@ -2369,7 +2361,7 @@
   width: 100%;
   max-height: 220px;
   object-fit: contain;
-  background: #f3f4f3;
+  background: var(--gray-200);
   border-radius: 14px;
   margin-bottom: 20px;
 }
@@ -2402,7 +2394,7 @@
   font-family: inherit;
   font-size: 1.75rem;
   font-weight: 600;
-  letter-spacing: -0.8px;
+  letter-spacing: var(--tracking-display);
 }
 .cx-guided-studio .cx-panel > p {
   font-size: 1rem;
@@ -2418,7 +2410,7 @@
 }
 .ps2-occasion-label {
   display: block;
-  color: #52624f;
+  color: var(--gray-600);
   font-size: 0.875rem;
   margin-top: 7px;
 }
@@ -2483,7 +2475,7 @@
   grid-template-columns: minmax(0, 1fr) minmax(280px, 340px);
   flex: 1;
   min-height: 0;
-  border-block: 1px solid #e3e7df;
+  border-block: 1px solid var(--gray-300);
 }
 .ps2-adjustment-stage {
   display: flex;
@@ -2492,7 +2484,7 @@
   min-width: 0;
   min-height: 0;
   padding: 24px;
-  background: #f2f3ef;
+  background: var(--gray-200);
   container-type: size;
 }
 .ps2-adjustment-stage .cx-photo-frame {
@@ -2544,7 +2536,7 @@
   min-height: 48px;
   flex-shrink: 0;
   margin: 0 20px 12px;
-  background: #f1f3ed;
+  background: var(--gray-200);
 }
 .ps2-adjustment-tools [data-slot="tabs-trigger"] {
   min-height: 44px;
@@ -2553,7 +2545,7 @@
 }
 .ps2-adjustment-tools [data-slot="tabs-trigger"][data-state="active"] {
   background: white;
-  color: #24301f;
+  color: var(--gray-900);
 }
 .ps2-adjustment-scroll {
   overflow: auto;
@@ -2588,7 +2580,7 @@
   font-size: 0.9375rem;
 }
 .ps2-adjustment-scroll .cx-range-value {
-  color: #53604d;
+  color: var(--gray-600);
   font-variant-numeric: tabular-nums;
 }
 .ps2-adjustment-scroll .cx-range input {
@@ -2600,7 +2592,7 @@
 .ps2-adjustment-help {
   margin: 6px 0 12px;
   font-size: 0.9375rem;
-  color: #596650;
+  color: var(--gray-600);
   line-height: 1.5;
 }
 .ps2-adjustment-footer {
@@ -2611,7 +2603,7 @@
 .ps2-adjustment-footer > p {
   font-size: 0.8125rem;
   line-height: 1.45;
-  color: #596650;
+  color: var(--gray-600);
   margin: 0 0 8px;
 }
 .ps2-adjustment-footer > div {

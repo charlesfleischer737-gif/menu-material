@@ -9,7 +9,7 @@ import {
   type ReactNode,
 } from "react";
 import { ArrowRight, Check, LoaderCircle, RotateCw } from "lucide-react";
-import { api, type Row } from "@/lib/client";
+import { api, dishCount, type Row } from "@/lib/client";
 import WorkspacePlaceholder from "./workspace-placeholder";
 import CreativeHeader from "./creative-header";
 import { createPhotoPreviewRenderer, imageBitmap } from "@/lib/photo-export";
@@ -528,7 +528,7 @@ export function SavedDrafts({
               draft.name ||
               draft.title ||
               (kind === "menu"
-                ? `${draft.rows?.length || 0} dishes · Menu`
+                ? `${dishCount(draft.rows?.length || 0)} · Menu`
                 : `Untitled ${kind === "studio" ? "photo" : "post"}`);
             const photoId =
               kind === "studio"

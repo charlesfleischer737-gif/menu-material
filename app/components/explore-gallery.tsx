@@ -13,6 +13,11 @@ import { exploreStyles } from "@/lib/explore-styles";
 import type { PhotoStyle } from "@/lib/photo-styles";
 import { maximumStyleQueryLength, searchStyles } from "@/lib/studio-search";
 
+// Ends the placeholder shimmer and fades the photo in once it has arrived.
+function showPhoto(img: HTMLImageElement) {
+  img.parentElement?.setAttribute("data-loaded", "");
+}
+
 export default function ExploreGallery({
   active = true,
   disabledStyleIds = [],
@@ -89,13 +94,21 @@ export default function ExploreGallery({
           >
             <span className="ex-tile-image">
               <img
+                ref={(img) => {
+                  if (img?.complete) showPhoto(img);
+                }}
                 src={style.image}
                 alt={`${style.name} food photography style: ${style.cue}`}
                 width={1000}
                 height={1000}
                 loading={index < 3 ? "eager" : "lazy"}
                 decoding="async"
+                onLoad={(event) => showPhoto(event.currentTarget)}
+                onError={(event) => showPhoto(event.currentTarget)}
               />
+            </span>
+            <span className="ex-tile-name" aria-hidden="true">
+              {style.name}
             </span>
           </button>
         ))}

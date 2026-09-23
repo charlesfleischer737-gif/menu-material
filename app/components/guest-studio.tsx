@@ -279,29 +279,35 @@ export default function GuestStudio({
   return (
     <div className="cx-guest">
       <header className="pw-header">
-        <button
-          className="cx-brand"
-          onClick={onBack}
-          disabled={!!busy}
-          aria-label="Menu Material home"
-        >
-          <Brand />
-        </button>
-        <nav aria-label="Studio navigation">
-          <a href="/pricing" target="_blank" rel="noreferrer">
-            Plans
-          </a>
-          {!state.user && <button onClick={onSignIn}>Log in</button>}
-          <span className="cx-guest-free">
-            <Sparkles size={15} />5 free images
-          </span>
-        </nav>
+        <div className="pw-header-inner">
+          <button
+            className="cx-brand pw-brand"
+            onClick={onBack}
+            disabled={!!busy}
+            aria-label="Menu Material home"
+          >
+            <Brand />
+          </button>
+          <nav className="pw-nav" aria-label="Studio navigation">
+            <a href="/pricing" target="_blank" rel="noreferrer">
+              Plans
+            </a>
+            {!state.user && (
+              <button className="pw-login" onClick={onSignIn}>
+                Log in
+              </button>
+            )}
+            <span className="cx-guest-free">
+              <Sparkles size={15} />5 free images
+            </span>
+          </nav>
+        </div>
       </header>
       <main id="creation-main" className="cx-main cx-feature-main">
         <section className="cx-tool cx-feature-page cx-guided-studio">
           <div className="cx-guest-heading">
             <div>
-              <p className="cx-eyebrow">YOUR FIRST GREAT FOOD PHOTO</p>
+              <p className="cx-eyebrow">Your first great food photo</p>
               <h1>Photo Studio</h1>
               <p>Add your photo. Find your look. Make it menu material.</p>
             </div>

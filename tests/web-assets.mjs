@@ -1,7 +1,21 @@
 import assert from "node:assert/strict";
 import sharp from "sharp";
-import { stat } from "node:fs/promises";
+import { readFile, stat } from "node:fs/promises";
 let checks = 0;
+// The served pdf.js worker must match the installed library exactly, or menu
+// previews fail with a version mismatch. It is the legacy build, which carries
+// the polyfills current browsers still need.
+const pdfjsVersion = JSON.parse(
+  await readFile("node_modules/pdfjs-dist/package.json", "utf8"),
+).version;
+const worker = await readFile("public/pdf.worker.legacy.min.mjs");
+assert(
+  worker.equals(
+    await readFile("node_modules/pdfjs-dist/legacy/build/pdf.worker.min.mjs"),
+  ),
+  `public/pdf.worker.legacy.min.mjs must be the pdfjs-dist ${pdfjsVersion} legacy worker`,
+);
+checks++;
 for (const [name, source, widths] of [
   ["burger-before", "public/burger-phone-original.jpg", [640]],
   ["burger-after", "public/burger-studio-transformation.png", [640, 960, 1536]],

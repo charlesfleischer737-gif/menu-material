@@ -1,5 +1,20 @@
 "use client";
 import Link from "next/link";
+import { Check } from "lucide-react";
+
+function Features({ items }: { items: string[] }) {
+  return (
+    <ul className="pw-plan-features">
+      {items.map((item) => (
+        <li key={item}>
+          <Check size={16} strokeWidth={2.4} aria-hidden="true" />
+          {item}
+        </li>
+      ))}
+    </ul>
+  );
+}
+
 export default function PlanCards({
   enabled = false,
   onUpgrade,
@@ -14,18 +29,20 @@ export default function PlanCards({
   return (
     <div className="pw-plan-grid">
       <article className="pw-plan-card">
-        <p className="pw-eyebrow">A GREAT FIRST IMPRESSION</p>
         <h2>Free</h2>
+        <p className="pw-plan-tagline">A great first impression.</p>
         <p className="pw-plan-price">$0</p>
-        <p>
+        <p className="pw-plan-allowance">
           <strong>5 image generations</strong> to get started.
         </p>
-        <ul>
-          <li>One-time allowance, no expiry</li>
-          <li>Full-quality image generation and exports</li>
-          <li>Photos for your existing menu and social channels</li>
-          <li>No credit card required</li>
-        </ul>
+        <Features
+          items={[
+            "One-time allowance, no expiry",
+            "Full-quality images and exports",
+            "Photos for your menu and social channels",
+            "No credit card required",
+          ]}
+        />
         <div className="pw-plan-action">
           {onFree ? (
             <button className="cx-btn" disabled={busy} onClick={onFree}>
@@ -39,21 +56,26 @@ export default function PlanCards({
         </div>
       </article>
       <article className="pw-plan-card is-pro">
-        <p className="pw-eyebrow">KEEP GOOD FOOD IN THE SPOTLIGHT</p>
-        <h2>Pro</h2>
+        <div className="pw-plan-name">
+          <h2>Pro</h2>
+          {!enabled && <span className="pw-plan-badge">Coming soon</span>}
+        </div>
+        <p className="pw-plan-tagline">Keep good food in the spotlight.</p>
         <p className="pw-plan-price">
           $9.99<span>/month</span>
         </p>
-        <p>
+        <p className="pw-plan-allowance">
           <strong>100 image generations</strong> every month.
         </p>
-        <ul>
-          <li>Fresh allowance each paid billing period</li>
-          <li>The same full-quality images and exports</li>
-          <li>New dishes, menu refreshes and weekly specials</li>
-          <li>Reuse approved photos in matching posts and Stories</li>
-          <li>Cancel future renewals through billing</li>
-        </ul>
+        <Features
+          items={[
+            "A fresh allowance every billing period",
+            "The same full-quality images and exports",
+            "New dishes, menu refreshes and weekly specials",
+            "Matching posts and Stories from approved photos",
+            "Cancel future renewals anytime",
+          ]}
+        />
         <div className="pw-plan-action">
           {enabled ? (
             onUpgrade ? (
@@ -66,14 +88,9 @@ export default function PlanCards({
               </Link>
             )
           ) : (
-            <>
-              <p className="fine">
-                Subscriptions aren’t open yet. Start with 5 free images today.
-              </p>
-              <button className="cx-btn" disabled>
-                Pro is coming soon
-              </button>
-            </>
+            <p className="pw-plan-soon">
+              Subscriptions open soon. Start with 5 free images today.
+            </p>
           )}
         </div>
       </article>

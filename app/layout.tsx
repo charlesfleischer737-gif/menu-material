@@ -1,5 +1,7 @@
 import type { Metadata } from "next";
 import { config } from "@/lib/server/core";
+// Imported here rather than from CSS so the build bundles the font files.
+import "@fontsource-variable/inter/opsz.css";
 import "./globals.css";
 import "./workspace.css";
 import "./menu-material.css";
@@ -8,7 +10,7 @@ import "./studio-onboarding.css";
 import "./studio-workbench.css";
 import "./restaurant-look.css";
 import "./launch.css";
-import "./homepage.css";
+import "./marketing.css";
 import "./photo-exports.css";
 import "./creative-workspace.css";
 import "./menu-templates.css";
@@ -18,6 +20,7 @@ import "./explore.css";
 import "./restaurant-settings.css";
 import "./library-filters.css";
 import "./workspace-patterns.css";
+import "./workspace-shell.css";
 export async function generateMetadata(): Promise<Metadata> {
   const origin = config("APP_ORIGIN");
   const images = origin

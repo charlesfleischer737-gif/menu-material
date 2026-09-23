@@ -23,7 +23,7 @@ import {
   Upload,
   X,
 } from "lucide-react";
-import { api, downloadBlob, type Row } from "@/lib/client";
+import { api, dishCount, downloadBlob, type Row } from "@/lib/client";
 import {
   entryPrice,
   menuContentIssues,
@@ -235,7 +235,7 @@ export default function MenuStudio({
     setDialog(!items.length ? "brief" : "");
     select(sections[0]?.items[0]?.id || "");
     tell(
-      `${sections.reduce((n, s) => n + s.items.length, 0)} dishes added. Review the details before publishing.`,
+      `${dishCount(sections.reduce((n, s) => n + s.items.length, 0))} added. Review the details before publishing.`,
     );
   }
   function reorder<T>(values: T[], index: number, direction: number) {
@@ -362,7 +362,7 @@ export default function MenuStudio({
     return (
       <section className="md-studio">
         <div className="md-loading">
-          <span className="md-eyebrow">MENU STUDIO</span>
+          <span className="md-eyebrow">Menu studio</span>
           <h1>Your next great menu starts here.</h1>
           <p role="status">{store.status}</p>
           {store.error && (
@@ -562,7 +562,7 @@ export default function MenuStudio({
         {!items.length && !draft.sections.length ? (
           <div className="md-start">
             <div className="md-start-copy">
-              <span className="md-eyebrow">MADE FOR YOUR TABLE</span>
+              <span className="md-eyebrow">Made for your table</span>
               <h2>
                 A menu that feels
                 <br />
@@ -642,7 +642,7 @@ export default function MenuStudio({
             <aside className="md-outline" aria-label="Menu contents">
               <div className="md-outline-heading">
                 <h2>On the menu</h2>
-                <span>{items.length} dishes</span>
+                <span>{dishCount(items.length)}</span>
               </div>
               <input
                 className="md-outline-search"
@@ -966,7 +966,7 @@ export default function MenuStudio({
                       Explore designs
                     </button>
                     <button
-                      className="md-text-button"
+                      className="md-text-button md-link"
                       onClick={() => setPanel("details")}
                     >
                       Edit the menu title & notes
@@ -1535,7 +1535,7 @@ function MenuBulkPrices({
             );
           }}
         >
-          Update {count} dishes{" "}
+          Update {dishCount(count)}{" "}
           {valid && `by ${amount > 0 ? "+" : ""}${amount}%`}
         </button>
       </div>

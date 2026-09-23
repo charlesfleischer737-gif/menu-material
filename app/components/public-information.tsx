@@ -1,6 +1,7 @@
 import type { ReactNode } from "react";
 import Link from "next/link";
-import Brand from "./brand";
+import { Button } from "@/components/ui/button";
+import { SiteFooter, SiteHeader } from "./site-chrome";
 export default function PublicInformation({
   title,
   intro,
@@ -17,21 +18,21 @@ export default function PublicInformation({
       <a className="skip-link" href="#main">
         Skip to content
       </a>
-      <header className="pw-header">
-        <Link href="/" aria-label="Menu Material home">
-          <Brand />
-        </Link>
-        <Link className="pw-info-back" href="/">
-          Back to Menu Material
-        </Link>
-      </header>
+      <SiteHeader>
+        <nav className="pw-nav" aria-label="Main navigation">
+          <a href="/pricing">Pricing</a>
+          <Button className="pw-header-cta" asChild>
+            <Link href="/">Try it free</Link>
+          </Button>
+        </nav>
+      </SiteHeader>
       <main id="main" className="pw-information">
-        <p className="pw-eyebrow">Menu Material</p>
-        <h1>{title}</h1>
-        <p className="pw-information-intro">{intro}</p>
+        <header className="pw-information-header">
+          <h1>{title}</h1>
+          <p className="pw-information-intro">{intro}</p>
+        </header>
         {sections.length > 0 && (
           <nav className="pw-information-nav" aria-label="On this page">
-            <p>On this page</p>
             <ul>
               {sections.map((section) => (
                 <li key={section.id}>
@@ -43,16 +44,7 @@ export default function PublicInformation({
         )}
         {children}
       </main>
-      <footer className="pw-footer">
-        <Link href="/" aria-label="Menu Material home">
-          <Brand />
-        </Link>
-        <nav className="pw-footer-links" aria-label="Help and information">
-          <a href="/pricing">Plans & pricing</a>
-          <a href="/privacy">Photo privacy</a>
-          <a href="/guidelines">Usage guidelines</a>
-        </nav>
-      </footer>
+      <SiteFooter />
     </div>
   );
 }

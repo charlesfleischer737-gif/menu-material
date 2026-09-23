@@ -13,7 +13,7 @@ const eslintConfig = defineConfig([
     "build/**",
     "next-env.d.ts",
     // Vendored, minified pdf.js worker served as a static asset.
-    "public/pdf.worker.min.mjs",
+    "public/pdf.worker.legacy.min.mjs",
   ]),
   {
     files: ["components/ui/**/*.{ts,tsx}"],

@@ -1,73 +1,9 @@
 /* Shared workspace patterns; restaurant artwork keeps its own type and color. */
-.cx-sidebar .cx-brand {
-  display: flex;
-  align-items: center;
-  min-height: 44px;
-  border-radius: 8px;
-}
 .cx-icon {
   min-width: 44px;
   min-height: 44px;
   flex-shrink: 0;
   border-radius: 8px;
-}
-.cx-sidebar-bottom > button {
-  min-height: 44px;
-  padding: 10px 12px;
-  gap: 8px;
-  border-radius: 8px;
-}
-.cx-mobile-tools summary {
-  display: grid;
-  place-items: center;
-  width: 44px;
-  min-width: 44px;
-  height: 44px;
-  min-height: 44px;
-  padding: 12px;
-  border-radius: 8px;
-}
-.cx-mobile-tools > div {
-  top: calc(100% + 8px);
-  gap: 8px;
-  border-radius: 12px;
-}
-@media (min-width: 761px) {
-  .cx-sidebar {
-    padding: 24px 16px 16px;
-  }
-  .cx-sidebar .cx-brand {
-    margin-bottom: 16px;
-  }
-  .cx-sidebar-label {
-    padding-left: 12px;
-    margin-bottom: 12px !important;
-    line-height: 1.4;
-    letter-spacing: 0.03em;
-  }
-  .cx-sidebar nav button {
-    min-height: 44px;
-    border-radius: 8px;
-    gap: 8px;
-  }
-  .cx-sidebar-bottom {
-    padding-top: 16px;
-    gap: 4px;
-  }
-  .cx-pilot {
-    padding: 12px;
-    gap: 4px;
-    margin-bottom: 8px;
-    border-radius: 12px;
-  }
-  .cx-pilot b {
-    font-size: 14px;
-  }
-}
-@media (max-width: 760px) {
-  .cx-app .cx-sidebar {
-    padding: 4px 16px 0;
-  }
 }
 .mm-workspace summary,
 .mm-drawer summary {
@@ -111,7 +47,7 @@
 }
 .ps2-create {
   min-height: 48px;
-  border-radius: 8px;
+  border-radius: var(--radius-pill);
   font-size: 14px;
   gap: 8px;
   background: var(--workspace-action);
@@ -276,8 +212,6 @@
   min-width: 190px;
   font-family: var(--font-ui);
   color: var(--foreground);
-  border-color: var(--border);
-  border-radius: 8px;
 }
 .workspace-action-menu [role^="menuitem"] {
   min-height: 44px;
@@ -321,24 +255,32 @@
   gap: 0;
 }
 .md-proof-toolbar > div:last-child {
+  padding: 2px;
+  border-radius: var(--radius-pill);
   background: var(--workspace-surface);
-  border-radius: 8px;
+  box-shadow:
+    0 1px 2px rgb(0 0 0 / 6%),
+    0 0 0 0.5px rgb(0 0 0 / 6%);
 }
 .md-proof-toolbar button {
-  min-height: 44px;
-  min-width: 44px;
-  border-radius: 8px;
+  min-height: 40px;
+  min-width: 40px;
+  border-radius: var(--radius-pill);
   padding: 8px;
   font-size: 14px !important;
+  transition: background-color var(--duration-fast) var(--ease);
 }
 .md-proof-toolbar button:disabled {
-  opacity: 1;
-  color: var(--workspace-muted);
-  background: var(--workspace-disabled);
+  opacity: 0.35;
+  color: var(--workspace-ink);
+  background: transparent;
 }
 .md-proof-toolbar button:not(:disabled) {
   color: var(--workspace-ink);
-  background: var(--workspace-surface);
+  background: transparent;
+}
+.md-proof-toolbar button:hover:not(:disabled) {
+  background: rgb(0 0 0 / 5%);
 }
 .md-proof-toolbar .md-fit-control {
   min-width: 76px;
@@ -400,12 +342,9 @@
   bottom: 0;
   background: var(--workspace-action);
 }
-.cx-app .cx-main {
-  padding-top: 24px;
-}
 .cx-guided-studio .cx-feature-header h1 {
-  font: 650 30px/1.2 var(--font-ui);
-  letter-spacing: -0.035em;
+  font: 700 var(--text-title1) / 1.15 var(--font-display);
+  letter-spacing: var(--tracking-display);
 }
 .mm-heading {
   display: grid;
@@ -427,8 +366,9 @@
   margin-top: 4px;
 }
 .md-studio .md-icon:disabled {
-  color: var(--workspace-muted);
-  background: var(--workspace-disabled);
+  opacity: 0.35;
+  color: var(--workspace-ink);
+  background: transparent;
 }
 .cx-app .cx-link.cx-icon {
   display: inline-flex;
@@ -474,15 +414,17 @@
     position: fixed;
     left: 0;
     right: 0;
-    bottom: 0;
+    bottom: var(--cx-tabbar, 0px);
     z-index: 35;
     width: auto;
     margin: 0;
-    padding: 12px 16px max(12px, env(safe-area-inset-bottom));
-    border-top: 1px solid var(--workspace-line);
-    background: var(--workspace-surface);
+    padding: 10px 16px;
+    border-top: 0;
+    background: var(--glass);
+    -webkit-backdrop-filter: var(--glass-blur);
+    backdrop-filter: var(--glass-blur);
     gap: 8px;
-    box-shadow: 0 -4px 16px rgb(20 38 30 / 5%);
+    box-shadow: 0 -1px 0 rgb(0 0 0 / 6%);
   }
   .workspace-action-bar[data-in-flow="true"] {
     position: static;
@@ -526,6 +468,7 @@
     height: 48px;
     margin: 0;
     border: 1px solid var(--workspace-control);
+    border-radius: 50%;
     background: var(--workspace-surface);
   }
   .md-mobile-nav {
@@ -559,14 +502,11 @@
   .md-proof-body {
     padding: 0 8px 16px;
   }
-  .cx-app .cx-main {
-    padding-top: 16px;
-  }
   .cx-guided-studio .cx-feature-header h1 {
-    font-size: 26px;
+    font-size: var(--text-title2);
   }
   .md-document-picker h1 {
-    font-size: 26px;
+    font-size: var(--text-title2);
   }
   .mm-tool-picker {
     display: grid;
@@ -608,9 +548,8 @@
 }
 .workspace-skeleton-media {
   min-height: 420px;
-  border-radius: 12px;
-  background: var(--workspace-loading-surface);
-  border: 1px solid var(--cx-line, #dfe3e0);
+  border-radius: var(--radius-media);
+  background: var(--workspace-surface);
 }
 .workspace-skeleton-fields {
   display: grid;
@@ -621,8 +560,8 @@
 .workspace-skeleton-fields span {
   display: block;
   height: 64px;
-  border-radius: 8px;
-  background: var(--workspace-loading-surface);
+  border-radius: var(--radius-control);
+  background: var(--fill);
 }
 .workspace-skeleton-fields span:first-child {
   height: 44px;
@@ -637,16 +576,48 @@
 .workspace-load-error p {
   margin: 0 0 16px;
 }
+/* First load: a quiet, centered mark. It fades in only when loading is slow,
+   so quick loads go straight to the page. */
 .initial-loading {
-  max-width: 1280px;
-  margin: auto;
+  display: grid;
+  place-content: center;
+  justify-items: center;
+  gap: 14px;
+  min-height: 100dvh;
   padding: 24px;
+  background: var(--workspace-surface);
   font-family: var(--font-ui);
+  text-align: center;
+  animation: cx-loading-in var(--duration-slow) var(--ease) 300ms both;
+}
+@keyframes cx-loading-in {
+  from {
+    opacity: 0;
+  }
 }
 .initial-loading > .menu-material-wordmark {
   display: block;
-  width: 220px;
-  margin-bottom: 32px;
+  width: 200px;
+}
+.initial-loading .mm-header {
+  margin: 0;
+  padding: 0;
+  border: 0;
+}
+.initial-loading .mm-heading h1 {
+  position: absolute;
+  width: 1px;
+  height: 1px;
+  overflow: hidden;
+  clip-path: inset(50%);
+  white-space: nowrap;
+}
+.initial-loading .mm-heading > span {
+  color: var(--workspace-muted);
+  font-size: var(--text-footnote);
+}
+.initial-loading :is(.workspace-skeleton, .workspace-operations-skeleton) {
+  display: none;
 }
 .admin-panel {
   background: transparent;
@@ -880,12 +851,8 @@
   .workspace-skeleton-media {
     min-height: 320px;
   }
-  .initial-loading {
-    padding: 16px;
-  }
   .initial-loading > .menu-material-wordmark {
-    width: 190px;
-    margin-bottom: 24px;
+    width: 180px;
   }
   .admin-access-panel,
   .admin-restaurant {
@@ -979,11 +946,13 @@
 .cx-app .cx-feature-header {
   align-items: flex-start;
 }
+/* One page title across the workspace. */
 .cx-app .mm-header h1,
 .cx-app .cx-feature-header h1,
-.cx-app .md-document-picker h1 {
-  font: 650 30px/1.2 var(--font-ui);
-  letter-spacing: -0.035em;
+.cx-app .md-document-picker h1,
+.cx-app .ex-header h1 {
+  font: 700 var(--text-title1) / 1.15 var(--font-display);
+  letter-spacing: var(--tracking-display);
 }
 .admin-panel > .cx-panel {
   margin: 24px 0;
@@ -1094,8 +1063,9 @@
 @media (max-width: 760px) {
   .cx-app .mm-header h1,
   .cx-app .cx-feature-header h1,
-  .cx-app .md-document-picker h1 {
-    font-size: 26px;
+  .cx-app .md-document-picker h1,
+  .cx-app .ex-header h1 {
+    font-size: var(--text-title2);
   }
   .admin-panel > .cx-panel {
     padding: 16px;
@@ -1229,13 +1199,7 @@
     .tools-tab[data-state="active"] .mm-import-footer[data-in-flow="false"]
   ) {
     /* The import panel already reserves the measured action-bar height. */
-    padding-bottom: 0;
-  }
-  .cx-app:has(
-      .tools-tab[data-state="active"] .mm-import-footer[data-in-flow="false"]
-    )
-    .cx-footer {
-    display: none;
+    padding-bottom: var(--cx-tabbar);
   }
 }
 .menu-tools .style-heading {
@@ -1429,7 +1393,7 @@
   padding: 10px 16px;
   gap: 8px;
   border: 1px solid var(--workspace-action);
-  border-radius: 8px;
+  border-radius: var(--radius-pill);
   background: var(--workspace-action);
   color: #fff;
   font: 600 14px/1.4 var(--font-ui);
@@ -1502,17 +1466,18 @@
   box-shadow: none;
 }
 .workspace-tab-list [data-state="active"] {
-  color: var(--workspace-action);
-  font-weight: 650;
+  color: var(--workspace-ink);
+  font-weight: 600;
   background: transparent;
 }
 .workspace-tab-list [data-slot="tabs-trigger"]::after {
   bottom: 0;
-  background: var(--workspace-action);
+  height: 2px;
+  background: var(--workspace-ink);
 }
 .workspace-tab-list [data-slot="tabs-trigger"]:hover:not(:disabled),
 .mm-tool-tabs [data-slot="tabs-trigger"]:hover:not(:disabled) {
-  background: var(--workspace-selected);
+  background: transparent;
   color: var(--workspace-ink);
 }
 .workspace-tab-list [data-slot="tabs-trigger"]:focus-visible,
@@ -1523,92 +1488,75 @@
   outline-offset: -2px;
   box-shadow: none;
 }
+/* Segmented controls: a translucent track with a raised selected segment. */
 .workspace-segments,
 .mm-segments,
 .md-segment,
 .cx-segment {
   display: flex;
-  gap: 4px;
-  padding: 4px;
-  border: 1px solid var(--workspace-control);
-  border-radius: 8px;
-  background: var(--workspace-surface);
+}
+/* The Menus phone navigation keeps its own display rules (hidden on desktop). */
+.workspace-segments,
+.mm-segments,
+.md-segment,
+.cx-segment,
+.md-mobile-nav {
+  gap: 2px;
+  padding: 3px;
+  border: 0;
+  border-radius: var(--radius-pill);
+  background: var(--fill);
   min-width: 0;
 }
-.workspace-segments button,
-.mm-segments button,
-.md-segment button,
-.cx-segment button {
-  min-height: 44px;
+:is(.workspace-segments, .mm-segments, .md-segment, .cx-segment, .md-mobile-nav)
+  button {
+  min-height: 38px;
   height: auto;
-  padding: 8px 12px;
+  padding: 8px 14px;
   border: 0;
-  border-radius: 4px;
+  border-radius: var(--radius-pill);
   background: transparent;
-  color: var(--workspace-muted);
-  font: 600 14px/1.4 var(--font-ui);
+  color: var(--workspace-ink);
+  font: 500 14px/1.3 var(--font-ui);
   font-size: 14px !important;
   gap: 8px;
   white-space: normal;
-}
-.workspace-segments button[aria-pressed="true"],
-.mm-segments button[aria-pressed="true"],
-.md-segment button[aria-pressed="true"],
-.cx-segment button[aria-pressed="true"],
-.md-mobile-nav button[aria-pressed="true"] {
-  background: var(--workspace-action);
-  color: var(--workspace-surface);
   box-shadow: none;
-}
-.workspace-segments button:focus-visible,
-.mm-segments button:focus-visible,
-.md-segment button:focus-visible,
-.cx-segment button:focus-visible {
-  outline: 2px solid var(--workspace-focus);
-  outline-offset: 2px;
+  transition:
+    background-color var(--duration-fast) var(--ease),
+    box-shadow var(--duration-fast) var(--ease);
 }
 :is(.workspace-segments, .mm-segments, .md-segment, .cx-segment, .md-mobile-nav)
-  button:hover:not(:disabled) {
+  button[aria-pressed="true"] {
+  background: var(--workspace-surface);
   color: var(--workspace-ink);
-  background: var(--workspace-selected);
+  font-weight: 600;
+  box-shadow:
+    0 1px 3px rgb(0 0 0 / 12%),
+    0 0 0 0.5px rgb(0 0 0 / 4%);
 }
 :is(.workspace-segments, .mm-segments, .md-segment, .cx-segment, .md-mobile-nav)
-  button[aria-pressed="true"]:hover:not(:disabled) {
-  color: var(--workspace-surface);
-  background: var(--workspace-action-hover);
+  button:focus-visible {
+  outline: 2px solid var(--workspace-focus);
+  outline-offset: 1px;
+}
+:is(.workspace-segments, .mm-segments, .md-segment, .cx-segment, .md-mobile-nav)
+  button:not([aria-pressed="true"]):hover:not(:disabled) {
+  background: rgb(255 255 255 / 55%);
 }
 :is(.workspace-segments, .mm-segments, .md-segment, .cx-segment, .md-mobile-nav)
   button:active:not(:disabled) {
-  color: var(--workspace-surface);
-  background: var(--workspace-action-pressed);
+  background: rgb(255 255 255 / 80%);
 }
 :is(.workspace-segments, .mm-segments, .md-segment, .cx-segment, .md-mobile-nav)
   button:disabled,
 :is(.workspace-tab-list, .mm-tool-tabs) [data-slot="tabs-trigger"]:disabled {
   color: var(--workspace-muted);
-  background: var(--workspace-disabled);
-  opacity: 1;
-}
-:is(.workspace-segments, .mm-segments, .md-segment, .cx-segment, .md-mobile-nav)
-  button[aria-pressed="true"]:disabled {
-  box-shadow: inset 0 -3px 0 var(--workspace-muted);
+  background: transparent;
+  opacity: 0.55;
 }
 .auth-mode-choice button {
   flex: 1;
-}
-.cx-sidebar-bottom > button[aria-current="page"],
-.cx-mobile-tools > div > button[aria-current="page"] {
-  color: var(--workspace-action);
-  background: var(--workspace-selected);
-  font-weight: 650;
-  box-shadow: inset 3px 0 0 var(--workspace-action);
-}
-.cx-mobile-tools > div > button {
-  min-height: 44px;
-  padding: 10px 12px;
-  border-radius: 8px;
-  font-size: 14px;
-  line-height: 1.4;
 }
 .mm-controls-sheet.cx-app[data-slot="sheet-content"] {
   display: flex;
@@ -1648,10 +1596,6 @@
   overflow-y: auto;
   padding: 0 16px max(24px, env(safe-area-inset-bottom));
   scroll-padding-block: 16px;
-}
-.md-mobile-nav {
-  background: var(--workspace-surface);
-  box-shadow: inset 0 0 0 1px var(--workspace-control);
 }
 .cx-app .md-inspector-label .md-selected-item-heading {
   margin: 0;
@@ -2316,7 +2260,7 @@
 }
 .md-studio .md-icon:hover:not(:disabled),
 .md-dialog .md-icon:hover:not(:disabled) {
-  background: var(--workspace-canvas);
+  background: rgb(0 0 0 / 5%);
   color: var(--workspace-ink);
 }
 @media (max-width: 760px) {
@@ -2334,4 +2278,20 @@
   flex-wrap: wrap;
   align-items: center;
   gap: var(--space-2);
+}
+/* Interface labels read in sentence case, never tracked-out capitals.
+   Menu and post artwork keep their own typography. */
+:is(
+  .cx-eyebrow,
+  .md-eyebrow,
+  .mm-kicker,
+  .ps2-kicker,
+  .md-inspector-label,
+  .md-selected-design > span,
+  .md-design-card-copy > span,
+  .ex-category,
+  .md-section-name
+) {
+  text-transform: none;
+  letter-spacing: normal;
 }

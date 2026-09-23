@@ -148,16 +148,12 @@ export default function HomepageSections() {
         aria-labelledby="use-cases-title"
         tabIndex={-1}
       >
-        <div className="pw-section-heading pw-split-heading">
-          <div>
-            <h2 id="use-cases-title">Made for your restaurant.</h2>
-          </div>
-          <div className="pw-use-case-intro">
-            <p>
-              Better food photos for your menu, delivery listings, and social
-              posts.
-            </p>
-          </div>
+        <div className="pw-section-heading">
+          <h2 id="use-cases-title">Made for your restaurant.</h2>
+          <p>
+            Better food photos for your menu, delivery listings, and social
+            posts.
+          </p>
         </div>
         <Carousel
           className="pw-use-case-carousel"
@@ -181,8 +177,10 @@ export default function HomepageSections() {
               >
                 <article className="pw-use-case">
                   <OutputExample item={item} />
-                  <h3>{item.name}</h3>
-                  <p>{item.text}</p>
+                  <div className="pw-use-case-copy">
+                    <h3>{item.name}</h3>
+                    <p>{item.text}</p>
+                  </div>
                 </article>
               </CarouselItem>
             ))}

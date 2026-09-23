@@ -375,7 +375,7 @@ export default function PostMaker({
       {!items.length ? (
         <div className="mm-post-start">
           <div>
-            <span className="mm-kicker">MAKE SOMETHING WORTH SHARING</span>
+            <span className="mm-kicker">Make something worth sharing</span>
             <h2>
               Start with a dish.
               <br />

@@ -111,3 +111,7 @@ export function money(price: number, currency = "USD") {
     currency,
   }).format(price / 100);
 }
+
+export function dishCount(count: number) {
+  return `${count} ${count === 1 ? "dish" : "dishes"}`;
+}

@@ -123,7 +123,7 @@ export function StudioCreating({
         <div className="ps-render-style">
           <img src={style.image} alt="Selected style example" />
           <div>
-            <span>THE LOOK WE’RE CREATING</span>
+            <span>The look we’re creating</span>
             <b>{style.name}</b>
           </div>
         </div>
@@ -132,7 +132,7 @@ export function StudioCreating({
         <span className="ps-render-mark">
           <Sparkles size={23} />
         </span>
-        <p className="cx-eyebrow">IN YOUR PHOTO STUDIO</p>
+        <p className="cx-eyebrow">In your Photo Studio</p>
         <h1 tabIndex={-1}>
           A little light.
           <br />A whole new look.
