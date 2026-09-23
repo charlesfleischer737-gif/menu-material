@@ -3,7 +3,7 @@ import { mkdtempSync, readFileSync, rmSync } from "node:fs";
 import { tmpdir } from "node:os";
 import { join } from "node:path";
 const root = mkdtempSync(join(tmpdir(), "menu-studio-experience-"));
-process.env.DISHLIGHT_DATA_DIR = root;
+process.env.MENU_MATERIAL_DATA_DIR = root;
 process.env.LOCAL_DEVELOPMENT = "true";
 process.env.OPENAI_API_KEY = "fixture-only";
 const { handle } = await import("../lib/server/api.ts");
@@ -468,7 +468,7 @@ try {
     secondUser,
     Date.now() + 60000,
   );
-  cookie = "dishlight_session=" + session;
+  cookie = "menu_material_session=" + session;
   assert.deepEqual(
     (await call("studio-library")).looks,
     [],
@@ -599,7 +599,7 @@ try {
     ]).id,
     asset.id,
   );
-  cookie = "dishlight_session=" + session;
+  cookie = "menu_material_session=" + session;
   await call(`photo-corrections/${resultAsset}`, undefined, 404);
   cookie = ownerCookie;
   await run("UPDATE outputs SET status='failed' WHERE job_id=?", report.jobId);
@@ -753,7 +753,7 @@ try {
   );
   form.set("dishId", transferDishId);
   await call("assets", form, 409);
-  cookie = "dishlight_session=" + session;
+  cookie = "menu_material_session=" + session;
   await call(
     "dishes",
     { creationId: transferDishId, name: "Cannot overwrite another restaurant" },

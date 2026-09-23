@@ -1,4 +1,4 @@
-# Plateworthy positioning and design
+# Menu Material positioning and design
 
 ## Homepage audit follow-up — September 16, 2026
 

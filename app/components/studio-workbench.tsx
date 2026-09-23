@@ -1106,7 +1106,7 @@ export function StudioWorkbench({
                   <button
                     className="cx-link"
                     onClick={() =>
-                      window.dispatchEvent(new Event("plateworthy:plans"))
+                      window.dispatchEvent(new Event("menu-material:plans"))
                     }
                   >
                     View plans

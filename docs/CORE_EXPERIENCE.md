@@ -1,6 +1,6 @@
 # Core creation experience — September 15, 2026
 
-The existing Plateworthy brand and stack are preserved. The Plated requirements document supplied by the owner guides the core experience.
+The existing Menu Material brand and stack are preserved. The Menu Material requirements supplied by the owner guide the core experience.
 
 ## What changed
 

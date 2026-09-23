@@ -144,7 +144,7 @@ export default function PhotoDownloads({
         new Blob([zipSync(files, { level: 0 }) as Uint8Array<ArrayBuffer>], {
           type: "application/zip",
         }),
-        `plateworthy-${destination}-photos.zip`,
+        `menu-material-${destination}-photos.zip`,
       );
     }
     for (const { item: photo } of completed)

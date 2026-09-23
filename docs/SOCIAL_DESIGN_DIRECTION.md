@@ -8,7 +8,7 @@ September 15, 2026. The user asked to replace the generic, block-heavy Post Make
 - **Bang Bang Burgers:** the agency's [published social campaign](https://youmakeme.com/projects/bang-bang/), linked to the restaurant's Instagram. The actual Instagram screenshot uses a full-frame photograph and a short, large typographic announcement placed directly over it. The broader case study ties photography and type to the restaurant's personality. It is an older campaign, used for composition rather than a claim about current trends.
 - **MISIPASTA:** [restaurant imagery credited to its Instagram](https://secretnyc.co/misipasta-nyc/) provides supporting context for food, craft and place as content. The design decisions above are based primarily on the two directly inspected examples.
 
-No restaurant reference photos, marks, slogans or compositions were copied into the site. All shipped food examples remain Plateworthy's existing original generated assets. Reference businesses' names are not used in templates. Gallery restaurant names, prices and dates are explicitly example-only and never copied into customer work.
+No restaurant reference photos, marks, slogans or compositions were copied into the site. All shipped food examples remain Menu Material's existing original generated assets. Reference businesses' names are not used in templates. Gallery restaurant names, prices and dates are explicitly example-only and never copied into customer work.
 
 ## Result
 

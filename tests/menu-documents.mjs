@@ -3,7 +3,7 @@ import { mkdtempSync, rmSync } from "node:fs";
 import { tmpdir } from "node:os";
 import { join } from "node:path";
 const root = mkdtempSync(join(tmpdir(), "menu-documents-"));
-process.env.DISHLIGHT_DATA_DIR = root;
+process.env.MENU_MATERIAL_DATA_DIR = root;
 process.env.APP_ORIGIN = "http://localhost";
 process.env.OPENAI_API_KEY = "test-only-not-a-real-key";
 const { handle } = await import("../lib/server/api.ts");

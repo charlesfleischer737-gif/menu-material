@@ -9,42 +9,42 @@
         "assets": {
           "bar-speakeasy": {
             "source": "/Users/charlesfleischer/.codex/generated_images/01a0a61e-b804-7ee0-a5fa-ff316c8814ff/exec-baaf0a22-0328-40a6-b724-f2c6531c1899.png",
-            "path": "/private/tmp/plated-style-assets/bar-speakeasy.png",
+            "path": "/private/tmp/menu-material-style-assets/bar-speakeasy.png",
             "prompt": "Use case: photorealistic-natural\nAsset type: square luxury restaurant website style photography sample, 1024 x 1024 desired.\nPrimary request: Amber Old Fashioned cocktail in a faceted lowball glass with a single clear large ice cube and orange twist. Dark polished walnut bar, amber side and rim light, smoky charcoal shadows, luxurious speakeasy atmosphere.\nStyle/medium: Photorealistic luxury food and beverage editorial photograph; natural materials, optical realism, careful premium art direction.\nComposition/framing: One single photograph, one distinct subject; entire glass or food serving comfortably visible with breathing room inside square frame; focus on delicious authentic texture and realistic glass reflections.\nConstraints: No collage, no grid, no text, no logo, no watermark, no hands, no people."
           },
           "bar-velvet": {
             "source": "/Users/charlesfleischer/.codex/generated_images/01a0a61e-b804-7ee0-a5fa-ff316c8814ff/exec-2da4cef3-1a7b-40be-acfc-d8f363cb9162.png",
-            "path": "/private/tmp/plated-style-assets/bar-velvet.png",
+            "path": "/private/tmp/menu-material-style-assets/bar-velvet.png",
             "prompt": "Use case: photorealistic-natural\nAsset type: square luxury restaurant website style photography sample, 1024 x 1024 desired.\nPrimary request: Crystal V-shaped martini glass with clear martini and olive on a slender pick. Deep emerald velvet lounge blurred background, polished dark stone surface, cool rim light and restrained warm glow.\nStyle/medium: Photorealistic luxury food and beverage editorial photograph; natural materials, optical realism, careful premium art direction.\nComposition/framing: One single photograph, one distinct subject; entire glass or food serving comfortably visible with breathing room inside square frame; focus on delicious authentic texture and realistic glass reflections.\nConstraints: No collage, no grid, no text, no logo, no watermark, no hands, no people."
           },
           "bar-bluehour": {
             "source": "/Users/charlesfleischer/.codex/generated_images/01a0a61e-b804-7ee0-a5fa-ff316c8814ff/exec-6aed5cda-75af-44bc-84ab-f02df125666b.png",
-            "path": "/private/tmp/plated-style-assets/bar-bluehour.png",
+            "path": "/private/tmp/menu-material-style-assets/bar-bluehour.png",
             "prompt": "Use case: photorealistic-natural\nAsset type: square luxury restaurant website style photography sample, 1024 x 1024 desired.\nPrimary request: Ruby red negroni in a rocks glass on a midnight cobalt blue bar. Sophisticated cool ambient light with sharp warm highlights and distant bokeh, vivid but realistic.\nStyle/medium: Photorealistic luxury food and beverage editorial photograph; natural materials, optical realism, careful premium art direction.\nComposition/framing: One single photograph, one distinct subject; entire glass or food serving comfortably visible with breathing room inside square frame; focus on delicious authentic texture and realistic glass reflections.\nConstraints: No collage, no grid, no text, no logo, no watermark, no hands, no people."
           },
           "bar-candle": {
             "source": "/Users/charlesfleischer/.codex/generated_images/01a0a61e-b804-7ee0-a5fa-ff316c8814ff/exec-62e5ad8c-be05-4736-abe9-8430c9d97191.png",
-            "path": "/private/tmp/plated-style-assets/bar-candle.png",
+            "path": "/private/tmp/menu-material-style-assets/bar-candle.png",
             "prompt": "Use case: photorealistic-natural\nAsset type: square luxury restaurant website style photography sample, 1024 x 1024 desired.\nPrimary request: Small elegant charcuterie arrangement of prosciutto, cheese and olives on dark ceramic. Warm intimate candlelit wine bar, burgundy and chocolate tones, shallow depth of field, premium editorial photography.\nStyle/medium: Photorealistic luxury food and beverage editorial photograph; natural materials, optical realism, careful premium art direction.\nComposition/framing: One single photograph, one distinct subject; entire glass or food serving comfortably visible with breathing room inside square frame; focus on delicious authentic texture and realistic glass reflections.\nConstraints: No collage, no grid, no text, no logo, no watermark, no hands, no people."
           },
           "beverage-cafe": {
             "source": "/Users/charlesfleischer/.codex/generated_images/01a0a61e-b804-7ee0-a5fa-ff316c8814ff/exec-91ba4573-e4f6-4f2a-a460-ce389903bc3b.png",
-            "path": "/private/tmp/plated-style-assets/beverage-cafe.png",
+            "path": "/private/tmp/menu-material-style-assets/beverage-cafe.png",
             "prompt": "Use case: photorealistic-natural\nAsset type: square luxury restaurant website style photography sample, 1024 x 1024 desired.\nPrimary request: Iced oat latte with distinct milk and espresso layers and clear ice in a tall glass on a warm cafe table. Bright soft morning window light.\nStyle/medium: Photorealistic luxury food and beverage editorial photograph; natural materials, optical realism, careful premium art direction.\nComposition/framing: One single photograph, one distinct subject; entire glass or food serving comfortably visible with breathing room inside square frame; focus on delicious authentic texture and realistic glass reflections.\nConstraints: No collage, no grid, no text, no logo, no watermark, no hands, no people."
           },
           "beverage-citrus": {
             "source": "/Users/charlesfleischer/.codex/generated_images/01a0a61e-b804-7ee0-a5fa-ff316c8814ff/exec-fb769593-7cdf-428b-bb2e-6dc7eaa959f9.png",
-            "path": "/private/tmp/plated-style-assets/beverage-citrus.png",
+            "path": "/private/tmp/menu-material-style-assets/beverage-citrus.png",
             "prompt": "Use case: photorealistic-natural\nAsset type: square luxury restaurant website style photography sample, 1024 x 1024 desired.\nPrimary request: Fresh orange juice in a clear short glass, sunshine glowing through the juice, sunny pale terracotta tabletop, restrained citrus wedge on the glass, clean summer color.\nStyle/medium: Photorealistic luxury food and beverage editorial photograph; natural materials, optical realism, careful premium art direction.\nComposition/framing: One single photograph, one distinct subject; entire glass or food serving comfortably visible with breathing room inside square frame; focus on delicious authentic texture and realistic glass reflections.\nConstraints: No collage, no grid, no text, no logo, no watermark, no hands, no people."
           },
           "beverage-matcha": {
             "source": "/Users/charlesfleischer/.codex/generated_images/01a0a61e-b804-7ee0-a5fa-ff316c8814ff/exec-e9ec6387-6c44-4cfc-b0ca-2ddd4d62c8b3.png",
-            "path": "/private/tmp/plated-style-assets/beverage-matcha.png",
+            "path": "/private/tmp/menu-material-style-assets/beverage-matcha.png",
             "prompt": "Use case: photorealistic-natural\nAsset type: square luxury restaurant website style photography sample, 1024 x 1024 desired.\nPrimary request: Iced matcha latte with creamy white and rich green layers in a rounded glass. Contemporary pale green matte studio scene, soft clean side shadow, rich true color.\nStyle/medium: Photorealistic luxury food and beverage editorial photograph; natural materials, optical realism, careful premium art direction.\nComposition/framing: One single photograph, one distinct subject; entire glass or food serving comfortably visible with breathing room inside square frame; focus on delicious authentic texture and realistic glass reflections.\nConstraints: No collage, no grid, no text, no logo, no watermark, no hands, no people."
           },
           "beverage-backlit": {
             "source": "/Users/charlesfleischer/.codex/generated_images/01a0a61e-b804-7ee0-a5fa-ff316c8814ff/exec-29ec237e-39b1-4f46-b6ff-c69bcb9c22d5.png",
-            "path": "/private/tmp/plated-style-assets/beverage-backlit.png",
+            "path": "/private/tmp/menu-material-style-assets/beverage-backlit.png",
             "prompt": "Use case: photorealistic-natural\nAsset type: square luxury restaurant website style photography sample, 1024 x 1024 desired.\nPrimary request: Ruby hibiscus iced tea with ice in a tall slender glass. Luminous backlighting showing translucency, cool pale stone background, tiny mint garnish, refined refreshing photography.\nStyle/medium: Photorealistic luxury food and beverage editorial photograph; natural materials, optical realism, careful premium art direction.\nComposition/framing: One single photograph, one distinct subject; entire glass or food serving comfortably visible with breathing room inside square frame; focus on delicious authentic texture and realistic glass reflections.\nConstraints: No collage, no grid, no text, no logo, no watermark, no hands, no people."
           }
         }
@@ -59,84 +59,84 @@
             "id": "delivery-white",
             "prompt": "Use case: photorealistic-natural\nAsset type: premium food photography for a restaurant photography studio style catalog.\nPrimary request: gourmet double cheeseburger on plain white plate, clean seamless white tabletop, bright even neutral softbox, crisp true colors, no props.\nStyle/medium: exquisite yet believable professional restaurant photography, true food texture, appetizing and realistic restaurant portion.\nComposition/framing: single square 1024 by 1024 image, entire serving and its plate/bowl/skillet clearly visible with comfortable margins on all sides. Food is the hero, beautifully composed. Use a natural elevated three-quarter angle unless overhead was requested.\nConstraints: one dish, one standalone image. No collage, split panels, text, logo, watermark, hands or people. No extra dishes, cutlery, napkins or props unless explicitly requested. Preserve the named dish, table material, plating vessel, and lighting.",
             "sourcePath": "/Users/charlesfleischer/.codex/generated_images/01a0a61e-55a2-73e2-b9da-c05f54e652a8/exec-5a3b5ff1-99fc-403a-a69f-a8f2a3f8b004.png",
-            "path": "/private/tmp/plated-style-assets/delivery-white.png",
+            "path": "/private/tmp/menu-material-style-assets/delivery-white.png",
             "error": null
           },
           {
             "id": "delivery-takeout",
             "prompt": "Use case: photorealistic-natural\nAsset type: premium food photography for a restaurant photography studio style catalog.\nPrimary request: colorful salmon poke bowl in an open kraft takeout bowl, neatly arranged rice avocado cucumber edamame, bright pale-grey tabletop, full bowl visible, no surrounding packaging.\nStyle/medium: exquisite yet believable professional restaurant photography, true food texture, appetizing and realistic restaurant portion.\nComposition/framing: single square 1024 by 1024 image, entire serving and its plate/bowl/skillet clearly visible with comfortable margins on all sides. Food is the hero, beautifully composed. Use a natural elevated three-quarter angle unless overhead was requested.\nConstraints: one dish, one standalone image. No collage, split panels, text, logo, watermark, hands or people. No extra dishes, cutlery, napkins or props unless explicitly requested. Preserve the named dish, table material, plating vessel, and lighting.",
             "sourcePath": "/Users/charlesfleischer/.codex/generated_images/01a0a61e-55a2-73e2-b9da-c05f54e652a8/exec-d54f0218-18d4-4b11-84b1-7dbe0b61e322.png",
-            "path": "/private/tmp/plated-style-assets/delivery-takeout.png",
+            "path": "/private/tmp/menu-material-style-assets/delivery-takeout.png",
             "error": null
           },
           {
             "id": "delivery-daylight",
             "prompt": "Use case: photorealistic-natural\nAsset type: premium food photography for a restaurant photography studio style catalog.\nPrimary request: three carnitas tacos on simple plate, neutral light oak, clean daylight soft shadow, no extra sides.\nStyle/medium: exquisite yet believable professional restaurant photography, true food texture, appetizing and realistic restaurant portion.\nComposition/framing: single square 1024 by 1024 image, entire serving and its plate/bowl/skillet clearly visible with comfortable margins on all sides. Food is the hero, beautifully composed. Use a natural elevated three-quarter angle unless overhead was requested.\nConstraints: one dish, one standalone image. No collage, split panels, text, logo, watermark, hands or people. No extra dishes, cutlery, napkins or props unless explicitly requested. Preserve the named dish, table material, plating vessel, and lighting.",
             "sourcePath": "/Users/charlesfleischer/.codex/generated_images/01a0a61e-55a2-73e2-b9da-c05f54e652a8/exec-0d226846-8cd9-4e4c-ab0c-30cac904adcb.png",
-            "path": "/private/tmp/plated-style-assets/delivery-daylight.png",
+            "path": "/private/tmp/menu-material-style-assets/delivery-daylight.png",
             "error": null
           },
           {
             "id": "delivery-overhead",
             "prompt": "Use case: photorealistic-natural\nAsset type: premium food photography for a restaurant photography studio style catalog.\nPrimary request: margherita pizza complete round pizza on plain white background, overhead catalog light, centered edges visible.\nStyle/medium: exquisite yet believable professional restaurant photography, true food texture, appetizing and realistic restaurant portion.\nComposition/framing: single square 1024 by 1024 image, entire serving and its plate/bowl/skillet clearly visible with comfortable margins on all sides. Food is the hero, beautifully composed. Use a natural elevated three-quarter angle unless overhead was requested.\nConstraints: one dish, one standalone image. No collage, split panels, text, logo, watermark, hands or people. No extra dishes, cutlery, napkins or props unless explicitly requested. Preserve the named dish, table material, plating vessel, and lighting.",
             "sourcePath": "/Users/charlesfleischer/.codex/generated_images/01a0a61e-55a2-73e2-b9da-c05f54e652a8/exec-88ac8e24-b7c1-4409-a65e-57e575910fa6.png",
-            "path": "/private/tmp/plated-style-assets/delivery-overhead.png",
+            "path": "/private/tmp/menu-material-style-assets/delivery-overhead.png",
             "error": null
           },
           {
             "id": "fine-linen",
             "prompt": "Use case: photorealistic-natural\nAsset type: premium food photography for a restaurant photography studio style catalog.\nPrimary request: three seared scallops artfully plated on beautiful broad white ceramic, white linen, refined window light, subdued elegant dining room.\nStyle/medium: exquisite yet believable professional restaurant photography, true food texture, appetizing and realistic restaurant portion.\nComposition/framing: single square 1024 by 1024 image, entire serving and its plate/bowl/skillet clearly visible with comfortable margins on all sides. Food is the hero, beautifully composed. Use a natural elevated three-quarter angle unless overhead was requested.\nConstraints: one dish, one standalone image. No collage, split panels, text, logo, watermark, hands or people. No extra dishes, cutlery, napkins or props unless explicitly requested. Preserve the named dish, table material, plating vessel, and lighting.",
             "sourcePath": "/Users/charlesfleischer/.codex/generated_images/01a0a61e-55a2-73e2-b9da-c05f54e652a8/exec-ed09393a-cbb9-410e-9b40-6d94f03dd5d7.png",
-            "path": "/private/tmp/plated-style-assets/fine-linen.png",
+            "path": "/private/tmp/menu-material-style-assets/fine-linen.png",
             "error": null
           },
           {
             "id": "fine-slate",
             "prompt": "Use case: photorealistic-natural\nAsset type: premium food photography for a restaurant photography studio style catalog.\nPrimary request: sliced duck breast with restrained blackberry jus and minimal carrot garnish on charcoal ceramic, directional chiaroscuro light, dark slate, Michelin editorial.\nStyle/medium: exquisite yet believable professional restaurant photography, true food texture, appetizing and realistic restaurant portion.\nComposition/framing: single square 1024 by 1024 image, entire serving and its plate/bowl/skillet clearly visible with comfortable margins on all sides. Food is the hero, beautifully composed. Use a natural elevated three-quarter angle unless overhead was requested.\nConstraints: one dish, one standalone image. No collage, split panels, text, logo, watermark, hands or people. No extra dishes, cutlery, napkins or props unless explicitly requested. Preserve the named dish, table material, plating vessel, and lighting.",
             "sourcePath": "/Users/charlesfleischer/.codex/generated_images/01a0a61e-55a2-73e2-b9da-c05f54e652a8/exec-47583ca9-d7b7-4de5-b4e4-765d448c7fb3.png",
-            "path": "/private/tmp/plated-style-assets/fine-slate.png",
+            "path": "/private/tmp/menu-material-style-assets/fine-slate.png",
             "error": null
           },
           {
             "id": "fine-counter",
             "prompt": "Use case: photorealistic-natural\nAsset type: premium food photography for a restaurant photography studio style catalog.\nPrimary request: refined tuna tartare on small sculptural ivory plate, pale travertine chef counter, clean precise sidelight, calm luxurious minimal.\nStyle/medium: exquisite yet believable professional restaurant photography, true food texture, appetizing and realistic restaurant portion.\nComposition/framing: single square 1024 by 1024 image, entire serving and its plate/bowl/skillet clearly visible with comfortable margins on all sides. Food is the hero, beautifully composed. Use a natural elevated three-quarter angle unless overhead was requested.\nConstraints: one dish, one standalone image. No collage, split panels, text, logo, watermark, hands or people. No extra dishes, cutlery, napkins or props unless explicitly requested. Preserve the named dish, table material, plating vessel, and lighting.",
             "sourcePath": "/Users/charlesfleischer/.codex/generated_images/01a0a61e-55a2-73e2-b9da-c05f54e652a8/exec-c4f10613-8983-4d9f-b365-12124918d512.png",
-            "path": "/private/tmp/plated-style-assets/fine-counter.png",
+            "path": "/private/tmp/menu-material-style-assets/fine-counter.png",
             "error": null
           },
           {
             "id": "fine-candle",
             "prompt": "Use case: photorealistic-natural\nAsset type: premium food photography for a restaurant photography studio style catalog.\nPrimary request: elegant rack of lamb with portion of seasonal vegetables, deep burgundy restaurant setting, distant candle bokeh, warm low light but food details crisp.\nStyle/medium: exquisite yet believable professional restaurant photography, true food texture, appetizing and realistic restaurant portion.\nComposition/framing: single square 1024 by 1024 image, entire serving and its plate/bowl/skillet clearly visible with comfortable margins on all sides. Food is the hero, beautifully composed. Use a natural elevated three-quarter angle unless overhead was requested.\nConstraints: one dish, one standalone image. No collage, split panels, text, logo, watermark, hands or people. No extra dishes, cutlery, napkins or props unless explicitly requested. Preserve the named dish, table material, plating vessel, and lighting.",
             "sourcePath": "/Users/charlesfleischer/.codex/generated_images/01a0a61e-55a2-73e2-b9da-c05f54e652a8/exec-a50413dd-ceda-4402-959b-7471e1cdc0c8.png",
-            "path": "/private/tmp/plated-style-assets/fine-candle.png",
+            "path": "/private/tmp/menu-material-style-assets/fine-candle.png",
             "error": null
           },
           {
             "id": "menu-stone",
             "prompt": "Use case: photorealistic-natural\nAsset type: premium food photography for a restaurant photography studio style catalog.\nPrimary request: colorful burrata and heirloom tomato salad on cream plate, pale limestone background and bright diffused daylight.\nStyle/medium: exquisite yet believable professional restaurant photography, true food texture, appetizing and realistic restaurant portion.\nComposition/framing: single square 1024 by 1024 image, entire serving and its plate/bowl/skillet clearly visible with comfortable margins on all sides. Food is the hero, beautifully composed. Use a natural elevated three-quarter angle unless overhead was requested.\nConstraints: one dish, one standalone image. No collage, split panels, text, logo, watermark, hands or people. No extra dishes, cutlery, napkins or props unless explicitly requested. Preserve the named dish, table material, plating vessel, and lighting.",
             "sourcePath": "/Users/charlesfleischer/.codex/generated_images/01a0a61e-55a2-73e2-b9da-c05f54e652a8/exec-4dfe0039-c1e0-4d9c-aff7-4ad86fa3ec3b.png",
-            "path": "/private/tmp/plated-style-assets/menu-stone.png",
+            "path": "/private/tmp/menu-material-style-assets/menu-stone.png",
             "error": null
           },
           {
             "id": "menu-wood",
             "prompt": "Use case: photorealistic-natural\nAsset type: premium food photography for a restaurant photography studio style catalog.\nPrimary request: roast chicken quarter with greens and baby potatoes on simple ceramic, warm oak tabletop, appetizing natural window light.\nStyle/medium: exquisite yet believable professional restaurant photography, true food texture, appetizing and realistic restaurant portion.\nComposition/framing: single square 1024 by 1024 image, entire serving and its plate/bowl/skillet clearly visible with comfortable margins on all sides. Food is the hero, beautifully composed. Use a natural elevated three-quarter angle unless overhead was requested.\nConstraints: one dish, one standalone image. No collage, split panels, text, logo, watermark, hands or people. No extra dishes, cutlery, napkins or props unless explicitly requested. Preserve the named dish, table material, plating vessel, and lighting.",
             "sourcePath": "/Users/charlesfleischer/.codex/generated_images/01a0a61e-55a2-73e2-b9da-c05f54e652a8/exec-acd5e61d-6f3f-4995-98fc-d3ad0da53fc1.png",
-            "path": "/private/tmp/plated-style-assets/menu-wood.png",
+            "path": "/private/tmp/menu-material-style-assets/menu-wood.png",
             "error": null
           },
           {
             "id": "menu-overhead",
             "prompt": "Use case: photorealistic-natural\nAsset type: premium food photography for a restaurant photography studio style catalog.\nPrimary request: shakshuka with distinct eggs and red tomato sauce in round small black skillet, straight overhead symmetrical complete pan on neutral warm grey.\nStyle/medium: exquisite yet believable professional restaurant photography, true food texture, appetizing and realistic restaurant portion.\nComposition/framing: single square 1024 by 1024 image, entire serving and its plate/bowl/skillet clearly visible with comfortable margins on all sides. Food is the hero, beautifully composed. Use a natural elevated three-quarter angle unless overhead was requested.\nConstraints: one dish, one standalone image. No collage, split panels, text, logo, watermark, hands or people. No extra dishes, cutlery, napkins or props unless explicitly requested. Preserve the named dish, table material, plating vessel, and lighting.",
             "sourcePath": "/Users/charlesfleischer/.codex/generated_images/01a0a61e-55a2-73e2-b9da-c05f54e652a8/exec-0ecdaaad-82fe-432c-8ec1-d6dba252bd5f.png",
-            "path": "/private/tmp/plated-style-assets/menu-overhead.png",
+            "path": "/private/tmp/menu-material-style-assets/menu-overhead.png",
             "error": null
           },
           {
             "id": "menu-neutral",
             "prompt": "Use case: photorealistic-natural\nAsset type: premium food photography for a restaurant photography studio style catalog.\nPrimary request: saffron risotto with asparagus in large ivory shallow bowl, matte light grey restaurant tabletop, balanced neutral light, stylish uncluttered menu editorial.\nStyle/medium: exquisite yet believable professional restaurant photography, true food texture, appetizing and realistic restaurant portion.\nComposition/framing: single square 1024 by 1024 image, entire serving and its plate/bowl/skillet clearly visible with comfortable margins on all sides. Food is the hero, beautifully composed. Use a natural elevated three-quarter angle unless overhead was requested.\nConstraints: one dish, one standalone image. No collage, split panels, text, logo, watermark, hands or people. No extra dishes, cutlery, napkins or props unless explicitly requested. Preserve the named dish, table material, plating vessel, and lighting.",
             "sourcePath": "/Users/charlesfleischer/.codex/generated_images/01a0a61e-55a2-73e2-b9da-c05f54e652a8/exec-2e126cad-e088-44ff-845b-d13abec0a33b.png",
-            "path": "/private/tmp/plated-style-assets/menu-neutral.png",
+            "path": "/private/tmp/menu-material-style-assets/menu-neutral.png",
             "error": null
           }
         ]
@@ -150,49 +150,49 @@
           {
             "id": "studio-ivory",
             "prompt": "Use case: ads-marketing\nAsset type: professional food photography website style preset thumbnail\nPrimary request: Delicate pavlova with red berries and cream on ivory pedestal plate, seamless warm ivory studio sweep, sculptural soft shadows, luxurious minimal.\nStyle: photorealistic, premium professional food photography; natural edible texture and realistic camera optics.\nComposition: a single square 1024x1024 image. Whole serving and plate comfortably visible with generous margins, centered beautifully, gently elevated three-quarter camera angle.\nConstraints: One coherent food photograph. No collage, text, logo, watermark, hands or people. No cropping of the serving or dish.",
-            "path": "/private/tmp/plated-style-assets/studio-ivory.png",
+            "path": "/private/tmp/menu-material-style-assets/studio-ivory.png",
             "sourcePath": "/Users/charlesfleischer/.codex/generated_images/01a0a61f-0af3-7da0-b31b-656a692d6044/exec-19ae9a2d-952d-4d83-9f7d-f283006958f9.png"
           },
           {
             "id": "studio-color",
             "prompt": "Use case: ads-marketing\nAsset type: professional food photography website style preset thumbnail\nPrimary request: Two fluffy bao buns with crispy mushroom filling in a simple pale plate on a vibrant saturated cobalt blue seamless background, punchy but realistic high-end commercial softbox photography.\nStyle: photorealistic, premium professional food photography; natural edible texture and realistic camera optics.\nComposition: a single square 1024x1024 image. Whole serving and plate comfortably visible with generous margins, centered beautifully, gently elevated three-quarter camera angle.\nConstraints: One coherent food photograph. No collage, text, logo, watermark, hands or people. No cropping of the serving or dish.",
-            "path": "/private/tmp/plated-style-assets/studio-color.png",
+            "path": "/private/tmp/menu-material-style-assets/studio-color.png",
             "sourcePath": "/Users/charlesfleischer/.codex/generated_images/01a0a61f-0af3-7da0-b31b-656a692d6044/exec-883a1c51-19a5-4810-81f0-c8ae4233b044.png"
           },
           {
             "id": "studio-dark",
             "prompt": "Use case: ads-marketing\nAsset type: professional food photography website style preset thumbnail\nPrimary request: Beautiful steaming miso ramen with egg, mushrooms and green onion in a dark bowl, deep charcoal black studio backdrop, precise directional side light with highlights and rich appetizing contrast, full bowl.\nStyle: photorealistic, premium professional food photography; natural edible texture and realistic camera optics.\nComposition: a single square 1024x1024 image. Whole serving and plate comfortably visible with generous margins, centered beautifully, gently elevated three-quarter camera angle.\nConstraints: One coherent food photograph. No collage, text, logo, watermark, hands or people. No cropping of the serving or dish.",
-            "path": "/private/tmp/plated-style-assets/studio-dark.png",
+            "path": "/private/tmp/menu-material-style-assets/studio-dark.png",
             "sourcePath": "/Users/charlesfleischer/.codex/generated_images/01a0a61f-0af3-7da0-b31b-656a692d6044/exec-fc62fdc4-0a25-4410-9156-9b555a5f3379.png"
           },
           {
             "id": "studio-pastel",
             "prompt": "Use case: ads-marketing\nAsset type: professional food photography website style preset thumbnail\nPrimary request: Pistachio gelato in a small pastel pink ceramic coupe, soft blush seamless background, playful sophisticated gentle shadows, tiny crushed pistachios, full cup.\nStyle: photorealistic, premium professional food photography; natural edible texture and realistic camera optics.\nComposition: a single square 1024x1024 image. Whole serving and plate comfortably visible with generous margins, centered beautifully, gently elevated three-quarter camera angle.\nConstraints: One coherent food photograph. No collage, text, logo, watermark, hands or people. No cropping of the serving or dish.",
-            "path": "/private/tmp/plated-style-assets/studio-pastel.png",
+            "path": "/private/tmp/menu-material-style-assets/studio-pastel.png",
             "sourcePath": "/Users/charlesfleischer/.codex/generated_images/01a0a61f-0af3-7da0-b31b-656a692d6044/exec-137ad2b8-7619-4948-ae3c-68692243ea97.png"
           },
           {
             "id": "bakery-morning",
             "prompt": "Use case: ads-marketing\nAsset type: professional food photography website style preset thumbnail\nPrimary request: One flaky golden butter croissant on a small cream plate, warm early morning light, pale oak bakery table, inviting artisanal editorial.\nStyle: photorealistic, premium professional food photography; natural edible texture and realistic camera optics.\nComposition: a single square 1024x1024 image. Whole serving and plate comfortably visible with generous margins, centered beautifully, gently elevated three-quarter camera angle.\nConstraints: One coherent food photograph. No collage, text, logo, watermark, hands or people. No cropping of the serving or dish.",
-            "path": "/private/tmp/plated-style-assets/bakery-morning.png",
+            "path": "/private/tmp/menu-material-style-assets/bakery-morning.png",
             "sourcePath": "/Users/charlesfleischer/.codex/generated_images/01a0a61f-0af3-7da0-b31b-656a692d6044/exec-fcbc3b32-1ca0-471e-bf21-673bf5b71795.png"
           },
           {
             "id": "bakery-patisserie",
             "prompt": "Use case: ads-marketing\nAsset type: professional food photography website style preset thumbnail\nPrimary request: Glossy miniature strawberry and raspberry fruit tart with crisp pastry and vanilla cream on an elegant white cake plate, cool pale marble and bright diffuse patisserie light.\nStyle: photorealistic, premium professional food photography; natural edible texture and realistic camera optics.\nComposition: a single square 1024x1024 image. Whole serving and plate comfortably visible with generous margins, centered beautifully, gently elevated three-quarter camera angle.\nConstraints: One coherent food photograph. No collage, text, logo, watermark, hands or people. No cropping of the serving or dish.",
-            "path": "/private/tmp/plated-style-assets/bakery-patisserie.png",
+            "path": "/private/tmp/menu-material-style-assets/bakery-patisserie.png",
             "sourcePath": "/Users/charlesfleischer/.codex/generated_images/01a0a61f-0af3-7da0-b31b-656a692d6044/exec-cd049bb5-ad90-4d22-b527-e8497d01abfa.png"
           },
           {
             "id": "bakery-rustic",
             "prompt": "Use case: ads-marketing\nAsset type: professional food photography website style preset thumbnail\nPrimary request: Round crusty sourdough loaf with one cut slice showing airy crumb on a rustic wooden breadboard, oatmeal linen in background, warm directional window light, artisanal earthy palette.\nStyle: photorealistic, premium professional food photography; natural edible texture and realistic camera optics.\nComposition: a single square 1024x1024 image. Whole serving and plate comfortably visible with generous margins, centered beautifully, gently elevated three-quarter camera angle.\nConstraints: One coherent food photograph. No collage, text, logo, watermark, hands or people. No cropping of the serving or dish.",
-            "path": "/private/tmp/plated-style-assets/bakery-rustic.png",
+            "path": "/private/tmp/menu-material-style-assets/bakery-rustic.png",
             "sourcePath": "/Users/charlesfleischer/.codex/generated_images/01a0a61f-0af3-7da0-b31b-656a692d6044/exec-da676ce3-9b0e-410c-b635-227c90ab98a1.png"
           },
           {
             "id": "bakery-jewel",
             "prompt": "Use case: ads-marketing\nAsset type: professional food photography website style preset thumbnail\nPrimary request: Orderly small stack of pastel pistachio, rose and lavender macarons on an elegant light lavender porcelain saucer, soft lilac seamless patisserie studio, luminous delicate confectionery photography.\nStyle: photorealistic, premium professional food photography; natural edible texture and realistic camera optics.\nComposition: a single square 1024x1024 image. Whole serving and plate comfortably visible with generous margins, centered beautifully, gently elevated three-quarter camera angle.\nConstraints: One coherent food photograph. No collage, text, logo, watermark, hands or people. No cropping of the serving or dish.",
-            "path": "/private/tmp/plated-style-assets/bakery-jewel.png",
+            "path": "/private/tmp/menu-material-style-assets/bakery-jewel.png",
             "sourcePath": "/Users/charlesfleischer/.codex/generated_images/01a0a61f-0af3-7da0-b31b-656a692d6044/exec-9aedfad0-cf06-4c93-a242-9f0e1e85b793.png"
           }
         ]

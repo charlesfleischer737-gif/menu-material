@@ -14,7 +14,7 @@ for (const f of postFonts)
   assert(
     GlobalFonts.registerFromPath("public/fonts/social/" + f.file, f.family),
   );
-const root = "/private/tmp/plated-export-qa";
+const root = "/private/tmp/menu-material-export-qa";
 mkdirSync(root, { recursive: true });
 const jpg = readFileSync("public/burger.jpg"),
   pasta = readFileSync("public/pasta.jpg");

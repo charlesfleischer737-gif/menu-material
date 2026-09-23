@@ -7,8 +7,8 @@ import { DatabaseSync } from "node:sqlite";
 const realNow = Date.now;
 let clockAdvance = 0;
 Date.now = () => realNow() + clockAdvance;
-const root = mkdtempSync(join(tmpdir(), "dishlight-test-"));
-process.env.DISHLIGHT_DATA_DIR = root;
+const root = mkdtempSync(join(tmpdir(), "menu-material-test-"));
+process.env.MENU_MATERIAL_DATA_DIR = root;
 process.env.OPENAI_API_KEY = "test-only-not-a-real-key";
 process.env.IMAGE_COST_ESTIMATE_USD = "0.12";
 process.env.BOOTSTRAP_OWNER_EMAIL = "bootstrap@example.test";
@@ -420,7 +420,7 @@ try {
   state = await call("state");
   assert.equal(state.remaining, 5);
   assert.equal(providerCalls, beforeRecovery);
-  const independent = new DatabaseSync(join(root, "dishlight.sqlite"));
+  const independent = new DatabaseSync(join(root, "menu-material.sqlite"));
   assert.equal(
     independent.prepare("SELECT count(*) AS n FROM captions").get().n,
     2,

@@ -2,7 +2,7 @@ import type { Metadata } from "next";
 import { config } from "@/lib/server/core";
 import "./globals.css";
 import "./workspace.css";
-import "./plateworthy.css";
+import "./menu-material.css";
 import "./creation.css";
 import "./creative-collections.css";
 import "./studio-onboarding.css";
@@ -24,7 +24,7 @@ export async function generateMetadata(): Promise<Metadata> {
   const images = origin
     ? [
         {
-          url: new URL("/plateworthy-burger.png", origin).href,
+          url: new URL("/menu-material-burger.png", origin).href,
           alt: "Menu Material — illustrative AI food photography edit",
         },
       ]

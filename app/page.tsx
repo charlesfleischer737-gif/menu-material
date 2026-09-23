@@ -8,7 +8,7 @@ import {
   useState,
 } from "react";
 import Auth from "./components/auth";
-import Landing from "./components/plateworthy-landing";
+import Landing from "./components/menu-material-landing";
 import Brand from "./components/brand";
 import WorkspacePlaceholder from "./components/workspace-placeholder";
 import { api, type Row } from "@/lib/client";
@@ -89,8 +89,8 @@ export default function Home() {
   }, [loaded, state.user?.id, state.restaurant?.id]);
   useEffect(() => {
     const open = () => setPlans(true);
-    window.addEventListener("plateworthy:plans", open);
-    return () => window.removeEventListener("plateworthy:plans", open);
+    window.addEventListener("menu-material:plans", open);
+    return () => window.removeEventListener("menu-material:plans", open);
   }, []);
   useEffect(() => {
     if (state.user && new URLSearchParams(location.search).has("billing"))

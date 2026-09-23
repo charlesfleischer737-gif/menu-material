@@ -3,7 +3,7 @@ import { mkdtempSync, readFileSync, rmSync } from "node:fs";
 import { tmpdir } from "node:os";
 import { join } from "node:path";
 const root = mkdtempSync(join(tmpdir(), "menu-studio-release-"));
-process.env.DISHLIGHT_DATA_DIR = root;
+process.env.MENU_MATERIAL_DATA_DIR = root;
 process.env.LOCAL_DEVELOPMENT = "true";
 process.env.OPENAI_API_KEY = "fixture-only";
 const realNow = Date.now;
@@ -273,7 +273,7 @@ try {
     disabledPipelines: [],
   });
   assert.equal((await call("state")).studioAvailability.creationEnabled, true);
-  cookie = "dishlight_session=" + session;
+  cookie = "menu_material_session=" + session;
   const outside = await call("state");
   assert.equal(outside.studioAvailability.creationEnabled, false);
   assert(

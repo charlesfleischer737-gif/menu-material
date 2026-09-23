@@ -152,7 +152,7 @@
       "openingTag": "<button\n            className=\"ps2-icon-button\"\n            aria-label=\"Cancel inspiration\"\n            disabled={locked.current}\n            onClick={() => onOpenChange(false)}\n          >"
     },
     {
-      "file": "app/components/plateworthy-landing.tsx",
+      "file": "app/components/menu-material-landing.tsx",
       "line": 85,
       "named": true,
       "openingTag": "<button\n                className=\"pw-mobile-menu-trigger\"\n                aria-label=\"Open navigation\"\n              >"

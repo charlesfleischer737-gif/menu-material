@@ -192,7 +192,7 @@ export function useCreationDraft(
         meta.current.revision = data.revision;
         saved.current = content;
         rememberPreference(preferenceKey, meta.current.id);
-        window.dispatchEvent(new Event("plateworthy:draft-saved"));
+        window.dispatchEvent(new Event("menu-material:draft-saved"));
       }
       forgetBackup();
       setSaveError("");
@@ -456,9 +456,9 @@ export function SavedDrafts({
   useEffect(() => {
     if (!open) return;
     const refreshSaved = () => void load().catch((e) => setError(e.message));
-    window.addEventListener("plateworthy:draft-saved", refreshSaved);
+    window.addEventListener("menu-material:draft-saved", refreshSaved);
     return () =>
-      window.removeEventListener("plateworthy:draft-saved", refreshSaved);
+      window.removeEventListener("menu-material:draft-saved", refreshSaved);
   }, [open, load]);
   async function act(key: string, fn: () => Promise<void>) {
     setWorking(key);

@@ -28,6 +28,6 @@ OpenAI is an initial configurable integration candidate, not a benchmark winner.
 
 Design references reviewed: https://foodshot.ai/ and https://www.trybeautifulfood.com/. The distinct SideDish focus is the connected photo–caption–menu workflow, with restaurant support as the broader promise. No competitor imagery, testimonials, or performance claims are reused.
 
-## Current focus: Plateworthy
+## Current focus: Menu Material
 
-The user narrowed the positioning to better food photography for menus, delivery apps, and social posts. The Plateworthy design and image provenance are recorded in `docs/PLATEWORTHY_DESIGN.md`; that direction supersedes the SideDish landing-page positioning above. Existing persistent workspace tools remain intact.
+The user narrowed the positioning to better food photography for menus, delivery apps, and social posts. The Menu Material design and image provenance are recorded in `docs/MENU_MATERIAL_DESIGN.md`; that direction supersedes the SideDish landing-page positioning above. Existing persistent workspace tools remain intact.

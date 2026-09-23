@@ -3,7 +3,7 @@ import { mkdtempSync, readFileSync, rmSync } from "node:fs";
 import { tmpdir } from "node:os";
 import { join } from "node:path";
 const root = mkdtempSync(join(tmpdir(), "menu-studio-recents-"));
-process.env.DISHLIGHT_DATA_DIR = root;
+process.env.MENU_MATERIAL_DATA_DIR = root;
 process.env.LOCAL_DEVELOPMENT = "true";
 process.env.OPENAI_API_KEY = "fixture-only";
 const realNow = Date.now;
@@ -333,7 +333,7 @@ try {
     otherUser,
     clock + 3600000,
   );
-  cookie = "dishlight_session=" + session;
+  cookie = "menu_material_session=" + session;
   assert.deepEqual(
     (await call("studio-library")).recent,
     [],

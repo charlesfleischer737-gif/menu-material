@@ -10,11 +10,11 @@ import {
   statSync,
 } from "node:fs";
 import { join, resolve, dirname } from "node:path";
-const root = resolve(process.env.DISHLIGHT_DATA_DIR || ".local-data");
+const root = resolve(process.env.MENU_MATERIAL_DATA_DIR || ".local-data");
 mkdirSync(root, { recursive: true });
 const globalStore = globalThis as any;
-const sqlite: DatabaseSync = (globalStore.__dishlightSqlite ??=
-  new DatabaseSync(join(root, "dishlight.sqlite")));
+const sqlite: DatabaseSync = (globalStore.__menuMaterialSqlite ??=
+  new DatabaseSync(join(root, "menu-material.sqlite")));
 sqlite.exec(
   "PRAGMA journal_mode=WAL; PRAGMA foreign_keys=ON; CREATE TABLE IF NOT EXISTS _local_migrations (name TEXT PRIMARY KEY)",
 );

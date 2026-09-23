@@ -36,7 +36,7 @@
 .topbar .brand {
   gap: 20px;
 }
-.topbar .plateworthy-wordmark {
+.topbar .menu-material-wordmark {
   font-size: 1.95rem;
 }
 .pilot {
@@ -457,7 +457,7 @@
   max-height: 92dvh;
   overflow-y: auto;
 }
-.auth-dialog > .plateworthy-wordmark {
+.auth-dialog > .menu-material-wordmark {
   margin: 0;
   display: block;
   width: 180px;
@@ -611,7 +611,7 @@
     padding: 20px 6%;
     gap: 16px;
   }
-  .plateworthy-wordmark {
+  .menu-material-wordmark {
     font-size: 1.9rem;
   }
   .landing-header nav {
@@ -789,7 +789,7 @@
     height: 54px;
     gap: 30px;
   }
-  .topbar .plateworthy-wordmark {
+  .topbar .menu-material-wordmark {
     font-size: 1.8rem;
   }
   .workspace {
@@ -838,7 +838,7 @@
   .landing-header button[data-slot="button"] {
     padding: 0 10px;
   }
-  .landing-header .plateworthy-wordmark {
+  .landing-header .menu-material-wordmark {
     font-size: 1.7rem;
   }
   .hero-actions {
@@ -920,7 +920,7 @@
   gap: 5px;
 }
 
-/* Promotion and menu-completion tools extend the existing Plateworthy workspace. */
+/* Promotion and menu-completion tools extend the existing Menu Material workspace. */
 .promotion-workspace,
 .menu-tools {
   font-size: 16px;

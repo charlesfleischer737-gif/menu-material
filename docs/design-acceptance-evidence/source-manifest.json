@@ -85,7 +85,7 @@
       "sha256": "51d15e30c9c874b46d18c75218ff0e283549ebd8460fb0c5e9610dccf1be536a"
     },
     {
-      "file": "app/components/plateworthy-landing.tsx",
+      "file": "app/components/menu-material-landing.tsx",
       "sha256": "0c329d2b3c83f1d8e9aef17c676b56c364adc59934a87643c44b91378e13ee9f"
     },
     {
@@ -201,7 +201,7 @@
       "sha256": "b23c2835b131b26d5ba163ad09b8e7292c7e553bbbc25d9419ee2210b000a7bb"
     },
     {
-      "file": "app/plateworthy.css",
+      "file": "app/menu-material.css",
       "sha256": "6d08b97417adeea1c9e97d7573403e80a9d6c9c47d0e7ff58a0284e0a7da2e7e"
     },
     {

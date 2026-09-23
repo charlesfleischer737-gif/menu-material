@@ -537,7 +537,7 @@ async function downloadAsset(
   if (new URL(req.url).searchParams.has("download"))
     h.set(
       "Content-Disposition",
-      `attachment; filename="plateworthy-${a.id}.${a.mime === "image/png" ? "png" : a.mime === "image/heic" ? "heic" : "jpg"}"`,
+      `attachment; filename="menu-material-${a.id}.${a.mime === "image/png" ? "png" : a.mime === "image/heic" ? "heic" : "jpg"}"`,
     );
   return new Response(obj.body, { headers: h });
 }
@@ -641,23 +641,23 @@ export async function handle(req: Request) {
       if (p[1] === "logout" && method === "POST") {
         const s = req.headers
           .get("cookie")
-          ?.match(/(?:^|;\s*)dishlight_session=([^;]+)/)?.[1];
+          ?.match(/(?:^|;\s*)menu_material_session=([^;]+)/)?.[1];
         if (s) await run("DELETE FROM sessions WHERE hash=?", digest(s));
         return response({ ok: true }, 200, {
           "Set-Cookie":
-            "dishlight_session=; Path=/; HttpOnly; SameSite=Lax; Max-Age=0",
+            "menu_material_session=; Path=/; HttpOnly; SameSite=Lax; Max-Age=0",
         });
       }
       if (p[1] === "dev" && method === "POST") {
         assert(config("LOCAL_DEVELOPMENT") === "true", 404, "Not found.");
         let u = await one(
-          "SELECT * FROM users WHERE email='pilot@dishlight.test'",
+          "SELECT * FROM users WHERE email='pilot@menu-material.test'",
         );
         if (!u) {
           const uid = id(),
             rid = id();
           await run(
-            "INSERT INTO users (id,email,password,role,created_at) VALUES (?,'pilot@dishlight.test',?,'admin',?)",
+            "INSERT INTO users (id,email,password,role,created_at) VALUES (?,'pilot@menu-material.test',?,'admin',?)",
             uid,
             hashPassword(token()),
             now(),

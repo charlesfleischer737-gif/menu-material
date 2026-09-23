@@ -1,5 +1,5 @@
-/* Plateworthy: clear copy and finished food presentation. */
-.plateworthy-wordmark {
+/* Menu Material: clear copy and finished food presentation. */
+.menu-material-wordmark {
   display: inline-flex;
   align-items: baseline;
   font-family: "Helvetica Neue", Arial, sans-serif;
@@ -9,7 +9,7 @@
   line-height: 1.2;
   white-space: nowrap;
 }
-.plateworthy-wordmark > span {
+.menu-material-wordmark > span {
   color: #79923f;
 }
 .menu-material-wordmark {
@@ -411,7 +411,7 @@
   justify-content: space-between;
   gap: 20px;
 }
-.pw-footer .plateworthy-wordmark {
+.pw-footer .menu-material-wordmark {
   font-size: 1.5rem;
 }
 .pw-footer p {
@@ -490,7 +490,7 @@
   .pw-header {
     min-height: 76px;
   }
-  .plateworthy-wordmark {
+  .menu-material-wordmark {
     font-size: 1.65rem;
   }
   .pw-header nav {

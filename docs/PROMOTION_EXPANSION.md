@@ -1,8 +1,8 @@
-# Plated / Plateworthy promotion expansion
+# Menu Material promotion expansion
 
 ## Implementation and daily use
 
-The established Plateworthy branding, React/Vinext application, invitation/password sessions, D1-compatible SQLite model, private object storage and durable generation service are preserved. The expansion adds no production mock provider or seeded customer data.
+The established Menu Material branding, React/Vinext application, invitation/password sessions, D1-compatible SQLite model, private object storage and durable generation service are preserved. The expansion adds no production mock provider or seeded customer data.
 
 1. **Reusable restaurant and dish data.** Restaurant settings save a logo, colors, tone, photo style, up to three atmosphere references, timezone, opening hours and an existing ordering link. Dishes retain their category, price, availability, preservation notes, originals, image versions and approvals. New creations inherit the profile; each promotion can override its colors, tone and photo style.
 2. **Promote tonight’s special.** Select or create a dish, optionally upload a fresh original, set price/description/availability and choose or create its food image. Review the original and result together. Approve the coordinated package, download clean photos or feed/Story/sign graphics, copy the caption, and separately publish the special to the hosted menu. Text, prices, logo and layout are drawn locally in the export renderer, not generated into the food image. A price change requires review again and never requests another food image.
@@ -49,10 +49,10 @@ The established Plateworthy branding, React/Vinext application, invitation/passw
 Use Node 24+, an installed Chrome, and Playwright available either as a package or via `PLAYWRIGHT_MODULE`. Start a separate local preview with an empty data directory; never use a real restaurant database:
 
 ```sh
-DISHLIGHT_DATA_DIR=/tmp/plated-browser-check OPENAI_API_KEY='' \
+MENU_MATERIAL_DATA_DIR=/tmp/menu-material-browser-check OPENAI_API_KEY='' \
   node node_modules/vite/bin/vite.js --port 5174
 # In another terminal, with Playwright available:
-PLATED_QA_ORIGIN=http://localhost:5174 node tests/browser.mjs
+MENU_MATERIAL_QA_ORIGIN=http://localhost:5174 node tests/browser.mjs
 ```
 
 Screenshots and files go to ignored `outputs/promotion-qa/`. Tests identify their restaurant as `QA · Orchard Kitchen` and make no live AI requests. API tests create and remove their own temporary storage.

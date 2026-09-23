@@ -7,8 +7,8 @@ import { DatabaseSync } from "node:sqlite";
 const realNow = Date.now;
 let clockAdvance = 0;
 Date.now = () => realNow() + clockAdvance;
-const root = mkdtempSync(join(tmpdir(), "plated-expansion-"));
-process.env.DISHLIGHT_DATA_DIR = root;
+const root = mkdtempSync(join(tmpdir(), "menu-material-expansion-"));
+process.env.MENU_MATERIAL_DATA_DIR = root;
 process.env.OPENAI_API_KEY = "fixture-only";
 const { handle } = await import("../lib/server/api.ts");
 const { all, one, run } = await import("../lib/server/core.ts");
@@ -471,7 +471,7 @@ try {
   await call("promotions/" + pid + "/unpublish", {});
   assert.equal((await call("public/" + r.slug)).menu.specials.length, 0);
   await call("public/" + r.slug + "/assets/" + source, undefined, 404);
-  const disk = new DatabaseSync(join(root, "dishlight.sqlite"));
+  const disk = new DatabaseSync(join(root, "menu-material.sqlite"));
   assert.equal(
     disk.prepare("SELECT category,preserve FROM dishes WHERE id=?").get(dish)
       .preserve,

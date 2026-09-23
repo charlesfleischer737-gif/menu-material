@@ -1,8 +1,8 @@
-# Plateworthy public-launch audit
+# Menu Material public-launch audit
 
-Audit date: September 16, 2026. Site: [Plateworthy](https://dishlight-studio.cflash7.chatgpt.site/). Reviewed source: `ded6bc24c8172b46f4fcc25e050d59da0ae8d09a`, matching the latest hosted version, 33.
+Audit date: September 16, 2026. Site: [Menu Material](https://menu-material-studio.cflash7.chatgpt.site/). Reviewed source: `ded6bc24c8172b46f4fcc25e050d59da0ae8d09a`, matching the latest hosted version, 33.
 
-**Recommendation: retain the design and product foundation, fix launch-critical conversion and reliability gaps, then prove repeat restaurant use before expanding distribution.** Plateworthy is a substantial pilot with a coherent photo/menu/social workflow. It is not yet ready for an unrestricted, self-service public launch. A public early-access page with a functioning application flow is a reasonable intermediate release.
+**Recommendation: retain the design and product foundation, fix launch-critical conversion and reliability gaps, then prove repeat restaurant use before expanding distribution.** Menu Material is a substantial pilot with a coherent photo/menu/social workflow. It is not yet ready for an unrestricted, self-service public launch. A public early-access page with a functioning application flow is a reasonable intermediate release.
 
 The highest-value product direction is **one real dish, one consistent restaurant look, a complete promotion, and measurable customer interest**. The product already contains much of that workflow; its next advantage should be dependable completion and recurring usefulness.
 
@@ -64,7 +64,7 @@ Ranking weighs launch risk, customer impact, differentiation, effort and depende
 
 **Acquisition dead end and hidden mobile login.** The root CTA explicitly opens signup; the form requires an invitation code, and the server limits invitations to ten workspaces including pending invites. This was intentional for the pilot, but conflicts with a public self-service launch. Keep the cap until onboarding and cost controls are ready. Immediately provide “Request early access” with a working capture/confirmation flow, or implement verified trial signup. Add direct mobile Log in, self-service email recovery and a visible support destination. Mobile users can currently find Sign in only after opening the signup modal.
 
-Evidence: `app/page.tsx:124`, `app/components/auth.tsx:123`, `app/components/auth.tsx:172`, `lib/server/api.ts:186`, `app/plateworthy.css:637`. Live desktop/signup and phone-width behavior inspected.
+Evidence: `app/page.tsx:124`, `app/components/auth.tsx:123`, `app/components/auth.tsx:172`, `lib/server/api.ts:186`, `app/menu-material.css:637`. Live desktop/signup and phone-width behavior inspected.
 
 **Generation queue fairness.** The global worker selects the two oldest unfinished outputs on every tick. Still-processing responses reset their lease to zero, so the same two can repeatedly occupy the available slots. An isolated three-job reproduction left the third queued after five ticks while the first two received repeated status retrievals. Submitted jobs also lack an overall completion deadline. Separate dispatch from polling, add next-poll times/backoff and fair per-restaurant concurrency, and provide bounded stuck-job recovery. Continue protecting against duplicate provider submissions.
 
@@ -134,9 +134,9 @@ Design changes worth testing:
 
 ## Positioning, trust and commercial clarity
 
-The broad photo-editor category is competitive. Photoroom already markets food photography, batch processing, brand consistency and channel output; Canva supplies restaurant menus and social design tools. These are vendor capability claims, not independent proof of quality. Plateworthy’s opportunity is the restaurant-specific workflow connecting a real dish, verified facts, a coherent promotion and a live menu. [Photoroom food tools](https://www.photoroom.com/ai-product-photography/food), [Canva restaurant designs](https://www.canva.com/collection/restaurant/).
+The broad photo-editor category is competitive. Photoroom already markets food photography, batch processing, brand consistency and channel output; Canva supplies restaurant menus and social design tools. These are vendor capability claims, not independent proof of quality. Menu Material’s opportunity is the restaurant-specific workflow connecting a real dish, verified facts, a coherent promotion and a live menu. [Photoroom food tools](https://www.photoroom.com/ai-product-photography/food), [Canva restaurant designs](https://www.canva.com/collection/restaurant/).
 
-Keep the homepage’s food-first presentation, then make its promise concrete with genuine current-product examples from several food types. Publish owner permission, what was changed, typical completion time, and measured results where available. Clearly identify illustrative AI examples. Do not present competitor uplift statistics or a single successful generation as Plateworthy results.
+Keep the homepage’s food-first presentation, then make its promise concrete with genuine current-product examples from several food types. Publish owner permission, what was changed, typical completion time, and measured results where available. Clearly identify illustrative AI examples. Do not present competitor uplift statistics or a single successful generation as Menu Material results.
 
 Add compact public pages or an accessible information area for the free allowance, what consumes credits, failure handling, future pricing, account recovery, support, uploaded-photo handling, retention/deletion and commercial-use terms. Obtain appropriate review of the final policies; this audit is not a legal compliance assessment. There is no need to clutter the hero with every detail.
 
@@ -146,12 +146,12 @@ Validate willingness to pay against measured provider cost per approved/exported
 
 ## SEO and distribution
 
-1. Choose a durable Plateworthy domain and redirect/canonicalize the current host appropriately. The current `dishlight-studio` host differs from the visible brand.
+1. Choose a durable Menu Material domain and redirect/canonicalize the current host appropriately. The current `menu-material-studio` host differs from the visible brand.
 2. Add canonical URLs, a sitemap for intended public pages, a deliberate robots policy, Search Console and accurate metadata. Keep private workspace, invitation and staff-upload content out of indexing; retain staff noindex behavior.
 3. Separate marketing routes from the app as the site expands. Create useful pages for restaurant photo enhancement, delivery listing images, QR/digital menus and social promotion, plus pricing/help. Each should include authentic examples, the real workflow and a working CTA.
 4. Avoid mass-producing thin cuisine/city/keyword pages. Publish a small number of specific guides answering actual owner questions, using the product and real pilot outcomes as evidence.
 5. Give published menus restaurant-specific sharing previews. Add address, phone, opening hours and accurate local-business structured data only when owner-supplied information supports them; no promised rich-result placement. [Google local-business guidance](https://developers.google.com/search/docs/appearance/structured-data/local-business).
-6. Make “Made with Plateworthy” an optional, useful referral link and attribute new-owner signups. Do not force intrusive acquisition prompts on restaurant guests.
+6. Make “Made with Menu Material” an optional, useful referral link and attribute new-owner signups. Do not force intrusive acquisition prompts on restaurant guests.
 7. Start distribution with a focused owner cohort and partners such as local restaurant groups or agencies. Test one channel at a time after the funnel works, and compare activated/retained restaurants rather than raw traffic.
 
 ## Highest-value feature expansion

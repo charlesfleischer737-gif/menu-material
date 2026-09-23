@@ -301,7 +301,7 @@ export async function billingRoute(req: Request, path: string[]) {
       const customer = await stripe(
         "customers",
         { email: u.email, "metadata[restaurant_id]": r.id },
-        "plateworthy-customer-" + r.id,
+        "menu-material-customer-" + r.id,
       );
       await run(
         "UPDATE billing_accounts SET customer_id=? WHERE restaurant_id=? AND lease_token=?",
@@ -358,7 +358,7 @@ export async function billingRoute(req: Request, path: string[]) {
         success_url: origin() + "/?billing=success#studio",
         cancel_url: origin() + "/?billing=cancel#studio",
       },
-      "plateworthy-checkout-" + checkoutKey,
+      "menu-material-checkout-" + checkoutKey,
     );
     await run(
       "UPDATE billing_accounts SET checkout_id=? WHERE restaurant_id=? AND lease_token=?",

@@ -3,7 +3,7 @@ import { mkdtempSync, readFileSync, rmSync } from "node:fs";
 import { tmpdir } from "node:os";
 import { join } from "node:path";
 const root = mkdtempSync(join(tmpdir(), "menu-studio-progress-"));
-process.env.DISHLIGHT_DATA_DIR = root;
+process.env.MENU_MATERIAL_DATA_DIR = root;
 process.env.OPENAI_API_KEY = "fixture-only";
 const actualNow = Date.now;
 const day = 86400000,

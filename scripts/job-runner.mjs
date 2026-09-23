@@ -2,7 +2,7 @@
 import { writeFile, readFile } from "node:fs/promises";
 import { setTimeout as delay } from "node:timers/promises";
 const heartbeat =
-  process.env.RUNNER_HEARTBEAT_FILE || "/tmp/plateworthy-runner-heartbeat";
+  process.env.RUNNER_HEARTBEAT_FILE || "/tmp/menu-material-runner-heartbeat";
 if (process.argv.includes("--health")) {
   const last = Number(await readFile(heartbeat, "utf8").catch(() => "0"));
   process.exit(Date.now() - last < 120000 ? 0 : 1);

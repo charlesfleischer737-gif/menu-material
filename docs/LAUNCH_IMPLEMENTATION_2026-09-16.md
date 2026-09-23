@@ -1,4 +1,4 @@
-# Plateworthy launch improvements — September 16, 2026
+# Menu Material launch improvements — September 16, 2026
 
 Implements the selected work from the public-launch audit: 1–4, 7, 8, 10 and 12. The public site remains a controlled early-access pilot. Email delivery is deliberately deferred at the owner's request. No live AI generation, customer-data edits or price changes were used for validation.
 
@@ -44,7 +44,7 @@ Sites does not provision a scheduler for this app. The protected worker endpoint
 
 1. Choose the always-on host. Use Node 24 or the included `Dockerfile.worker` / `compose.worker.yaml`.
 2. Generate an independent, high-entropy `JOB_RUNNER_SECRET`. Set the same secret on the Sites runtime and the runner using their secret-management controls. Do not commit it or paste it into conversation.
-3. Set runner `APP_ORIGIN` to `https://dishlight-studio.cflash7.chatgpt.site`. The runner needs only this origin and its runner secret, never the OpenAI API key.
+3. Set runner `APP_ORIGIN` to `https://menu-material-studio.cflash7.chatgpt.site`. The runner needs only this origin and its runner secret, never the OpenAI API key.
 4. Start the container with `docker compose -f compose.worker.yaml up -d --build`, or run `node scripts/job-runner.mjs` under the host's process supervisor. `--once` is available for a scheduler; invoke at least once a minute. The continuous runner checks every two seconds after completion and backs off to one minute during failure.
 5. Check Pilot administration for a fresh heartbeat. Verify an actual image completes with every browser closed, then verify the runner restarts after a host restart. Monitor container health / the heartbeat and provider failures externally.
 

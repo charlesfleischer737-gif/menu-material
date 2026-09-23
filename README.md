@@ -1,6 +1,6 @@
-# Plateworthy food photography and promotion
+# Menu Material food photography and promotion
 
-Plateworthy is the existing branding in this codebase (the expansion brief calls the product Plated). It is a free, invitation-only restaurant promotion workspace, capped at 10 restaurant workspaces including outstanding invitations. It includes saved restaurant styles, a dish library, coordinated special and offer packages, private uploads, image versions, approvals, captions, menu imports, batch recovery, staff photo links, weekly suggestions, and engagement measurement.
+Menu Material is the restaurant promotion workspace in this codebase. It is free and invitation-only, capped at 10 restaurant workspaces including outstanding invitations. It includes saved restaurant styles, a dish library, coordinated special and offer packages, private uploads, image versions, approvals, captions, menu imports, batch recovery, staff photo links, weekly suggestions, and engagement measurement.
 
 Visitors can prepare a photo before signing up; Generate image opens account creation with five free generations. Pro is $9.99/month for 100 generations per paid billing period. Stripe activation is deferred; see [Free and Pro plans](docs/FREE_PRO_PLANS.md) for the flow, credit rules and setup.
 
@@ -18,7 +18,7 @@ npm run dev
 
 Open the local URL printed by the server. Select **Sign in → Open local workspace** for a local administrator workspace. This shortcut is available only through the local Vite runtime adapter; it is not included in the production storage adapter. It creates an empty development restaurant and does not seed fictional customer data or AI results.
 
-Local records and uploads live in `.local-data/`, which is excluded from Git. Restarting the app retains them. Generated migrations in `drizzle/` apply automatically to the local database. Set `DISHLIGHT_DATA_DIR` to use a separate local data directory. Back up the SQLite database and objects together.
+Local records and uploads live in `.local-data/`, which is excluded from Git. Restarting the app retains them. Generated migrations in `drizzle/` apply automatically to the local database. Set `MENU_MATERIAL_DATA_DIR` to use a separate local data directory. Back up the SQLite database and objects together.
 
 ## Connect image generation and captions
 
@@ -108,4 +108,4 @@ Configure secrets through the hosting provider, deploy the saved build, bootstra
 - `lib/local-runtime.ts`: local SQLite and object-storage adapter
 - `tests/integration.mjs`: isolated core-flow checks
 
-The inspiration photo is by [Adrian Vieriu on Pexels](https://www.pexels.com/photo/pasta-on-a-plate-11654225/) under the [Pexels license](https://www.pexels.com/license/). It is labeled as a real inspiration photo. The hero photograph is by [Valeria Boltneva on Pexels](https://www.pexels.com/photo/close-up-photo-of-burger-1639562/), also under the Pexels license. The original and studio-styled comparison is a clearly labeled illustrative AI edit, generated for this design demonstration. It is not a benchmark or a verified result from the live pilot API. Food textures can change, so owner review remains required. See `docs/PLATEWORTHY_DESIGN.md` for the asset record and prompt.
+The inspiration photo is by [Adrian Vieriu on Pexels](https://www.pexels.com/photo/pasta-on-a-plate-11654225/) under the [Pexels license](https://www.pexels.com/license/). It is labeled as a real inspiration photo. The hero photograph is by [Valeria Boltneva on Pexels](https://www.pexels.com/photo/close-up-photo-of-burger-1639562/), also under the Pexels license. The original and studio-styled comparison is a clearly labeled illustrative AI edit, generated for this design demonstration. It is not a benchmark or a verified result from the live pilot API. Food textures can change, so owner review remains required. See `docs/MENU_MATERIAL_DESIGN.md` for the asset record and prompt.

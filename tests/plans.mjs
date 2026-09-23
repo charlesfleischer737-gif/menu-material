@@ -3,10 +3,10 @@ import { createHmac } from "node:crypto";
 import { mkdtempSync, readFileSync, rmSync } from "node:fs";
 import { join } from "node:path";
 import { tmpdir } from "node:os";
-const root = mkdtempSync(join(tmpdir(), "plateworthy-plans-"));
-process.env.DISHLIGHT_DATA_DIR = root;
+const root = mkdtempSync(join(tmpdir(), "menu-material-plans-"));
+process.env.MENU_MATERIAL_DATA_DIR = root;
 process.env.OPENAI_API_KEY = "fixture-only";
-process.env.APP_ORIGIN = "https://plateworthy.example.test";
+process.env.APP_ORIGIN = "https://menu-material.example.test";
 const { handle } = await import("../lib/server/api.ts");
 const { one, run, all, id } = await import("../lib/server/core.ts");
 const { retryFailed } = await import("../lib/server/menu-tools.ts");
@@ -38,7 +38,7 @@ const calls = [];
 globalThis.fetch = async (url, init = {}) => {
   if (String(url).startsWith("/api/")) {
     const result = await handle(
-      new Request("https://plateworthy.example.test" + url, {
+      new Request("https://menu-material.example.test" + url, {
         ...init,
         headers: { ...init.headers, cookie },
       }),
@@ -92,7 +92,7 @@ globalThis.fetch = async (url, init = {}) => {
 };
 async function call(path, data, expected = 200, headers = {}) {
   const res = await handle(
-    new Request("https://plateworthy.example.test/api/" + path, {
+    new Request("https://menu-material.example.test/api/" + path, {
       method: data === undefined ? "GET" : "POST",
       headers: { cookie, "content-type": "application/json", ...headers },
       body: data === undefined ? undefined : JSON.stringify(data),
@@ -122,7 +122,7 @@ async function notify(
     .update(timestamp + "." + raw)
     .digest("hex");
   const res = await handle(
-    new Request("https://plateworthy.example.test/api/billing/webhook", {
+    new Request("https://menu-material.example.test/api/billing/webhook", {
       method: "POST",
       headers: {
         "stripe-signature": `t=${timestamp},v1=${signature ? sig : "00".repeat(32)}`,

@@ -11,7 +11,7 @@ const context = await browser.newContext({
   acceptDownloads: true,
 });
 const request = context.request,
-  base = process.env.PLATED_QA_ORIGIN || "http://localhost:5174";
+  base = process.env.MENU_MATERIAL_QA_ORIGIN || "http://localhost:5174";
 assert(
   ["localhost", "127.0.0.1"].includes(new URL(base).hostname),
   "Browser tests require an isolated local preview.",
@@ -33,7 +33,7 @@ assert(
   state.local &&
     (state.restaurant.name.startsWith("QA ·") ||
       (state.restaurant.name === "Your restaurant" && !state.dishes.length)),
-  "Use a separate DISHLIGHT_DATA_DIR for browser tests.",
+  "Use a separate MENU_MATERIAL_DATA_DIR for browser tests.",
 );
 for (const promo of state.promotions || [])
   if (promo.published) await api("promotions/" + promo.id + "/unpublish", {});

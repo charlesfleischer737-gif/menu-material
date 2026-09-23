@@ -125,7 +125,7 @@ export async function exportImage(asset: Row, format: string, ratio: string) {
   );
   downloadBlob(
     blob,
-    `plateworthy-${ratio}.${format === "jpeg" ? "jpg" : "png"}`,
+    `menu-material-${ratio}.${format === "jpeg" ? "jpg" : "png"}`,
   );
   await api("events", { kind: "image_downloaded", entityId: asset.id });
 }

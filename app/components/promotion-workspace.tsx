@@ -215,7 +215,7 @@ export default function PromotionWorkspace({
     photoHeading = useRef<HTMLHeadingElement>(null),
     reviewHeading = useRef<HTMLHeadingElement>(null);
   const r = state.restaurant;
-  const recoveryKey = (id: string) => `plated-pending:${r.id}:${id}`;
+  const recoveryKey = (id: string) => `menu-material-pending:${r.id}:${id}`;
   const update = (key: string, value: unknown) => {
     const next = { ...current.current!, [key]: value };
     current.current = next;

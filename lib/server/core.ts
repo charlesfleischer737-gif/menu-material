@@ -163,7 +163,7 @@ export async function viewer(req: Request) {
     .get("cookie")
     ?.split(";")
     .map((s) => s.trim())
-    .find((s) => s.startsWith("dishlight_session="))
+    .find((s) => s.startsWith("menu_material_session="))
     ?.split("=")[1];
   if (!raw) return null;
   return one(
@@ -181,7 +181,7 @@ export async function createSession(req: Request, userId: string) {
     now() + 7 * 86400000,
   );
   return response({ ok: true }, 200, {
-    "Set-Cookie": `dishlight_session=${s}; Path=/; HttpOnly; SameSite=Lax; Max-Age=604800${new URL(req.url).protocol === "https:" ? "; Secure" : ""}`,
+    "Set-Cookie": `menu_material_session=${s}; Path=/; HttpOnly; SameSite=Lax; Max-Age=604800${new URL(req.url).protocol === "https:" ? "; Secure" : ""}`,
   });
 }
 export async function owner(req: Request) {

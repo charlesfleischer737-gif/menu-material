@@ -115,5 +115,5 @@ Source locations for a later implementation pass:
 | Post Maker | `app/components/post-maker.tsx`, `app/components/workspace-controls.tsx`, `app/creative-workspace.css`, post composition/export modules |
 | Explore | `app/components/explore-gallery.tsx`, `app/explore.css` |
 | Settings, authentication, administration | `app/components/account-panels.tsx`, `app/components/auth.tsx`, `app/components/restaurant-look-editor.tsx`, corresponding shared/dialog styles |
-| Homepage and information pages | `app/components/plateworthy-landing.tsx`, `app/components/public-information.tsx`, `app/homepage.css`, `app/plateworthy.css`, `app/launch.css` |
+| Homepage and information pages | `app/components/menu-material-landing.tsx`, `app/components/public-information.tsx`, `app/homepage.css`, `app/menu-material.css`, `app/launch.css` |
 | Secondary tools and staff upload | `app/components/menu-tools.tsx`, `app/components/staff-upload.tsx`, `app/workspace.css` |

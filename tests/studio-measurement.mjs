@@ -3,7 +3,7 @@ import { mkdtempSync, readFileSync, rmSync } from "node:fs";
 import { tmpdir } from "node:os";
 import { join } from "node:path";
 const root = mkdtempSync(join(tmpdir(), "menu-studio-measurement-"));
-process.env.DISHLIGHT_DATA_DIR = root;
+process.env.MENU_MATERIAL_DATA_DIR = root;
 process.env.OPENAI_API_KEY = "fixture-only";
 const { handle } = await import("../lib/server/api.ts");
 const { run, one, all, id } = await import("../lib/server/core.ts");

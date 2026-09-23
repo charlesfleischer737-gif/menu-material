@@ -1,6 +1,6 @@
 // These preferences only select a workspace; all saved content stays on the server.
 export function workspacePreferenceKey(userId: string, restaurantId: string) {
-  return `plateworthy:workspace:${userId}:${restaurantId}`;
+  return `menu-material:workspace:${userId}:${restaurantId}`;
 }
 
 export function readPreference(key: string): string {
