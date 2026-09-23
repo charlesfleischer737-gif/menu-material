@@ -704,26 +704,6 @@
   min-width: 0;
   background: #fff;
 }
-.md-inspector-tabs {
-  display: flex;
-  gap: 2px;
-  padding: 13px 13px 0;
-  border-bottom: 1px solid #e4e8de;
-}
-.md-inspector-tabs button {
-  flex: 1;
-  background: none;
-  border: 0;
-  border-bottom: 2px solid transparent;
-  color: #8a937f;
-  padding: 9px 1px 12px;
-  font-size: 13px !important;
-}
-.md-inspector-tabs button[aria-pressed="true"] {
-  color: #3b5532;
-  border-bottom-color: #78985f;
-  font-weight: 700;
-}
 .md-inspector-content {
   padding: 20px 17px 22px;
   max-height: 1000px;
@@ -2444,9 +2424,6 @@
     border-top: 1px solid #dfe4d9;
     border-left: 0;
   }
-  .md-inspector-tabs {
-    max-width: 360px;
-  }
   .md-inspector-content {
     max-height: none;
     max-width: 600px;
@@ -2629,13 +2606,6 @@
   }
   .md-outline-bottom {
     padding: 18px;
-  }
-  .md-inspector-tabs {
-    max-width: none;
-  }
-  .md-inspector-tabs button {
-    padding-top: 12px;
-    font-size: 14px !important;
   }
   .md-inspector-content {
     max-width: none;
@@ -2973,7 +2943,6 @@
 .md-design-label,
 .md-inspector-label,
 .md-inspector-welcome p,
-.md-inspector-tabs button,
 .md-field > small,
 .md-selected-design > span,
 .md-selected-design p,
@@ -3109,7 +3078,6 @@
 .md-field > span,
 .md-field-caption,
 .md-toggle,
-.md-inspector-tabs button,
 .md-outline-item {
   font-size: 14px !important;
 }
@@ -3133,12 +3101,6 @@
 }
 .md-stage-toolbar {
   flex-wrap: wrap;
-}
-.md-inspector-tabs {
-  padding-inline: 12px;
-}
-.md-inspector-tabs button {
-  font-size: 14px !important;
 }
 .md-outline-sections {
   max-height: 780px;
