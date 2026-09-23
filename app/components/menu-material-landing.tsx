@@ -9,46 +9,14 @@ import {
   DropdownMenuItem,
   DropdownMenuTrigger,
 } from "@/components/ui/dropdown-menu";
-import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import Brand from "./brand";
 import HomepageSections from "./homepage-sections";
+import PhotoComparison from "./photo-comparison";
 
-const beforePhoto = "/burger-phone-original.jpg";
-const afterPhoto = "/burger-studio-transformation.png";
 const heroFoodBubbles = [
   ["sushi", "pizza", "cheesecake"],
   ["burrata", "gelato", "gyoza"],
 ];
-
-function ComparisonPhoto({ after = false }: { after?: boolean }) {
-  return (
-    <figure className={after ? "pw-after" : "pw-before"}>
-      <figcaption className="pw-photo-label">
-        {after ? "After" : "Before"}
-      </figcaption>
-      <div className="pw-photo-frame">
-        <img
-          src={after ? afterPhoto : beforePhoto}
-          srcSet={
-            after
-              ? "/homepage/optimized/burger-after-640.webp 640w, /homepage/optimized/burger-after-960.webp 960w, /homepage/optimized/burger-after-1536.webp 1536w"
-              : "/homepage/optimized/burger-before-640.webp 640w, /burger-phone-original.jpg 2592w"
-          }
-          sizes="(max-width: 600px) 90vw, (max-width: 1200px) 46vw, 560px"
-          decoding="async"
-          alt={
-            after
-              ? "Illustrative AI edit of the burger with studio lighting and a clean background"
-              : "Original, unstyled burger photograph"
-          }
-          width={after ? 1536 : 2592}
-          height={after ? 1024 : 1944}
-          fetchPriority="high"
-        />
-      </div>
-    </figure>
-  );
-}
 
 export default function Landing({
   onStart,
@@ -158,28 +126,7 @@ export default function Landing({
             </Button>
             <span className="pw-free-note">5 free images · No credit card</span>
           </div>
-          <div
-            className="pw-comparison pw-desktop-comparison"
-            id="the-difference"
-          >
-            <ComparisonPhoto />
-            <ComparisonPhoto after />
-            <span className="pw-transform-arrow" aria-hidden="true">
-              <ArrowRight size={20} />
-            </span>
-          </div>
-          <Tabs defaultValue="after" className="pw-mobile-comparison">
-            <TabsList aria-label="Compare the original and AI edit">
-              <TabsTrigger value="before">Before</TabsTrigger>
-              <TabsTrigger value="after">After</TabsTrigger>
-            </TabsList>
-            <TabsContent value="before">
-              <ComparisonPhoto />
-            </TabsContent>
-            <TabsContent value="after">
-              <ComparisonPhoto after />
-            </TabsContent>
-          </Tabs>
+          <PhotoComparison />
         </section>
         <HomepageSections />
         <section className="pw-start">
