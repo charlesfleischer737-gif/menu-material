@@ -84,8 +84,8 @@ export default function PhotoComparison() {
         />
         <img
           className="pw-compare-before"
-          src="/homepage/optimized/burger-before-960.webp"
-          srcSet="/homepage/optimized/burger-before-960.webp 960w, /homepage/optimized/burger-before-1536.webp 1536w"
+          src="/homepage/optimized/burger-before-640.webp"
+          srcSet="/homepage/optimized/burger-before-640.webp 640w, /burger-phone-original.jpg 2592w"
           sizes={sizes}
           alt="Original phone photo of a burger on a white plate"
           decoding="async"

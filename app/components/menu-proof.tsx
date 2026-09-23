@@ -32,9 +32,11 @@ function ProofPage({
     let active = true,
       destroy: (() => void) | undefined;
     void (async () => {
-      const pdfjs = await import("pdfjs-dist");
+      // The legacy build bundles polyfills (e.g. Map#getOrInsertComputed) that
+      // current Safari and Chromium releases do not ship yet.
+      const pdfjs = await import("pdfjs-dist/legacy/build/pdf.mjs");
       if (!active) return;
-      pdfjs.GlobalWorkerOptions.workerSrc = "/pdf.worker.min.mjs";
+      pdfjs.GlobalWorkerOptions.workerSrc = "/pdf.worker.legacy.min.mjs";
       const data = await result.blob.arrayBuffer();
       if (!active) return;
       const task = pdfjs.getDocument({ data });
@@ -59,7 +61,11 @@ function ProofPage({
         destroy();
       }
     })().catch((e) => {
-      if (active) setError(e.message);
+      console.error("Menu preview could not be drawn", e);
+      if (active)
+        setError(
+          "This preview couldn’t be shown. Your menu is saved, and Export PDF still works.",
+        );
     });
     return () => {
       active = false;
@@ -73,7 +79,11 @@ function ProofPage({
         role="img"
         aria-label={`Print menu, page ${page} of ${result.pages}`}
       />
-      {error && <p role="alert">{error}</p>}
+      {error && (
+        <p className="md-proof-page-error" role="alert">
+          {error}
+        </p>
+      )}
       {onSelect &&
         result.layout.pages[page - 1]?.hits.map((hit, i) => (
           <button
