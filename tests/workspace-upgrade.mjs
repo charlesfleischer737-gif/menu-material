@@ -7,7 +7,6 @@ process.env.MENU_MATERIAL_DATA_DIR = root;
 process.env.LOCAL_DEVELOPMENT = "true";
 process.env.OPENAI_API_KEY = "fixture-only";
 const { handle } = await import("../lib/server/api.ts");
-const { one, run } = await import("../lib/server/core.ts");
 const { dishStatus, preferredPhoto, dishSnapshot } =
   await import("../lib/dish-library.ts");
 const { menuChanges, duplicateMenuRows } =
@@ -83,8 +82,6 @@ async function upload(dishId) {
 }
 try {
   await call("auth/dev", {});
-  const state = await call("state"),
-    rid = state.restaurant.id;
   const dish = await call("dishes", {
     name: "House pasta",
     description: "Fresh pasta",

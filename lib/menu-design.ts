@@ -1,5 +1,5 @@
 import type { Row } from "./client";
-export const menuDesigns = [
+const menuDesigns = [
   {
     id: "bistro",
     name: "Brasserie",
@@ -25,17 +25,6 @@ export const menuDesigns = [
     appearance: "dark",
   },
 ];
-export function menuDesignPreset(menu: Row, design: string) {
-  const spec = menuDesigns.find((d) => d.id === design) || menuDesigns[0];
-  const hasPhoto = menu.sections?.some((s: Row) =>
-    s.items.some((i: Row) => i.photoId),
-  );
-  return {
-    design: spec.id,
-    appearance: spec.appearance,
-    layout: menu.layout || (hasPhoto ? "featured" : "classic"),
-  };
-}
 export function menuHero(menu: Row): Row | undefined {
   if (menu.layout !== "featured") return undefined;
   const photos: Row[] = menu.sections

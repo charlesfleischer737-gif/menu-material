@@ -8,13 +8,7 @@ import {
   useState,
   type ReactNode,
 } from "react";
-import {
-  ArrowLeft,
-  ArrowRight,
-  Check,
-  LoaderCircle,
-  RotateCw,
-} from "lucide-react";
+import { ArrowRight, Check, LoaderCircle, RotateCw } from "lucide-react";
 import { api, type Row } from "@/lib/client";
 import WorkspacePlaceholder from "./workspace-placeholder";
 import CreativeHeader from "./creative-header";
@@ -673,48 +667,6 @@ export function SavedDrafts({
     </Dialog>
   );
 }
-export function Steps({
-  labels,
-  step,
-  onBack,
-}: {
-  labels: string[];
-  step: number;
-  onBack?: (n: number) => void;
-}) {
-  return (
-    <div className="cx-progress">
-      <div className="cx-progress-compact">
-        <span>
-          Step {Math.min(step, labels.length)} of {labels.length}
-        </span>
-        <b>{labels[Math.min(step, labels.length) - 1]}</b>
-        <progress
-          value={Math.min(step, labels.length)}
-          max={labels.length}
-          aria-label="Your progress"
-        />
-      </div>
-      <ol className="cx-steps" aria-label="Your progress">
-        {labels.map((label, i) => (
-          <li
-            key={label}
-            className={step === i + 1 ? "current" : step > i + 1 ? "done" : ""}
-          >
-            <button
-              disabled={!onBack || i + 1 >= step}
-              onClick={() => onBack?.(i + 1)}
-              aria-current={step === i + 1 ? "step" : undefined}
-            >
-              <span>{step > i + 1 ? <Check size={15} /> : i + 1}</span>
-              {label}
-            </button>
-          </li>
-        ))}
-      </ol>
-    </div>
-  );
-}
 export function ToolHeader({
   title,
   status,
@@ -728,23 +680,6 @@ export function ToolHeader({
     <CreativeHeader title={title} status={status} className="cx-feature-header">
       {children}
     </CreativeHeader>
-  );
-}
-export function Heading({
-  eyebrow,
-  title,
-  children,
-}: {
-  eyebrow: string;
-  title: string;
-  children: ReactNode;
-}) {
-  return (
-    <div className="cx-heading">
-      <p className="cx-eyebrow">{eyebrow}</p>
-      <h1 tabIndex={-1}>{title}</h1>
-      <p>{children}</p>
-    </div>
   );
 }
 export function Feedback({
@@ -776,42 +711,6 @@ export function Feedback({
         </p>
       )}
     </>
-  );
-}
-export function Footer({
-  back,
-  next,
-  label,
-  busy,
-  disabled,
-  note,
-}: {
-  back?: () => void;
-  next: () => void;
-  label: string;
-  busy?: boolean;
-  disabled?: boolean;
-  note?: string;
-}) {
-  return (
-    <div className="cx-flow-footer">
-      {back ? (
-        <button className="cx-btn cx-secondary" disabled={busy} onClick={back}>
-          <ArrowLeft size={17} />
-          Back
-        </button>
-      ) : (
-        <span />
-      )}
-      <div>
-        <span className="cx-footnote">{note}</span>
-        <button className="cx-btn" disabled={busy || disabled} onClick={next}>
-          {busy ? <LoaderCircle className="cx-spin" size={17} /> : null}
-          {label}
-          <ArrowRight size={17} />
-        </button>
-      </div>
-    </div>
   );
 }
 export function Field({

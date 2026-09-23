@@ -163,12 +163,6 @@ export const postTemplates = [
     example: "/studio/styles/fine-counter.webp",
   },
 ] as const;
-export const postTemplateGroups = [
-  "All designs",
-  "Photo first",
-  "Announcements",
-  "After hours",
-];
 export function getPostTemplate(id: string) {
   const aliases: Record<string, string> = {
     photo: "editorial",

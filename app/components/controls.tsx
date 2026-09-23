@@ -1,12 +1,5 @@
 "use client";
 import {
-  Select,
-  SelectContent,
-  SelectItem,
-  SelectTrigger,
-  SelectValue,
-} from "@/components/ui/select";
-import {
   AlertDialog,
   AlertDialogAction,
   AlertDialogCancel,
@@ -16,32 +9,6 @@ import {
   AlertDialogHeader,
   AlertDialogTitle,
 } from "@/components/ui/alert-dialog";
-export function Pick({
-  value,
-  onChange,
-  options,
-  label,
-}: {
-  value: string;
-  onChange: (s: string) => void;
-  options: { value: string; label: string }[];
-  label: string;
-}) {
-  return (
-    <Select value={value} onValueChange={onChange}>
-      <SelectTrigger aria-label={label} className="wide min-h-[43px]">
-        <SelectValue placeholder={label} />
-      </SelectTrigger>
-      <SelectContent>
-        {options.map((o) => (
-          <SelectItem key={o.value} value={o.value}>
-            {o.label}
-          </SelectItem>
-        ))}
-      </SelectContent>
-    </Select>
-  );
-}
 export function ConfirmDelete({
   open,
   onClose,

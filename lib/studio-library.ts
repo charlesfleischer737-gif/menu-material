@@ -27,7 +27,7 @@ export const lookRecipeSchema = z.object({
     .enum(["", "christmas", "game-day", "valentines", "summer-drinks"])
     .default(""),
 });
-export const savedLookSchema = z.object({
+const savedLookSchema = z.object({
   id: z.string().uuid(),
   name: z.string().trim().min(1).max(60),
   recipe: lookRecipeSchema,

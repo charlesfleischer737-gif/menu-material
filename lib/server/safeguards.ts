@@ -16,7 +16,7 @@ export type AiCharge = {
   kind: "image" | "caption" | "analysis" | "import";
   key?: string;
 };
-export const budgetDay = () => new Date(now()).toISOString().slice(0, 10);
+const budgetDay = () => new Date(now()).toISOString().slice(0, 10);
 export async function aiControls() {
   const row = await one(
     "SELECT value FROM app_settings WHERE key='ai-controls'",
@@ -122,7 +122,7 @@ export async function loginLimit(req: Request, email: string) {
   // A stranger cannot exhaust an owner's allowance merely by knowing their email.
   await limit(`login:pair:${caller(req)}:${email}`, 10);
 }
-export async function accountForExistingStorage(restaurantId: string) {
+async function accountForExistingStorage(restaurantId: string) {
   const existing = await all(
     `SELECT id,key,working_key,2 AS copies FROM assets WHERE restaurant_id=? AND deleted_at IS NULL AND id NOT IN (SELECT id FROM storage_reservations)
     UNION ALL SELECT id,key,NULL AS working_key,1 AS copies FROM menu_imports WHERE restaurant_id=? AND key IS NOT NULL AND id NOT IN (SELECT id FROM storage_reservations)`,

@@ -120,7 +120,7 @@ export function offerRow(p: Row) {
     status: promotionStatus(p),
   };
 }
-export function offerHash(d: Row) {
+function offerHash(d: Row) {
   const { activeMs: _a, revision: _r, ...design } = d;
   return digest(JSON.stringify(design));
 }

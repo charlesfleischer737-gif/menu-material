@@ -35,12 +35,7 @@ export const lookControls = [
   "composition",
 ] as const;
 export const lookMoods = ["All", "Bright", "Warm", "Dark", "Colorful"] as const;
-export {
-  findStyles,
-  searchStyles,
-  styleMoods,
-  styleSearchShortcut,
-} from "./studio-search";
+export { findStyles } from "./studio-search";
 
 // Style changes never discard deliberate adjustments. The recipe stored on a
 // draft is independent of later changes to a restaurant's default look.

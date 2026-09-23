@@ -1,7 +1,6 @@
 import { z } from "zod";
 import { validateImageDimensions } from "./image-validation";
 import {
-  all,
   assert,
   body,
   bucket,

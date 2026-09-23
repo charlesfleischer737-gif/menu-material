@@ -4,17 +4,15 @@ import { useEffect, useRef, useState } from "react";
 import {
   Camera,
   Sparkles,
-  Check,
   SlidersHorizontal,
   ArrowRight,
   ImagePlus,
   Download,
   History,
   Expand,
-  X,
 } from "lucide-react";
 import { Dialog, DialogContent, DialogTitle } from "@/components/ui/dialog";
-import { api, downloadBlob, normalizePhoto, type Row } from "@/lib/client";
+import { api, normalizePhoto, type Row } from "@/lib/client";
 import {
   looks,
   photoStyles,

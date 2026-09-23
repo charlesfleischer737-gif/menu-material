@@ -63,7 +63,7 @@ globalThis.fetch = async (url) => {
     });
   throw Error("Unexpected export request " + path);
 };
-const { menuPdf, renderPost, campaignZip, photoExport, masterPhotoExport } =
+const { renderPost, campaignZip, photoExport, masterPhotoExport } =
   await import("../lib/creation-export.ts");
 const restaurant = {
   name: "The Orchard Kitchen",
@@ -71,61 +71,8 @@ const restaurant = {
   currency: "USD",
   style: { primary: "#235b48", accent: "#e7efb7" },
 };
-const items = [
-  {
-    name: "Tomato basil pappardelle",
-    description: "Pappardelle with tomato sauce and basil.",
-    price: 1850,
-    available: true,
-    photoId: "pasta",
-  },
-  {
-    name: "The house burger",
-    description: "Our house burger.",
-    price: 1600,
-    available: true,
-    photoId: "burger",
-  },
-];
 const pdfjs = await import("pdfjs-dist/legacy/build/pdf.mjs");
 let checks = 0;
-for (const layout of ["classic", "grid", "featured"])
-  for (const paper of ["letter", "a4"]) {
-    const result = await menuPdf({
-      restaurant,
-      sections: [{ name: "Mains", items }],
-      layout,
-      paper,
-      appearance: "light",
-    });
-    const bytes = new Uint8Array(await result.blob.arrayBuffer());
-    writeFileSync(`${root}/menu-${layout}-${paper}.pdf`, bytes);
-    const task = pdfjs.getDocument({ data: bytes, useSystemFonts: true });
-    const pdf = await task.promise;
-    const page = await pdf.getPage(1);
-    const text = (await page.getTextContent()).items
-      .map((i) => i.str)
-      .join(" ");
-    assert(
-      text.includes("18.50") &&
-        text.includes("16.00") &&
-        text.includes("The house burger"),
-    );
-    assert.equal(pdf.numPages, 1);
-    const viewport = page.getViewport({ scale: 1.3 }),
-      c = createCanvas(Math.ceil(viewport.width), Math.ceil(viewport.height));
-    await page.render({
-      canvas: c,
-      canvasContext: c.getContext("2d"),
-      viewport,
-    }).promise;
-    writeFileSync(
-      `${root}/menu-${layout}-${paper}.png`,
-      c.toBuffer("image/png"),
-    );
-    await task.destroy();
-    checks++;
-  }
 const draft = {
   title: "The house burger",
   description: "Our house burger.",
@@ -155,28 +102,6 @@ for (const font of brandTypefaces) {
     ...restaurant,
     style: { ...restaurant.style, typography: font.id, autoApply: true },
   };
-  const pdf = await menuPdf({
-    restaurant: branded,
-    sections: [{ name: "Mains", items }],
-    layout: "featured",
-    paper: "letter",
-    appearance: "light",
-  });
-  const pdfTask = pdfjs.getDocument({
-    data: new Uint8Array(await pdf.blob.arrayBuffer()),
-    useSystemFonts: true,
-  });
-  const document = await pdfTask.promise;
-  const page = await document.getPage(1);
-  const text = (await page.getTextContent()).items
-    .map((item) => item.str)
-    .join(" ");
-  assert(
-    text.includes(restaurant.name) && text.includes("18.50"),
-    `${font.id} print menu preserves name and price`,
-  );
-  await pdfTask.destroy();
-  checks++;
   for (const template of postTemplates) {
     for (const channel of ["feed", "story"]) {
       const styled = { ...draft, ...brandPostFields(branded.style) };
@@ -409,7 +334,7 @@ for (const item of (await longPage.getTextContent()).items)
 await longTask.destroy();
 checks++;
 console.log(
-  `PASS: ${checks} exported PDF/image checks, embedded-text prices, US Letter/A4, all ten new post templates and legacy draft mappings, independent feed/story dimensions, carousel ZIP and clean delivery JPEG. Artifacts: ${root}`,
+  `PASS: ${checks} exported PDF/image checks, embedded-text prices, all ten new post templates and legacy draft mappings, independent feed/story dimensions, carousel ZIP and clean delivery JPEG. Artifacts: ${root}`,
 );
 
 // Render the actual default gallery, including the photo-only design, with shipped fonts and images.

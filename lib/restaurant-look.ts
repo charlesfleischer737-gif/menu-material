@@ -26,7 +26,6 @@ export const brandTypefaces = [
     sample: "Made to be craved",
   },
 ] as const;
-export type BrandTypography = (typeof brandTypefaces)[number]["id"];
 
 export const restaurantLooks = [
   {

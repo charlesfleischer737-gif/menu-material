@@ -94,41 +94,6 @@ export async function normalizePhoto(file: File): Promise<Blob> {
     ),
   );
 }
-export async function exportImage(asset: Row, format: string, ratio: string) {
-  const res = await fetch(`/api/assets/${asset.id}?download=1`);
-  if (!res.ok) throw Error("Approve this image before downloading.");
-  const bitmap = await createImageBitmap(await res.blob());
-  const aspect = ratio === "portrait" ? 4 / 5 : ratio === "story" ? 9 / 16 : 1;
-  const sw = Math.min(bitmap.width, bitmap.height * aspect),
-    sh = sw / aspect;
-  const c = document.createElement("canvas");
-  c.width = 1080;
-  c.height = Math.round(1080 / aspect);
-  c.getContext("2d")!.drawImage(
-    bitmap,
-    (bitmap.width - sw) / 2,
-    (bitmap.height - sh) / 2,
-    sw,
-    sh,
-    0,
-    0,
-    c.width,
-    c.height,
-  );
-  bitmap.close();
-  const blob = await new Promise<Blob>((resolve, reject) =>
-    c.toBlob(
-      (b) => (b ? resolve(b) : reject(Error("Export failed."))),
-      "image/" + format,
-      0.94,
-    ),
-  );
-  downloadBlob(
-    blob,
-    `menu-material-${ratio}.${format === "jpeg" ? "jpg" : "png"}`,
-  );
-  await api("events", { kind: "image_downloaded", entityId: asset.id });
-}
 export function downloadBlob(blob: Blob, name: string) {
   const url = URL.createObjectURL(blob);
   const a = document.createElement("a");
