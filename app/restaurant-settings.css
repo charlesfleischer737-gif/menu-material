@@ -271,3 +271,21 @@
     grid-column: 1/-1;
   }
 }
+.rs-panel[data-settings-group="details"] > .rs-address {
+  grid-column: 1 / -1;
+}
+.rs-address-row {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+  align-items: center;
+}
+.rs-address-row > input {
+  flex: 1 1 160px;
+  min-width: 0;
+}
+.rs-address-prefix {
+  color: var(--workspace-muted);
+  font-size: var(--text-footnote);
+  overflow-wrap: anywhere;
+}

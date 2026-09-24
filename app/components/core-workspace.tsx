@@ -357,6 +357,7 @@ export default function CoreWorkspace({
             <div hidden={view !== "post"} aria-hidden={view !== "post"}>
               <PostMaker
                 state={state}
+                refresh={refresh}
                 active={view === "post"}
                 seed={postSeed}
                 onSeedUsed={() => setPostSeed(null)}

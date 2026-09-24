@@ -509,7 +509,9 @@ export default function DishLibrary({
                         </span>
                       )}
                     </span>
-                    <small>{d.category}</small>
+                    <small>
+                      {d.sample ? "Sample · stays off menus" : d.category}
+                    </small>
                   </span>
                 </button>
                 {selecting && (
@@ -859,7 +861,20 @@ export default function DishLibrary({
                     await refresh();
                     setDetail((d) => ({ ...d, revision: saved.revision }));
                     setDirty(false);
-                    action.setNotice("Dish details saved.");
+                    const menus = (saved.menus || []) as Row[];
+                    if (menus.length)
+                      window.dispatchEvent(
+                        new CustomEvent("menu-material:menus-changed", {
+                          detail: { ids: menus.map((m) => m.id) },
+                        }),
+                      );
+                    action.setNotice(
+                      menus.length
+                        ? `Dish details saved and updated on ${menus
+                            .map((m) => `${m.name}${m.live ? " (live)" : ""}`)
+                            .join(", ")}.`
+                        : "Dish details saved.",
+                    );
                   })
                 }
               >

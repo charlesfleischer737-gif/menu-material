@@ -488,7 +488,7 @@ export default function PhotoStudio({
     onDestination("menu", "", "", { importId: imported.id });
   }
   // `fresh` starts a new dish, so a sample and a real photo never share one.
-  async function ensureDish(fresh?: { name: string }) {
+  async function ensureDish(fresh?: { name: string; sample?: boolean }) {
     const dishId = fresh ? "" : b.dishId;
     const prior = state.dishes.find((d: Row) => d.id === dishId);
     const payload = {
@@ -499,6 +499,8 @@ export default function PhotoStudio({
       price: (prior?.price || 0) / 100,
       available: prior ? !!prior.available : true,
       confirmed: true,
+      // Sample dishes stay out of guest menus.
+      ...(fresh?.sample ? { sample: true } : {}),
       setting: resolvePhotoLook(b)
         ? styleFor(b, state.restaurant).photoStyle
         : prior?.setting || "",
@@ -522,7 +524,10 @@ export default function PhotoStudio({
       const normalized = await normalizePhoto(file);
       const fresh =
         options.sample || b.sample
-          ? { name: options.sample ? samplePhoto.name : "" }
+          ? {
+              name: options.sample ? samplePhoto.name : "",
+              sample: !!options.sample,
+            }
           : undefined;
       const did = await ensureDish(fresh);
       const fd = new FormData();

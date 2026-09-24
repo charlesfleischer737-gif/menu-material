@@ -947,6 +947,104 @@
   text-decoration: underline;
   text-underline-offset: 3px;
 }
+/* Automatic checks before publishing or exporting a menu. */
+.md-checks {
+  display: grid;
+  gap: 10px;
+  margin: 0 0 18px;
+  padding: 14px 16px;
+  border-radius: var(--radius-control);
+  background: var(--workspace-success-surface);
+  color: var(--workspace-ink);
+  font-size: var(--text-footnote);
+}
+.md-checks.has-blocking {
+  background: var(--workspace-warning-surface);
+}
+.md-checks > strong {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  font-size: var(--text-callout);
+}
+.md-checks.is-clear > strong {
+  color: var(--workspace-success);
+}
+.md-checks ul {
+  display: grid;
+  gap: 8px;
+  margin: 0;
+  padding: 0;
+  list-style: none;
+}
+.md-checks li {
+  display: grid;
+  gap: 4px;
+  padding-left: 14px;
+  position: relative;
+  line-height: 1.5;
+}
+.md-checks li::before {
+  content: "";
+  position: absolute;
+  left: 0;
+  top: 0.55em;
+  width: 6px;
+  height: 6px;
+  border-radius: 50%;
+  background: var(--workspace-control);
+}
+.md-checks li.is-blocking::before {
+  background: var(--workspace-error);
+}
+.md-checks li > .md-text-button {
+  justify-self: start;
+  min-height: 32px;
+  padding: 0;
+}
+.md-checks > small {
+  color: var(--workspace-muted);
+  font-size: var(--text-caption);
+}
+.md-check-fix {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+  align-items: center;
+}
+.md-check-fix input {
+  flex: 1 1 180px;
+  min-height: 40px;
+  padding: 0 12px;
+  border: 1px solid var(--workspace-line);
+  border-radius: var(--radius-control);
+  background: var(--workspace-surface);
+  font: inherit;
+}
+.md-check-fix .md-inline-error {
+  flex-basis: 100%;
+}
+.md-address-input {
+  display: flex;
+  align-items: center;
+  border: 1px solid var(--workspace-line);
+  border-radius: var(--radius-control);
+  background: var(--workspace-surface);
+  overflow: hidden;
+}
+.md-address-input > span {
+  padding: 0 4px 0 12px;
+  color: var(--workspace-muted);
+}
+.md-address-input input {
+  flex: 1;
+  min-width: 0;
+  min-height: 42px;
+  border: 0 !important;
+  padding-left: 0 !important;
+  background: transparent;
+  font: inherit;
+}
 .md-suggestion {
   padding: 14px;
   background: var(--gray-200);

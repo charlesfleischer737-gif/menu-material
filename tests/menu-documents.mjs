@@ -54,6 +54,8 @@ async function call(path, data, expected = 200, method) {
 }
 try {
   await call("auth/dev", {});
+  // Guests never see a placeholder name; publishing requires a real one.
+  await call("restaurant/name", { name: "Test Kitchen" });
   const state = await call("state"),
     adminCookie = cookie;
   const legacyDish = await call("dishes", {
@@ -207,11 +209,8 @@ try {
     (await call(`menus/${firstId}`)).draft.sections[0].items[0].price,
     2800,
   );
-  await call(`menus/${firstId}/publish`, { revision: 2 }, 400);
-  dinner = await call(`menus/${firstId}/publish`, {
-    revision: 2,
-    confirmed: true,
-  });
+  // Automatic checks replace the old "I checked" confirmation.
+  dinner = await call(`menus/${firstId}/publish`, { revision: 2 });
   assert.equal(
     dinner.published.sections[0].items.length,
     1,

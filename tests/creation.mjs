@@ -464,6 +464,8 @@ const upload = async (dishId) => {
 };
 try {
   await call("auth/dev", {});
+  // Guests never see a placeholder name; publishing requires a real one.
+  await call("restaurant/name", { name: "Test Kitchen" });
   let state = await call("state");
   const restaurant = state.restaurant;
   const dish = await call("dishes", {

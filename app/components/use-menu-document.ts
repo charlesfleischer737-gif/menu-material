@@ -136,6 +136,33 @@ export function useMenuDocument(restaurantId: string) {
       if (timer.current) clearTimeout(timer.current);
     };
   }, [restaurantId]);
+  // A My Dishes edit can update this menu on the server; follow it when there
+  // are no local edits (otherwise the usual conflict recovery applies).
+  const followServerUpdate = useEffectEvent(async (ids: string[]) => {
+    const row = recordRef.current;
+    if (!row || !ids.includes(row.id) || flight.current) return;
+    if (JSON.stringify(current.current) !== saved.current) return;
+    try {
+      const next = (await api(`menus/${row.id}`)) as SavedMenu;
+      if (
+        mounted.current &&
+        recordRef.current?.id === next.id &&
+        JSON.stringify(current.current) === saved.current
+      )
+        load(next);
+    } catch {
+      /* The next save reports any conflict with recovery options. */
+    }
+  });
+  useEffect(() => {
+    const listener = (event: Event) =>
+      void followServerUpdate(
+        ((event as CustomEvent).detail?.ids as string[]) || [],
+      );
+    window.addEventListener("menu-material:menus-changed", listener);
+    return () =>
+      window.removeEventListener("menu-material:menus-changed", listener);
+  }, []);
   async function saveNow() {
     if (timer.current) clearTimeout(timer.current);
     if (flight.current) {

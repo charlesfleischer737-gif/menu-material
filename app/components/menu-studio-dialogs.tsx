@@ -16,7 +16,6 @@ import {
 } from "lucide-react";
 import { api, dishCount, downloadBlob, type Row } from "@/lib/client";
 import {
-  menuContentIssues,
   menuDocumentSchema,
   newMenuEntry,
   type DesignedMenu,
@@ -30,6 +29,13 @@ import {
   recommendMenuDesigns,
 } from "@/lib/menu-design-system";
 import { parsePastedMenu } from "@/lib/menu-paste";
+import { preferredPhoto } from "@/lib/dish-library";
+import type { MenuCheck } from "@/lib/menu-checks";
+import {
+  isPlaceholderRestaurantName,
+  menuAddressProblem,
+  slugify,
+} from "@/lib/restaurant-identity";
 import type { MenuPdfResult } from "@/lib/menu-pdf-v2";
 import type { SavedMenu } from "./use-menu-document";
 import { Field, MenuDialog, MoneyInput, Toggle } from "./menu-studio-controls";
@@ -52,7 +58,7 @@ export function MenuDesignPicker({
     spec = menuDesignSpec(selected);
   return (
     <MenuDialog
-      title={detail ? spec.name : "A different point of view."}
+      title={detail ? spec.name : "Choose a design"}
       description={
         detail
           ? designReason(menu, selected)
@@ -155,8 +161,7 @@ export function MenuSourceDialog({
     [error, setError] = useState(""),
     [importId, setImportId] = useState(""),
     [importName, setImportName] = useState(""),
-    [review, setReview] = useState<MenuSection[] | null>(null),
-    [sourceReady, setSourceReady] = useState(false);
+    [review, setReview] = useState<MenuSection[] | null>(null);
   const upload = useRef<HTMLInputElement>(null),
     backup = useRef<HTMLInputElement>(null),
     active = useRef(true);
@@ -166,12 +171,22 @@ export function MenuSourceDialog({
       active.current = false;
     };
   }, []);
-  const dishes = (state.dishes as Row[]).filter((d) =>
-    `${d.name} ${d.category}`.toLowerCase().includes(search.toLowerCase()),
+  // Sample dishes (from "Try a sample") never go on a guest menu.
+  const dishes = (state.dishes as Row[]).filter(
+    (d) =>
+      !d.sample &&
+      !d.archived_at &&
+      `${d.name} ${d.category}`.toLowerCase().includes(search.toLowerCase()),
   );
   function group(rows: Row[], imported = false) {
     const sections: MenuSection[] = [];
+    let featured = 0;
     for (const row of rows) {
+      // Library dishes bring their approved photo; a few lead the menu.
+      const photo = imported
+        ? null
+        : preferredPhoto(row, (state.assets as Row[]) || []);
+      const photoId = photo?.approved_at ? (photo.id as string) : null;
       const name = row.category || "Dishes";
       let section = sections.find((s) => s.name === name);
       if (!section) {
@@ -196,6 +211,8 @@ export function MenuSourceDialog({
                 ? Math.round(Number(row.price) * 100)
                 : row.price,
           available: row.available !== false && row.available !== 0,
+          photoId,
+          featured: !!photoId && featured++ < 4,
           sourceReviewed: !imported,
           sourceUncertain: imported ? row.uncertain || [] : [],
         }),
@@ -223,7 +240,6 @@ export function MenuSourceDialog({
     }
   }
   async function importFile(f: File) {
-    setSourceReady(false);
     setError("");
     if (f.size > 4 * 1024 * 1024) {
       setError("Choose a JPEG, PNG, or PDF smaller than 4 MB.");
@@ -250,12 +266,10 @@ export function MenuSourceDialog({
   }
   return (
     <MenuDialog
-      title={
-        review ? "Your menu, ready to refine." : "Bring your menu into focus."
-      }
+      title={review ? "Review imported dishes" : "Add dishes"}
       description={
         review
-          ? "Nothing goes live yet. Add these dishes to your draft, then check each one against the original."
+          ? "Nothing goes live yet. Dishes the reader was unsure about are marked so you can check them against the original."
           : "Start with what you have. Every dish stays editable."
       }
       close={close}
@@ -306,11 +320,6 @@ export function MenuSourceDialog({
               ))}
             </div>
           </div>
-          <Toggle
-            label="I compared every dish and price with the original."
-            checked={sourceReady}
-            onChange={setSourceReady}
-          />
           <div className="md-dialog-actions">
             <button
               className="md-button"
@@ -320,7 +329,11 @@ export function MenuSourceDialog({
                     ...s,
                     items: s.items.map((i) => ({
                       ...i,
-                      sourceReviewed: sourceReady,
+                      // Automatic check: anything the reader was unsure about,
+                      // or a missing price, stays marked for a closer look.
+                      sourceReviewed:
+                        !i.sourceUncertain.length &&
+                        (i.priceMode !== "single" || i.price != null),
                     })),
                   })),
                   importId || null,
@@ -329,15 +342,11 @@ export function MenuSourceDialog({
               }
             >
               <Plus size={16} /> Add{" "}
-              {review.reduce((n, s) => n + s.items.length, 0)}{" "}
-              {sourceReady ? "reviewed dishes" : "dishes for review"}
+              {dishCount(review.reduce((n, s) => n + s.items.length, 0))}
             </button>
             <button
               className="md-button md-secondary"
-              onClick={() => {
-                setReview(null);
-                setSourceReady(false);
-              }}
+              onClick={() => setReview(null)}
             >
               Back
             </button>
@@ -626,7 +635,9 @@ export function MenuImportReview({
   change: (patch: Partial<MenuDocument>) => void;
   close: () => void;
 }) {
-  const [confirmed, setConfirmed] = useState(false);
+  const remaining = menu.sections
+    .flatMap((s) => s.items)
+    .filter((i) => !i.sourceReviewed).length;
   const edit = (
     id: string,
     patch: Partial<MenuDocument["sections"][number]["items"][number]>,
@@ -639,8 +650,8 @@ export function MenuImportReview({
     });
   return (
     <MenuDialog
-      title="Every detail, checked."
-      description="Compare the draft with your original. Correct anything that needs attention before confirming the import."
+      title="Review imported dishes"
+      description="Compare each marked dish with your original and correct anything that needs it. Everything else was read with confidence."
       close={close}
       wide
     >
@@ -712,7 +723,7 @@ export function MenuImportReview({
                     </Field>
                   )}
                   <Toggle
-                    label="Checked against the original"
+                    label="Looks right"
                     checked={i.sourceReviewed}
                     onChange={(sourceReviewed) =>
                       edit(i.id, { sourceReviewed })
@@ -724,30 +735,15 @@ export function MenuImportReview({
           ))}
         </div>
       </div>
-      <Toggle
-        label="I have checked every dish, description, and price shown above."
-        checked={confirmed}
-        onChange={setConfirmed}
-      />
       <div className="md-dialog-actions">
-        <button
-          className="md-button"
-          disabled={!confirmed}
-          onClick={() => {
-            change({
-              sections: menu.sections.map((s) => ({
-                ...s,
-                items: s.items.map((i) => ({ ...i, sourceReviewed: true })),
-              })),
-            });
-            close();
-          }}
-        >
-          Confirm reviewed menu
+        <button className="md-button" onClick={close}>
+          Done
         </button>
-        <button className="md-button md-secondary" onClick={close}>
-          Continue later
-        </button>
+        <p className="md-help">
+          {remaining
+            ? `${remaining} ${remaining === 1 ? "dish" : "dishes"} still marked for a closer look.`
+            : "Every imported dish is ready."}
+        </p>
       </div>
     </MenuDialog>
   );
@@ -819,12 +815,99 @@ function publicationChanges(before: Row | null, menu: DesignedMenu) {
     notes.push("Republish the current menu and restaurant details.");
   return notes;
 }
+function isAutomaticAddress(restaurant: Row) {
+  return (
+    restaurant.slug === "local-pilot" ||
+    String(restaurant.slug).endsWith("-" + String(restaurant.id).slice(0, 8))
+  );
+}
+function CheckFix({
+  check,
+  restaurant,
+  select,
+  removeItem,
+  saveRestaurantName,
+}: {
+  check: MenuCheck;
+  restaurant: Row;
+  select: (id: string) => void;
+  removeItem: (id: string) => void;
+  saveRestaurantName: (name: string) => Promise<void>;
+}) {
+  const [name, setName] = useState(
+      isPlaceholderRestaurantName(restaurant.name) ? "" : restaurant.name,
+    ),
+    [saving, setSaving] = useState(false),
+    [error, setError] = useState("");
+  if (check.fix === "restaurant-name")
+    return (
+      <form
+        className="md-check-fix"
+        onSubmit={async (e) => {
+          e.preventDefault();
+          if (isPlaceholderRestaurantName(name)) {
+            setError("Enter your restaurant’s real name.");
+            return;
+          }
+          setSaving(true);
+          setError("");
+          try {
+            await saveRestaurantName(name.trim());
+          } catch (err) {
+            setError((err as Error).message);
+          } finally {
+            setSaving(false);
+          }
+        }}
+      >
+        <input
+          aria-label="Restaurant name"
+          value={name}
+          maxLength={100}
+          disabled={saving}
+          placeholder="Corner House Kitchen"
+          onChange={(e) => setName(e.target.value)}
+        />
+        <button className="md-button md-secondary" disabled={saving}>
+          {saving ? "Saving…" : "Save name"}
+        </button>
+        {error && (
+          <small className="md-inline-error" role="alert">
+            {error}
+          </small>
+        )}
+      </form>
+    );
+  if (check.fix === "remove" && check.entryId)
+    return (
+      <button
+        className="md-text-button"
+        onClick={() => removeItem(check.entryId!)}
+      >
+        Remove from menu
+      </button>
+    );
+  if (check.entryId || check.sectionId)
+    return (
+      <button
+        className="md-text-button"
+        onClick={() => select(check.entryId || check.sectionId || "")}
+      >
+        Edit
+      </button>
+    );
+  return null;
+}
 export function MenuDeliveryDialog({
   mode,
   menu,
   record,
+  checks,
+  restaurant,
   close,
   select,
+  removeItem,
+  saveRestaurantName,
   published,
   save,
   setProfile,
@@ -832,31 +915,82 @@ export function MenuDeliveryDialog({
   mode: string;
   menu: DesignedMenu;
   record: SavedMenu;
+  checks: MenuCheck[];
+  restaurant: Row;
   close: () => void;
   select: (id: string) => void;
-  published: () => Promise<void>;
+  removeItem: (id: string) => void;
+  saveRestaurantName: (name: string) => Promise<void>;
+  published: (address?: string) => Promise<void>;
   save: () => Promise<void>;
   setProfile: (profile: MenuDocument["printProfile"]) => void;
 }) {
   const [proof, setProof] = useState<MenuPdfResult | null>(null),
     [busy, setBusy] = useState(false),
     [error, setError] = useState(""),
-    [confirmed, setConfirmed] = useState(false),
     [downloaded, setDownloaded] = useState(false),
-    [exportNotes, setExportNotes] = useState<string[]>([]);
-  const issues = menuContentIssues(menu),
-    isPrint = mode === "export",
+    [exportNotes, setExportNotes] = useState<string[]>([]),
+    [address, setAddress] = useState(""),
+    [addressState, setAddressState] = useState<
+      "checking" | "available" | "taken" | ""
+    >("");
+  const isPrint = mode === "export",
+    blocking = checks.filter((c) => c.level === "block"),
+    warnings = checks.filter((c) => c.level === "warn"),
+    // The first publication chooses the menu address that QR codes will use.
+    choosingAddress =
+      !isPrint &&
+      !record.published &&
+      !restaurant.published &&
+      isAutomaticAddress(restaurant) &&
+      !isPlaceholderRestaurantName(restaurant.name),
+    addressProblem = choosingAddress ? menuAddressProblem(address) : "",
     changes = useMemo(
       () => publicationChanges(record.published, menu),
       [record.published, menu],
     );
+  useEffect(() => {
+    if (!choosingAddress) return;
+    let active = true;
+    api(`restaurant/address?check=${slugify(restaurant.name)}`)
+      .then((result) => {
+        if (!active) return;
+        const next = result.available ? result.requested : result.suggestion;
+        setAddress(next);
+        setAddressState("available");
+      })
+      .catch(() => {
+        if (active) setAddress(slugify(restaurant.name));
+      });
+    return () => {
+      active = false;
+    };
+  }, [choosingAddress, restaurant.name]);
+  useEffect(() => {
+    if (!choosingAddress || !address || menuAddressProblem(address)) return;
+    let active = true;
+    const timer = setTimeout(() => {
+      setAddressState("checking");
+      api(`restaurant/address?check=${encodeURIComponent(address)}`)
+        .then((result) => {
+          if (active) setAddressState(result.available ? "available" : "taken");
+        })
+        .catch(() => {
+          if (active) setAddressState("");
+        });
+    }, 350);
+    return () => {
+      active = false;
+      clearTimeout(timer);
+    };
+  }, [choosingAddress, address]);
   async function deliver() {
     setBusy(true);
     setError("");
     try {
       await save();
+      if (blocking.length) throw Error(blocking[0].message);
       if (isPrint) {
-        if (issues.length) throw Error(issues[0].message);
         if (!proof || proof.signature !== JSON.stringify(menu))
           throw Error("Wait for the current menu preview before downloading.");
         const result = proof;
@@ -866,26 +1000,27 @@ export function MenuDeliveryDialog({
           `${menu.restaurant.name}-${menu.title || menu.name}-${menu.paper}${menu.printProfile === "press" ? "-print-shop" : ""}.pdf`,
         );
         setDownloaded(true);
-      } else await published();
+      } else await published(choosingAddress ? address : undefined);
     } catch (e) {
       setError((e as Error).message);
     } finally {
       setBusy(false);
     }
   }
+  const action = isPrint ? "exporting" : "publishing";
   return (
     <MenuDialog
       title={
         isPrint
-          ? "Ready for the table."
+          ? "Export PDF"
           : record.published
-            ? "Review your changes."
-            : "Ready for your guests."
+            ? "Publish changes"
+            : "Publish menu"
       }
       description={
         isPrint
           ? "Check every page, choose your print setup, and save the finished PDF."
-          : "Your draft stays private until you publish. Review the content that guests will see."
+          : "Your draft stays private until you publish. Here’s what guests will see."
       }
       close={busy ? () => {} : close}
       wide
@@ -895,9 +1030,6 @@ export function MenuDeliveryDialog({
           <MenuProof menu={menu} onResult={setProof} production={isPrint} />
         </div>
         <div className="md-delivery-controls">
-          <span className="md-eyebrow">
-            {isPrint ? "PRINT SETTINGS" : "PUBLISH REVIEW"}
-          </span>
           <h3>{menu.title || menu.name}</h3>
           <p className="md-help">
             {menuDesignSpec(menu.design).name} ·{" "}
@@ -906,6 +1038,53 @@ export function MenuDeliveryDialog({
               : "Preparing preview"}{" "}
             · {menu.paper === "a4" ? "A4" : "US Letter"}
           </p>
+          <div
+            className={`md-checks ${blocking.length ? "has-blocking" : "is-clear"}`}
+            role="status"
+            aria-live="polite"
+          >
+            <strong>
+              {blocking.length ? (
+                `${blocking.length} ${blocking.length === 1 ? "thing" : "things"} to fix before ${action}`
+              ) : (
+                <>
+                  <CheckCircle2 size={16} aria-hidden="true" /> Automatic
+                  checks passed
+                </>
+              )}
+            </strong>
+            {!!(blocking.length || warnings.length) && (
+              <ul>
+                {[...blocking, ...warnings].slice(0, 10).map((check) => (
+                  <li
+                    key={check.id}
+                    className={
+                      check.level === "block" ? "is-blocking" : "is-warning"
+                    }
+                  >
+                    <span>{check.message}</span>
+                    <CheckFix
+                      check={check}
+                      restaurant={restaurant}
+                      select={select}
+                      removeItem={removeItem}
+                      saveRestaurantName={saveRestaurantName}
+                    />
+                  </li>
+                ))}
+              </ul>
+            )}
+            {blocking.length + warnings.length > 10 && (
+              <small>
+                And {blocking.length + warnings.length - 10} more in the
+                editor.
+              </small>
+            )}
+            <small>
+              Checked: restaurant name, dish names, prices, sample dishes,
+              duplicates and descriptions.
+            </small>
+          </div>
           {isPrint ? (
             <>
               <Field label="Where will you print?">
@@ -940,6 +1119,32 @@ export function MenuDeliveryDialog({
             </>
           ) : (
             <>
+              {choosingAddress && (
+                <Field label="Menu address">
+                  <div className="md-address-input">
+                    <span aria-hidden="true">/m/</span>
+                    <input
+                      value={address}
+                      maxLength={60}
+                      disabled={busy}
+                      aria-describedby="md-address-help"
+                      onChange={(e) =>
+                        setAddress(
+                          e.target.value.toLowerCase().replace(/\s+/g, "-"),
+                        )
+                      }
+                    />
+                  </div>
+                  <small id="md-address-help" className="md-help">
+                    {addressProblem ||
+                      (addressState === "taken"
+                        ? "That address is taken. Try another."
+                        : addressState === "checking"
+                          ? "Checking…"
+                          : "Your QR code and link use this address. You can change it later; old links keep working.")}
+                  </small>
+                </Field>
+              )}
               <ul className="md-change-list">
                 {changes.map((s, i) => (
                   <li key={i}>{s}</li>
@@ -950,33 +1155,6 @@ export function MenuDeliveryDialog({
                 update. Previous publications are saved in your menu history.
               </p>
             </>
-          )}
-          {issues.length > 0 && (
-            <div className="md-review-callout">
-              <strong>
-                {issues.length}{" "}
-                {issues.length === 1 ? "detail needs" : "details need"} your
-                attention
-              </strong>
-              <ul>
-                {issues.slice(0, 8).map((issue, index) => (
-                  <li key={index}>
-                    <button
-                      onClick={() =>
-                        select(issue.entryId || issue.sectionId || "")
-                      }
-                    >
-                      {issue.message}
-                    </button>
-                  </li>
-                ))}
-              </ul>
-              {issues.length > 8 && (
-                <small>
-                  And {issues.length - 8} more. Review them in the editor.
-                </small>
-              )}
-            </div>
           )}
           {!!(exportNotes.length || proof?.warnings.length) && (
             <div className="md-print-notes">
@@ -989,13 +1167,6 @@ export function MenuDeliveryDialog({
                 )}
               </ul>
             </div>
-          )}
-          {!isPrint && (
-            <Toggle
-              label="I checked the dishes, prices, photos, and guest notes."
-              checked={confirmed}
-              onChange={setConfirmed}
-            />
           )}
           {error && (
             <p className="md-inline-error" role="alert">
@@ -1012,10 +1183,10 @@ export function MenuDeliveryDialog({
             className="md-button md-full"
             disabled={
               busy ||
-              !!issues.length ||
+              !!blocking.length ||
               (isPrint
                 ? !proof || proof.signature !== JSON.stringify(menu)
-                : !confirmed)
+                : !!addressProblem || addressState === "taken")
             }
             onClick={() => void deliver()}
           >
@@ -1029,7 +1200,7 @@ export function MenuDeliveryDialog({
                   ? "Download PDF again"
                   : "Download PDF"
                 : record.published
-                  ? "Publish these changes"
+                  ? "Publish changes"
                   : "Publish menu"}
           </button>
           <button className="md-text-button" disabled={busy} onClick={close}>
@@ -1118,7 +1289,7 @@ export function MenuShareDialog({
   const publishedRestaurant = record.published?.restaurant || restaurant;
   return (
     <MenuDialog
-      title="A place at every table."
+      title="Share your menu"
       description="Share your live menu. Your draft edits stay private."
       close={close}
     >

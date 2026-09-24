@@ -82,6 +82,8 @@ async function upload(dishId) {
 }
 try {
   await call("auth/dev", {});
+  // Guests never see a placeholder name; publishing requires a real one.
+  await call("restaurant/name", { name: "Test Kitchen" });
   const dish = await call("dishes", {
     name: "House pasta",
     description: "Fresh pasta",

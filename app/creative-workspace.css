@@ -642,6 +642,39 @@
 .mm-output-notes p {
   margin: 4px 0;
 }
+.mm-post-checks {
+  display: grid;
+  gap: 6px;
+  margin-top: 16px;
+  padding: 12px 16px;
+  border-radius: var(--radius-control);
+  background: var(--workspace-success-surface);
+  font-size: var(--text-footnote);
+}
+.mm-post-checks.has-blocking {
+  background: var(--workspace-warning-surface);
+}
+.mm-post-checks strong {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  font-size: var(--text-callout);
+}
+.mm-post-checks.is-clear strong {
+  color: var(--workspace-success);
+}
+.mm-post-checks p {
+  margin: 0;
+}
+.mm-post-checks input {
+  flex: 1 1 180px;
+  min-height: 40px;
+  padding: 0 12px;
+  border: 1px solid var(--workspace-line);
+  border-radius: var(--radius-control);
+  background: var(--workspace-surface);
+  font: inherit;
+}
 .mm-picker-grid {
   display: grid;
   grid-template-columns: repeat(3, minmax(0, 1fr));

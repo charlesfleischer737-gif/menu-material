@@ -8,12 +8,8 @@ import {
   DialogTitle,
   DialogDescription,
 } from "@/components/ui/dialog";
-import {
-  Collapsible,
-  CollapsibleContent,
-  CollapsibleTrigger,
-} from "@/components/ui/collapsible";
 import { api } from "@/lib/client";
+import { isPlaceholderRestaurantName } from "@/lib/restaurant-identity";
 import Brand from "./brand";
 export default function Auth({
   open,
@@ -60,6 +56,10 @@ export default function Auth({
   async function submit(e: React.FormEvent) {
     e.preventDefault();
     if (busy) return;
+    if (mode === "signup" && !resetting && isPlaceholderRestaurantName(restaurant)) {
+      setError("Enter your restaurant’s real name.");
+      return;
+    }
     setBusy(true);
     setError("");
     try {
@@ -195,26 +195,20 @@ export default function Auth({
             />
           </label>
           {mode === "signup" && !resetting && (
-            <Collapsible className="auth-optional">
-              <CollapsibleTrigger asChild>
-                <button type="button" disabled={busy}>
-                  Restaurant name <span>(optional)</span>
-                  <span aria-hidden="true">+</span>
-                </button>
-              </CollapsibleTrigger>
-              <CollapsibleContent>
-                <label className="field">
-                  Restaurant name
-                  <input
-                    disabled={busy}
-                    maxLength={100}
-                    value={restaurant}
-                    onChange={(e) => setRestaurant(e.target.value)}
-                    autoComplete="organization"
-                  />
-                </label>
-              </CollapsibleContent>
-            </Collapsible>
+            <label className="field">
+              Restaurant name
+              <small>Shown on your menus and posts.</small>
+              <input
+                required
+                disabled={busy}
+                minLength={2}
+                maxLength={100}
+                value={restaurant}
+                onChange={(e) => setRestaurant(e.target.value)}
+                autoComplete="organization"
+                placeholder="Corner House Kitchen"
+              />
+            </label>
           )}
           <label className="pw-honeypot" aria-hidden="true">
             Website
