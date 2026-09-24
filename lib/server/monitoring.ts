@@ -86,6 +86,23 @@ export function background(task: Promise<unknown> | (() => Promise<unknown>)) {
   }
   return promise;
 }
+// Let request work continue if the client disconnects. Workers extend a request
+// only for a short grace period, so long work may still be cut off.
+export function keepAlive<T>(work: Promise<T>) {
+  try {
+    const waitUntil = (workers as { waitUntil?: unknown }).waitUntil;
+    if (typeof waitUntil === "function")
+      waitUntil(
+        work.then(
+          () => {},
+          () => {},
+        ),
+      );
+  } catch {
+    // Outside a request context the work simply runs to completion.
+  }
+  return work;
+}
 export async function flushMonitoring() {
   while (pending.size) await Promise.all([...pending]);
 }

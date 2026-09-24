@@ -1395,7 +1395,9 @@ export async function handle(req: Request) {
     if (p[0] === "jobs" && method === "POST") {
       if (p[1] === "tick") {
         await advanceBatches(r.id);
-        await tick(r.id);
+        // Each image call lasts its whole render. A running worker makes those
+        // calls, so closing this page cannot cut one off.
+        await tick(r.id, { startNew: !(await workerStatus()).healthy });
         checkAlertsInBackground();
         return response({ ok: true });
       }

@@ -15,6 +15,7 @@ process.env.BOOTSTRAP_OWNER_EMAIL = "bootstrap@example.test";
 process.env.APP_ORIGIN = "http://localhost";
 const { handle } = await import("../lib/server/api.ts");
 const { run } = await import("../lib/server/core.ts");
+const { env } = await import("../lib/local-runtime.ts");
 const photos = readFileSync("public/pasta.jpg");
 const generatedPng = readFileSync("public/og.png");
 let cookie = "",
@@ -22,7 +23,7 @@ let cookie = "",
   providerCalls = 0,
   promptSeen = "",
   phase = "partial";
-const responses = new Map();
+const imageRequests = [];
 let publicCheckMode = "open";
 globalThis.fetch = async (url, init = {}) => {
   if (String(url).startsWith("http://localhost/api/public/")) {
@@ -38,48 +39,40 @@ globalThis.fetch = async (url, init = {}) => {
         });
   }
   assert(String(url).startsWith("https://api.openai.com/v1/"));
-  if (init.method === "POST") {
-    const b = JSON.parse(init.body);
-    if (!b.tools) {
-      promptSeen = b.instructions;
-      return Response.json({
-        output: [
-          {
-            content: [
-              {
-                type: "output_text",
-                text: "Meet our tomato pasta, made with tomatoes and basil.",
-              },
-            ],
-          },
-        ],
-        usage: { input_tokens: 30, output_tokens: 15 },
-      });
-    }
+  if (String(url).startsWith("https://api.openai.com/v1/images/")) {
     providerCalls++;
-    const rid = "response_" + providerCalls;
-    responses.set(rid, { phase, index: providerCalls });
-    return Response.json({ id: rid, status: "queued" });
-  }
-  const rid = String(url).split("/").at(-1),
-    r = responses.get(rid);
-  if (r.phase === "partial" && r.index % 2 === 1)
+    imageRequests.push({ url: String(url), body: init.body });
+    if (phase === "offline") throw new TypeError("fetch failed");
+    // During the partial phase every other image is rejected.
+    if (phase === "partial" && providerCalls % 2 === 1)
+      return Response.json(
+        { error: { message: "Fixture rejection" } },
+        { status: 400 },
+      );
     return Response.json({
-      id: rid,
-      status: "failed",
-      usage: { input_tokens: 10 },
+      data: [
+        {
+          b64_json:
+            phase === "invalid" ? "not-a-png" : generatedPng.toString("base64"),
+        },
+      ],
+      usage: { input_tokens: 200, output_tokens: 100 },
     });
+  }
+  assert.equal(init.method, "POST");
+  promptSeen = JSON.parse(init.body).instructions;
   return Response.json({
-    id: rid,
-    status: "completed",
     output: [
       {
-        type: "image_generation_call",
-        result:
-          r.phase === "invalid" ? "not-a-png" : generatedPng.toString("base64"),
+        content: [
+          {
+            type: "output_text",
+            text: "Meet our tomato pasta, made with tomatoes and basil.",
+          },
+        ],
       },
     ],
-    usage: { input_tokens: 200, output_tokens: 100 },
+    usage: { input_tokens: 30, output_tokens: 15 },
   });
 };
 async function call(path, b, expected = 200, opts = {}) {
@@ -295,6 +288,19 @@ try {
   );
   await call("jobs/tick", {});
   assert.equal(providerCalls, 2);
+  // Both images start together and go straight to the image endpoint.
+  const [first] = imageRequests;
+  assert.equal(first.url, "https://api.openai.com/v1/images/edits");
+  assert(first.body instanceof FormData, "photos are uploaded as multipart");
+  assert.equal(first.body.getAll("image").length, 1, "one photo, one field");
+  assert.equal(first.body.get("image").type, "image/jpeg");
+  assert.equal(first.body.get("model"), "gpt-image-2");
+  assert.equal(first.body.get("output_format"), "png", "legacy PNG jobs");
+  assert(!first.body.has("output_compression"), "unset settings are omitted");
+  assert.match(
+    first.body.get("prompt"),
+    /^INPUT IMAGES\nImage 1: ORIGINAL DISH PHOTO:/,
+  );
   await Promise.all([call("jobs/tick", {}), call("jobs/tick", {})]);
   state = await call("state");
   assert.equal(state.remaining, 1);
@@ -410,9 +416,11 @@ try {
     { dishId, requestKey: crypto.randomUUID() },
     202,
   );
+  // A call cut off mid-render, like an older interrupted request, has nothing
+  // to retrieve: it fails at once, is not counted and is never resubmitted.
   await run(
-    "UPDATE outputs SET status='uncertain',created_at=?,lease_until=0 WHERE job_id=?",
-    Date.now() - 31 * 60000,
+    "UPDATE outputs SET status=CASE slot WHEN 0 THEN 'submitting' ELSE 'uncertain' END,submitted_at=?,lease_until=0 WHERE job_id=?",
+    Date.now(),
     uncertain.id,
   );
   const beforeRecovery = providerCalls;
@@ -420,10 +428,56 @@ try {
   state = await call("state");
   assert.equal(state.remaining, 5);
   assert.equal(providerCalls, beforeRecovery);
+  assert.equal(state.jobs.find((j) => j.id === uncertain.id).status, "failed");
+  phase = "offline";
+  const dropped = await call(
+    "jobs",
+    { dishId, requestKey: crypto.randomUUID() },
+    202,
+  );
+  await call("jobs/tick", {});
+  await call("jobs/tick", {});
+  state = await call("state");
+  assert.equal(providerCalls, beforeRecovery + 2, "never resubmitted");
+  assert.equal(state.jobs.find((j) => j.id === dropped.id).status, "failed");
+  assert(
+    state.outputs
+      .filter((o) => o.job_id === dropped.id)
+      .every((o) => /interrupted/.test(o.error)),
+  );
+  assert.equal(state.remaining, 5, "dropped images are not counted");
+  // A direct result cannot be fetched again later, so an image that arrives
+  // while storage is full fails at once and is not counted.
+  phase = "success";
+  env.WORKSPACE_STORAGE_MB = "0.001";
+  const full = await call(
+    "jobs",
+    { dishId, requestKey: crypto.randomUUID() },
+    202,
+  );
+  await call("jobs/tick", {});
+  delete env.WORKSPACE_STORAGE_MB;
+  state = await call("state");
+  assert.equal(state.jobs.find((j) => j.id === full.id).status, "failed");
+  assert(
+    state.outputs
+      .filter((o) => o.job_id === full.id)
+      .every((o) => /storage is full/.test(o.error)),
+  );
+  assert.equal(state.remaining, 5, "unsaved images are not counted");
   const independent = new DatabaseSync(join(root, "menu-material.sqlite"));
   assert.equal(
     independent.prepare("SELECT count(*) AS n FROM captions").get().n,
     2,
+  );
+  assert.equal(
+    independent
+      .prepare(
+        "SELECT count(*) AS n FROM ai_spend WHERE kind='image' AND status='uncertain'",
+      )
+      .get().n,
+    2,
+    "possibly billed dropped calls stay a reconciliation item",
   );
   independent.close();
   await call("auth/logout", {});

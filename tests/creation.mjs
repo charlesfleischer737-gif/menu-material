@@ -372,59 +372,68 @@ let cookie = "",
   calls = 0;
 const requests = [];
 let fail = false;
+// Image requests as plain objects; multipart edits carry their photos as files.
+function imageRequest(url, body) {
+  const form = body instanceof FormData ? body : null;
+  return {
+    endpoint: String(url).replace("https://api.openai.com/v1/", ""),
+    ...(form
+      ? Object.fromEntries(
+          [...form].filter(([, value]) => typeof value === "string"),
+        )
+      : JSON.parse(body)),
+    photos: form ? [...form.getAll("image"), ...form.getAll("image[]")] : [],
+    form,
+  };
+}
 globalThis.fetch = async (url, init = {}) => {
   assert(String(url).startsWith("https://api.openai.com/v1/"));
-  if (init.method === "POST") {
-    const b = JSON.parse(init.body);
-    if (!b.tools) {
-      if (b.text?.format?.type === "json_object") {
-        assert(
-          b.input.some((message) =>
-            message.content.some(
-              (item) => item.type === "input_text" && /json/i.test(item.text),
-            ),
-          ),
-          "JSON mode requires JSON in the input message, not only in instructions",
-        );
-        assert(
-          b.input.some((message) =>
-            message.content.some((item) => item.type === "input_image"),
-          ),
-          "Photo recommendations must inspect the actual uploaded image",
-        );
-      }
-      calls++;
-      return Response.json({
-        output: [
+  if (String(url).startsWith("https://api.openai.com/v1/images/")) {
+    requests.push(imageRequest(url, init.body));
+    calls++;
+    return Response.json(
+      fail
+        ? { data: [] }
+        : {
+            data: [{ b64_json: jpeg.toString("base64") }],
+            usage: { input_tokens: 15, output_tokens: 22 },
+          },
+    );
+  }
+  assert.equal(init.method, "POST");
+  const b = JSON.parse(init.body);
+  if (b.text?.format?.type === "json_object") {
+    assert(
+      b.input.some((message) =>
+        message.content.some(
+          (item) => item.type === "input_text" && /json/i.test(item.text),
+        ),
+      ),
+      "JSON mode requires JSON in the input message, not only in instructions",
+    );
+    assert(
+      b.input.some((message) =>
+        message.content.some((item) => item.type === "input_image"),
+      ),
+      "Photo recommendations must inspect the actual uploaded image",
+    );
+  }
+  calls++;
+  return Response.json({
+    output: [
+      {
+        content: [
           {
-            content: [
-              {
-                type: "output_text",
-                text: JSON.stringify({
-                  ...vision,
-                }),
-              },
-            ],
+            type: "output_text",
+            text: JSON.stringify({
+              ...vision,
+            }),
           },
         ],
-        usage: { input_tokens: 42, output_tokens: 16 },
-      });
-    }
-    requests.push(b);
-    calls++;
-    return Response.json({ id: "fixture-" + calls, status: "queued" });
-  }
-  return Response.json(
-    fail
-      ? { status: "failed" }
-      : {
-          status: "completed",
-          output: [
-            { type: "image_generation_call", result: jpeg.toString("base64") },
-          ],
-          usage: { input_tokens: 15, output_tokens: 22 },
-        },
-  );
+      },
+    ],
+    usage: { input_tokens: 42, output_tokens: 16 },
+  });
 };
 async function call(path, b, expected = 200) {
   if (path === "jobs/tick") clockAdvance += 31000;
@@ -534,25 +543,20 @@ try {
   assert.equal(calls, 1);
   const job = await one("SELECT * FROM jobs WHERE id=?", a.id);
   assert.equal(job.status, "completed", "a single result completes a job");
-  assert.equal(requests[0].tools[0].size, "2048x1152");
+  assert.equal(requests[0].endpoint, "images/edits");
+  assert.equal(requests[0].size, "2048x1152");
   assert.equal(
-    requests[0].tools[0].model,
+    requests[0].model,
     "gpt-image-2.5-flare",
     "queued jobs retain their model",
   );
-  assert.equal(
-    requests[0].tools[0].quality,
-    "high",
-    "queued jobs retain their quality",
-  );
-  assert.equal(requests[0].tools[0].output_format, "jpeg");
-  assert.equal(requests[0].tools[0].output_compression, 95);
-  assert.equal(requests[0].tools[0].action, "edit");
-  assert(
-    requests[0].input[0].content[0].text.includes("Keep the original plate"),
-  );
+  assert.equal(requests[0].quality, "high", "queued jobs retain their quality");
+  assert.equal(requests[0].output_format, "jpeg");
+  assert.equal(requests[0].output_compression, "95");
+  assert.equal(requests[0].photos.length, 1);
+  assert(requests[0].prompt.includes("Keep the original plate"));
   assert.match(
-    requests[0].input[0].content[0].text,
+    requests[0].prompt,
     /Retain its existing visible logos/,
     "Drink identity protection reaches the provider even for legacy requests",
   );
@@ -649,46 +653,40 @@ try {
   );
   await call("jobs/tick", {});
   assert.equal(
-    requests.at(-1).tools[0].size,
+    requests.at(-1).size,
     "1536x1536",
     "Flare retains full menu dimensions",
   );
   assert.equal(
-    requests
-      .at(-1)
-      .input[0].content.filter((part) => part.type === "input_image").length,
+    requests.at(-1).form.getAll("image[]").length,
     2,
     "Original identity plus edited parent are passed",
   );
-  assert(
+  assert.match(
+    requests.at(-1).prompt,
+    /^INPUT IMAGES\nImage 1: ORIGINAL DISH PHOTO:.*\nImage 2: PREVIOUS RESULT:/,
+    "The original food and prior result have separate roles, in upload order",
+  );
+  assert.deepEqual(
     requests
       .at(-1)
-      .input[0].content.some(
-        (part) =>
-          part.type === "input_text" &&
-          part.text.startsWith("ORIGINAL DISH PHOTO:"),
-      ) &&
-      requests
-        .at(-1)
-        .input[0].content.some(
-          (part) =>
-            part.type === "input_text" &&
-            part.text.startsWith("PREVIOUS RESULT:"),
-        ),
-    "The original food and prior result have separate roles",
+      .form.getAll("image[]")
+      .map((photo) => photo.name.split(".")[0]),
+    [original.id, editId],
+    "Photos are uploaded in the order the prompt names them",
   );
   assert.match(
-    requests.at(-1).input[0].content[0].text,
+    requests.at(-1).prompt,
     /Match the serving ware to the selected style/,
     "The style plate control reaches the provider on a revision",
   );
   assert.match(
-    requests.at(-1).input[0].content[0].text,
+    requests.at(-1).prompt,
     /open unbranded kraft takeout box/,
     "Selecting takeout on a plate photo reaches the provider through a revision",
   );
   assert.match(
-    requests.at(-1).input[0].content[0].text,
+    requests.at(-1).prompt,
     /Never put solid food in a drinking glass/,
     "Subject compatibility protection reaches the provider",
   );

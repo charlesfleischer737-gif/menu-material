@@ -18,14 +18,25 @@ if (!secret) throw Error("Set JOB_RUNNER_SECRET on the app and this runner.");
 const once = process.argv.includes("--once");
 const shutdown = new AbortController();
 for (const signal of ["SIGINT", "SIGTERM"])
-  process.on(signal, () => shutdown.abort());
-let failures = 0;
-do {
+  process.on(signal, () => {
+    // The first signal stops new checks and lets running image calls finish;
+    // a second one exits at once.
+    if (shutdown.signal.aborted) process.exit(1);
+    shutdown.abort();
+  });
+// A check that starts an image lasts its whole render, so checks overlap and a
+// long render never delays the next one. The app's claims keep overlap safe.
+const maxRunning = 4;
+let failures = 0,
+  running = 0;
+async function check() {
+  running++;
   try {
     const response = await fetch(new URL("/api/internal/tick", origin.origin), {
       method: "POST",
       headers: { Authorization: `Bearer ${secret}` },
-      signal: AbortSignal.any([shutdown.signal, AbortSignal.timeout(65000)]),
+      // Longer than the app's image call timeout, so no render is abandoned.
+      signal: AbortSignal.timeout(240000),
     });
     if (!response.ok) throw Error(`Runner returned HTTP ${response.status}`);
     const result = await response.json();
@@ -38,7 +49,6 @@ do {
       );
     failures = 0;
   } catch (error) {
-    if (shutdown.signal.aborted) break;
     failures++;
     console.error(
       new Date().toISOString(),
@@ -46,9 +56,14 @@ do {
       error.message,
     );
     if (once) process.exitCode = 1;
+  } finally {
+    running--;
   }
-  if (!once)
-    await delay(Math.min(60000, 2000 * 2 ** Math.min(failures, 5)), undefined, {
-      signal: shutdown.signal,
-    }).catch(() => {});
-} while (!once && !shutdown.signal.aborted);
+}
+if (once) await check();
+while (!once && !shutdown.signal.aborted) {
+  if (running < maxRunning) void check();
+  await delay(Math.min(60000, 2000 * 2 ** Math.min(failures, 5)), undefined, {
+    signal: shutdown.signal,
+  }).catch(() => {});
+}

@@ -22,19 +22,16 @@ let cookie = "",
   submissions = 0,
   polls = 0;
 const jpg = readFileSync("public/pasta.jpg");
-globalThis.fetch = async (url, options = {}) => {
+globalThis.fetch = async (url) => {
+  if (String(url).startsWith("https://api.openai.com/v1/images/")) {
+    submissions++;
+    return Response.json({ data: [{ b64_json: jpg.toString("base64") }] });
+  }
+  // Only earlier background responses are ever fetched by ID.
   assert(
-    String(url).startsWith("https://api.openai.com/v1/responses"),
+    String(url).startsWith("https://api.openai.com/v1/responses/"),
     "No unexpected external request",
   );
-  if (options.method === "POST") {
-    submissions++;
-    return Response.json({
-      id: "fixture-recovery",
-      status: "in_progress",
-      output: [],
-    });
-  }
   polls++;
   return Response.json({
     id: "fixture-recovery",
@@ -214,7 +211,19 @@ try {
   assert.equal(submissions, 1);
   assert.equal(
     (await one("SELECT status FROM outputs WHERE job_id=?", running.id)).status,
-    "processing",
+    "completed",
+    "A direct image call settles in the tick that starts it",
+  );
+  // Work submitted before direct calls is still in flight under a response ID.
+  const earlier = await call(
+    "jobs",
+    { ...body, controls: { plate: "white" }, requestKey: id() },
+    202,
+  );
+  await run(
+    "UPDATE outputs SET status='processing',response_id='fixture-recovery',submitted_at=?,attempts=1 WHERE job_id=?",
+    Date.now(),
+    earlier.id,
   );
   controls = await call("admin/studio-release", {
     ...controls,
@@ -226,7 +235,7 @@ try {
   await call("jobs/tick", {});
   const completed = await one(
     "SELECT status,asset_id FROM outputs WHERE job_id=?",
-    running.id,
+    earlier.id,
   );
   assert.equal(
     completed.status,
