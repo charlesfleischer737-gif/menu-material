@@ -10,11 +10,24 @@ import {
 } from "@/components/ui/carousel";
 import HomepageStyleGallery from "./homepage-style-gallery";
 
+// Smaller copies come from scripts/prepare-web-images.mjs; the original file
+// is the largest candidate (for 3x phones).
+const responsive = (name: string, widths: number[], full: number) =>
+  [
+    ...widths.map((w) => `/homepage/optimized/${name}-${w}.webp ${w}w`),
+    `/homepage/${name}.webp ${full}w`,
+  ].join(", ");
+// Card previews are at most 300px wide; below ~450px they follow the carousel
+// slide (84% of the page minus gutters and the stage padding).
+const deliverySizes = "(max-width: 448px) calc(84vw - 77px), 300px";
+const menuSizes = "(max-width: 448px) calc(84vw - 109px), 268px";
+
 const useCases = [
   {
     kind: "delivery",
     name: "Delivery apps",
     image: "/homepage/restaurants.webp",
+    srcSet: responsive("restaurants", [320, 480, 640, 800], 960),
     alt: "Sliced steak with herb butter and golden fries on a ceramic plate",
     text: "Put your best photo on the listing. Download images ready for your delivery menu.",
   },
@@ -29,6 +42,7 @@ const useCases = [
     kind: "menu",
     name: "Your existing menu",
     image: "/homepage/menus.webp",
+    srcSet: responsive("menus", [320, 480, 640, 800], 960),
     alt: "Tomato rigatoni with basil and Parmesan on a ceramic plate",
     text: "Bring your dishes to life on Toast, your website, or the menu platform you already use.",
   },
@@ -47,6 +61,8 @@ function OutputExample({ item }: { item: (typeof useCases)[number] }) {
             <div className="pw-delivery-photo">
               <img
                 src={item.image}
+                srcSet={item.srcSet}
+                sizes={deliverySizes}
                 alt=""
                 width="960"
                 height="640"
@@ -94,6 +110,8 @@ function OutputExample({ item }: { item: (typeof useCases)[number] }) {
           <img
             className="pw-output-post"
             src="/homepage/social-post-example.webp"
+            srcSet={responsive("social-post-example", [320, 480], 640)}
+            sizes="244px"
             alt="Example Instagram post for Your restaurant: Today’s special, Fish tacos, with crispy fish, fresh slaw and lime on a blue backdrop."
             width="640"
             height="800"
@@ -117,6 +135,8 @@ function OutputExample({ item }: { item: (typeof useCases)[number] }) {
         </div>
         <img
           src={item.image}
+          srcSet={item.srcSet}
+          sizes={menuSizes}
           alt={item.alt}
           width="960"
           height="640"

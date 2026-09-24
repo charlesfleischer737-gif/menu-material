@@ -2,7 +2,17 @@
 import { useEffect, useRef } from "react";
 import { ChevronsLeftRight } from "lucide-react";
 
-const sizes = "(max-width: 760px) 100vw, 1080px";
+// Lossy WebP variants from scripts/prepare-web-images.mjs.
+const variants = (name: string) =>
+  [640, 960, 1280, 1536]
+    .map((w) => `/homepage/optimized/${name}-${w}.webp ${w}w`)
+    .join(", ");
+// The frame is 16:10 and at most 1080px wide (22px page gutters). On phones it
+// turns 4:5, so object-fit: cover draws each photo wider than the frame: the
+// 3:2 result at 1.875× and the 4:3 phone photo at 1.667× the frame width.
+const frameWidth = "(max-width: 1124px) calc(100vw - 44px), 1080px";
+const afterSizes = `(max-width: 760px) calc(187.5vw - 83px), ${frameWidth}`;
+const beforeSizes = `(max-width: 760px) calc(166.7vw - 73px), ${frameWidth}`;
 
 export default function PhotoComparison() {
   const frame = useRef<HTMLDivElement>(null);
@@ -75,8 +85,8 @@ export default function PhotoComparison() {
       >
         <img
           src="/homepage/optimized/burger-after-960.webp"
-          srcSet="/homepage/optimized/burger-after-640.webp 640w, /homepage/optimized/burger-after-960.webp 960w, /homepage/optimized/burger-after-1536.webp 1536w"
-          sizes={sizes}
+          srcSet={variants("burger-after")}
+          sizes={afterSizes}
           alt="Illustrative AI edit of the burger with studio lighting and a clean background"
           decoding="async"
           fetchPriority="high"
@@ -84,9 +94,9 @@ export default function PhotoComparison() {
         />
         <img
           className="pw-compare-before"
-          src="/homepage/optimized/burger-before-640.webp"
-          srcSet="/homepage/optimized/burger-before-640.webp 640w, /burger-phone-original.jpg 2592w"
-          sizes={sizes}
+          src="/homepage/optimized/burger-before-960.webp"
+          srcSet={variants("burger-before")}
+          sizes={beforeSizes}
           alt="Original phone photo of a burger on a white plate"
           decoding="async"
           fetchPriority="high"
