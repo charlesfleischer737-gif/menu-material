@@ -1,6 +1,6 @@
 .cx-downloads {
   margin-top: 28px;
-  font-size: 1rem;
+  font-size: var(--text-base);
 }
 .cx-download-fields {
   border: 0;
@@ -35,7 +35,7 @@
 }
 .cx-export-destinations span {
   color: var(--workspace-muted);
-  font-size: 0.875rem;
+  font-size: var(--text-subhead);
   margin-top: 3px;
 }
 .cx-export-destinations svg {
@@ -66,11 +66,11 @@
 }
 .cx-export-workspace .cx-check {
   margin: 16px 0;
-  font-size: 0.875rem;
+  font-size: var(--text-subhead);
 }
 .cx-export-workspace .cx-hint {
   margin: 12px 0;
-  font-size: 0.875rem;
+  font-size: var(--text-subhead);
 }
 .cx-export-workspace .cx-crop-controls {
   margin: 16px 0;
@@ -84,7 +84,7 @@
   margin-bottom: 8px;
 }
 .cx-upload-guidance p {
-  font-size: 0.875rem;
+  font-size: var(--text-subhead);
   line-height: 1.65;
 }
 .cx-reuse-next {
@@ -100,7 +100,7 @@
 .cx-reuse-next p {
   margin-top: 6px;
   max-width: 52ch;
-  font-size: 0.875rem;
+  font-size: var(--text-subhead);
 }
 .cx-reuse-next > button {
   flex-shrink: 0;
@@ -120,7 +120,7 @@
   align-items: center;
 }
 .cx-secondary-actions details {
-  font-size: 0.875rem;
+  font-size: var(--text-subhead);
 }
 .cx-secondary-actions summary {
   cursor: pointer;

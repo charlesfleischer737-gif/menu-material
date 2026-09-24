@@ -1,6 +1,6 @@
 /* A quiet, photo-led workbench for the first image and every one after it. */
 .cx-guided-studio {
-  font-size: 1rem;
+  font-size: var(--text-base);
 }
 .cx-guided-studio .cx-hint,
 .cx-guided-studio .cx-link,
@@ -8,7 +8,7 @@
 .cx-guided-studio .cx-field > span,
 .cx-guided-studio .cx-feedback,
 .cx-guided-studio .cx-check {
-  font-size: 0.875rem;
+  font-size: var(--text-subhead);
 }
 .cx-guided-studio :is(button, input, select, textarea):focus-visible {
   outline: 3px solid var(--workspace-action);
@@ -54,7 +54,7 @@
   border-radius: 100px;
   background: var(--workspace-action);
   color: var(--workspace-surface);
-  font-size: 0.75rem;
+  font-size: var(--text-caption);
   font-weight: 500;
   pointer-events: none;
 }
@@ -115,7 +115,7 @@
   gap: 12px;
   padding: 13px 2px;
   color: var(--workspace-muted);
-  font-size: 0.8125rem;
+  font-size: var(--text-footnote);
   line-height: 1.5;
 }
 .cx-photo-comparison figcaption > span:first-child {
@@ -132,7 +132,7 @@
   padding: 24px;
   background: var(--workspace-canvas);
   color: var(--workspace-ink);
-  font-size: 1rem;
+  font-size: var(--text-base);
   text-align: center;
   z-index: 4;
 }

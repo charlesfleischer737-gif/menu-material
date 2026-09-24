@@ -80,7 +80,7 @@
   display: grid;
   align-content: start;
   gap: 8px;
-  font-size: 14px;
+  font-size: var(--text-subhead);
   color: var(--workspace-ink);
 }
 .rs-dialog
@@ -95,7 +95,7 @@
   color: var(--workspace-ink);
   padding-block: 10px;
   padding-inline-start: 14px;
-  font-size: 16px;
+  font-size: var(--text-base);
   width: 100%;
 }
 .rs-dialog
@@ -109,7 +109,7 @@
     color-mix(in srgb, var(--workspace-focus) 22%, transparent);
 }
 .rs-dialog .field small {
-  font-size: 13px;
+  font-size: var(--text-footnote);
   font-weight: 400;
   color: var(--workspace-muted);
 }
@@ -136,7 +136,7 @@
 .rs-dialog .hours-row > input {
   min-width: 0;
   max-width: 100%;
-  font-size: 16px;
+  font-size: var(--text-base);
   min-height: 44px;
   padding: 8px;
   border: 1px solid var(--workspace-control);
@@ -159,7 +159,7 @@
 .rs-dialog .dish-options > .fine {
   margin: 8px 0 16px;
   text-align: left;
-  font-size: 14px;
+  font-size: var(--text-subhead);
   line-height: 1.5;
   color: var(--workspace-muted);
 }
@@ -179,7 +179,7 @@
   display: flex;
   align-items: center;
   gap: 8px;
-  font-size: 14px;
+  font-size: var(--text-subhead);
   color: var(--workspace-muted);
 }
 .rs-save-row > button {
@@ -187,7 +187,7 @@
 }
 .rs-error {
   margin-bottom: 12px;
-  font-size: 14px;
+  font-size: var(--text-subhead);
   color: var(--workspace-error);
 }
 .rs-dialog :focus-visible {

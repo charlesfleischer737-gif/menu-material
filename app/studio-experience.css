@@ -13,13 +13,13 @@
 }
 .studio-progress select {
   min-height: 44px;
-  font-size: 1rem;
+  font-size: var(--text-base);
 }
 .studio-progress p,
 .studio-progress caption,
 .studio-progress th,
 .studio-progress td {
-  font-size: 0.875rem;
+  font-size: var(--text-subhead);
   line-height: 1.55;
 }
 .studio-progress caption {
@@ -34,7 +34,7 @@
   padding: 24px 0 8px;
 }
 .studio-progress-outcome strong {
-  font-size: 1.75rem;
+  font-size: var(--text-title2);
   letter-spacing: var(--tracking-display);
 }
 .studio-progress-outcome span {
@@ -61,7 +61,7 @@
 .ps2-inline-note {
   background: var(--gray-200);
   border-radius: 12px;
-  font-size: 0.8125rem;
+  font-size: var(--text-footnote);
   padding: 14px 17px;
   margin: 12px 0;
 }
@@ -95,14 +95,14 @@
   overflow-wrap: anywhere;
 }
 .ps2-dialog-header [data-slot="dialog-title"] {
-  font-size: 1.75rem;
+  font-size: var(--text-title2);
   font-weight: 550;
   letter-spacing: var(--tracking-display);
   margin: 7px 0 9px;
   line-height: 1.15;
 }
 .ps2-dialog-header [data-slot="dialog-description"] {
-  font-size: 1rem;
+  font-size: var(--text-base);
   color: var(--gray-600);
   line-height: 1.5;
 }
@@ -148,13 +148,13 @@
   margin-bottom: 12px;
 }
 .ps2-inspiration-pair figcaption b {
-  font-size: 0.9375rem;
+  font-size: var(--text-callout);
   font-weight: 600;
 }
 .ps2-inspiration-pair figcaption span,
 .ps2-inspiration-file-note {
   color: var(--gray-600);
-  font-size: 0.8125rem;
+  font-size: var(--text-footnote);
   line-height: 1.5;
 }
 .ps2-inspiration-pair figure > img,
@@ -184,7 +184,7 @@
   place-content: center;
   padding: 16px;
   text-align: center;
-  font-size: 0.875rem;
+  font-size: var(--text-subhead);
   margin: 0;
 }
 .ps2-inspiration-preview[data-preview-state="error"] {
@@ -211,7 +211,7 @@
   padding: 18px;
   text-align: center;
   color: var(--gray-900);
-  font-size: 0.875rem;
+  font-size: var(--text-subhead);
   line-height: 1.5;
   border: 1px dashed var(--gray-400);
 }
@@ -223,7 +223,7 @@
   margin: 0;
 }
 .ps2-inspiration-guidance {
-  font-size: 0.9375rem;
+  font-size: var(--text-callout);
   line-height: 1.65;
   margin: 22px 0 8px;
 }
@@ -236,17 +236,17 @@
 .ps2-inspiration button,
 .ps2-inspiration .ps2-dialog-footer .cx-link {
   min-height: 44px;
-  font-size: 0.875rem;
+  font-size: var(--text-subhead);
 }
 .ps2-inspiration-file-note {
   margin: 6px 0 0;
 }
 .ps2-inspiration-error {
-  color: #8e311c;
-  background: #fff2eb;
+  color: var(--workspace-error);
+  background: var(--workspace-error-surface);
   border-radius: 10px;
   padding: 12px 14px;
-  font-size: 0.875rem;
+  font-size: var(--text-subhead);
   line-height: 1.5;
 }
 @media (max-width: 640px) {
@@ -291,14 +291,14 @@
 }
 .ps2-dialog-footer > span {
   color: var(--gray-600);
-  font-size: 0.75rem;
+  font-size: var(--text-caption);
 }
 .ps2-dialog-footer .cx-link {
-  font-size: 0.75rem;
+  font-size: var(--text-caption);
   min-height: 35px;
 }
 .ps2-control-help {
-  font-size: 0.75rem;
+  font-size: var(--text-caption);
   line-height: 1.7;
   color: var(--gray-600);
   margin: 14px 0 0;
@@ -325,17 +325,17 @@
     padding: 24px 20px 20px;
   }
   .ps2-dialog-header [data-slot="dialog-title"] {
-    font-size: 1.625rem;
+    font-size: var(--text-title2);
   }
   .ps2-dialog-footer {
     padding: 14px 20px max(15px, env(safe-area-inset-bottom));
     flex-wrap: wrap;
   }
   .ps2-dialog-footer > span {
-    font-size: 0.75rem;
+    font-size: var(--text-caption);
   }
   .ps2-dialog-footer .cx-link {
-    font-size: 0.75rem;
+    font-size: var(--text-caption);
     min-height: 40px;
   }
   .ps2-icon-button {
@@ -344,7 +344,7 @@
   }
   .ps2-dialog select,
   .ps2-dialog textarea {
-    font-size: 1rem;
+    font-size: var(--text-base);
   }
 }
 @media (prefers-reduced-motion: reduce) {
@@ -375,10 +375,10 @@
 }
 .ps2-dialog-footer > span,
 .ps2-control-help {
-  font-size: 0.8125rem;
+  font-size: var(--text-footnote);
 }
 .ps2-dialog-footer .cx-link {
-  font-size: 0.8125rem;
+  font-size: var(--text-footnote);
 }
 @media (max-width: 760px) {
   .ps2-save-dialog {
@@ -404,15 +404,15 @@
   min-width: 180px;
 }
 .ps2-guest-recovery b {
-  font-size: 0.875rem;
+  font-size: var(--text-subhead);
 }
 .ps2-guest-recovery p {
-  font-size: 0.75rem;
+  font-size: var(--text-caption);
   color: var(--gray-600);
   margin: 5px 0 0;
 }
 .ps2-guest-recovery .cx-link {
-  font-size: 0.75rem;
+  font-size: var(--text-caption);
 }
 @media (max-width: 760px) {
   .cx-guest .cx-guest-free {
@@ -433,14 +433,14 @@
   min-height: 44px;
 }
 .ps2-dialog p {
-  font-size: 1rem;
+  font-size: var(--text-base);
   line-height: 1.55;
   overflow-wrap: anywhere;
 }
 .ps2-dialog select,
 .ps2-dialog input,
 .ps2-dialog textarea {
-  font-size: 1rem;
+  font-size: var(--text-base);
 }
 .ps2-dialog input[type="range"],
 .cx-guided-studio input[type="range"] {
@@ -449,10 +449,10 @@
 .ps2-dialog button.cx-link,
 .ps2-dialog .cx-field > span,
 .ps2-dialog-footer .cx-link {
-  font-size: 0.875rem;
+  font-size: var(--text-subhead);
 }
 .ps2-dialog .ps2-control-help {
-  font-size: 0.875rem;
+  font-size: var(--text-subhead);
 }
 .ps2-finish {
   width: min(540px, calc(100vw - 40px)) !important;
@@ -494,7 +494,7 @@
 }
 .ps2-finish-crop > .cx-link {
   min-height: 44px;
-  font-size: 0.875rem;
+  font-size: var(--text-subhead);
 }
 .ps2-finish-check {
   align-items: flex-start;
@@ -502,7 +502,7 @@
   border: 1px solid var(--workspace-line);
   border-radius: 8px;
   background: var(--workspace-canvas);
-  font-size: 0.875rem !important;
+  font-size: var(--text-subhead) !important;
   line-height: 1.55;
   margin: 0;
 }
@@ -521,7 +521,7 @@
 }
 .ps2-finish .ps2-download-hint {
   color: var(--workspace-muted);
-  font-size: 14px;
+  font-size: var(--text-subhead);
   line-height: 1.5;
 }
 .ps2-finish .ps2-inline-note {
@@ -536,7 +536,7 @@
 .ps2-finish .ps2-finish-more {
   justify-self: center;
   margin: 0;
-  font-size: 14px;
+  font-size: var(--text-subhead);
   min-height: 44px;
 }
 .ps2-finish-menu {
@@ -613,7 +613,7 @@
   align-items: center;
   gap: 10px;
   min-height: 44px;
-  font-size: 1rem;
+  font-size: var(--text-base);
 }
 .ps2-correction-form > label.field {
   display: grid;
@@ -624,7 +624,7 @@
   accent-color: var(--cx-green);
 }
 .ps2-review-report {
-  border-top: 1px solid #ddd;
+  border-top: 1px solid var(--workspace-line);
   margin-top: 20px;
   padding-top: 20px;
 }
@@ -662,7 +662,7 @@
 }
 .ps2-batch-choice small {
   margin-top: 5px;
-  font-size: 0.875rem;
+  font-size: var(--text-subhead);
 }
 .ps2-batch-result {
   border: 1px solid var(--gray-300);
@@ -682,7 +682,7 @@
   align-items: center;
   gap: 8px;
   min-height: 44px;
-  font-size: 0.875rem;
+  font-size: var(--text-subhead);
 }
 .ps2-batch input[type="checkbox"] {
   width: 20px;
@@ -725,12 +725,12 @@
 }
 .cx-guided-studio .cx-feature-header h1 {
   font-family: inherit;
-  font-size: 1.75rem;
+  font-size: var(--text-title2);
   font-weight: 600;
   letter-spacing: var(--tracking-display);
 }
 .cx-guided-studio .cx-panel > p {
-  font-size: 1rem;
+  font-size: var(--text-base);
   line-height: 1.55;
 }
 @media (max-width: 760px) {
@@ -813,13 +813,13 @@
   gap: 8px;
 }
 .ps2-adjustment-stage .cx-photo-frame-status p {
-  font-size: 0.875rem;
+  font-size: var(--text-subhead);
   line-height: 1.4;
   max-width: 28em;
 }
 .ps2-adjustment-stage figcaption {
   padding: 10px 0 0;
-  font-size: 0.75rem;
+  font-size: var(--text-caption);
   white-space: nowrap;
 }
 .ps2-adjustment-stage figcaption span {
@@ -842,7 +842,7 @@
 }
 .ps2-adjustment-tools [data-slot="tabs-trigger"] {
   min-height: 44px;
-  font-size: 0.9375rem;
+  font-size: var(--text-callout);
   white-space: normal;
 }
 .ps2-adjustment-tools [data-slot="tabs-trigger"][data-state="active"] {
@@ -872,14 +872,14 @@
 .ps2-adjustment-scroll .cx-segment button {
   min-height: 44px;
   white-space: normal;
-  font-size: 0.875rem;
+  font-size: var(--text-subhead);
 }
 .ps2-adjustment-scroll .cx-range {
   display: grid;
   grid-template-columns: minmax(0, 1fr) auto;
   gap: 0 12px;
   margin: 10px 0;
-  font-size: 0.9375rem;
+  font-size: var(--text-callout);
 }
 .ps2-adjustment-scroll .cx-range-value {
   color: var(--gray-600);
@@ -893,7 +893,7 @@
 }
 .ps2-adjustment-help {
   margin: 6px 0 12px;
-  font-size: 0.9375rem;
+  font-size: var(--text-callout);
   color: var(--gray-600);
   line-height: 1.5;
 }
@@ -903,7 +903,7 @@
   background: #fff;
 }
 .ps2-adjustment-footer > p {
-  font-size: 0.8125rem;
+  font-size: var(--text-footnote);
   line-height: 1.45;
   color: var(--gray-600);
   margin: 0 0 8px;
@@ -915,7 +915,7 @@
   gap: 20px;
 }
 .ps2-adjustment-footer .ps2-adjustment-error {
-  color: #9b3024;
+  color: var(--workspace-error);
   max-height: 5em;
   overflow: auto;
 }
@@ -936,10 +936,10 @@
     gap: 12px;
   }
   .ps2-adjustment .ps2-dialog-header [data-slot="dialog-title"] {
-    font-size: 1.375rem;
+    font-size: var(--text-title3);
   }
   .ps2-adjustment .ps2-dialog-header [data-slot="dialog-description"] {
-    font-size: 0.875rem;
+    font-size: var(--text-subhead);
   }
   .ps2-adjustment-body {
     grid-template-columns: minmax(0, 1fr);
@@ -1011,7 +1011,7 @@
   border-radius: 12px;
   background: var(--workspace-warning-surface);
   color: var(--workspace-ink);
-  font-size: 0.875rem;
+  font-size: var(--text-subhead);
   line-height: 1.5;
 }
 .ps2-finish-warning > svg {
@@ -1021,13 +1021,13 @@
 }
 .ps2-dialog .ps2-finish-warning p {
   margin: 0 0 6px;
-  font-size: 0.875rem;
+  font-size: var(--text-subhead);
   line-height: 1.5;
 }
 .ps2-finish-warning .cx-link {
   min-height: 32px;
   padding: 0;
-  font-size: 0.875rem;
+  font-size: var(--text-subhead);
 }
 /* Different size, Adjust crop and File name sit together as quiet links. */
 .ps2-finish-scroll > [data-slot="collapsible"] {
@@ -1057,12 +1057,12 @@
   text-align: left;
 }
 .ps2-size-choices b {
-  font-size: 0.875rem;
+  font-size: var(--text-subhead);
   font-weight: 600;
 }
 .ps2-size-choices span {
   color: var(--workspace-muted);
-  font-size: 0.8125rem;
+  font-size: var(--text-footnote);
 }
 .ps2-size-choices button[aria-checked="true"] {
   border-color: var(--workspace-action);
@@ -1084,7 +1084,7 @@
 .ps2-dialog .pk-summary {
   margin: 0 0 12px;
   color: var(--workspace-muted);
-  font-size: 0.875rem;
+  font-size: var(--text-subhead);
 }
 .pk-list {
   display: grid;
@@ -1130,17 +1130,17 @@
   flex-wrap: wrap;
   justify-content: space-between;
   gap: 2px 12px;
-  font-size: 0.9375rem;
+  font-size: var(--text-callout);
 }
 .pk-head span {
   color: var(--workspace-muted);
-  font-size: 0.8125rem;
+  font-size: var(--text-footnote);
   font-variant-numeric: tabular-nums;
 }
 .pk-body > small {
   display: block;
   color: var(--workspace-muted);
-  font-size: 0.8125rem;
+  font-size: var(--text-footnote);
 }
 .pk-checks {
   display: flex;
@@ -1149,7 +1149,7 @@
   margin: 8px 0 0;
   padding: 0;
   list-style: none;
-  font-size: 0.8125rem;
+  font-size: var(--text-footnote);
 }
 .pk-checks li {
   display: inline-flex;
@@ -1167,7 +1167,7 @@
 }
 .ps2-dialog .pk-note {
   margin: 8px 0 0;
-  font-size: 0.8125rem;
+  font-size: var(--text-footnote);
   line-height: 1.5;
 }
 .pk-item[data-status="skip"] .pk-note {

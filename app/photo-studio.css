@@ -131,7 +131,7 @@
 }
 .st-canvas .st-dropzone:hover:not(:disabled) {
   border-color: rgb(0 0 0 / 26%);
-  background: #f3f3f6;
+  background: var(--gray-100);
 }
 .st-canvas.is-dragging .st-dropzone {
   border-color: var(--st-accent);
@@ -506,7 +506,7 @@
   place-items: center;
   width: 100%;
   height: 100%;
-  background: linear-gradient(145deg, #fbfbfd, #ececf1);
+  background: linear-gradient(145deg, var(--gray-50), var(--gray-200));
   color: var(--st-muted);
 }
 .st-tile-badge {
@@ -522,7 +522,7 @@
   -webkit-backdrop-filter: var(--glass-blur);
   backdrop-filter: var(--glass-blur);
   color: var(--st-ink);
-  font-size: 0.6875rem;
+  font-size: var(--text-caption2);
   font-weight: 600;
 }
 .st-mosaic {
@@ -645,7 +645,7 @@
   background: var(--st-surface);
   color: var(--st-ink);
   font: inherit;
-  font-size: 1rem;
+  font-size: var(--text-base);
   line-height: 1.45;
   transition:
     border-color var(--duration-fast) var(--ease),
@@ -1627,7 +1627,7 @@ textarea.st-input {
   outline: none;
 }
 .st-detail-copy > p {
-  color: #3a3a3c;
+  color: var(--gray-800);
   font-size: var(--text-callout);
   line-height: 1.55;
 }

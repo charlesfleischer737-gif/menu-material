@@ -71,7 +71,7 @@
 .ex-search-summary {
   margin: -8px 0 16px;
   color: var(--workspace-muted);
-  font-size: 14px;
+  font-size: var(--text-subhead);
 }
 .ex-empty {
   padding: 56px 24px;
@@ -80,7 +80,7 @@
   background: var(--gray-100);
 }
 .ex-empty h2 {
-  font-size: 24px;
+  font-size: var(--text-title2);
   margin: 0 0 8px;
 }
 .ex-empty p {
@@ -243,7 +243,7 @@
 .ex-category {
   margin: 0 0 16px;
   color: var(--workspace-muted);
-  font-size: 0.8125rem;
+  font-size: var(--text-footnote);
   letter-spacing: 0.08em;
   text-transform: uppercase;
 }
@@ -258,7 +258,7 @@
 .ex-description {
   margin: 20px 0 0;
   color: var(--workspace-muted);
-  font-size: 1rem;
+  font-size: var(--text-base);
   line-height: 1.6;
 }
 .ex-traits {
@@ -271,7 +271,7 @@
 }
 .ex-traits li {
   color: var(--workspace-muted);
-  font-size: 0.875rem;
+  font-size: var(--text-subhead);
   line-height: 1.4;
 }
 .ex-best-for {
@@ -279,12 +279,12 @@
 }
 .ex-best-for h3 {
   margin: 0 0 6px;
-  font-size: 0.875rem;
+  font-size: var(--text-subhead);
   font-weight: 600;
 }
 .ex-best-for p {
   margin: 0;
-  font-size: 1rem;
+  font-size: var(--text-base);
   color: var(--workspace-muted);
   line-height: 1.5;
 }
@@ -331,7 +331,7 @@
   margin: 0;
   padding: 0 24px;
   text-align: center;
-  font-size: 0.75rem;
+  font-size: var(--text-caption);
   color: var(--workspace-muted);
 }
 .ex-close {
