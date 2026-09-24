@@ -67,7 +67,13 @@ import {
   token,
   viewer,
 } from "./core";
-import { enqueue, updateJob, generateCaption, tick } from "./generation";
+import {
+  enqueue,
+  updateJob,
+  generateCaption,
+  jobStatus,
+  tick,
+} from "./generation";
 import {
   checkAlertsInBackground,
   clientErrorRoute,
@@ -1392,6 +1398,8 @@ export async function handle(req: Request) {
         return response({ ok: true });
       }
     }
+    if (p[0] === "jobs" && p[1] === "status" && method === "GET")
+      return response(await jobStatus(r.id));
     if (p[0] === "jobs" && method === "POST") {
       if (p[1] === "tick") {
         await advanceBatches(r.id);

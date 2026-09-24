@@ -1034,6 +1034,25 @@ export async function tick(restaurantId?: string, { startNew = true } = {}) {
     ]),
   );
 }
+// A restaurant's unfinished work, small enough for an open page to check
+// every few seconds. Finished work drops out, which tells the page to reload.
+export async function jobStatus(restaurantId: string) {
+  const [jobs, outputs, batchItems] = await Promise.all([
+    all(
+      "SELECT id,status FROM jobs WHERE restaurant_id=? AND status IN ('queued','processing') ORDER BY id",
+      restaurantId,
+    ),
+    all(
+      "SELECT id,job_id,status,error FROM outputs WHERE restaurant_id=? AND status NOT IN ('completed','failed') ORDER BY id",
+      restaurantId,
+    ),
+    all(
+      "SELECT id,status FROM batch_items WHERE restaurant_id=? AND status='queued' ORDER BY id",
+      restaurantId,
+    ),
+  ]);
+  return { jobs, outputs, batchItems };
+}
 export async function generateCaption(
   r: Row,
   dishId: string,

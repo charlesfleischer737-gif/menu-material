@@ -360,6 +360,16 @@ try {
   await call("jobs/tick", {});
   assert.equal(submitted, beforeWorker, "The page leaves new images alone");
   checks++;
+  // The page's status check lists only its own restaurant's unfinished work;
+  // restaurant a's queued image stays private.
+  const progress = await call("jobs/status");
+  assert.deepEqual(progress.jobs, [{ id: workerJob.id, status: "queued" }]);
+  checks++;
+  assert.deepEqual(
+    progress.outputs.map((o) => [o.job_id, o.status]),
+    [[workerJob.id, "queued"]],
+  );
+  checks++;
   await call("internal/tick", {}, 200, {
     headers: { authorization: "Bearer fixture-runner-secret" },
   });
@@ -370,6 +380,14 @@ try {
     "completed",
   );
   checks++;
+  assert.deepEqual(
+    await call("jobs/status"),
+    { jobs: [], outputs: [], batchItems: [] },
+    "Finished work drops out of the status check",
+  );
+  checks++;
+  cookie = "";
+  await call("jobs/status", undefined, 401);
   cookie = adminCookie;
   // Earlier background responses are still polled by ID: every two seconds
   // at first, less often after two minutes. Their deadline restores the
