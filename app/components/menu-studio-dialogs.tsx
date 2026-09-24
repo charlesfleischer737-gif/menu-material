@@ -1389,7 +1389,7 @@ export function MenuShareDialog({
           <QrCode size={80} />
         )}
         <div>
-          <h3>Your menu, one scan away.</h3>
+          <h3>Menu QR code</h3>
           <p>Put a card at the table, by the register, or in a takeaway bag.</p>
           <button
             className="md-text-button"

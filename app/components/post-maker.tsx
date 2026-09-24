@@ -740,7 +740,7 @@ export default function PostMaker({
                 )}
                 {panel === "design" && (
                   <>
-                    <h2>Your restaurant, in every detail.</h2>
+                    <h2>Design</h2>
                     <p className="mm-muted">
                       Your restaurant colors carry through each design. The
                       photo and layout adapt to each format.
@@ -954,7 +954,7 @@ export default function PostMaker({
                 )}
                 {panel === "caption" && (
                   <>
-                    <h2>In your own voice.</h2>
+                    <h2>Caption</h2>
                     <Field label="Writing voice">
                       <input
                         maxLength={150}

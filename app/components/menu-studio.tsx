@@ -391,7 +391,7 @@ export default function MenuStudio({
       <section className="md-studio">
         <div className="md-loading">
           <span className="md-eyebrow">Menu studio</span>
-          <h1>Your next great menu starts here.</h1>
+          <h1>Menus</h1>
           <p role="status">{store.status}</p>
           {store.error && (
             <>
@@ -590,15 +590,11 @@ export default function MenuStudio({
         {!items.length && !draft.sections.length ? (
           <div className="md-start">
             <div className="md-start-copy">
-              <span className="md-eyebrow">Made for your table</span>
-              <h2>
-                A menu that feels
-                <br />
-                like your restaurant.
-              </h2>
+              <span className="md-eyebrow">New menu</span>
+              <h2>Add your dishes</h2>
               <p>
-                Bring your dishes. We’ll take care of the typography, spacing,
-                and beautiful pages.
+                Import the menu you have, pick from My Dishes or start blank.
+                Type, spacing and pages are handled for you.
               </p>
               <div className="md-start-actions">
                 <button

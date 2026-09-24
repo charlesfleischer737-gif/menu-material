@@ -868,7 +868,7 @@ export function StudioWorkbench({
               ) : b.mode === "description" ? (
                 <div className="st-describe">
                   <span className="st-sheet-kicker">From a description</span>
-                  <h3>Imagine your dish.</h3>
+                  <h3>Describe your dish</h3>
                   <label className="st-field">
                     <span>Dish name</span>
                     <input
