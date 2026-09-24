@@ -132,7 +132,7 @@
   }
   /* 16px keeps iOS from zooming the page when the field is focused. */
   .ex-search input {
-    font-size: 1rem;
+    font-size: var(--text-base);
   }
 }
 @container ex-gallery (max-width: 959px) {
@@ -389,7 +389,7 @@
     padding-top: 11px;
   }
   .ex-tile-name {
-    font-size: 0.875rem;
+    font-size: var(--text-subhead);
     line-height: 19px;
   }
   .ex-tile-meta {
@@ -397,7 +397,7 @@
     line-height: 16px;
   }
   .ex-tile[data-feature] .ex-tile-name {
-    font-size: 1.125rem;
+    font-size: var(--text-body);
     line-height: 22px;
   }
   .ex-tile-kicker {
@@ -943,7 +943,7 @@
   margin: 0;
   padding: 0 24px;
   color: var(--workspace-muted);
-  font-size: 0.75rem;
+  font-size: var(--text-caption);
   text-align: center;
 }
 .ex-try {

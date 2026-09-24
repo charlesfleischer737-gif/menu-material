@@ -5,24 +5,24 @@ export const dynamic = "force-dynamic";
 export const metadata = {
   title: "Free & Pro plans · Menu Material",
   description:
-    "Explore Menu Material plans for restaurant photography. Start with 5 free image generations.",
+    "Explore Menu Material plans for restaurant photography. Start with 5 free images.",
 };
 export default function Pricing() {
   const enabled = billingEnabled();
   const questions: [string, string][] = [
     [
-      "What uses a generation?",
-      "Each new image or AI revision uses one. Cropping, touch-ups, menus, post layouts and downloads are always free, and failed generations are returned.",
+      "What uses an image?",
+      "Each new photo or AI revision uses one image. Cropping, touch-ups, menus, post layouts and downloads are always free, and images that fail to create are returned.",
     ],
     [
-      "Do free generations expire?",
-      "No. The 5 free generations are a one-time allowance for each account.",
+      "Do free images expire?",
+      "No. The 5 free images are a one-time allowance for each account.",
     ],
     [
       "How does Pro work?",
       enabled
-        ? "Pro is $9.99 a month for 100 generations each billing period. Unused generations don’t roll over, and you can cancel future renewals from Plans in your workspace."
-        : "Pro will be $9.99 a month for 100 generations each billing period, with payment and cancellation in Plans. Subscriptions aren’t open yet.",
+        ? "Pro is $9.99 a month for 100 images each billing period. Unused images don’t roll over, and you can cancel future renewals from Plans in your workspace."
+        : "Pro will be $9.99 a month for 100 images each billing period, with payment and cancellation in Plans. Subscriptions aren’t open yet.",
     ],
     [
       "What happens if I cancel?",

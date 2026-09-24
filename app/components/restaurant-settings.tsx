@@ -19,7 +19,102 @@ import {
   AlertDialogTitle,
 } from "@/components/ui/alert-dialog";
 import { api, normalizePhoto, type Row } from "@/lib/client";
+import { menuAddressProblem } from "@/lib/restaurant-identity";
 import RestaurantStyle from "./restaurant-style";
+
+/** Change the address guests' links and QR codes use; old ones keep working. */
+function MenuAddressField({
+  restaurant,
+  refresh,
+}: {
+  restaurant: Row;
+  refresh: () => Promise<void>;
+}) {
+  const [address, setAddress] = useState<string>(restaurant.slug),
+    [status, setStatus] = useState<
+      "" | "checking" | "available" | "taken" | "saving" | "saved"
+    >(""),
+    [error, setError] = useState("");
+  const changed = address !== restaurant.slug,
+    problem = changed ? menuAddressProblem(address) : "";
+  useEffect(() => {
+    if (!changed || problem) return;
+    let active = true;
+    const timer = setTimeout(() => {
+      setStatus("checking");
+      api(`restaurant/address?check=${encodeURIComponent(address)}`)
+        .then((result) => {
+          if (active) setStatus(result.available ? "available" : "taken");
+        })
+        .catch(() => {
+          if (active) setStatus("");
+        });
+    }, 350);
+    return () => {
+      active = false;
+      clearTimeout(timer);
+    };
+  }, [address, changed, problem]);
+  const origin = typeof window === "undefined" ? "" : window.location.host;
+  return (
+    <div className="field rs-address">
+      <span id="rs-address-label">Menu address</span>
+      <div className="rs-address-row">
+        <span className="rs-address-prefix" aria-hidden="true">
+          {origin}/m/
+        </span>
+        <input
+          aria-labelledby="rs-address-label"
+          aria-describedby="rs-address-help"
+          value={address}
+          maxLength={60}
+          disabled={status === "saving"}
+          onChange={(event) => {
+            setAddress(event.target.value.toLowerCase().replace(/\s+/g, "-"));
+            setStatus("");
+            setError("");
+          }}
+        />
+        <button
+          type="button"
+          className="cx-btn cx-secondary"
+          disabled={
+            !changed ||
+            !!problem ||
+            status === "taken" ||
+            status === "checking" ||
+            status === "saving"
+          }
+          onClick={async () => {
+            setStatus("saving");
+            setError("");
+            try {
+              await api("restaurant/address", { address });
+              await refresh();
+              setStatus("saved");
+            } catch (e) {
+              setError((e as Error).message);
+              setStatus("");
+            }
+          }}
+        >
+          {status === "saving" ? "Saving…" : "Change address"}
+        </button>
+      </div>
+      <small id="rs-address-help" role={error ? "alert" : undefined}>
+        {error ||
+          problem ||
+          (status === "taken"
+            ? "That address is taken. Try another."
+            : status === "saved"
+              ? "Address changed. Your old address still opens your menu."
+              : restaurant.published
+                ? "If you change it, your old address keeps working, so printed QR codes still open your menu."
+                : "Your menu link and QR code use this address.")}
+      </small>
+    </div>
+  );
+}
 
 type Group = "details" | "look" | "ordering";
 type Props = {
@@ -256,6 +351,11 @@ export default function RestaurantSettings({
                     />
                     <small>Logo uploads save immediately.</small>
                   </label>
+                  <MenuAddressField
+                    key={state.restaurant.slug}
+                    restaurant={state.restaurant}
+                    refresh={refresh}
+                  />
                 </TabsContent>
                 <TabsContent
                   forceMount

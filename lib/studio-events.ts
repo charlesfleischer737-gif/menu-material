@@ -43,6 +43,7 @@ const destination = z.enum([
   "post",
   "photo-set",
   "pdf",
+  "pack",
 ]);
 const number = z.number().int().min(0).max(100000);
 const style = z

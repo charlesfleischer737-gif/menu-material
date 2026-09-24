@@ -104,7 +104,7 @@ export function PhotoCorrectionSheet({
       >
         <header className="ps2-dialog-header">
           <div>
-            <DialogTitle>Let’s get your food right.</DialogTitle>
+            <DialogTitle>Report a food change</DialogTitle>
             <DialogDescription>
               A food correction keeps your original dish and requested look. A
               new creative direction is a separate, paid edit.

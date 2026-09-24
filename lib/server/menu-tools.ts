@@ -132,7 +132,7 @@ export async function retryFailed(r: Row, jobId: string) {
   assert(
     !job.credit_period.startsWith("complimentary:"),
     409,
-    "This complimentary correction has finished. Open its food-error report to see your allowance recovery or review status.",
+    "This complimentary correction has finished. Open its food-error report to see whether the image was given back.",
   );
   assert(
     config("OPENAI_API_KEY") && !r.paused,
@@ -164,7 +164,7 @@ export async function retryFailed(r: Row, jobId: string) {
   assert(
     retried.meta.changes,
     402,
-    "Not enough image generations. Check your plan or wait for your next allowance.",
+    "Not enough images left. Check your plan or wait until your images renew.",
   );
   await run("UPDATE jobs SET status='queued' WHERE id=?", job.id);
   await event(r.id, "generation_retried", job.id, { slots: failed.length });

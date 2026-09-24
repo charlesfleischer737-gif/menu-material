@@ -3,6 +3,7 @@ import { entitlementSql } from "./entitlements";
 import { settleCorrection } from "./correction-policy";
 import { z } from "zod";
 import { checkStudioGeneration } from "./studio-release";
+import { reportError } from "./monitoring";
 import { PIPELINE_VERSION, looks } from "../studio";
 import { styleSchema } from "./promotions";
 import {
@@ -669,7 +670,7 @@ async function settle(o: Row, res: Row) {
     if ((!png && !jpeg) || bytes.length > 20 * 1024 * 1024) {
       await run(
         "UPDATE outputs SET status='failed',error=?,usage=?,lease_until=0 WHERE id=? AND status NOT IN ('completed','failed')",
-        "The service returned an invalid image. Your allowance has been restored.",
+        "The service returned an invalid image. This image was not counted.",
         JSON.stringify(res.usage ?? {}),
         o.id,
       );
@@ -743,8 +744,8 @@ async function settle(o: Row, res: Row) {
     await run(
       "UPDATE outputs SET status='failed',error=?,usage=?,lease_until=0 WHERE id=? AND status NOT IN ('completed','failed')",
       res.status === "completed"
-        ? "No image was returned. Your allowance has been restored."
-        : "Image creation failed. Your allowance has been restored.",
+        ? "No image was returned. This image was not counted."
+        : "Image creation failed. This image was not counted.",
       JSON.stringify(res.usage ?? {}),
       o.id,
     );
@@ -768,7 +769,7 @@ export async function tick(restaurantId?: string) {
     ...scopeArgs,
   );
   await run(
-    "UPDATE outputs SET status='failed',error='This image took too long to recover. Allowance restored; contact support before resubmitting.',lease_until=0 WHERE response_id IS NOT NULL AND status NOT IN ('completed','failed') AND COALESCE(submitted_at,created_at)<?" +
+    "UPDATE outputs SET status='failed',error='This image took too long to recover. It was not counted; contact support before trying again.',lease_until=0 WHERE response_id IS NOT NULL AND status NOT IN ('completed','failed') AND COALESCE(submitted_at,created_at)<?" +
       scope,
     now() - 60 * 60000,
     ...scopeArgs,
@@ -828,13 +829,13 @@ export async function tick(restaurantId?: string) {
         // A lost response may still be running remotely. Never automatically bill a second attempt.
         if (now() - (o.submitted_at || o.created_at) > 30 * 60000)
           await run(
-            "UPDATE outputs SET status='failed',error='The provider response could not be recovered. Allowance restored; please try again.',lease_until=0 WHERE id=? AND lease_token=?",
+            "UPDATE outputs SET status='failed',error='The image could not be recovered. It was not counted; please try again.',lease_until=0 WHERE id=? AND lease_token=?",
             o.id,
             lease,
           );
         else
           await run(
-            "UPDATE outputs SET status='uncertain',error='Checking an interrupted request. We will restore the allowance if recovery is not possible.',lease_until=? WHERE id=? AND lease_token=?",
+            "UPDATE outputs SET status='uncertain',error='Checking an interrupted request. If it cannot be recovered, the image will not be counted.',lease_until=? WHERE id=? AND lease_token=?",
             now() + 60000,
             o.id,
             lease,
@@ -950,8 +951,8 @@ export async function tick(restaurantId?: string) {
         await run(
           "UPDATE outputs SET status='failed',error=?,lease_until=0 WHERE id=? AND lease_token=?",
           preSubmit && e instanceof UnavailableStudioReference
-            ? `${e.message} Your image allowance has been restored.`
-            : "Image creation failed. Your allowance has been restored.",
+            ? `${e.message} The image has been returned to your account.`
+            : "Image creation failed. This image was not counted.",
           o.id,
           lease,
         );
@@ -971,11 +972,13 @@ export async function tick(restaurantId?: string) {
           o.id,
           lease,
         );
-      console.error(
-        "Generation recovery",
-        o.id,
-        e instanceof Error ? e.message : "Unknown failure",
-      );
+      await reportError(e, {
+        kind: "job",
+        route: o.response_id ? "job/retrieval" : "job/dispatch",
+        status: e instanceof AppError ? e.status : undefined,
+        restaurantId: o.restaurant_id,
+        detail: { jobId: o.job_id, outputId: o.id },
+      });
     } finally {
       await updateJob(o.job_id);
     }

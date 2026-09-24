@@ -65,7 +65,7 @@ export function SavePhotoLookSheet({
         <header className="ps2-dialog-header">
           <div>
             <DialogTitle>
-              {savedId ? "Your look is saved." : "Keep this look."}
+              {savedId ? "Look saved" : "Save this look"}
             </DialogTitle>
             <DialogDescription>
               Reuse the setting and light with another dish. Your approved photo

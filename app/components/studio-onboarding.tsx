@@ -1,7 +1,19 @@
 "use client";
-import { useEffect, useId, useRef, useState, type ReactNode } from "react";
+import {
+  useEffect,
+  useId,
+  useRef,
+  useState,
+  useSyncExternalStore,
+  type ReactNode,
+} from "react";
 import { Check, ChevronsLeftRight, Sparkles } from "lucide-react";
 import { styleThumbnail, type PhotoStyle } from "@/lib/photo-styles";
+import {
+  subscribeWorkerHealth,
+  workerHealthServerSnapshot,
+  workerHealthSnapshot,
+} from "@/lib/worker-health";
 
 export function PhotoComparison({
   original,
@@ -100,6 +112,12 @@ export function StudioCreating({
 }) {
   const fallbackStart = useRef(0);
   const [elapsed, setElapsed] = useState(0);
+  // Only promise background progress while the background worker checks in.
+  const workerHealthy = useSyncExternalStore(
+    subscribeWorkerHealth,
+    workerHealthSnapshot,
+    workerHealthServerSnapshot,
+  );
   useEffect(() => {
     const start = Number(startedAt) || (fallbackStart.current ||= Date.now());
     const tick = () => setElapsed(Math.max(0, (Date.now() - start) / 1000));
@@ -167,8 +185,9 @@ export function StudioCreating({
           <span />
         </div>
         <p className="st-result-copy">
-          You can leave this page. We’ll keep working, and your result will be
-          waiting here.
+          {workerHealthy
+            ? "You can leave this page. We’ll keep working, and your result will be waiting here."
+            : "Keep this page open until your photo is ready."}
         </p>
         {children}
       </aside>

@@ -639,7 +639,7 @@ function BatchPhotos({ state, refresh, act, busy, selectDish, missing }: Row) {
       </h3>
       <p className="muted">
         Choose up to 5 dishes. Each uses its latest original, or its description
-        when no original exists. One image unit per dish.
+        when no original exists. Uses 1 image per dish.
       </p>
       <div className="batch-picks">
         {state.dishes.map((d: Row) => (
@@ -774,7 +774,7 @@ function BatchProgressItem({
         ? "Some photos need another try"
         : "Couldn’t create photos"
       : ready
-        ? "Ready to review"
+        ? "Photos ready"
         : "No photos ready";
   return (
     <article className="batch-progress-row">
@@ -1206,7 +1206,7 @@ function Insights() {
                 <b>Generation wait:</b>{" "}
                 {data.wait.count
                   ? `${Math.round(data.wait.average / 1000)} seconds average (${data.wait.count} images)`
-                  : "No completed generations recorded yet"}
+                  : "No completed images yet"}
                 .
               </p>
               <p>

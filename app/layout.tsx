@@ -1,5 +1,6 @@
 import type { Metadata } from "next";
 import { config } from "@/lib/server/core";
+import ErrorReporter from "./components/error-reporter";
 import ScrollMemory from "./components/scroll-memory";
 // Imported here rather than from CSS so the build bundles the font files.
 import "@fontsource-variable/inter/opsz.css";
@@ -22,6 +23,8 @@ import "./library-filters.css";
 import "./workspace-patterns.css";
 import "./workspace-shell.css";
 import "./photo-studio.css";
+// One control family (buttons, segmented choices); loaded last.
+import "./controls.css";
 export async function generateMetadata(): Promise<Metadata> {
   const origin = config("APP_ORIGIN");
   const images = origin
@@ -35,7 +38,7 @@ export async function generateMetadata(): Promise<Metadata> {
   return {
     title: "Menu Material — Food photos worth ordering from.",
     description:
-      "Turn real dish photos into professional images and matching posts for Toast, delivery apps, your website, and Instagram. Start with 5 free image generations.",
+      "Turn real dish photos into professional images and matching posts for Toast, delivery apps, your website, and Instagram. Start with 5 free images.",
     icons: {
       icon: "/favicon.svg?v=menu-material-2",
       shortcut: "/favicon.svg?v=menu-material-2",
@@ -63,6 +66,7 @@ export default function RootLayout({
   return (
     <html lang="en">
       <body>
+        <ErrorReporter />
         <ScrollMemory />
         {children}
       </body>

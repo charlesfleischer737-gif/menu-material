@@ -1,3 +1,19 @@
+/**
+ * What sits behind the food, read from each style's prompt and cue. Delivery
+ * apps and Google judge photos partly by their background (see
+ * lib/channel-rules.ts), so exports warn when a style is likely to be rejected.
+ * - natural: a real surface or setting (wood, stone, linen, tile, a dining room)
+ * - white: a plain white, ivory or pale neutral studio backdrop or bare white surface
+ * - colorful: a bold or tinted backdrop (cobalt, coral, lilac, sage, a sunset…)
+ * - dark: a black, charcoal or low-light dramatic setting
+ */
+export type PhotoBackdrop = "natural" | "white" | "colorful" | "dark";
+export const photoBackdrops: PhotoBackdrop[] = [
+  "natural",
+  "white",
+  "colorful",
+  "dark",
+];
 export type PhotoStyle = {
   id: string;
   name: string;
@@ -5,6 +21,12 @@ export type PhotoStyle = {
   group: string;
   image: string;
   prompt: string;
+  // Every catalog style declares one; saved looks and unknown looks are
+  // treated as natural (see styleProfile in lib/channel-rules.ts).
+  backdrop?: PhotoBackdrop;
+  // Hands, plinths, sculptural props or mirror reflections: a creative
+  // composition rather than the dish simply served.
+  staged?: boolean;
   category?: string;
   description?: string;
   bestFor?: string;
@@ -91,6 +113,7 @@ export const styleCategories = [
 export const photoStyles: PhotoStyle[] = [
   {
     id: "delivery-white",
+    backdrop: "white",
     plate: "style",
     category: "delivery",
     group: "Delivery & Takeout",
@@ -107,6 +130,7 @@ export const photoStyles: PhotoStyle[] = [
   },
   {
     id: "delivery-takeout",
+    backdrop: "natural",
     plate: "style",
     category: "delivery",
     group: "Delivery & Takeout",
@@ -122,6 +146,7 @@ export const photoStyles: PhotoStyle[] = [
   },
   {
     id: "delivery-daylight",
+    backdrop: "natural",
     plate: "style",
     category: "delivery",
     group: "Delivery & Takeout",
@@ -138,6 +163,7 @@ export const photoStyles: PhotoStyle[] = [
   },
   {
     id: "delivery-overhead",
+    backdrop: "white",
     plate: "style",
     category: "delivery",
     group: "Delivery & Takeout",
@@ -154,6 +180,7 @@ export const photoStyles: PhotoStyle[] = [
   },
   {
     id: "delivery-paper",
+    backdrop: "natural",
     plate: "style",
     category: "delivery",
     group: "Delivery & Takeout",
@@ -174,6 +201,7 @@ export const photoStyles: PhotoStyle[] = [
   },
   {
     id: "delivery-sage",
+    backdrop: "colorful",
     plate: "style",
     category: "delivery",
     group: "Delivery & Takeout",
@@ -190,6 +218,7 @@ export const photoStyles: PhotoStyle[] = [
   },
   {
     id: "delivery-graphite",
+    backdrop: "dark",
     plate: "style",
     category: "delivery",
     group: "Delivery & Takeout",
@@ -206,6 +235,7 @@ export const photoStyles: PhotoStyle[] = [
   },
   {
     id: "delivery-peach",
+    backdrop: "colorful",
     category: "delivery",
     group: "Delivery & Takeout",
     name: "Peach-perfect",
@@ -221,6 +251,7 @@ export const photoStyles: PhotoStyle[] = [
   },
   {
     id: "fine-linen",
+    backdrop: "natural",
     plate: "style",
     category: "fine",
     group: "Fine Dining",
@@ -237,6 +268,7 @@ export const photoStyles: PhotoStyle[] = [
   },
   {
     id: "fine-slate",
+    backdrop: "dark",
     plate: "style",
     category: "fine",
     group: "Fine Dining",
@@ -253,6 +285,7 @@ export const photoStyles: PhotoStyle[] = [
   },
   {
     id: "fine-counter",
+    backdrop: "natural",
     plate: "style",
     category: "fine",
     group: "Fine Dining",
@@ -269,6 +302,7 @@ export const photoStyles: PhotoStyle[] = [
   },
   {
     id: "fine-candle",
+    backdrop: "dark",
     plate: "style",
     category: "fine",
     group: "Fine Dining",
@@ -285,6 +319,8 @@ export const photoStyles: PhotoStyle[] = [
   },
   {
     id: "fine-presented",
+    backdrop: "natural",
+    staged: true,
     plate: "style",
     category: "fine",
     group: "Fine Dining",
@@ -305,6 +341,7 @@ export const photoStyles: PhotoStyle[] = [
   },
   {
     id: "fine-terrace",
+    backdrop: "natural",
     plate: "style",
     category: "fine",
     group: "Fine Dining",
@@ -321,6 +358,7 @@ export const photoStyles: PhotoStyle[] = [
   },
   {
     id: "fine-obsidian",
+    backdrop: "dark",
     plate: "style",
     category: "fine",
     group: "Fine Dining",
@@ -337,6 +375,8 @@ export const photoStyles: PhotoStyle[] = [
   },
   {
     id: "fine-gallery",
+    backdrop: "white",
+    staged: true,
     plate: "style",
     category: "fine",
     group: "Fine Dining",
@@ -357,6 +397,7 @@ export const photoStyles: PhotoStyle[] = [
   },
   {
     id: "menu-stone",
+    backdrop: "natural",
     plate: "style",
     category: "menu",
     group: "Menu",
@@ -377,6 +418,7 @@ export const photoStyles: PhotoStyle[] = [
   },
   {
     id: "menu-wood",
+    backdrop: "natural",
     plate: "style",
     category: "menu",
     group: "Menu",
@@ -393,6 +435,7 @@ export const photoStyles: PhotoStyle[] = [
   },
   {
     id: "menu-overhead",
+    backdrop: "natural",
     plate: "style",
     category: "menu",
     group: "Menu",
@@ -409,6 +452,7 @@ export const photoStyles: PhotoStyle[] = [
   },
   {
     id: "menu-neutral",
+    backdrop: "natural",
     plate: "style",
     category: "menu",
     group: "Menu",
@@ -425,6 +469,7 @@ export const photoStyles: PhotoStyle[] = [
   },
   {
     id: "menu-terrazzo",
+    backdrop: "natural",
     plate: "style",
     category: "menu",
     group: "Menu",
@@ -441,6 +486,7 @@ export const photoStyles: PhotoStyle[] = [
   },
   {
     id: "menu-courtyard",
+    backdrop: "natural",
     plate: "style",
     category: "menu",
     group: "Menu",
@@ -457,6 +503,8 @@ export const photoStyles: PhotoStyle[] = [
   },
   {
     id: "menu-handheld",
+    backdrop: "natural",
+    staged: true,
     plate: "style",
     category: "menu",
     group: "Menu",
@@ -473,6 +521,7 @@ export const photoStyles: PhotoStyle[] = [
   },
   {
     id: "menu-diner",
+    backdrop: "natural",
     plate: "style",
     category: "menu",
     group: "Menu",
@@ -489,6 +538,7 @@ export const photoStyles: PhotoStyle[] = [
   },
   {
     id: "bar-speakeasy",
+    backdrop: "dark",
     category: "bar",
     group: "Bar & Lounge",
     name: "Amber hour",
@@ -504,6 +554,7 @@ export const photoStyles: PhotoStyle[] = [
   },
   {
     id: "bar-velvet",
+    backdrop: "dark",
     category: "bar",
     group: "Bar & Lounge",
     name: "Velvet lounge",
@@ -519,6 +570,7 @@ export const photoStyles: PhotoStyle[] = [
   },
   {
     id: "bar-bluehour",
+    backdrop: "colorful",
     category: "bar",
     group: "Bar & Lounge",
     name: "Blue-hour bar",
@@ -534,6 +586,7 @@ export const photoStyles: PhotoStyle[] = [
   },
   {
     id: "bar-candle",
+    backdrop: "dark",
     category: "bar",
     group: "Bar & Lounge",
     name: "Wine-bar warmth",
@@ -553,6 +606,7 @@ export const photoStyles: PhotoStyle[] = [
   },
   {
     id: "bar-brass",
+    backdrop: "dark",
     category: "bar",
     group: "Bar & Lounge",
     name: "The perfect pint",
@@ -568,6 +622,7 @@ export const photoStyles: PhotoStyle[] = [
   },
   {
     id: "bar-rooftop",
+    backdrop: "colorful",
     category: "bar",
     group: "Bar & Lounge",
     name: "Rooftop at dusk",
@@ -583,6 +638,8 @@ export const photoStyles: PhotoStyle[] = [
   },
   {
     id: "bar-mirror",
+    backdrop: "dark",
+    staged: true,
     category: "bar",
     group: "Bar & Lounge",
     name: "Midnight reflection",
@@ -598,6 +655,7 @@ export const photoStyles: PhotoStyle[] = [
   },
   {
     id: "bar-cellar",
+    backdrop: "dark",
     category: "bar",
     group: "Bar & Lounge",
     name: "Cellar reserve",
@@ -613,6 +671,7 @@ export const photoStyles: PhotoStyle[] = [
   },
   {
     id: "beverage-cafe",
+    backdrop: "natural",
     category: "beverage",
     group: "Beverage",
     name: "Morning café",
@@ -628,6 +687,7 @@ export const photoStyles: PhotoStyle[] = [
   },
   {
     id: "beverage-citrus",
+    backdrop: "natural",
     category: "beverage",
     group: "Beverage",
     name: "Sunshine sip",
@@ -643,6 +703,7 @@ export const photoStyles: PhotoStyle[] = [
   },
   {
     id: "beverage-matcha",
+    backdrop: "colorful",
     category: "beverage",
     group: "Beverage",
     name: "Modern matcha bar",
@@ -658,6 +719,7 @@ export const photoStyles: PhotoStyle[] = [
   },
   {
     id: "beverage-backlit",
+    backdrop: "natural",
     category: "beverage",
     group: "Beverage",
     name: "Light through glass",
@@ -673,6 +735,7 @@ export const photoStyles: PhotoStyle[] = [
   },
   {
     id: "beverage-poolside",
+    backdrop: "colorful",
     category: "beverage",
     group: "Beverage",
     name: "Poolside refresh",
@@ -688,6 +751,8 @@ export const photoStyles: PhotoStyle[] = [
   },
   {
     id: "beverage-ritual",
+    backdrop: "natural",
+    staged: true,
     category: "beverage",
     group: "Beverage",
     name: "The morning ritual",
@@ -707,6 +772,8 @@ export const photoStyles: PhotoStyle[] = [
   },
   {
     id: "beverage-orchid",
+    backdrop: "colorful",
+    staged: true,
     category: "beverage",
     group: "Beverage",
     name: "Orchid pop",
@@ -722,6 +789,7 @@ export const photoStyles: PhotoStyle[] = [
   },
   {
     id: "beverage-botanical",
+    backdrop: "natural",
     category: "beverage",
     group: "Beverage",
     name: "Botanical light",
@@ -737,6 +805,7 @@ export const photoStyles: PhotoStyle[] = [
   },
   {
     id: "studio-ivory",
+    backdrop: "white",
     plate: "style",
     category: "studio",
     group: "Studio",
@@ -753,6 +822,7 @@ export const photoStyles: PhotoStyle[] = [
   },
   {
     id: "studio-color",
+    backdrop: "colorful",
     plate: "style",
     category: "studio",
     group: "Studio",
@@ -773,6 +843,7 @@ export const photoStyles: PhotoStyle[] = [
   },
   {
     id: "studio-dark",
+    backdrop: "dark",
     plate: "style",
     category: "studio",
     group: "Studio",
@@ -793,6 +864,7 @@ export const photoStyles: PhotoStyle[] = [
   },
   {
     id: "studio-pastel",
+    backdrop: "colorful",
     plate: "style",
     category: "studio",
     group: "Studio",
@@ -809,6 +881,8 @@ export const photoStyles: PhotoStyle[] = [
   },
   {
     id: "studio-levitate",
+    backdrop: "colorful",
+    staged: true,
     plate: "style",
     category: "studio",
     group: "Studio",
@@ -829,6 +903,8 @@ export const photoStyles: PhotoStyle[] = [
   },
   {
     id: "studio-chrome",
+    backdrop: "white",
+    staged: true,
     plate: "style",
     category: "studio",
     group: "Studio",
@@ -849,6 +925,8 @@ export const photoStyles: PhotoStyle[] = [
   },
   {
     id: "studio-sunbeam",
+    backdrop: "colorful",
+    staged: true,
     plate: "style",
     category: "studio",
     group: "Studio",
@@ -869,6 +947,8 @@ export const photoStyles: PhotoStyle[] = [
   },
   {
     id: "studio-arch",
+    backdrop: "colorful",
+    staged: true,
     plate: "style",
     category: "studio",
     group: "Studio",
@@ -885,6 +965,7 @@ export const photoStyles: PhotoStyle[] = [
   },
   {
     id: "bakery-morning",
+    backdrop: "natural",
     plate: "style",
     category: "bakery",
     group: "Bakery",
@@ -901,6 +982,7 @@ export const photoStyles: PhotoStyle[] = [
   },
   {
     id: "bakery-patisserie",
+    backdrop: "natural",
     plate: "style",
     category: "bakery",
     group: "Bakery",
@@ -917,6 +999,7 @@ export const photoStyles: PhotoStyle[] = [
   },
   {
     id: "bakery-rustic",
+    backdrop: "natural",
     plate: "style",
     category: "bakery",
     group: "Bakery",
@@ -937,6 +1020,7 @@ export const photoStyles: PhotoStyle[] = [
   },
   {
     id: "bakery-jewel",
+    backdrop: "colorful",
     plate: "style",
     category: "bakery",
     group: "Bakery",
@@ -953,6 +1037,7 @@ export const photoStyles: PhotoStyle[] = [
   },
   {
     id: "bakery-paris",
+    backdrop: "natural",
     plate: "style",
     category: "bakery",
     group: "Bakery",
@@ -973,6 +1058,8 @@ export const photoStyles: PhotoStyle[] = [
   },
   {
     id: "bakery-hands",
+    backdrop: "natural",
+    staged: true,
     plate: "style",
     category: "bakery",
     group: "Bakery",
@@ -993,6 +1080,7 @@ export const photoStyles: PhotoStyle[] = [
   },
   {
     id: "bakery-blue",
+    backdrop: "colorful",
     plate: "style",
     category: "bakery",
     group: "Bakery",
@@ -1013,6 +1101,7 @@ export const photoStyles: PhotoStyle[] = [
   },
   {
     id: "bakery-copper",
+    backdrop: "natural",
     plate: "style",
     category: "bakery",
     group: "Bakery",

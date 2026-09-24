@@ -16,14 +16,20 @@ import {
   type Row,
 } from "./core";
 import {
-  menuContentIssues,
   menuDocumentSchema,
   upgradeMenuDocument,
   visibleMenuSections,
   type MenuDocument,
 } from "../menu-document";
 import { publicBrandStyle } from "../restaurant-look";
+import {
+  applyDishUpdate,
+  blockingChecks,
+  dishFacts,
+  menuPublishChecks,
+} from "../menu-checks";
 import { provider } from "./generation";
+import { firstPublicationAddress } from "./menu-address";
 
 function documentRow(row: Row) {
   return {
@@ -115,13 +121,27 @@ async function validateReferences(
     }
   }
 }
-async function publication(r: Row, documentId: string, draft: MenuDocument) {
-  const issues = menuContentIssues(draft);
-  assert(
-    !issues.length,
-    400,
-    issues[0]?.message || "Check the menu before publishing.",
+async function sampleDishIds(rid: string) {
+  return (
+    await all("SELECT id FROM dishes WHERE restaurant_id=? AND sample=1", rid)
+  ).map((row) => row.id as string);
+}
+/** The same automatic checks the publish dialog shows; the server has the final say. */
+export async function assertMenuReady(r: Row, draft: MenuDocument) {
+  const blocking = blockingChecks(
+    menuPublishChecks(draft, {
+      restaurantName: r.name,
+      sampleDishIds: await sampleDishIds(r.id),
+    }),
   );
+  assert(
+    !blocking.length,
+    400,
+    blocking[0]?.message || "Check the menu before publishing.",
+  );
+}
+async function publication(r: Row, documentId: string, draft: MenuDocument) {
+  await assertMenuReady(r, draft);
   const publicDraft = {
     ...draft,
     name: draft.title,
@@ -528,6 +548,7 @@ export async function menuDocumentsRoute(req: Request, p: string[], r: Row) {
       revision: z.number().int().min(1),
       confirmed: z.boolean().optional(),
       historyId: z.string().uuid().optional(),
+      address: z.string().trim().toLowerCase().max(60).optional(),
     })
     .parse(await body(req));
   assert(
@@ -536,13 +557,11 @@ export async function menuDocumentsRoute(req: Request, p: string[], r: Row) {
     "This menu changed in another window. Reload it before continuing.",
   );
   if (p[2] === "publish") {
-    assert(
-      b.confirmed,
-      400,
-      "Review the dishes, prices, photos, and availability first.",
-    );
-    const draft = menuDocumentSchema.parse(JSON.parse(row.draft)),
-      content = await publication(r, row.id, draft),
+    const draft = menuDocumentSchema.parse(JSON.parse(row.draft));
+    // Check before choosing an address, so a blocked publish changes nothing.
+    await assertMenuReady(r, draft);
+    await firstPublicationAddress(r, b.address || undefined);
+    const content = await publication(r, row.id, draft),
       serialized = JSON.stringify(content),
       t = now(),
       hid = id();
@@ -677,4 +696,84 @@ export async function menuDocumentsRoute(req: Request, p: string[], r: Row) {
     return response({ ok: true });
   }
   assert(false, 404, "Menu action not found.");
+}
+
+/**
+ * Carry a My Dishes edit (name, description, price, availability) into every
+ * menu that still shows the dish's previous details, including the live menu.
+ * Menus where the owner tailored that detail keep their own value.
+ */
+export async function syncDishToMenus(rid: string, before: Row, after: Row) {
+  const previous = dishFacts(before),
+    current = dishFacts(after);
+  if (
+    previous.name === current.name &&
+    previous.description === current.description &&
+    previous.price === current.price &&
+    previous.available === current.available
+  )
+    return [];
+  const updated: { id: string; name: string; live: boolean }[] = [];
+  const rows = await all(
+    "SELECT * FROM menu_documents WHERE restaurant_id=? AND archived_at IS NULL",
+    rid,
+  );
+  for (const row of rows) {
+    try {
+      const draft = menuDocumentSchema.parse(JSON.parse(row.draft));
+      const nextDraft = applyDishUpdate(draft, previous, current);
+      const published = row.published ? JSON.parse(row.published) : null;
+      const nextPublished = published
+        ? applyDishUpdate(published as MenuDocument, previous, current)
+        : null;
+      if (!nextDraft.changed && !nextPublished?.changed) continue;
+      const statements = [];
+      if (nextDraft.changed)
+        statements.push(
+          db()
+            .prepare(
+              // When the live copy matched this draft, it still does.
+              "UPDATE menu_documents SET draft=?,revision=revision+1,published_revision=CASE WHEN ? AND published_revision=revision THEN revision+1 ELSE published_revision END,updated_at=? WHERE id=? AND restaurant_id=? AND revision=? AND archived_at IS NULL",
+            )
+            .bind(
+              JSON.stringify(menuDocumentSchema.parse(nextDraft.menu)),
+              nextPublished?.changed ? 1 : 0,
+              now(),
+              row.id,
+              rid,
+              row.revision,
+            ),
+        );
+      if (nextPublished?.changed) {
+        const serialized = JSON.stringify(nextPublished.menu);
+        statements.push(
+          db()
+            .prepare(
+              "UPDATE menu_documents SET published=? WHERE id=? AND restaurant_id=? AND published=?",
+            )
+            .bind(serialized, row.id, rid, row.published),
+          // The main menu's live copy mirrors its document.
+          db()
+            .prepare(
+              "UPDATE restaurants SET published=? WHERE id=? AND published=?",
+            )
+            .bind(serialized, rid, row.published),
+        );
+      }
+      await db().batch(statements);
+      updated.push({
+        id: row.id,
+        name: draft.name,
+        live: !!nextPublished?.changed,
+      });
+    } catch (error) {
+      // A menu that can't be updated keeps its details; the dish edit is saved.
+      console.error("Menu sync failed", row.id, error);
+    }
+  }
+  if (updated.length)
+    await event(rid, "dish_synced_to_menus", after.id, {
+      menus: updated.length,
+    });
+  return updated;
 }

@@ -1,0 +1,420 @@
+/*
+ * One control family for the whole interface: buttons, segmented choices and
+ * dialogs. Every older class name (cx-btn, md-button, st-pill, the shadcn
+ * Button) maps onto these rules, so a button looks and behaves the same in
+ * Photo Studio, My Dishes, Menus, Post Maker, settings and public pages.
+ * Restaurant artwork (menus, posts) keeps its own styles.
+ *
+ * Loaded last. Selectors carry an element type so they outrank the generic
+ * `.cx-app button` / `.md-studio button` resets without !important.
+ */
+:root {
+  --control-height: 44px;
+  --control-height-large: 52px;
+  --control-padding-x: 20px;
+  --control-radius: var(--radius-pill);
+  --control-font-size: var(--text-callout);
+  --control-font-weight: 600;
+  --segment-height: 36px;
+}
+
+/* ---------- Buttons ---------- */
+:is(button, a, label, summary, span):is(
+  .cx-btn,
+  .md-button,
+  .st-pill,
+  .st-create,
+  [data-ui-button]
+) {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: 8px;
+  min-height: var(--control-height);
+  height: auto;
+  padding: 0 var(--control-padding-x);
+  border: 1px solid transparent;
+  border-radius: var(--control-radius);
+  background: var(--workspace-action);
+  color: var(--workspace-surface);
+  font-family: var(--font-ui);
+  font-size: var(--control-font-size);
+  font-weight: var(--control-font-weight);
+  letter-spacing: -0.01em;
+  line-height: 1.2;
+  text-align: center;
+  text-decoration: none;
+  white-space: nowrap;
+  cursor: pointer;
+  box-shadow: none;
+  transition:
+    background-color var(--duration-fast) var(--ease),
+    border-color var(--duration-fast) var(--ease),
+    color var(--duration-fast) var(--ease),
+    transform var(--duration-fast) var(--ease);
+}
+:is(button, a, label, summary, span):is(
+    .cx-btn,
+    .md-button,
+    .st-pill,
+    .st-create,
+    [data-ui-button]
+  ):not(:disabled):hover {
+  background: var(--workspace-action-hover);
+}
+:is(button, a, label, summary, span):is(
+    .cx-btn,
+    .md-button,
+    .st-pill,
+    .st-create,
+    [data-ui-button]
+  ):not(:disabled):active {
+  background: var(--workspace-action-pressed);
+  transform: scale(0.98);
+}
+
+/* Secondary: white surface with a hairline border. */
+:is(button, a, label, summary, span):is(
+  .cx-btn.cx-secondary,
+  .md-button.md-secondary,
+  .st-pill:not(.st-pill-primary, .st-pill-quiet),
+  [data-ui-button]:is([data-variant="outline"], [data-variant="secondary"])
+) {
+  background: var(--workspace-surface);
+  border-color: var(--workspace-line);
+  color: var(--workspace-ink);
+}
+:is(button, a, label, summary, span):is(
+    .cx-btn.cx-secondary,
+    .md-button.md-secondary,
+    .st-pill:not(.st-pill-primary, .st-pill-quiet),
+    [data-ui-button]:is([data-variant="outline"], [data-variant="secondary"])
+  ):not(:disabled):hover {
+  background: var(--gray-100);
+}
+:is(button, a, label, summary, span):is(
+    .cx-btn.cx-secondary,
+    .md-button.md-secondary,
+    .st-pill:not(.st-pill-primary, .st-pill-quiet),
+    [data-ui-button]:is([data-variant="outline"], [data-variant="secondary"])
+  ):not(:disabled):active {
+  background: var(--workspace-selected);
+}
+
+/* Quiet: no fill until hovered. */
+:is(button, a, label, summary, span):is(
+  .st-pill.st-pill-quiet,
+  [data-ui-button][data-variant="ghost"]
+) {
+  background: transparent;
+  border-color: transparent;
+  color: var(--workspace-ink);
+}
+:is(button, a, label, summary, span):is(
+    .st-pill.st-pill-quiet,
+    [data-ui-button][data-variant="ghost"]
+  ):not(:disabled):hover,
+:is(button, a, label, summary, span):is(
+    .st-pill.st-pill-quiet,
+    [data-ui-button][data-variant="ghost"]
+  ):not(:disabled):active {
+  background: var(--fill);
+}
+
+/* Link: text only. */
+:is(button, a):is([data-ui-button][data-variant="link"]) {
+  min-height: 0;
+  padding: 0;
+  background: none;
+  border: 0;
+  color: var(--workspace-ink);
+  text-decoration: underline;
+  text-underline-offset: 3px;
+}
+:is(button, a):is([data-ui-button][data-variant="link"]):not(:disabled):is(
+    :hover,
+    :active
+  ) {
+  background: none;
+  transform: none;
+}
+
+/* Danger: destructive actions. */
+:is(button, a):is(
+  .cx-btn.cx-danger,
+  .md-button.md-danger,
+  [data-ui-button][data-variant="destructive"]
+) {
+  background: var(--workspace-error);
+  border-color: var(--workspace-error);
+  color: var(--workspace-surface);
+}
+:is(button, a):is(
+    .cx-btn.cx-danger,
+    .md-button.md-danger,
+    [data-ui-button][data-variant="destructive"]
+  ):not(:disabled):hover {
+  background: var(--workspace-error-hover);
+}
+:is(button, a):is(
+    .cx-btn.cx-danger,
+    .md-button.md-danger,
+    [data-ui-button][data-variant="destructive"]
+  ):not(:disabled):active {
+  background: var(--workspace-error-pressed);
+}
+
+/* Sizes: one large size for the main action of a screen or marketing CTA. */
+:is(button, a, label, span):is(
+  .st-create,
+  .st-pill-wide,
+  [data-ui-button]:is([data-size="lg"], [data-size="marketing"])
+) {
+  min-height: var(--control-height-large);
+  padding: 0 28px;
+  font-size: var(--text-body);
+}
+:is(button, a, label, span):is(
+  .st-create,
+  .st-pill-wide,
+  .md-button.md-full,
+  .cx-btn.cx-full
+) {
+  width: 100%;
+}
+:is(button, a):is([data-ui-button][data-size^="icon"]) {
+  width: var(--control-height);
+  min-width: var(--control-height);
+  padding: 0;
+}
+
+/* One disabled look: a flat gray fill with muted text, never faded color
+   that could pass for an active button. */
+:is(button, a, label, span):is(
+    .cx-btn,
+    .md-button,
+    .st-pill,
+    .st-create,
+    [data-ui-button]
+  ):is(:disabled, [aria-disabled="true"]) {
+  background: var(--workspace-disabled);
+  border-color: transparent;
+  color: var(--gray-500);
+  opacity: 1;
+  cursor: not-allowed;
+  transform: none;
+}
+:is(button, a, label, span):is(
+    .st-pill.st-pill-quiet,
+    [data-ui-button]:is([data-variant="ghost"], [data-variant="link"])
+  ):is(:disabled, [aria-disabled="true"]) {
+  background: transparent;
+}
+
+:is(button, a, label, summary, span):is(
+    .cx-btn,
+    .md-button,
+    .st-pill,
+    .st-create,
+    [data-ui-button]
+  ):focus-visible {
+  outline: 2px solid var(--workspace-focus);
+  outline-offset: 2px;
+}
+:is(.cx-btn, .md-button, .st-pill, .st-create, [data-ui-button]) svg {
+  flex-shrink: 0;
+}
+
+/* ---------- Segmented choices ---------- */
+/* A light track with a raised white segment for the current choice.
+   The Menus phone navigation decides its own display (phones only). */
+:is(
+  .cx-segment,
+  .md-segment,
+  .mm-segments,
+  .workspace-segments,
+  .st-segmented,
+  .cx-look-preview-tabs,
+  .rs-tab-list
+) {
+  display: flex;
+}
+:is(
+  .cx-segment,
+  .md-segment,
+  .mm-segments,
+  .workspace-segments,
+  .st-segmented,
+  .cx-look-preview-tabs,
+  .rs-tab-list,
+  .md-mobile-nav
+) {
+  align-items: stretch;
+  gap: 2px;
+  min-width: 0;
+  padding: 3px;
+  border: 0;
+  border-radius: var(--radius-pill);
+  background: var(--fill);
+}
+:is(
+    .cx-segment,
+    .md-segment,
+    .mm-segments,
+    .workspace-segments,
+    .st-segmented,
+    .cx-look-preview-tabs,
+    .rs-tab-list,
+    .md-mobile-nav
+  )
+  > :is(button, a, label) {
+  flex: 1 1 0;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: 6px;
+  min-width: 0;
+  min-height: var(--segment-height);
+  height: auto;
+  margin: 0;
+  padding: 0 14px;
+  border: 0;
+  border-radius: var(--radius-pill);
+  background: transparent;
+  color: var(--workspace-ink);
+  font-family: var(--font-ui);
+  font-size: var(--text-footnote);
+  font-weight: 500;
+  line-height: 1.2;
+  white-space: nowrap;
+  box-shadow: none;
+  cursor: pointer;
+  transition:
+    background-color var(--duration-fast) var(--ease),
+    color var(--duration-fast) var(--ease);
+}
+:is(
+    .cx-segment,
+    .md-segment,
+    .mm-segments,
+    .workspace-segments,
+    .st-segmented,
+    .cx-look-preview-tabs,
+    .rs-tab-list,
+    .md-mobile-nav
+  )
+  > :is(button, a, label):not(:disabled):hover {
+  background: rgb(255 255 255 / 55%);
+}
+:is(
+    .cx-segment,
+    .md-segment,
+    .mm-segments,
+    .workspace-segments,
+    .st-segmented,
+    .cx-look-preview-tabs,
+    .rs-tab-list,
+    .md-mobile-nav
+  )
+  > :is(button, a, label):is(
+    [aria-pressed="true"],
+    [aria-checked="true"],
+    [aria-selected="true"],
+    [aria-current="page"],
+    [data-state="active"],
+    .is-selected
+  ) {
+  background: var(--workspace-surface);
+  color: var(--workspace-ink);
+  font-weight: 600;
+  box-shadow:
+    0 1px 2px rgb(0 0 0 / 8%),
+    0 1px 6px rgb(0 0 0 / 4%);
+}
+:is(
+    .cx-segment,
+    .md-segment,
+    .mm-segments,
+    .workspace-segments,
+    .st-segmented,
+    .cx-look-preview-tabs,
+    .rs-tab-list,
+    .md-mobile-nav
+  )
+  > :is(button, a, label):focus-visible {
+  outline: 2px solid var(--workspace-focus);
+  outline-offset: 1px;
+}
+:is(
+    .cx-segment,
+    .md-segment,
+    .mm-segments,
+    .workspace-segments,
+    .st-segmented,
+    .cx-look-preview-tabs,
+    .rs-tab-list,
+    .md-mobile-nav
+  )
+  > :is(button, a, label):disabled {
+  color: var(--gray-400);
+  cursor: not-allowed;
+}
+:is(
+    .cx-segment,
+    .md-segment,
+    .mm-segments,
+    .workspace-segments,
+    .st-segmented,
+    .cx-look-preview-tabs,
+    .rs-tab-list,
+    .md-mobile-nav
+  )
+  > :is(button, a, label)
+  svg {
+  flex-shrink: 0;
+}
+@media (pointer: coarse) {
+  :root {
+    --segment-height: 44px;
+  }
+}
+@media (max-width: 1250px) {
+  /* Keep toolbars on one line on smaller laptops and tablets. */
+  :is(.md-segment, .st-segmented) > :is(button, a, label) {
+    padding: 0 10px;
+  }
+}
+
+/* ---------- Underline tabs ---------- */
+/* Views within one screen. Choosing a mode uses the segmented control. */
+:is(.workspace-tab-list, .mm-tool-tabs) > [data-slot="tabs-trigger"] {
+  min-height: var(--control-height);
+  height: auto;
+  border: 0;
+  border-radius: 0;
+  background: transparent;
+  color: var(--workspace-muted);
+  font-family: var(--font-ui);
+  font-size: var(--text-subhead);
+  font-weight: 500;
+  line-height: 1.4;
+  white-space: normal;
+  box-shadow: none;
+}
+:is(.workspace-tab-list, .mm-tool-tabs)
+  > [data-slot="tabs-trigger"]:not(:disabled):hover {
+  background: transparent;
+  color: var(--workspace-ink);
+}
+:is(.workspace-tab-list, .mm-tool-tabs)
+  > [data-slot="tabs-trigger"][data-state="active"] {
+  background: transparent;
+  color: var(--workspace-ink);
+  font-weight: 600;
+  box-shadow: none;
+}
+:is(.workspace-tab-list, .mm-tool-tabs) > [data-slot="tabs-trigger"]::after {
+  bottom: 0;
+  height: 2px;
+  background: var(--workspace-ink);
+}

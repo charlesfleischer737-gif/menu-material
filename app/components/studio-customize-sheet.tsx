@@ -149,7 +149,7 @@ export function StudioCustomizeSheet({
         <header className="st-sheet-header">
           <div>
             <span className="st-sheet-kicker">{lookName}</span>
-            <DialogTitle>Make it yours</DialogTitle>
+            <DialogTitle>Customize this look</DialogTitle>
             <DialogDescription>
               A few thoughtful choices. No prompt needed.
             </DialogDescription>

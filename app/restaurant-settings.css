@@ -39,40 +39,10 @@
   width: auto;
   height: auto;
   margin: 0 24px;
-  padding: 3px;
-  gap: 2px;
-  border: 0;
-  border-radius: var(--radius-pill);
-  background: var(--fill);
 }
 .rs-tab-list [data-slot="tabs-trigger"] {
-  flex: 1 1 0;
-  min-width: 0;
-  min-height: 36px;
-  padding: 7px 12px;
-  border: 0;
-  border-radius: var(--radius-pill);
-  background: transparent;
-  font-size: 14px;
-  font-weight: 500;
-  color: var(--workspace-ink);
   white-space: normal;
   line-height: 1.25;
-  box-shadow: none;
-  transition:
-    background-color var(--duration-fast) var(--ease),
-    box-shadow var(--duration-fast) var(--ease);
-}
-.rs-tab-list [data-slot="tabs-trigger"]:hover:not([data-state="active"]) {
-  background: rgb(255 255 255 / 55%);
-}
-.rs-tab-list [data-slot="tabs-trigger"][data-state="active"] {
-  background: var(--workspace-surface);
-  color: var(--workspace-ink);
-  font-weight: 600;
-  box-shadow:
-    0 1px 3px rgb(0 0 0 / 12%),
-    0 0 0 0.5px rgb(0 0 0 / 4%);
 }
 .rs-tab-list [data-slot="tabs-trigger"]::after {
   display: none;
@@ -110,7 +80,7 @@
   display: grid;
   align-content: start;
   gap: 8px;
-  font-size: 14px;
+  font-size: var(--text-subhead);
   color: var(--workspace-ink);
 }
 .rs-dialog
@@ -125,7 +95,7 @@
   color: var(--workspace-ink);
   padding-block: 10px;
   padding-inline-start: 14px;
-  font-size: 16px;
+  font-size: var(--text-base);
   width: 100%;
 }
 .rs-dialog
@@ -139,7 +109,7 @@
     color-mix(in srgb, var(--workspace-focus) 22%, transparent);
 }
 .rs-dialog .field small {
-  font-size: 13px;
+  font-size: var(--text-footnote);
   font-weight: 400;
   color: var(--workspace-muted);
 }
@@ -166,7 +136,7 @@
 .rs-dialog .hours-row > input {
   min-width: 0;
   max-width: 100%;
-  font-size: 16px;
+  font-size: var(--text-base);
   min-height: 44px;
   padding: 8px;
   border: 1px solid var(--workspace-control);
@@ -189,7 +159,7 @@
 .rs-dialog .dish-options > .fine {
   margin: 8px 0 16px;
   text-align: left;
-  font-size: 14px;
+  font-size: var(--text-subhead);
   line-height: 1.5;
   color: var(--workspace-muted);
 }
@@ -209,7 +179,7 @@
   display: flex;
   align-items: center;
   gap: 8px;
-  font-size: 14px;
+  font-size: var(--text-subhead);
   color: var(--workspace-muted);
 }
 .rs-save-row > button {
@@ -217,7 +187,7 @@
 }
 .rs-error {
   margin-bottom: 12px;
-  font-size: 14px;
+  font-size: var(--text-subhead);
   color: var(--workspace-error);
 }
 .rs-dialog :focus-visible {
@@ -237,8 +207,7 @@
     padding: max(16px, env(safe-area-inset-top)) 16px 12px;
   }
   .rs-tab-list[data-slot="tabs-list"] {
-    padding-inline: 16px;
-    gap: 12px;
+    margin-inline: 16px;
   }
   .rs-body {
     padding: 16px;
@@ -270,4 +239,22 @@
   .rs-dialog .hours-row > label {
     grid-column: 1/-1;
   }
+}
+.rs-panel[data-settings-group="details"] > .rs-address {
+  grid-column: 1 / -1;
+}
+.rs-address-row {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+  align-items: center;
+}
+.rs-address-row > input {
+  flex: 1 1 160px;
+  min-width: 0;
+}
+.rs-address-prefix {
+  color: var(--workspace-muted);
+  font-size: var(--text-footnote);
+  overflow-wrap: anywhere;
 }

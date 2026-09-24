@@ -11,6 +11,10 @@ import {
   Download,
 } from "lucide-react";
 import { api, downloadBlob, type Row } from "@/lib/client";
+import {
+  isPlaceholderRestaurantName,
+  restaurantNameMessage,
+} from "@/lib/restaurant-identity";
 import { workspacePreferenceKey } from "@/lib/workspace-navigation";
 import { brandPostFields, brandTypefaces } from "@/lib/restaurant-look";
 import {
@@ -83,12 +87,14 @@ const initial = (restaurant: Row, version = 1) => ({
 });
 export default function PostMaker({
   state,
+  refresh,
   active = true,
   seed,
   onSeedUsed,
   onPhoto,
 }: {
   state: Row;
+  refresh?: () => Promise<void>;
   active?: boolean;
   seed: Row | null;
   onSeedUsed: () => void;
@@ -113,10 +119,20 @@ export default function PostMaker({
     [exporting, setExporting] = useState(false),
     [issues, setIssues] = useState<string[]>([]),
     [proofIssues, setProofIssues] = useState<string[]>([]),
+    [restaurantName, setRestaurantName] = useState(""),
     [mobileControls, setMobileControls] = useState(false);
   const handled = useRef("");
   const controlsTrigger = useRef<HTMLButtonElement>(null);
   const items: Row[] = b.items || [];
+  // Automatic checks before sharing; they replace an "I checked" box.
+  const namePlaceholder = isPlaceholderRestaurantName(state.restaurant.name);
+  const postChecks = [
+    ...(namePlaceholder ? [restaurantNameMessage] : []),
+    ...(b.showPrice && (b.price === "" || Number(b.price) <= 0)
+      ? ["Add the price, or turn off Show price."]
+      : []),
+  ];
+  const postReady = !postChecks.length;
   const approved: Row[] = state.dishes
     .filter((d: Row) => !d.archived_at)
     .map((d: Row) => ({ ...d, photo: preferredPhoto(d, state.assets) }))
@@ -284,7 +300,8 @@ export default function PostMaker({
       throw Error("Review the changed dish details before exporting.");
     if (b.captionNeedsReview)
       throw Error("Review your caption after the details changed.");
-    const warnings: string[] = [];
+    // Group identical notes so each reads once: "Post and Story: …".
+    const warnings = new Map<string, string[]>();
     for (const format of b.channels)
       for (let n = 0; n < postSlideCount(b, format); n++) {
         const result = await renderPost(
@@ -294,13 +311,20 @@ export default function PostMaker({
           format,
           n,
         );
-        warnings.push(
-          ...result.warnings.map(
-            (w) => `${format}${format === "carousel" ? ` ${n + 1}` : ""}: ${w}`,
-          ),
-        );
+        const label =
+          format === "feed"
+            ? "Post"
+            : format === "story"
+              ? "Story"
+              : `Carousel slide ${n + 1}`;
+        for (const w of result.warnings)
+          warnings.set(w, [...(warnings.get(w) || []), label]);
       }
-    setProofIssues([...new Set(warnings)]);
+    setProofIssues(
+      [...warnings].map(
+        ([w, labels]) => `${[...new Set(labels)].join(" and ")}: ${w}`,
+      ),
+    );
     change({ reviewed: false });
     await save();
     setExporting(true);
@@ -716,7 +740,7 @@ export default function PostMaker({
                 )}
                 {panel === "design" && (
                   <>
-                    <h2>Your restaurant, in every detail.</h2>
+                    <h2>Design</h2>
                     <p className="mm-muted">
                       Your restaurant colors carry through each design. The
                       photo and layout adapt to each format.
@@ -930,7 +954,7 @@ export default function PostMaker({
                 )}
                 {panel === "caption" && (
                   <>
-                    <h2>In your own voice.</h2>
+                    <h2>Caption</h2>
                     <Field label="Writing voice">
                       <input
                         maxLength={150}
@@ -1153,23 +1177,59 @@ export default function PostMaker({
               onChange={(e) => update({ caption: e.target.value })}
             />
           </Field>
-          <label className="cx-check">
-            <input
-              type="checkbox"
-              checked={b.reviewed}
-              onChange={(e) => change({ reviewed: e.target.checked })}
-            />
-            I’ve checked every image, price, and date.
-          </label>
+          <div
+            className={`mm-post-checks ${postChecks.length ? "has-blocking" : "is-clear"}`}
+            role="status"
+          >
+            {postChecks.length ? (
+              <>
+                <strong>Fix before sharing</strong>
+                {postChecks.map((check) => (
+                  <p key={check}>{check}</p>
+                ))}
+                {namePlaceholder && (
+                  <form
+                    className="mm-inline"
+                    onSubmit={(e) => {
+                      e.preventDefault();
+                      void act("Saving your restaurant name", async () => {
+                        if (isPlaceholderRestaurantName(restaurantName))
+                          throw Error("Enter your restaurant’s real name.");
+                        await api("restaurant/name", {
+                          name: restaurantName.trim(),
+                        });
+                        await refresh?.();
+                      });
+                    }}
+                  >
+                    <input
+                      aria-label="Restaurant name"
+                      value={restaurantName}
+                      maxLength={100}
+                      placeholder="Corner House Kitchen"
+                      onChange={(e) => setRestaurantName(e.target.value)}
+                    />
+                    <button className="cx-btn cx-secondary" disabled={!!busy}>
+                      Save name
+                    </button>
+                  </form>
+                )}
+              </>
+            ) : (
+              <strong>
+                <Check size={16} aria-hidden="true" /> Automatic checks passed
+              </strong>
+            )}
+          </div>
           <PostSharing
-            draft={b}
+            draft={{ ...b, reviewed: postReady }}
             restaurant={state.restaurant}
             busy={!!busy}
             notice={action.setNotice}
           />
           <button
             className="cx-link"
-            disabled={!b.reviewed || !!busy}
+            disabled={!postReady || !!busy}
             onClick={() =>
               act("Preparing downloads", async () => {
                 await save();

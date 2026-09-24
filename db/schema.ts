@@ -54,6 +54,14 @@ export const restaurants = sqliteTable("restaurants", {
   publishedAt: integer("published_at"),
   createdAt: integer("created_at").notNull(),
 });
+// Earlier menu addresses keep working (printed QR codes) after a rename.
+export const slugRedirects = sqliteTable("slug_redirects", {
+  slug: text().primaryKey(),
+  restaurantId: text("restaurant_id")
+    .notNull()
+    .references(() => restaurants.id),
+  createdAt: integer("created_at").notNull(),
+});
 export const billingAccounts = sqliteTable("billing_accounts", {
   restaurantId: text("restaurant_id")
     .primaryKey()
@@ -110,6 +118,8 @@ export const dishes = sqliteTable(
     price: integer().notNull().default(0),
     available: integer().notNull().default(1),
     confirmedAt: integer("confirmed_at"),
+    // Dishes created from the built-in sample photo stay out of guest menus.
+    sample: integer().notNull().default(0),
     createdAt: integer("created_at").notNull(),
   },
   (t) => [index("idx_dishes_restaurant").on(t.restaurantId)],

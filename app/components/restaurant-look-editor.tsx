@@ -155,7 +155,7 @@ export default function RestaurantLookEditor({
       <div className="cx-brand-heading">
         <Palette size={22} />
         <div>
-          <h3>One look. Everything you make.</h3>
+          <h3>Restaurant look</h3>
           <p>Start with a complete look, then make it your own.</p>
         </div>
       </div>
@@ -309,7 +309,7 @@ export default function RestaurantLookEditor({
           {preview === "menu"
             ? `${state.dishes?.length ? "Your dishes" : "Sample dishes"} · Your published menu changes only when you republish.`
             : preview === "post"
-              ? "The same design tools used in Post Maker. No image credits used."
+              ? "The same design tools used in Post Maker. No images used."
               : "New photos use this look. Each image is yours to review before sharing."}
         </p>
       </div>

@@ -14,10 +14,22 @@ import { billingRoute, billingSummary, billingEnabled } from "./billing";
 import { validateImageDimensions } from "./image-validation";
 import { checkMenuSharing } from "./menu-sharing";
 import {
+  changeMenuAddress,
+  menuAddressAvailable,
+  resolveMenuAddress,
+  suggestMenuAddress,
+} from "./menu-address";
+import {
+  isPlaceholderRestaurantName,
+  restaurantNameMessage,
+  slugify,
+} from "../restaurant-identity";
+import {
   menuDocumentsRoute,
   assetInPublishedDocuments,
   pruneDocumentAsset,
   publicDocumentSnapshot,
+  syncDishToMenus,
 } from "./menu-documents";
 import {
   limitedForm,
@@ -56,6 +68,14 @@ import {
   viewer,
 } from "./core";
 import { enqueue, updateJob, generateCaption, tick } from "./generation";
+import {
+  checkAlertsInBackground,
+  clientErrorRoute,
+  readiness,
+  readinessRoute,
+  reportError,
+  workerStatus,
+} from "./monitoring";
 import {
   studioReferenceAvailability,
   studioReferenceRequest,
@@ -98,6 +118,11 @@ const dishSchema = z.object({
   price: z.number().min(0).max(1000000).default(0),
   available: z.boolean().default(true),
   confirmed: z.boolean().default(false),
+  // Dish rows store 0/1; only honored when a dish is created.
+  sample: z
+    .union([z.boolean(), z.number()])
+    .transform((value) => !!value)
+    .default(false),
 });
 const menuSchema = z.object({
   design: z.enum(["bistro", "cafe", "fine", "casual"]).default("bistro"),
@@ -135,12 +160,6 @@ const menuSchema = z.object({
     )
     .max(30),
 });
-const slugify = (s: string) =>
-  s
-    .toLowerCase()
-    .replace(/[^a-z0-9]+/g, "-")
-    .replace(/^-|-$/g, "")
-    .slice(0, 40) || "restaurant";
 async function signup(req: Request, b: Row) {
   const email = emailSchema.parse(b.email),
     password = passwordSchema.parse(b.password),
@@ -554,7 +573,15 @@ export async function handle(req: Request) {
     if (p[0] === "billing") return await billingRoute(req, p);
     const staffResponse = await staffAccess(req, p, upload);
     if (staffResponse) return staffResponse;
+    if (
+      p[0] === "health" &&
+      p[1] === "ready" &&
+      ["GET", "HEAD"].includes(method)
+    )
+      return await readinessRoute(req);
     if (p[0] === "health") return response({ ok: true });
+    if (p[0] === "client-errors" && method === "POST")
+      return await clientErrorRoute(req);
     if (p[0] === "access-requests" && method === "POST") {
       await publicLimit(req, "access-request", 5, 3600);
       const b = z
@@ -577,11 +604,9 @@ export async function handle(req: Request) {
       return response({ ok: true }, 202);
     }
     if (p[0] === "public" && p[1]) {
-      const r = await one(
-        "SELECT * FROM restaurants WHERE slug=? AND published IS NOT NULL",
-        p[1],
-      );
-      assert(r, 404, "This menu is not currently available.");
+      // Earlier addresses (printed QR codes) resolve to the restaurant's menu.
+      const r = (await resolveMenuAddress(p[1])).restaurant;
+      assert(r?.published, 404, "This menu is not currently available.");
       const requestedMenu = url.searchParams.get("menu");
       const selected = requestedMenu
         ? await publicDocumentSnapshot(r.id, requestedMenu)
@@ -630,6 +655,7 @@ export async function handle(req: Request) {
       await advanceBatches();
       await tick();
       await housekeeping();
+      checkAlertsInBackground();
       return response({ ok: true });
     }
     if (p[0] === "auth") {
@@ -762,6 +788,7 @@ export async function handle(req: Request) {
         billing: await billingSummary(r.id),
         aiConnected: !!config("OPENAI_API_KEY"),
         local: config("LOCAL_DEVELOPMENT") === "true",
+        workerHealthy: (await workerStatus()).healthy,
         dishes: await all(
           "SELECT * FROM dishes WHERE restaurant_id=? ORDER BY created_at DESC",
           r.id,
@@ -855,6 +882,7 @@ export async function handle(req: Request) {
               )?.value || 0,
             ),
           },
+          readiness: await readiness(),
           spend: await all(
             "SELECT restaurant_id,kind,SUM(reserved_cents) AS cents FROM ai_spend WHERE budget_day=? AND status!='rejected' GROUP BY restaurant_id,kind",
             new Date(now()).toISOString().slice(0, 10),
@@ -1013,6 +1041,50 @@ export async function handle(req: Request) {
     if (promotionResponse) return promotionResponse;
     if (p[0] === "sharing" && p[1] === "check" && method === "POST")
       return await checkMenuSharing(req, r);
+    if (p[0] === "restaurant" && p[1] === "name" && method === "POST") {
+      const { name } = z
+        .object({ name: z.string().trim().min(1).max(100) })
+        .parse(await body(req));
+      assert(
+        !isPlaceholderRestaurantName(name),
+        400,
+        "Enter your restaurant’s real name.",
+      );
+      await run("UPDATE restaurants SET name=? WHERE id=?", name, r.id);
+      if (name !== r.name)
+        await run(
+          "UPDATE promotions SET approved_hash=NULL,approved_at=NULL WHERE restaurant_id=?",
+          r.id,
+        );
+      return response({ ok: true, name });
+    }
+    if (p[0] === "restaurant" && p[1] === "address") {
+      if (method === "GET") {
+        const requested = (url.searchParams.get("check") || "")
+          .trim()
+          .toLowerCase();
+        return response({
+          current: r.slug,
+          suggestion: await suggestMenuAddress(r.name, r.id),
+          ...(requested
+            ? {
+                requested,
+                available:
+                  requested === r.slug ||
+                  (await menuAddressAvailable(requested, r.id)),
+              }
+            : {}),
+        });
+      }
+      assert(method === "POST", 405, "Method not allowed.");
+      await limit("menu-address:" + r.id, 10, 3600);
+      const { address } = z
+        .object({ address: z.string().trim().toLowerCase().max(60) })
+        .parse(await body(req));
+      const slug = await changeMenuAddress(r, address);
+      await event(r.id, "menu_address_changed");
+      return response({ ok: true, slug });
+    }
     if (p[0] === "restaurant" && method === "POST") {
       const b = z
         .object({
@@ -1095,16 +1167,14 @@ export async function handle(req: Request) {
     if (p[0] === "dishes" && method === "POST") {
       const b = dishSchema.parse(await body(req));
       const did = p[1] || b.creationId || id();
+      let before: Row | null = null;
       if (p[1]) {
-        assert(
-          await one(
-            "SELECT id FROM dishes WHERE id=? AND restaurant_id=?",
-            did,
-            r.id,
-          ),
-          404,
-          "Dish not found.",
+        before = await one(
+          "SELECT * FROM dishes WHERE id=? AND restaurant_id=?",
+          did,
+          r.id,
         );
+        assert(before, 404, "Dish not found.");
         const changed = await run(
           "UPDATE dishes SET name=?,description=?,portion=?,plating=?,setting=?,price=?,available=?,confirmed_at=?,category=?,preserve=?,updated_at=?,revision=revision+1 WHERE id=? AND restaurant_id=? AND (? IS NULL OR revision=?)",
           b.name,
@@ -1130,7 +1200,7 @@ export async function handle(req: Request) {
         );
       } else
         await run(
-          "INSERT INTO dishes (id,restaurant_id,name,description,portion,plating,setting,price,available,confirmed_at,created_at,category,preserve) VALUES (?,?,?,?,?,?,?,?,?,?,?,?,?) ON CONFLICT(id) DO NOTHING",
+          "INSERT INTO dishes (id,restaurant_id,name,description,portion,plating,setting,price,available,confirmed_at,created_at,category,preserve,sample) VALUES (?,?,?,?,?,?,?,?,?,?,?,?,?,?) ON CONFLICT(id) DO NOTHING",
           did,
           r.id,
           b.name,
@@ -1144,21 +1214,17 @@ export async function handle(req: Request) {
           now(),
           b.category,
           b.preserve,
+          b.sample ? 1 : 0,
         );
-      assert(
-        await one(
-          "SELECT id FROM dishes WHERE id=? AND restaurant_id=?",
-          did,
-          r.id,
-        ),
-        404,
-        "Dish not found.",
+      const saved = await one(
+        "SELECT * FROM dishes WHERE id=? AND restaurant_id=?",
+        did,
+        r.id,
       );
-      return response({
-        id: did,
-        revision: (await one("SELECT revision FROM dishes WHERE id=?", did))
-          ?.revision,
-      });
+      assert(saved, 404, "Dish not found.");
+      // Menus showing the dish's previous details follow the edit.
+      const menus = before ? await syncDishToMenus(r.id, before, saved) : [];
+      return response({ id: did, revision: saved.revision, menus });
     }
     if (p[0] === "assets") {
       if (method === "POST" && !p[1]) return await upload(req, r);
@@ -1330,6 +1396,7 @@ export async function handle(req: Request) {
       if (p[1] === "tick") {
         await advanceBatches(r.id);
         await tick(r.id);
+        checkAlertsInBackground();
         return response({ ok: true });
       }
       if (p[1] && p[2] === "cancel") {
@@ -1340,7 +1407,7 @@ export async function handle(req: Request) {
         );
         assert(job, 404, "Generation not found.");
         const cancelled = await run(
-          "UPDATE outputs SET status='failed',error='Cancelled before creation. No image allowance used.',lease_until=0 WHERE job_id=? AND status='queued' AND response_id IS NULL AND lease_until<?",
+          "UPDATE outputs SET status='failed',error='Cancelled before creation. No images used.',lease_until=0 WHERE job_id=? AND status='queued' AND response_id IS NULL AND lease_until<?",
           job.id,
           now(),
         );
@@ -1412,6 +1479,11 @@ export async function handle(req: Request) {
           400,
           "Add at least one dish before publishing.",
         );
+        assert(
+          !isPlaceholderRestaurantName(r.name),
+          400,
+          restaurantNameMessage,
+        );
         const menu = await snapshot(r, draft);
         await run(
           "UPDATE restaurants SET published=?,published_at=? WHERE id=?",
@@ -1445,8 +1517,13 @@ export async function handle(req: Request) {
   } catch (e) {
     if (e instanceof z.ZodError)
       return response({ error: e.issues.map((x) => x.message).join(" ") }, 400);
+    if (e instanceof AppError && e.status < 500)
+      return response({ error: e.message }, e.status);
+    await reportError(e, {
+      request: req,
+      status: e instanceof AppError ? e.status : 500,
+    });
     if (e instanceof AppError) return response({ error: e.message }, e.status);
-    console.error("Request failed", e);
     return response(
       {
         error:

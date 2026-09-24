@@ -26,9 +26,6 @@ import {
 import { api, dishCount, downloadBlob, type Row } from "@/lib/client";
 import {
   entryPrice,
-  menuContentIssues,
-  menuPurposeIds,
-  menuPurposeLabel,
   newMenuDocument,
   newMenuEntry,
   type DesignedMenu,
@@ -36,7 +33,8 @@ import {
   type MenuEntry,
   type MenuSection,
 } from "@/lib/menu-document";
-import { menuDesignSpec } from "@/lib/menu-design-system";
+import { menuDesignCollection, menuDesignSpec } from "@/lib/menu-design-system";
+import { blockingChecks, menuPublishChecks } from "@/lib/menu-checks";
 import type { MenuPdfResult } from "@/lib/menu-pdf-v2";
 import { useMenuDocument, type SavedMenu } from "./use-menu-document";
 import MenuProof from "./menu-proof";
@@ -114,7 +112,14 @@ export default function MenuStudio({
     section = draft.sections.find(
       (s) => s.id === selected || s.items.some((i) => i.id === selected),
     ),
-    issues = menuContentIssues(draft),
+    sampleDishIds = (state.dishes as Row[])
+      .filter((d) => d.sample)
+      .map((d) => d.id as string),
+    checks = menuPublishChecks(draft, {
+      restaurantName: state.restaurant.name,
+      sampleDishIds,
+    }),
+    issues = blockingChecks(checks),
     spec = menuDesignSpec(draft.design);
   function tell(message: string) {
     setNotice(message);
@@ -226,16 +231,39 @@ export default function MenuStudio({
     importId: string | null = null,
     originalText?: string,
   ) {
-    change((before) => ({
-      ...before,
-      importSourceId: importId || before.importSourceId,
-      importSourceText: originalText ?? before.importSourceText,
-      sections: [...before.sections, ...sections],
-    }));
-    setDialog(!items.length ? "brief" : "");
+    const added = sections.flatMap((s) => s.items),
+      withPhotos = added.filter((i) => i.photoId).length,
+      needsLook = added.filter((i) => !i.sourceReviewed).length;
+    change((before) => {
+      const hadPhotos = before.sections.some((s) =>
+        s.items.some((i) => i.photoId),
+      );
+      return {
+        ...before,
+        importSourceId: importId || before.importSourceId,
+        importSourceText: originalText ?? before.importSourceText,
+        // Show the dishes' approved photos when they're the menu's first ones.
+        layout:
+          withPhotos && !hadPhotos && before.layout === "classic"
+            ? "featured"
+            : before.layout,
+        sections: [...before.sections, ...sections],
+      };
+    });
+    setDialog("");
     select(sections[0]?.items[0]?.id || "");
     tell(
-      `${dishCount(sections.reduce((n, s) => n + s.items.length, 0))} added. Review the details before publishing.`,
+      [
+        `${dishCount(added.length)} added.`,
+        withPhotos
+          ? `${withPhotos === added.length ? "Their" : withPhotos} photos are on the menu.`
+          : "",
+        needsLook
+          ? `${needsLook} ${needsLook === 1 ? "needs" : "need"} a closer look before publishing.`
+          : "",
+      ]
+        .filter(Boolean)
+        .join(" "),
     );
   }
   function reorder<T>(values: T[], index: number, direction: number) {
@@ -363,7 +391,7 @@ export default function MenuStudio({
       <section className="md-studio">
         <div className="md-loading">
           <span className="md-eyebrow">Menu studio</span>
-          <h1>Your next great menu starts here.</h1>
+          <h1>Menus</h1>
           <p role="status">{store.status}</p>
           {store.error && (
             <>
@@ -562,15 +590,11 @@ export default function MenuStudio({
         {!items.length && !draft.sections.length ? (
           <div className="md-start">
             <div className="md-start-copy">
-              <span className="md-eyebrow">Made for your table</span>
-              <h2>
-                A menu that feels
-                <br />
-                like your restaurant.
-              </h2>
+              <span className="md-eyebrow">New menu</span>
+              <h2>Add your dishes</h2>
               <p>
-                Bring your dishes. We’ll take care of the typography, spacing,
-                and beautiful pages.
+                Import the menu you have, pick from My Dishes or start blank.
+                Type, spacing and pages are handled for you.
               </p>
               <div className="md-start-actions">
                 <button
@@ -596,8 +620,8 @@ export default function MenuStudio({
                 Start with a blank menu <Plus size={14} />
               </button>
               <div className="md-start-note">
-                Seven considered designs. Print-ready pages. A matching menu for
-                every phone.
+                {menuDesignCollection.length} designs. Print-ready pages. A
+                matching menu for every phone.
               </div>
             </div>
             <div className="md-start-art" aria-hidden="true">
@@ -683,7 +707,7 @@ export default function MenuStudio({
                           )}
                           <span>
                             {i.name || "Untitled dish"}
-                            {!i.sourceReviewed && <small>Review needed</small>}
+                            {!i.sourceReviewed && <small>Needs review</small>}
                             {!i.visible && <small>Hidden</small>}
                           </span>
                           <small>{entryPrice(i, menu)}</small>
@@ -806,9 +830,13 @@ export default function MenuStudio({
                 {issues.length ? (
                   <button
                     onClick={() =>
-                      items.some((i) => !i.sourceReviewed)
-                        ? setDialog("review")
-                        : select(issues[0].entryId || issues[0].sectionId || "")
+                      issues[0].fix === "restaurant-name"
+                        ? setDialog("publish")
+                        : items.some((i) => !i.sourceReviewed)
+                          ? setDialog("review")
+                          : select(
+                              issues[0].entryId || issues[0].sectionId || "",
+                            )
                     }
                   >
                     <span className="md-attention-dot" />
@@ -954,10 +982,10 @@ export default function MenuStudio({
                     <span className="md-inspector-orbit">
                       <Settings2 size={24} />
                     </span>
-                    <h3>Make it yours.</h3>
+                    <h3>Edit your menu</h3>
                     <p>
-                      Select a dish or section to edit its details, or explore
-                      the designs for a different point of view.
+                      Select a dish or section to edit its details, or choose a
+                      different design.
                     </p>
                     <button
                       className="md-button md-secondary"
@@ -991,65 +1019,6 @@ export default function MenuStudio({
             }}
           />
         )}
-        {dialog === "brief" && (
-          <MenuDialog
-            title="Set the table."
-            description="A few choices help us recommend designs that fit your menu."
-            close={() => setDialog("")}
-          >
-            <Field label="Menu title">
-              <input
-                value={draft.title}
-                maxLength={120}
-                onChange={(e) => patch({ title: e.target.value })}
-              />
-            </Field>
-            <Field label="What kind of menu?">
-              <select
-                value={draft.purpose}
-                onChange={(e) =>
-                  patch({ purpose: e.target.value as MenuDocument["purpose"] })
-                }
-              >
-                {menuPurposeIds.map((p) => (
-                  <option key={p} value={p}>
-                    {menuPurposeLabel(p)}
-                  </option>
-                ))}
-              </select>
-            </Field>
-            <div className="md-field-pair">
-              <Field label="Print size">
-                <select
-                  value={draft.paper}
-                  onChange={(e) =>
-                    patch({ paper: e.target.value as MenuDocument["paper"] })
-                  }
-                >
-                  <option value="letter">US Letter</option>
-                  <option value="a4">A4</option>
-                </select>
-              </Field>
-              <Field label="Page preference">
-                <select
-                  value={draft.pageTarget}
-                  onChange={(e) =>
-                    patch({ pageTarget: Number(e.target.value) })
-                  }
-                >
-                  <option value={0}>Best fit</option>
-                  <option value={1}>One page</option>
-                  <option value={2}>Two pages</option>
-                </select>
-              </Field>
-            </div>
-            <div className="md-dialog-actions">
-              <button className="md-button" onClick={() => setDialog("design")}>
-                See my menu designs
-              </button>
-            </div>
-          </MenuDialog>
-        )}
         {dialog === "review" && (
           <MenuImportReview
             menu={draft}
@@ -1072,13 +1041,28 @@ export default function MenuStudio({
             mode={dialog}
             menu={menu}
             record={record}
+            checks={checks}
+            restaurant={state.restaurant}
             close={() => setDialog("")}
             select={(id) => {
               setDialog("");
               select(id);
             }}
-            published={async () => {
-              await documentAction("publish", { confirmed: true });
+            removeItem={(id) =>
+              change((before) => ({
+                ...before,
+                sections: before.sections.map((s) => ({
+                  ...s,
+                  items: s.items.filter((i) => i.id !== id),
+                })),
+              }))
+            }
+            saveRestaurantName={async (name) => {
+              await api("restaurant/name", { name });
+              await refresh();
+            }}
+            published={async (address) => {
+              await documentAction("publish", address ? { address } : {});
               setDialog("share");
               tell(
                 "Your menu is live. Future edits stay private until you publish again.",

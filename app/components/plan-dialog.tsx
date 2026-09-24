@@ -33,7 +33,7 @@ export default function PlanDialog({
       setNotice(
         result.plan === "pro"
           ? "Your Pro plan is ready."
-          : "Payment is not confirmed yet. Your free allowance remains available.",
+          : "Payment is not confirmed yet. Your free images are still available.",
       );
       await refresh();
     } catch (e) {
@@ -106,16 +106,14 @@ export default function PlanDialog({
       >
         <DialogHeader>
           <DialogTitle>
-            {billing.plan === "pro"
-              ? "Your Pro plan"
-              : "Make room for more great photos."}
+            {billing.plan === "pro" ? "Your Pro plan" : "Get more images"}
           </DialogTitle>
           <DialogDescription>
             {billing.remaining ?? state.remaining} of {billing.allowance ?? 5}{" "}
-            generations remaining
+            images left
             {billing.plan === "pro"
               ? " this billing period"
-              : " in your free allowance"}
+              : " on the free plan"}
             .
           </DialogDescription>
         </DialogHeader>
@@ -129,13 +127,11 @@ export default function PlanDialog({
           {billing.plan === "pro" ? (
             <section className="pw-plan-current">
               <h2>Pro · $9.99/month</h2>
-              <p>
-                100 full-quality image generations each paid billing period.
-              </p>
+              <p>100 full-quality images each paid billing period.</p>
               <p>
                 {billing.cancelAtPeriodEnd
                   ? "Your subscription ends"
-                  : "Your allowance renews"}{" "}
+                  : "Your images renew"}{" "}
                 {billing.renewsAt
                   ? new Date(billing.renewsAt).toLocaleDateString()
                   : "at the end of this billing period"}
@@ -177,9 +173,8 @@ export default function PlanDialog({
           )}
           <p className="fine">
             Prices in USD. Pro renews monthly until cancelled. Unused monthly
-            generations do not roll over. Failed generations return to the
-            allowance they used. Your saved work remains available when you
-            cancel.
+            images don’t roll over. Images that fail to create are returned.
+            Your saved work remains available when you cancel.
           </p>
         </div>
       </DialogContent>

@@ -1,6 +1,7 @@
 "use client";
 
 import { useEffect, useId, useRef, useState, type RefObject } from "react";
+import { flushSync } from "react-dom";
 import { Check, Expand } from "lucide-react";
 import { RadioGroup, RadioGroupItem } from "@/components/ui/radio-group";
 import {
@@ -60,13 +61,28 @@ const originalPhoto: GalleryStyle = {
 const galleryPhotos = [originalPhoto, ...styles];
 const defaultPhoto = galleryPhotos[1];
 
+// Lossy WebP copies from scripts/prepare-web-images.mjs. The lossless 1254px
+// masters are kept as sources and never served.
+const photoSrcSet = (photo: GalleryStyle) =>
+  photo.id === "original"
+    ? [320, 640, 960, 1280]
+        .map((w) => `/homepage/styles/cheesecake-original-${w}.webp ${w}w`)
+        .join(", ")
+    : [320, 480, 640, 960, 1254]
+        .map(
+          (w) => `/homepage/styles/cheesecake-${photo.asset}-${w}.webp ${w}w`,
+        )
+        .join(", ");
+
 function StylePicker({
   value,
   onChange,
+  onPreview,
   compact = false,
 }: {
   value: string;
   onChange: (value: string) => void;
+  onPreview: (value: string) => void;
   compact?: boolean;
 }) {
   const id = useId();
@@ -83,6 +99,10 @@ function StylePicker({
           htmlFor={`${id}-${style.id}`}
           className="pw-style-option"
           data-selected={value === style.id}
+          // Start fetching a photo as soon as someone points at or focuses
+          // its option, so it is usually ready by the time they choose it.
+          onPointerEnter={() => onPreview(style.id)}
+          onFocus={() => onPreview(style.id)}
         >
           <RadioGroupItem
             id={`${id}-${style.id}`}
@@ -125,89 +145,70 @@ function StylePicker({
   );
 }
 
+// Only photos that have been shown or asked for are rendered, so only the
+// visible one downloads. Earlier ones stay mounted for the cross-fade.
 function StyledPhoto({
   style,
   enlarged = false,
-  preload = false,
+  requested,
   imageRefs,
 }: {
   style: GalleryStyle;
   enlarged?: boolean;
-  preload?: boolean;
+  requested: string[];
   imageRefs: PhotoRefs;
 }) {
   return (
     <span className="pw-style-photo-stack">
-      {galleryPhotos.map((photo) => (
-        <img
-          key={photo.id}
-          ref={(image) => {
-            if (image) imageRefs.current.set(photo.id, image);
-            else imageRefs.current.delete(photo.id);
-          }}
-          data-active={photo.id === style.id}
-          src={`/homepage/styles/cheesecake-${photo.asset}-640.webp`}
-          srcSet={
-            photo.id === "original"
-              ? "/homepage/styles/cheesecake-original-320.webp 320w, /homepage/styles/cheesecake-original-640.webp 640w, /homepage/styles/cheesecake-original-960.webp 960w"
-              : `/homepage/styles/cheesecake-${photo.asset}-320.webp 320w, /homepage/styles/cheesecake-${photo.asset}-480.webp 480w, /homepage/styles/cheesecake-${photo.asset}-640.webp 640w, /homepage/styles/cheesecake-${photo.asset}-960.webp 960w, /homepage/styles/cheesecake-${photo.asset}.webp 1254w`
-          }
-          sizes={
-            enlarged
-              ? "(max-width: 700px) min(calc(100vw - 58px), 66vh), min(698px, 66vh)"
-              : "(max-width: 760px) calc(100vw - 40px), 760px"
-          }
-          alt={
-            photo.id === style.id
-              ? photo.id === "original"
-                ? photo.alt
-                : `Illustrative AI edit: ${photo.alt}`
-              : ""
-          }
-          aria-hidden={photo.id !== style.id}
-          width={photo.id === "original" ? 640 : 1254}
-          height={photo.id === "original" ? 480 : 1254}
-          loading={preload && photo.id !== "original" ? "eager" : "lazy"}
-          decoding="async"
-          fetchPriority="low"
-          onLoad={(event) => {
-            void event.currentTarget.decode().catch(() => {});
-          }}
-        />
-      ))}
+      {galleryPhotos
+        .filter((photo) => requested.includes(photo.id))
+        .map((photo) => (
+          <img
+            key={photo.id}
+            ref={(image) => {
+              if (image) imageRefs.current.set(photo.id, image);
+              else imageRefs.current.delete(photo.id);
+            }}
+            data-active={photo.id === style.id}
+            src={`/homepage/styles/cheesecake-${photo.asset}-640.webp`}
+            srcSet={photoSrcSet(photo)}
+            sizes={
+              enlarged
+                ? "(max-width: 700px) min(calc(100vw - 58px), 66vh), min(698px, 66vh)"
+                : "(max-width: 760px) calc(100vw - 40px), 760px"
+            }
+            alt={
+              photo.id === style.id
+                ? photo.id === "original"
+                  ? photo.alt
+                  : `Illustrative AI edit: ${photo.alt}`
+                : ""
+            }
+            aria-hidden={photo.id !== style.id}
+            width={photo.id === "original" ? 640 : 1254}
+            height={photo.id === "original" ? 480 : 1254}
+            loading={enlarged ? "eager" : "lazy"}
+            decoding="async"
+            fetchPriority="low"
+            onLoad={(event) => {
+              void event.currentTarget.decode().catch(() => {});
+            }}
+          />
+        ))}
     </span>
   );
 }
 
 export default function HomepageStyleGallery() {
   const [selected, setSelected] = useState(defaultPhoto.id);
-  const [preload, setPreload] = useState(false);
+  const [requested, setRequested] = useState([defaultPhoto.id]);
   const [pending, setPending] = useState<string | null>(null);
   const [loadError, setLoadError] = useState("");
-  const sectionRef = useRef<HTMLElement>(null);
   const photoRefs = useRef(new Map<string, HTMLImageElement>());
   const enlargedRefs = useRef(new Map<string, HTMLImageElement>());
   const selectionRequest = useRef(0);
   const active =
     galleryPhotos.find((photo) => photo.id === selected) ?? defaultPhoto;
-
-  useEffect(() => {
-    if (!("IntersectionObserver" in window)) {
-      const frame = requestAnimationFrame(() => setPreload(true));
-      return () => cancelAnimationFrame(frame);
-    }
-    const observer = new IntersectionObserver(
-      (entries) => {
-        if (entries.some((entry) => entry.isIntersecting)) {
-          setPreload(true);
-          observer.disconnect();
-        }
-      },
-      { rootMargin: "600px" },
-    );
-    if (sectionRef.current) observer.observe(sectionRef.current);
-    return () => observer.disconnect();
-  }, []);
 
   useEffect(
     () => () => {
@@ -216,11 +217,17 @@ export default function HomepageStyleGallery() {
     [],
   );
 
+  function requestPhoto(value: string) {
+    setRequested((ids) => (ids.includes(value) ? ids : [...ids, value]));
+  }
+
   async function selectStyle(value: string) {
     const request = ++selectionRequest.current;
-    setPreload(true);
     setPending(value);
     setLoadError("");
+    // Mount the chosen photo's <img> now so it can be loaded and decoded
+    // before it fades in.
+    flushSync(() => requestPhoto(value));
     try {
       const images = [
         photoRefs.current.get(value),
@@ -247,11 +254,7 @@ export default function HomepageStyleGallery() {
   }
 
   return (
-    <section
-      ref={sectionRef}
-      className="pw-style-gallery"
-      aria-labelledby="style-gallery-title"
-    >
+    <section className="pw-style-gallery" aria-labelledby="style-gallery-title">
       <div className="pw-section-heading">
         <h2 id="style-gallery-title">One photo. Endless possibilities.</h2>
         <p>The same dish, reimagined. Find your favorite look.</p>
@@ -273,7 +276,7 @@ export default function HomepageStyleGallery() {
               >
                 <StyledPhoto
                   style={active}
-                  preload={preload}
+                  requested={requested}
                   imageRefs={photoRefs}
                 />
                 {pending && (
@@ -291,7 +294,11 @@ export default function HomepageStyleGallery() {
               <span>{active.detail}</span>
             </figcaption>
           </figure>
-          <StylePicker value={pending ?? selected} onChange={selectStyle} />
+          <StylePicker
+            value={pending ?? selected}
+            onChange={selectStyle}
+            onPreview={requestPhoto}
+          />
         </div>
         <DialogContent className="pw-style-dialog">
           <DialogHeader>
@@ -305,7 +312,7 @@ export default function HomepageStyleGallery() {
             <StyledPhoto
               style={active}
               enlarged
-              preload
+              requested={requested}
               imageRefs={enlargedRefs}
             />
             {pending && (
@@ -317,6 +324,7 @@ export default function HomepageStyleGallery() {
           <StylePicker
             value={pending ?? selected}
             onChange={selectStyle}
+            onPreview={requestPhoto}
             compact
           />
           {loadError && (

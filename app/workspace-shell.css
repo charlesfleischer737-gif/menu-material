@@ -318,10 +318,12 @@
     grid-template-columns: repeat(5, minmax(0, 1fr));
     gap: 0;
     padding: 6px 6px env(safe-area-inset-bottom);
-    background: var(--glass);
+    /* Nearly opaque so dish names never show through the tab labels. */
+    background: var(--nav-surface);
     -webkit-backdrop-filter: var(--glass-blur);
     backdrop-filter: var(--glass-blur);
-    box-shadow: 0 -1px 0 rgb(0 0 0 / 8%);
+    border-top: 1px solid var(--workspace-line);
+    box-shadow: 0 -8px 24px rgb(0 0 0 / 4%);
   }
   .cx-app .cx-nav button {
     grid-template-columns: minmax(0, 1fr);
@@ -331,7 +333,7 @@
     padding: 4px 2px;
     border-radius: 12px;
     color: var(--workspace-muted);
-    font-size: 0.6875rem;
+    font-size: var(--text-caption2);
     font-weight: 500;
     text-align: center;
   }

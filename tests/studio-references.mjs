@@ -206,7 +206,7 @@ try {
   assert.equal(failed.status, "failed");
   assert.match(
     failed.error,
-    /inspiration.*unavailable.*allowance has been restored/i,
+    /inspiration.*unavailable.*image has been returned/i,
   );
   assert.equal((await call("state")).remaining, beforeRejection.remaining);
   assert.equal(

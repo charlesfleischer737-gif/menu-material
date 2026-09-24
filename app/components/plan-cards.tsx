@@ -33,11 +33,11 @@ export default function PlanCards({
         <p className="pw-plan-tagline">A great first impression.</p>
         <p className="pw-plan-price">$0</p>
         <p className="pw-plan-allowance">
-          <strong>5 image generations</strong> to get started.
+          <strong>5 images</strong> to get started.
         </p>
         <Features
           items={[
-            "One-time allowance, no expiry",
+            "Free images never expire",
             "Full-quality images and exports",
             "Photos for your menu and social channels",
             "No credit card required",
@@ -65,11 +65,11 @@ export default function PlanCards({
           $9.99<span>/month</span>
         </p>
         <p className="pw-plan-allowance">
-          <strong>100 image generations</strong> every month.
+          <strong>100 images</strong> every month.
         </p>
         <Features
           items={[
-            "A fresh allowance every billing period",
+            "New images every billing period",
             "The same full-quality images and exports",
             "New dishes, menu refreshes and weekly specials",
             "Matching posts and Stories from approved photos",

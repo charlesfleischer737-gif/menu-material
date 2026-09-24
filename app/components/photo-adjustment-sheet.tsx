@@ -113,7 +113,7 @@ export function PhotoAdjustmentSheet({
             <DialogTitle ref={heading} tabIndex={-1}>
               Quick adjustments
             </DialogTitle>
-            <DialogDescription>No image allowance used.</DialogDescription>
+            <DialogDescription>No images used.</DialogDescription>
           </div>
           <button
             className="ps2-icon-button"
