@@ -176,7 +176,7 @@ export function StudioStyleLibrary({
       500,
     );
     return () => clearTimeout(timer);
-  }, [text, mood, open, resultCount]);
+  }, [text, mood, category?.id, open, resultCount]);
   // Opening a look's details keeps the grid (and its scroll) in place beneath.
   useEffect(() => {
     if (detail) detailTitle.current?.focus({ preventScroll: true });
@@ -540,7 +540,9 @@ export function StudioStyleLibrary({
                     <p>
                       {personalized
                         ? "Looks made for what’s in your photo, in a range of light and color."
-                        : "Versatile looks that flatter most dishes. Add a photo for suggestions made for it."}
+                        : source
+                          ? "Versatile looks that flatter most dishes."
+                          : "Versatile looks that flatter most dishes. Add a photo for suggestions made for it."}
                     </p>
                   </div>
                   <div className="st-library-grid">
