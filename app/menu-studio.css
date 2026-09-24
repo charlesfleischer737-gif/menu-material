@@ -1504,14 +1504,15 @@
   font-size: var(--text-subhead);
   line-height: 1.8;
 }
+/* Each side scrolls on its own, so the actions stay below both. */
 .md-import-review {
   display: grid;
   grid-template-columns: 1fr 1fr;
   gap: 24px;
-  max-height: 570px;
 }
 .md-import-source {
   min-width: 0;
+  max-height: 570px;
   overflow: auto;
   border: 1px solid var(--gray-300);
   border-radius: var(--radius-control);
@@ -1541,6 +1542,7 @@
   padding: 20px;
 }
 .md-import-extracted {
+  max-height: 570px;
   overflow: auto;
   padding: 0 5px;
 }
@@ -3211,7 +3213,6 @@
   }
   .md-import-review {
     grid-template-columns: 1fr;
-    max-height: none;
   }
   .md-import-source iframe {
     height: 220px;
