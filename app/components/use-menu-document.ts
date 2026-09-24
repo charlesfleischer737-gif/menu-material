@@ -281,11 +281,17 @@ export function useMenuDocument(restaurantId: string) {
     setMenus(result.menus);
     return result.menus as SavedMenu[];
   }
-  async function accept(next: SavedMenu) {
+  async function accept(next: SavedMenu, resetHistory = false) {
     saved.current = JSON.stringify(next.draft);
     current.current = next.draft;
     setDraft(next.draft);
     updateRecord(next);
+    // Changes that went live can't be undone from the editor's history.
+    if (resetHistory) {
+      undo.current = [];
+      redo.current = [];
+      setHistoryVersion((n) => n + 1);
+    }
     await refreshList();
   }
   async function flush() {
@@ -305,6 +311,8 @@ export function useMenuDocument(restaurantId: string) {
     initialize,
     refreshList,
     accept,
+    // The newest draft, including edits made earlier in the same event.
+    latest: () => current.current,
     status,
     error,
     recovered,

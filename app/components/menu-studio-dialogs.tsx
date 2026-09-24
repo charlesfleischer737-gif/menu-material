@@ -17,7 +17,9 @@ import {
 import { api, dishCount, downloadBlob, type Row } from "@/lib/client";
 import {
   menuDocumentSchema,
+  menuPurposeDefaults,
   newMenuEntry,
+  uncertainFields,
   type DesignedMenu,
   type MenuDocument,
   type MenuSection,
@@ -28,7 +30,15 @@ import {
   menuDesignSpec,
   recommendMenuDesigns,
 } from "@/lib/menu-design-system";
-import { parsePastedMenu } from "@/lib/menu-paste";
+import { attachAddons, parsePastedMenu } from "@/lib/menu-paste";
+import { normalizeDietary } from "@/lib/dietary";
+import {
+  menuPlacementIds,
+  menuPlacementLabels,
+  menuPlacementPhrases,
+  printedPlacements,
+  type MenuPlacement,
+} from "@/lib/menu-placements";
 import { preferredPhoto } from "@/lib/dish-library";
 import type { MenuCheck } from "@/lib/menu-checks";
 import {
@@ -38,8 +48,16 @@ import {
 } from "@/lib/restaurant-identity";
 import type { MenuPdfResult } from "@/lib/menu-pdf-v2";
 import type { SavedMenu } from "./use-menu-document";
-import { Field, MenuDialog, MoneyInput, Toggle } from "./menu-studio-controls";
+import {
+  Field,
+  MenuDialog,
+  MoneyInput,
+  PriceOptions,
+  Toggle,
+} from "./menu-studio-controls";
 import MenuProof from "./menu-proof";
+import MenuDocumentView from "./menu-document-view";
+import type { MenuContact } from "@/lib/restaurant-contact";
 
 export function MenuDesignPicker({
   menu,
@@ -234,6 +252,7 @@ export function MenuSourceDialog({
                 ? Math.round(Number(row.price) * 100)
                 : row.price,
           available: row.available !== false && row.available !== 0,
+          dietary: imported ? [] : normalizeDietary(row.dietary),
           photoId,
           featured: !!photoId && featured++ < 4,
           sourceReviewed: !imported,
@@ -260,6 +279,13 @@ export function MenuSourceDialog({
           )
           .map(({ section }) => section);
   }
+  // File imports get the same add-on handling as pasted text.
+  const importedSections = (rows: Row[]) => attachAddons(group(rows, true));
+  const formatMoney = (value: number) =>
+    new Intl.NumberFormat("en", {
+      style: "currency",
+      currency: state.restaurant.currency,
+    }).format(value / 100);
   async function read(id: string) {
     setBusy("Reading your menu. This can take a minute");
     setError("");
@@ -271,7 +297,7 @@ export function MenuSourceDialog({
         throw Error(
           "The menu text is not ready yet. Try reading the saved file again.",
         );
-      if (active.current) setReview(group(JSON.parse(entry.draft), true));
+      if (active.current) setReview(importedSections(JSON.parse(entry.draft)));
       await refresh();
     } catch (e) {
       if (active.current) setError((e as Error).message);
@@ -346,14 +372,29 @@ export function MenuSourceDialog({
                     <div key={i.id}>
                       <strong>{i.name}</strong>
                       <span>
-                        {i.price == null
-                          ? "Price needs review"
-                          : new Intl.NumberFormat("en", {
-                              style: "currency",
-                              currency: state.restaurant.currency,
-                            }).format(i.price / 100)}
+                        {i.priceMode === "variants"
+                          ? i.variants
+                              .map((v) => `${v.label} ${formatMoney(v.price)}`)
+                              .join(" · ")
+                          : i.priceMode === "label"
+                            ? i.priceLabel
+                            : i.price == null
+                              ? "Price needs review"
+                              : formatMoney(i.price)}
                       </span>
                       {i.description && <p>{i.description}</p>}
+                      {!!i.additions.length && (
+                        <p>
+                          {i.additions
+                            .map((a) => `+ ${a.label} ${formatMoney(a.price)}`)
+                            .join(" · ")}
+                        </p>
+                      )}
+                      {!!i.sourceUncertain.length && (
+                        <small className="md-review-flag">
+                          Check the {uncertainFields(i.sourceUncertain)}
+                        </small>
+                      )}
                     </div>
                   ))}
                 </section>
@@ -478,7 +519,7 @@ export function MenuSourceDialog({
                           setImportId(i.id);
                           setImportName(i.name);
                           if (i.draft && JSON.parse(i.draft).length)
-                            setReview(group(JSON.parse(i.draft), true));
+                            setReview(importedSections(JSON.parse(i.draft)));
                           else void read(i.id);
                         }}
                       >
@@ -734,7 +775,7 @@ export function MenuImportReview({
                   {!!i.sourceUncertain?.length && (
                     <p className="md-inline-error">
                       The reader was unsure about:{" "}
-                      {i.sourceUncertain.join(", ")}.
+                      {uncertainFields(i.sourceUncertain)}.
                     </p>
                   )}
                   <Field label="Dish name">
@@ -761,6 +802,20 @@ export function MenuImportReview({
                         onChange={(price) => edit(i.id, { price })}
                       />
                     </Field>
+                  )}
+                  {i.priceMode === "variants" && (
+                    <PriceOptions
+                      kind="variants"
+                      values={i.variants}
+                      change={(variants) => edit(i.id, { variants })}
+                    />
+                  )}
+                  {!!i.additions.length && (
+                    <PriceOptions
+                      kind="additions"
+                      values={i.additions}
+                      change={(additions) => edit(i.id, { additions })}
+                    />
                   )}
                   <Toggle
                     label="Looks right"
@@ -866,12 +921,16 @@ function CheckFix({
   restaurant,
   select,
   removeItem,
+  attachAddon,
+  applyPurpose,
   saveRestaurantName,
 }: {
   check: MenuCheck;
   restaurant: Row;
   select: (id: string) => void;
   removeItem: (id: string) => void;
+  attachAddon: (id: string) => void;
+  applyPurpose: (purpose: MenuDocument["purpose"]) => void;
   saveRestaurantName: (name: string) => Promise<void>;
 }) {
   const [name, setName] = useState(
@@ -927,6 +986,24 @@ function CheckFix({
         Remove from menu
       </button>
     );
+  if (check.fix === "attach-addon" && check.entryId)
+    return (
+      <button
+        className="md-text-button"
+        onClick={() => attachAddon(check.entryId!)}
+      >
+        Make it an add-on
+      </button>
+    );
+  if (check.fix === "menu-type" && check.purpose)
+    return (
+      <button
+        className="md-text-button"
+        onClick={() => applyPurpose(check.purpose!)}
+      >
+        Make it a {menuPurposeDefaults(check.purpose).name.toLowerCase()}
+      </button>
+    );
   if (check.entryId || check.sectionId)
     return (
       <button
@@ -941,12 +1018,15 @@ function CheckFix({
 export function MenuDeliveryDialog({
   mode,
   menu,
+  contact,
   record,
   checks,
   restaurant,
   close,
   select,
   removeItem,
+  attachAddon,
+  applyPurpose,
   saveRestaurantName,
   published,
   save,
@@ -954,12 +1034,15 @@ export function MenuDeliveryDialog({
 }: {
   mode: string;
   menu: DesignedMenu;
+  contact: MenuContact;
   record: SavedMenu;
   checks: MenuCheck[];
   restaurant: Row;
   close: () => void;
   select: (id: string) => void;
   removeItem: (id: string) => void;
+  attachAddon: (id: string) => void;
+  applyPurpose: (purpose: MenuDocument["purpose"]) => void;
   saveRestaurantName: (name: string) => Promise<void>;
   published: (address?: string) => Promise<void>;
   save: () => Promise<void>;
@@ -1067,16 +1150,29 @@ export function MenuDeliveryDialog({
     >
       <div className="md-delivery-layout">
         <div className="md-delivery-preview">
-          <MenuProof menu={menu} onResult={setProof} production={isPrint} />
+          {isPrint ? (
+            <MenuProof menu={menu} onResult={setProof} production />
+          ) : (
+            // Guests open the phone menu, so that's what publishing shows.
+            <div className="md-phone-stage">
+              <div className="md-phone-frame">
+                <div className="md-phone-speaker" />
+                <MenuDocumentView menu={{ ...menu, contact }} preview />
+              </div>
+            </div>
+          )}
         </div>
         <div className="md-delivery-controls">
           <h3>{menu.title || menu.name}</h3>
           <p className="md-help">
             {menuDesignSpec(menu.design).name} ·{" "}
-            {proof
-              ? `${proof.pages} ${proof.pages === 1 ? "page" : "pages"}`
-              : "Preparing preview"}{" "}
-            · {menu.paper === "a4" ? "A4" : "US Letter"}
+            {isPrint
+              ? `${
+                  proof
+                    ? `${proof.pages} ${proof.pages === 1 ? "page" : "pages"}`
+                    : "Preparing preview"
+                } · ${menu.paper === "a4" ? "A4" : "US Letter"}`
+              : "Phone menu"}
           </p>
           <div
             className={`md-checks ${blocking.length ? "has-blocking" : "is-clear"}`}
@@ -1108,6 +1204,8 @@ export function MenuDeliveryDialog({
                       restaurant={restaurant}
                       select={select}
                       removeItem={removeItem}
+                      attachAddon={attachAddon}
+                      applyPurpose={applyPurpose}
                       saveRestaurantName={saveRestaurantName}
                     />
                   </li>
@@ -1269,10 +1367,19 @@ export function MenuShareDialog({
     [copied, setCopied] = useState(false),
     [checked, setChecked] = useState(false),
     [offline, setOffline] = useState(false),
-    [main, setMain] = useState(record.isPrimary);
+    [main, setMain] = useState(record.isPrimary),
+    [placement, setPlacement] = useState<MenuPlacement>("table");
+  const printed = printedPlacements.includes(placement),
+    spot = menuPlacementLabels[placement],
+    phrase = menuPlacementPhrases[placement];
   useEffect(() => {
     let active = true;
-    const link = `${location.origin}/m/${encodeURIComponent(restaurant.slug)}${main ? "" : `?menu=${record.id}`}`;
+    // Each spot gets its own link, so menu stats can show which one works.
+    const query = new URLSearchParams({
+      ...(main ? {} : { menu: record.id }),
+      src: placement,
+    });
+    const link = `${location.origin}/m/${encodeURIComponent(restaurant.slug)}?${query}`;
     void import("qrcode")
       .then(({ default: QR }) =>
         QR.toDataURL(link, {
@@ -1313,7 +1420,7 @@ export function MenuShareDialog({
     return () => {
       active = false;
     };
-  }, [restaurant.slug, record.id, main]);
+  }, [restaurant.slug, record.id, main, placement]);
   async function run(fn: () => Promise<void>) {
     setBusy(true);
     setError("");
@@ -1351,7 +1458,27 @@ export function MenuShareDialog({
           <option value="main">Restaurant’s main menu</option>
         </select>
       </Field>
-      <Field label="Guest menu link">
+      <Field
+        label="Where will guests find it?"
+        hint="Each spot gets its own link and QR code, so your menu stats show which one brings guests in."
+      >
+        <select
+          value={placement}
+          onChange={(e) => {
+            setQr("");
+            setUrl("");
+            setCopied(false);
+            setPlacement(e.target.value as MenuPlacement);
+          }}
+        >
+          {menuPlacementIds.map((id) => (
+            <option key={id} value={id}>
+              {menuPlacementLabels[id]}
+            </option>
+          ))}
+        </select>
+      </Field>
+      <Field label={`Link for ${phrase}`}>
         <input readOnly value={url} onFocus={(e) => e.target.select()} />
       </Field>
       <div className="md-dialog-actions">
@@ -1377,56 +1504,67 @@ export function MenuShareDialog({
           <ExternalLink size={16} /> Open menu
         </a>
       </div>
-      <div className="md-share-qr">
-        {qr ? (
-          <img
-            src={qr}
-            alt="Scan to open the published menu"
-            width={160}
-            height={160}
-          />
-        ) : (
-          <QrCode size={80} />
-        )}
-        <div>
-          <h3>Menu QR code</h3>
-          <p>Put a card at the table, by the register, or in a takeaway bag.</p>
-          <button
-            className="md-text-button"
-            disabled={!qr || busy}
-            onClick={() =>
-              void run(async () => {
-                const { menuQrCard } = await import("@/lib/qr-card");
-                downloadBlob(
-                  await menuQrCard(publishedRestaurant, url, qr),
-                  `${restaurant.slug}-menu-card-4x6.pdf`,
-                );
-              })
-            }
-          >
-            <Printer size={15} /> Download 4 × 6 table card
-          </button>
-          <button
-            className="md-text-button"
-            disabled={!qr || busy}
-            onClick={() =>
-              void run(async () =>
-                downloadBlob(
-                  await (await fetch(qr)).blob(),
-                  `${restaurant.slug}-menu-qr.png`,
-                ),
-              )
-            }
-          >
-            <Download size={15} /> Save QR image
-          </button>
+      {printed ? (
+        <div className="md-share-qr">
+          {qr ? (
+            <img
+              src={qr}
+              alt="Scan to open the published menu"
+              width={160}
+              height={160}
+            />
+          ) : (
+            <QrCode size={80} />
+          )}
+          <div>
+            <h3>QR code for {phrase}</h3>
+            <p>Visits from this code count toward {spot} in your menu stats.</p>
+            <div className="md-share-downloads">
+              <button
+                className="md-text-button"
+                disabled={!qr || busy}
+                onClick={() =>
+                  void run(async () => {
+                    const { menuQrCard } = await import("@/lib/qr-card");
+                    downloadBlob(
+                      await menuQrCard(publishedRestaurant, url, qr),
+                      `${restaurant.slug}-menu-card-${placement}-4x6.pdf`,
+                    );
+                  })
+                }
+              >
+                <Printer size={15} /> Download 4 × 6{" "}
+                {placement === "table" ? "table card" : "card"}
+              </button>
+              <button
+                className="md-text-button"
+                disabled={!qr || busy}
+                onClick={() =>
+                  void run(async () =>
+                    downloadBlob(
+                      await (await fetch(qr)).blob(),
+                      `${restaurant.slug}-menu-qr-${placement}.png`,
+                    ),
+                  )
+                }
+              >
+                <Download size={15} /> Save QR image
+              </button>
+            </div>
+          </div>
         </div>
-      </div>
+      ) : (
+        <p className="md-help">
+          Paste this link in {phrase}. Visits from it count toward {spot} in
+          your menu stats.
+        </p>
+      )}
       <p className="md-help">
         {main
-          ? "This QR follows your restaurant’s main menu. You can choose a new main menu without reprinting the code."
-          : "This QR always opens this specific menu, including future published updates."}{" "}
-        Keep the white border and scan a printed copy before putting it out.
+          ? `This ${printed ? "QR code" : "link"} follows your restaurant’s main menu. You can choose a new main menu without ${printed ? "reprinting the code" : "changing the link"}.`
+          : `This ${printed ? "QR code" : "link"} always opens this specific menu, including future published updates.`}
+        {printed &&
+          " Keep the white border and scan a printed copy before putting it out."}
       </p>
       {!record.isPrimary && (
         <button

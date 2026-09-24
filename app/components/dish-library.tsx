@@ -32,6 +32,7 @@ import {
   DropdownMenuItem,
 } from "@/components/ui/dropdown-menu";
 import { Feedback, Field, useAction } from "./creation-shared";
+import DietaryPicker from "./dietary-picker";
 import { ConfirmDelete } from "./controls";
 import CreativeHeader from "./creative-header";
 import PhotoDownloads from "./photo-downloads";
@@ -825,6 +826,17 @@ export default function DishLibrary({
                         onChange={(e) => edit({ category: e.target.value })}
                       />
                     </Field>
+                    <div className="mm-dish-dietary">
+                      <span className="mm-dish-dietary-title">
+                        Dietary & allergens
+                      </span>
+                      <DietaryPicker
+                        value={detail.dietary || []}
+                        disabled={!!action.busy}
+                        fieldClass="cx-field"
+                        onChange={(dietary) => edit({ dietary })}
+                      />
+                    </div>
                     <label className="cx-check">
                       <input
                         type="checkbox"
@@ -835,8 +847,9 @@ export default function DishLibrary({
                     </label>
                     {dirty && (
                       <p className="mm-muted">
-                        Changes will be flagged in linked designs. Your
-                        published menu stays as it is until you republish.
+                        Menus showing this dish get these changes, including
+                        live menus. Details you changed on a menu stay as they
+                        are.
                       </p>
                     )}
                     <div className="mm-divider">

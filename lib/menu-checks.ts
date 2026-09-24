@@ -1,9 +1,12 @@
 import {
   menuContentIssues,
+  menuPurposeDefaults,
   visibleMenuSections,
   type MenuDocument,
   type MenuSection,
 } from "./menu-document";
+import { inferMenuPurpose, isAddonName } from "./menu-paste";
+import { normalizeDietary } from "./dietary";
 import {
   isPlaceholderRestaurantName,
   restaurantNameMessage,
@@ -15,8 +18,31 @@ export type MenuCheck = {
   message: string;
   entryId?: string;
   sectionId?: string;
-  fix?: "restaurant-name" | "edit" | "remove";
+  fix?: "restaurant-name" | "edit" | "remove" | "attach-addon" | "menu-type";
+  purpose?: MenuDocument["purpose"];
 };
+
+/** "Drip coffee 3.00 /" — an import left a price in the dish name. */
+export const hasPriceInName = (name: string) =>
+  /(?:^|\s)[$€£¥]?\d{1,4}[.,]\d{2}(?=\s|$|[/|])|\s[/|]\s*$/.test(name.trim());
+const drinkPurpose = (purpose: string) =>
+  ["drinks", "bar", "cocktails", "smoothies"].includes(purpose);
+/** The menu's type disagrees with its sections in a way guests would notice. */
+function purposeMismatch(
+  menu: Pick<MenuDocument, "sections" | "title"> &
+    Partial<Pick<MenuDocument, "purpose">>,
+) {
+  if (!menu.purpose) return null;
+  if (menu.title !== menuPurposeDefaults(menu.purpose).title) return null;
+  const inferred = inferMenuPurpose(
+    visibleMenuSections(menu as MenuDocument).map((s) => s.name),
+  );
+  if (!inferred || inferred === menu.purpose) return null;
+  return drinkPurpose(inferred) !== drinkPurpose(menu.purpose) ||
+    (menu.purpose === "dinner" && ["cafe", "brunch"].includes(inferred))
+    ? inferred
+    : null;
+}
 
 /**
  * Automatic checks before a menu goes to guests or print. Blocking checks stop
@@ -27,7 +53,8 @@ export function menuPublishChecks(
   menu: Pick<
     MenuDocument,
     "sections" | "showUnavailable" | "title" | "fixedPrice"
-  >,
+  > &
+    Partial<Pick<MenuDocument, "purpose">>,
   context: { restaurantName: string; sampleDishIds?: Iterable<string> },
 ): MenuCheck[] {
   const checks: MenuCheck[] = [];
@@ -53,6 +80,29 @@ export function menuPublishChecks(
   for (const section of visibleMenuSections(menu as MenuDocument))
     for (const item of section.items) {
       const label = item.name.trim() || "This dish";
+      // The dish an add-on would join is the one directly above it.
+      const all = menu.sections.find((s) => s.id === section.id)?.items || [];
+      const above = all[all.findIndex((i) => i.id === item.id) - 1];
+      if (hasPriceInName(item.name))
+        checks.push({
+          id: `price-name:${item.id}`,
+          level: "warn",
+          message: `${label} has a price in its name. Move it to the price, or use Sizes / options.`,
+          entryId: item.id,
+          sectionId: section.id,
+          fix: "edit",
+        });
+      if (isAddonName(item.name) && item.priceMode === "single")
+        checks.push({
+          id: `addon:${item.id}`,
+          level: "warn",
+          message: above
+            ? `${label} looks like an add-on for ${above.name.trim() || "the dish above it"}.`
+            : `${label} looks like an add-on. Add it to the dish it belongs to.`,
+          entryId: item.id,
+          sectionId: section.id,
+          fix: above ? "attach-addon" : "edit",
+        });
       if (item.dishId && samples.has(item.dishId))
         checks.push({
           id: `sample:${item.id}`,
@@ -110,7 +160,53 @@ export function menuPublishChecks(
           ? `${soldOut[0]} will show as unavailable.`
           : `${soldOut.length} dishes will show as unavailable.`,
     });
+  const purpose = purposeMismatch(menu);
+  if (purpose)
+    checks.push({
+      id: "menu-type",
+      level: "warn",
+      message: `This menu is titled “${menu.title}”, but its sections look like a ${menuPurposeDefaults(purpose).name.toLowerCase()}.`,
+      fix: "menu-type",
+      purpose,
+    });
   return checks;
+}
+
+/** Move "Add bacon" into the add-ons of the dish above it. */
+export function attachAddonToDishAbove<T extends { sections: MenuSection[] }>(
+  menu: T,
+  entryId: string,
+  label: string,
+): T {
+  return {
+    ...menu,
+    sections: menu.sections.map((section) => {
+      const index = section.items.findIndex((i) => i.id === entryId);
+      if (index < 1) return section;
+      const addon = section.items[index],
+        parent = section.items[index - 1];
+      return {
+        ...section,
+        items: section.items
+          .filter((i) => i.id !== entryId)
+          .map((i) =>
+            i.id === parent.id
+              ? {
+                  ...i,
+                  additions: [
+                    ...i.additions,
+                    {
+                      id: crypto.randomUUID(),
+                      label,
+                      price: addon.price ?? 0,
+                    },
+                  ].slice(0, 12),
+                }
+              : i,
+          ),
+      };
+    }),
+  };
 }
 
 export const blockingChecks = (checks: MenuCheck[]) =>
@@ -122,6 +218,7 @@ export type DishFacts = {
   description: string;
   price: number | null;
   available: boolean;
+  dietary?: string[];
 };
 
 export function dishFacts(row: Record<string, unknown>): DishFacts {
@@ -131,8 +228,11 @@ export function dishFacts(row: Record<string, unknown>): DishFacts {
     description: String(row.description ?? ""),
     price: typeof row.price === "number" ? row.price : null,
     available: !!row.available,
+    dietary: normalizeDietary(row.dietary),
   };
 }
+const sameTags = (a: unknown, b: unknown) =>
+  JSON.stringify(normalizeDietary(a)) === JSON.stringify(normalizeDietary(b));
 
 /**
  * Carry a My Dishes edit into a menu. Only details that still match the dish's
@@ -168,6 +268,11 @@ export function applyDishUpdate<T extends { sections: MenuSection[] }>(
         item.available === before.available
       )
         next.available = after.available;
+      if (
+        !sameTags(before.dietary, after.dietary) &&
+        sameTags(item.dietary, before.dietary)
+      )
+        next.dietary = normalizeDietary(after.dietary);
       if (JSON.stringify(next) === JSON.stringify(item)) return item;
       changed++;
       return next;

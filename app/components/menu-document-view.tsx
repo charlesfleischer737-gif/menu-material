@@ -14,10 +14,41 @@ import {
   menuTheme,
 } from "@/lib/menu-design-system";
 import MenuPhoto from "./menu-photo";
+import {
+  allergyNotice,
+  containsText,
+  dietTags,
+  dietaryParts,
+  normalizeDietary,
+} from "@/lib/dietary";
 import CustomerMenuSwitcher from "./customer-menu-switcher";
-import { ChevronLeft, ChevronRight } from "lucide-react";
+import {
+  CalendarDays,
+  ChevronLeft,
+  ChevronRight,
+  MapPin,
+  Phone,
+  ShoppingBag,
+} from "lucide-react";
+import {
+  dayName,
+  directionsHref,
+  formatTime,
+  openingStatus,
+  telephoneHref,
+  type MenuContact,
+} from "@/lib/restaurant-contact";
+import { isMenuPlacement } from "@/lib/menu-placements";
 
+/** "Vegetarian · Gluten-free · Contains milk, egg" */
+function guestDietary(values: string[]) {
+  const { diets, allergens, notes } = dietaryParts(values);
+  return [...diets.map((tag) => tag.label), containsText(allergens), ...notes]
+    .filter(Boolean)
+    .join(" · ");
+}
 type GuestMenu = DesignedMenu & {
+  contact?: MenuContact;
   menus?: { id: string; name: string }[];
   specials?: Row[];
   serverNow?: number;
@@ -40,10 +71,12 @@ export default function MenuDocumentView({
     [sectionsOverflow, setSectionsOverflow] = useState(false),
     [sectionsAtEnd, setSectionsAtEnd] = useState(false),
     [unavailable, setUnavailable] = useState(false),
+    [diets, setDiets] = useState<string[]>([]),
     [time, setTime] = useState(initial.serverNow || 0);
   const root = useRef<HTMLElement>(null),
     sectionLinks = useRef<HTMLDivElement>(null),
-    session = useRef("");
+    session = useRef(""),
+    placement = useRef<string | null>(null);
   const menuId = useId();
   const menu = preview ? initial : live,
     theme = menuTheme(menu),
@@ -66,7 +99,12 @@ export default function MenuDocumentView({
         {
           method: "POST",
           headers: { "Content-Type": "application/json" },
-          body: JSON.stringify({ kind, entityId, session: session.current }),
+          body: JSON.stringify({
+            kind,
+            entityId,
+            session: session.current,
+            ...(placement.current ? { src: placement.current } : {}),
+          }),
           keepalive: true,
         },
       ).catch(() => {});
@@ -154,13 +192,22 @@ export default function MenuDocumentView({
       window.removeEventListener("resize", schedule);
     };
   }, [menu.sections, preview, query]);
+  const hasHours = menu.contact?.hours?.length === 7,
+    hasSpecials = !preview && !!live.specials?.length,
+    serverNow = preview ? 0 : live.serverNow;
   useEffect(() => {
-    if (preview || !live.specials?.length) return;
+    if (!hasSpecials && !hasHours) return;
+    // Server time keeps "Open now" and specials right on a wrong device clock.
     const local = Date.now(),
-      server = live.serverNow || local;
-    const timer = setInterval(() => setTime(server + Date.now() - local), 1000);
-    return () => clearInterval(timer);
-  }, [preview, live]);
+      server = serverNow || local;
+    const tick = () => setTime(server + Date.now() - local);
+    const first = setTimeout(tick, 0);
+    const timer = setInterval(tick, hasSpecials ? 1000 : 30000);
+    return () => {
+      clearTimeout(first);
+      clearInterval(timer);
+    };
+  }, [hasSpecials, hasHours, serverNow]);
   useEffect(() => {
     if (preview || !slug) return;
     try {
@@ -170,8 +217,27 @@ export default function MenuDocumentView({
     } catch {
       session.current = crypto.randomUUID();
     }
+    // A placement QR code (?src=table) counts toward that placement for the
+    // whole visit; the tag leaves the address so a shared link starts fresh.
+    const params = new URLSearchParams(location.search),
+      src = params.get("src");
+    try {
+      if (isMenuPlacement(src)) sessionStorage.setItem(`menu-src:${slug}`, src);
+      placement.current = sessionStorage.getItem(`menu-src:${slug}`);
+    } catch {
+      placement.current = isMenuPlacement(src) ? src : null;
+    }
+    if (src) {
+      params.delete("src");
+      const rest = params.toString();
+      history.replaceState(
+        history.state,
+        "",
+        `${location.pathname}${rest ? `?${rest}` : ""}${location.hash}`,
+      );
+    }
     track("menu_visit");
-    const requestedMenu = new URLSearchParams(location.search).get("menu");
+    const requestedMenu = params.get("menu");
     const refresh = async () => {
       if (document.hidden) return;
       try {
@@ -224,17 +290,100 @@ export default function MenuDocumentView({
         {slug && <a href={`/m/${slug}`}>View the restaurant’s current menu</a>}
       </main>
     );
+  // Guests can narrow to dishes the restaurant marked suitable for them.
+  const offeredDiets = dietTags.filter((tag) =>
+    sections.some((s) =>
+      s.items.some((i) => normalizeDietary(i.dietary).includes(tag.id)),
+    ),
+  );
+  const chosenDiets = diets.filter((id) =>
+    offeredDiets.some((tag) => tag.id === id),
+  );
   const filtered = sections
     .map((s) => ({
       ...s,
-      items: s.items.filter((i) =>
-        `${s.name} ${i.name} ${i.description} ${i.dietary.join(" ")}`
-          .toLocaleLowerCase(menu.language)
-          .includes(query.toLocaleLowerCase(menu.language)),
+      items: s.items.filter(
+        (i) =>
+          chosenDiets.every((id) => normalizeDietary(i.dietary).includes(id)) &&
+          `${s.name} ${i.name} ${i.description} ${guestDietary(i.dietary)}`
+            .toLocaleLowerCase(menu.language)
+            .includes(query.toLocaleLowerCase(menu.language)),
       ),
     }))
     .filter((s) => s.items.length);
   const resultCount = filtered.reduce((n, s) => n + s.items.length, 0);
+  const narrowed = !!query || chosenDiets.length > 0;
+  const allergyNote =
+    sections.some((s) =>
+      s.items.some((i) => dietaryParts(i.dietary).allergens.length),
+    ) && !/allerg/i.test(menu.footer);
+  const searchInput = (
+    <input
+      type="search"
+      aria-label="Search this menu"
+      placeholder="Search the menu…"
+      aria-controls={`${menuId}-items`}
+      value={search}
+      onChange={(e) => setSearch(e.target.value)}
+    />
+  );
+  // One compact choice beside search, so the first dishes stay near the top.
+  const dietFilter = !!offeredDiets.length && (
+    <select
+      className="md-guest-diet"
+      aria-label="Show dishes suitable for"
+      aria-controls={`${menuId}-items`}
+      value={chosenDiets[0] || ""}
+      onChange={(e) => setDiets(e.target.value ? [e.target.value] : [])}
+    >
+      <option value="">Any diet</option>
+      {offeredDiets.map((tag) => (
+        <option key={tag.id} value={tag.id}>
+          {tag.label}
+        </option>
+      ))}
+    </select>
+  );
+  const contact = menu.contact,
+    orderingUrl = contact ? contact.orderingUrl : menu.restaurant.orderingUrl,
+    status = contact
+      ? openingStatus(contact.hours, contact.timezone, time, menu.language)
+      : null;
+  const actions = [
+    orderingUrl && {
+      kind: "ordering_click",
+      label: "Order online",
+      href: orderingUrl,
+      Icon: ShoppingBag,
+      primary: true,
+    },
+    contact?.reservationUrl && {
+      kind: "reserve_click",
+      label: "Reserve",
+      href: contact.reservationUrl,
+      Icon: CalendarDays,
+    },
+    contact?.phone && {
+      kind: "call_click",
+      label: "Call",
+      href: telephoneHref(contact.phone),
+      Icon: Phone,
+    },
+    contact?.address && {
+      kind: "directions_click",
+      label: "Directions",
+      href: directionsHref(menu.restaurant.name, contact.address),
+      Icon: MapPin,
+    },
+  ].filter(Boolean) as {
+    kind: string;
+    label: string;
+    href: string;
+    Icon: typeof Phone;
+    primary?: boolean;
+  }[];
+  const visit =
+    contact && (contact.address || contact.phone || hasHours) ? contact : null;
   const Surface = preview ? "article" : "main";
   return (
     <Surface
@@ -299,14 +448,39 @@ export default function MenuDocumentView({
             )}
           </div>
         )}
-        {!preview && menu.restaurant.orderingUrl && (
-          <a
-            className="md-order"
-            href={menu.restaurant.orderingUrl}
-            onClick={() => track("ordering_click")}
-          >
-            Order online
-          </a>
+        {(status || !!actions.length) && (
+          <div className="md-guest-visit-bar">
+            {status && (
+              <p className={`md-guest-status ${status.open ? "is-open" : ""}`}>
+                {status.label}
+              </p>
+            )}
+            {!!actions.length && (
+              <div className="md-guest-actions">
+                {actions.map(({ kind, label, href, Icon, primary }) =>
+                  preview ? (
+                    <span key={kind} className={primary ? "is-primary" : ""}>
+                      <Icon size={16} aria-hidden="true" />
+                      {label}
+                    </span>
+                  ) : (
+                    <a
+                      key={kind}
+                      className={primary ? "is-primary" : ""}
+                      href={href}
+                      {...(kind === "call_click"
+                        ? {}
+                        : { target: "_blank", rel: "noreferrer" })}
+                      onClick={() => track(kind)}
+                    >
+                      <Icon size={16} aria-hidden="true" />
+                      {label}
+                    </a>
+                  ),
+                )}
+              </div>
+            )}
+          </div>
         )}
       </header>
       {!preview && !!menu.menus && menu.menus.length > 1 && (
@@ -320,14 +494,14 @@ export default function MenuDocumentView({
       {(sections.length > 3 ||
         sections.reduce((n, s) => n + s.items.length, 0) > 12) && (
         <nav className="md-guest-nav" aria-label="Find a menu item">
-          <input
-            type="search"
-            aria-label="Search this menu"
-            placeholder="Search the menu…"
-            aria-controls={`${menuId}-items`}
-            value={search}
-            onChange={(e) => setSearch(e.target.value)}
-          />
+          {dietFilter ? (
+            <div className="md-guest-search-row">
+              {searchInput}
+              {dietFilter}
+            </div>
+          ) : (
+            searchInput
+          )}
           <div className="md-section-navigation">
             <div
               className="md-section-links"
@@ -354,6 +528,15 @@ export default function MenuDocumentView({
                   }
                   onClick={() => {
                     setSearch("");
+                    // Show the section even if a dietary filter hides it.
+                    if (
+                      !s.items.some((i) =>
+                        chosenDiets.every((id) =>
+                          normalizeDietary(i.dietary).includes(id),
+                        ),
+                      )
+                    )
+                      setDiets([]);
                     setActiveSection(s.id);
                     setSectionTarget({ id: s.id });
                   }}
@@ -396,12 +579,16 @@ export default function MenuDocumentView({
             role="status"
             aria-atomic="true"
           >
-            {query
-              ? `${resultCount} ${resultCount === 1 ? "item matches" : "items match"} “${query}”.`
+            {narrowed
+              ? `${resultCount} ${resultCount === 1 ? "item matches" : "items match"}${query ? ` “${query}”` : " your choices"}.`
               : `All ${resultCount} items shown.`}
           </p>
         </nav>
       )}
+      {!(
+        sections.length > 3 ||
+        sections.reduce((n, s) => n + s.items.length, 0) > 12
+      ) && dietFilter}
       {!preview && !!menu.specials?.length && (
         <div className="md-guest-specials">
           {menu.specials
@@ -518,7 +705,7 @@ export default function MenuDocumentView({
                   )}
                   {!!item.dietary.length && (
                     <p className="md-guest-dietary">
-                      {item.dietary.join(" · ")}
+                      {guestDietary(item.dietary)}
                     </p>
                   )}
                   {!item.available && (
@@ -543,8 +730,61 @@ export default function MenuDocumentView({
         <p className="md-guest-empty">
           {query
             ? `No menu items match “${query}”.`
-            : "Your dishes will appear here."}
+            : chosenDiets.length
+              ? "No dishes match your choices."
+              : "Your dishes will appear here."}
         </p>
+      )}
+      {allergyNote && <p className="md-guest-allergy">{allergyNotice}</p>}
+      {visit && (
+        <section className="md-guest-visit" aria-labelledby={`${menuId}-visit`}>
+          <h2 id={`${menuId}-visit`}>Hours & location</h2>
+          {visit.address &&
+            (preview ? (
+              <p>{visit.address}</p>
+            ) : (
+              <p>
+                <a
+                  href={directionsHref(menu.restaurant.name, visit.address)}
+                  target="_blank"
+                  rel="noreferrer"
+                  onClick={() => track("directions_click")}
+                >
+                  {visit.address}
+                </a>
+              </p>
+            ))}
+          {visit.phone &&
+            (preview ? (
+              <p>{visit.phone}</p>
+            ) : (
+              <p>
+                <a
+                  href={telephoneHref(visit.phone)}
+                  onClick={() => track("call_click")}
+                >
+                  {visit.phone}
+                </a>
+              </p>
+            ))}
+          {hasHours && (
+            <dl className="md-guest-hours">
+              {[1, 2, 3, 4, 5, 6, 0].map((day) => {
+                const h = visit.hours.find((x) => x.day === day);
+                return (
+                  <div key={day}>
+                    <dt>{dayName(day, menu.language)}</dt>
+                    <dd>
+                      {!h || h.closed
+                        ? "Closed"
+                        : `${formatTime(h.open, menu.language)} – ${formatTime(h.close, menu.language)}`}
+                    </dd>
+                  </div>
+                );
+              })}
+            </dl>
+          )}
+        </section>
       )}
       {menu.footer && (
         <footer className="md-guest-footer">{menu.footer}</footer>

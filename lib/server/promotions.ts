@@ -1,3 +1,4 @@
+import type { MenuContact } from "../restaurant-contact";
 import { z } from "zod";
 import {
   all,
@@ -215,8 +216,18 @@ export async function publicMenu(r: Row, t = now()) {
     }
   }
   const { brand: _privatePreferences, ...restaurant } = menu.restaurant;
+  // Contact details and hours are live, so guests never see stale ones.
+  const contact: MenuContact = {
+    address: r.address || "",
+    phone: r.phone || "",
+    reservationUrl: r.reservation_url || "",
+    orderingUrl: r.ordering_url || "",
+    hours: JSON.parse(r.hours || "[]"),
+    timezone: r.timezone,
+  };
   return {
     ...menu,
+    contact,
     menus: await publicMenuDocuments(r.id),
     restaurant: { ...restaurant, style: publicBrandStyle(restaurant.style) },
     specials: specials.map((special) => ({

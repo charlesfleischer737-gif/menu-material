@@ -1596,6 +1596,9 @@
 .md-delivery-preview .md-proof-scroll {
   max-height: 670px;
 }
+.md-delivery-preview .md-phone-stage {
+  max-height: 670px;
+}
 .md-delivery-controls {
   padding: 6px 0;
 }
@@ -1709,6 +1712,250 @@
 }
 .md-share-qr .md-text-button {
   font-size: var(--text-caption) !important;
+}
+.md-share-downloads {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 4px 20px;
+}
+/* Menu visits: a KPI row above the editor, details in a dialog. */
+.md-stats {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 12px 32px;
+  margin: 0 0 16px;
+  padding: 14px 20px;
+  border: 1px solid rgb(0 0 0 / 8%);
+  border-radius: var(--radius-control);
+  background: var(--workspace-surface);
+}
+.md-studio .md-stats-title {
+  align-self: center;
+  color: var(--workspace-muted);
+  font-size: var(--text-caption);
+  font-weight: 650;
+  letter-spacing: 0.1px;
+}
+.md-stat {
+  display: grid;
+  align-content: start;
+  gap: 2px;
+  min-width: 0;
+}
+.md-stat > span {
+  color: var(--workspace-muted);
+  font-size: var(--text-caption);
+}
+.md-stat > strong {
+  color: var(--workspace-ink);
+  font-size: var(--text-title3);
+  font-weight: 650;
+  line-height: 1.25;
+}
+.md-stat-text > strong {
+  max-width: 24ch;
+  font-size: var(--text-callout);
+  overflow-wrap: anywhere;
+}
+.md-stat-delta {
+  display: inline-flex;
+  align-items: center;
+  gap: 2px;
+  color: var(--workspace-muted);
+  font-size: var(--text-caption);
+}
+.md-stat-delta.is-up {
+  color: var(--workspace-success);
+}
+.md-stat-delta.is-down {
+  color: var(--workspace-warning);
+}
+.md-stats .md-stats-details {
+  margin-left: auto;
+}
+.md-stats-empty {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 4px 12px;
+  margin: 0;
+  color: var(--workspace-muted);
+  font-size: var(--text-footnote);
+}
+.md-stat-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(150px, 1fr));
+  gap: 16px;
+  padding: 16px;
+  border-radius: var(--radius-control);
+  background: var(--gray-50);
+}
+.md-dialog .md-stats-heading {
+  margin: 24px 0 8px;
+  font-size: var(--text-callout);
+  font-weight: 650;
+}
+.md-stat-list {
+  margin: 0;
+  padding: 0;
+  list-style: none;
+}
+.md-stat-list li {
+  display: flex;
+  justify-content: space-between;
+  gap: 16px;
+  padding: 10px 0;
+  border-bottom: 1px solid var(--workspace-line);
+  font-size: var(--text-subhead);
+}
+.md-stat-list strong {
+  font-variant-numeric: tabular-nums;
+  font-weight: 600;
+}
+.md-stats-seen {
+  margin: 0;
+  font-size: var(--text-subhead);
+}
+.md-status-row {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  column-gap: 12px;
+}
+.md-stats-summary {
+  display: none;
+}
+@media (max-width: 740px) {
+  /* Phones keep the editor near the top: the headline number sits in the
+     status line and opens the details. */
+  .md-stats {
+    display: none;
+  }
+  .md-studio .md-stats-summary {
+    display: inline-flex;
+    align-items: center;
+    min-height: 32px;
+    padding: 0;
+    border: 0;
+    background: none;
+    color: var(--workspace-ink);
+    font-size: var(--text-caption);
+    font-weight: 600;
+    text-decoration: underline;
+    text-underline-offset: 3px;
+  }
+}
+/* Quick update: live prices and sold out, sized for a phone. */
+.md-quick-list {
+  display: grid;
+  gap: 20px;
+  margin-top: 8px;
+}
+.md-dialog .md-quick-list h3 {
+  margin: 0 0 4px;
+  color: var(--workspace-muted);
+  font-size: var(--text-caption);
+  font-weight: 650;
+  letter-spacing: 0.5px;
+  text-transform: uppercase;
+}
+.md-quick-row {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) auto auto;
+  align-items: center;
+  gap: 8px 12px;
+  padding: 10px 0;
+  border-bottom: 1px solid var(--workspace-line);
+}
+.md-quick-name {
+  display: grid;
+  min-width: 0;
+}
+.md-quick-name strong {
+  font-size: var(--text-subhead);
+  font-weight: 600;
+  overflow-wrap: anywhere;
+}
+.md-quick-name small {
+  color: var(--workspace-warning);
+  font-size: var(--text-caption);
+  font-weight: 600;
+}
+.md-quick-prices {
+  display: flex;
+  flex-wrap: wrap;
+  justify-content: flex-end;
+  gap: 8px;
+}
+.md-dialog .md-quick-prices input {
+  width: 96px;
+  min-height: 44px;
+  text-align: right;
+  font-variant-numeric: tabular-nums;
+}
+.md-quick-variant {
+  display: grid;
+  gap: 2px;
+}
+.md-quick-variant > span,
+.md-quick-note {
+  color: var(--workspace-muted);
+  font-size: var(--text-caption);
+}
+.md-quick-actions {
+  position: sticky;
+  bottom: -28px;
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+  margin: 16px -28px -28px;
+  padding: 16px 28px;
+  border-top: 1px solid var(--workspace-line);
+  background: var(--glass);
+  -webkit-backdrop-filter: var(--glass-blur);
+  backdrop-filter: var(--glass-blur);
+}
+.md-quick-actions p {
+  flex: 1 1 200px;
+  margin: 0;
+  color: var(--workspace-muted);
+  font-size: var(--text-footnote);
+}
+.md-review-flag {
+  display: block;
+  margin-top: 4px;
+  color: var(--workspace-warning);
+  font-size: var(--text-caption);
+}
+.md-quality-strip button.md-photo-prompt {
+  color: var(--workspace-ink);
+  text-decoration: underline;
+  text-underline-offset: 3px;
+}
+@media (max-width: 760px) {
+  /* A live menu's phone bar leads with Quick update; Export PDF is in More. */
+  .md-header-actions:has(.md-quick-button) .md-export-button {
+    display: none;
+  }
+}
+@media (max-width: 740px) {
+  .md-quick-row {
+    grid-template-columns: minmax(0, 1fr) auto;
+  }
+  .md-quick-name {
+    grid-column: 1 / -1;
+  }
+  .md-quick-prices {
+    justify-content: flex-start;
+  }
+  .md-quick-actions {
+    bottom: -23px;
+    margin: 16px -20px -23px;
+    padding: 14px 20px;
+  }
 }
 .md-modal-status {
   position: fixed;
@@ -1861,6 +2108,150 @@
   font-size: var(--text-subhead);
   text-decoration: none;
   margin-top: 20px;
+}
+/* What guests act on from the menu: open now, order, reserve, call, directions. */
+.md-guest-visit-bar {
+  display: grid;
+  gap: 16px;
+  margin-top: 14px;
+}
+.md-guest-status {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  margin: 0;
+  color: var(--md-muted);
+  font-size: 0.875rem;
+  line-height: 1.4;
+}
+.md-guest-status::before {
+  content: "";
+  flex: none;
+  width: 8px;
+  height: 8px;
+  border: 1.5px solid currentColor;
+  border-radius: 50%;
+}
+.md-guest-status.is-open {
+  color: var(--md-ink);
+}
+.md-guest-status.is-open::before {
+  border-color: var(--md-accent);
+  background: var(--md-accent);
+}
+.md-guest-actions {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+}
+.md-guest-actions > :is(a, span) {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  min-height: 44px;
+  padding: 0 14px;
+  border: 1px solid var(--md-accent);
+  border-radius: 8px;
+  color: var(--md-accent);
+  font-size: var(--text-subhead);
+  line-height: 1.2;
+  text-decoration: none;
+}
+.md-guest-actions > .is-primary {
+  background: var(--md-accent);
+  color: var(--md-on-accent);
+}
+.md-design-casual :is(.md-guest-status, .md-guest-status.is-open) {
+  color: var(--md-on-accent);
+}
+.md-design-casual .md-guest-status.is-open::before {
+  border-color: var(--md-on-accent);
+  background: var(--md-on-accent);
+}
+.md-design-casual .md-guest-actions > :is(a, span) {
+  border-color: var(--md-on-accent);
+  color: var(--md-on-accent);
+}
+.md-design-casual .md-guest-actions > .is-primary {
+  background: var(--md-on-accent);
+  color: var(--md-accent);
+}
+:is(.md-design-fine, .md-design-special)
+  :is(.md-guest-status, .md-guest-actions) {
+  justify-content: center;
+}
+/* On a phone the status and actions share one row that scrolls sideways, so
+   the first dish stays near the top. */
+@media (max-width: 740px) {
+  .md-guest-visit-bar {
+    display: flex;
+    flex-wrap: nowrap;
+    align-items: center;
+    gap: 8px;
+    overflow-x: auto;
+    overscroll-behavior-x: contain;
+    scrollbar-width: none;
+  }
+  .md-guest-visit-bar::-webkit-scrollbar {
+    display: none;
+  }
+  .md-guest-visit-bar {
+    margin-top: 12px;
+  }
+  .md-guest-visit-bar > .md-guest-status {
+    flex: none;
+    padding-right: 4px;
+    white-space: nowrap;
+  }
+  .md-guest-visit-bar > .md-guest-actions {
+    flex-wrap: nowrap;
+  }
+  .md-guest-actions > :is(a, span) {
+    flex: none;
+    white-space: nowrap;
+  }
+  :is(.md-design-fine, .md-design-special)
+    :is(.md-guest-status, .md-guest-actions) {
+    justify-content: flex-start;
+  }
+}
+/* Hours and location close the menu. */
+.md-guest-visit {
+  display: grid;
+  gap: 10px;
+  margin-top: 40px;
+  color: var(--md-ink);
+  font-size: 0.9375rem;
+  line-height: 1.5;
+}
+.md-guest-visit h2 {
+  margin-bottom: 4px;
+}
+.md-guest-visit p {
+  margin: 0;
+}
+.md-guest-visit a {
+  color: inherit;
+  text-decoration: underline;
+  text-underline-offset: 3px;
+}
+.md-guest-hours {
+  display: grid;
+  gap: 4px;
+  max-width: 360px;
+  margin: 6px 0 0;
+}
+.md-guest-hours > div {
+  display: flex;
+  justify-content: space-between;
+  gap: 16px;
+}
+.md-guest-hours dt {
+  color: var(--md-muted);
+}
+.md-guest-hours dd {
+  margin: 0;
+  font-variant-numeric: tabular-nums;
 }
 .md-menu-switcher {
   display: flex;
@@ -3499,6 +3890,36 @@
   height: 44px;
   padding: 0;
   border-color: currentColor;
+}
+/* The dietary choice sits beside search in the menu's own field style. */
+.md-guest-nav > .md-guest-search-row {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) auto;
+  gap: 8px;
+  padding: 0;
+  overflow: visible;
+}
+.md-guest-diet {
+  min-height: 44px;
+  max-width: 11rem;
+  padding: 0 38px 0 12px;
+  border: 1px solid var(--md-rule);
+  border-radius: 5px;
+  background-color: var(--md-paper);
+  color: var(--md-ink);
+  font:
+    1rem "Post Sans",
+    sans-serif;
+}
+.md-guest > .md-guest-diet {
+  display: block;
+  margin: 0 0 24px;
+}
+.md-guest-allergy {
+  margin: 24px 0 0;
+  color: var(--md-muted);
+  font-size: 0.875rem;
+  line-height: 1.6;
 }
 @media (max-width: 740px) {
   main.md-guest {

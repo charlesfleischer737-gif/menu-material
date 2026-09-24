@@ -139,6 +139,25 @@
   margin: 0;
   border: 0;
 }
+/* Dietary tags read like the fields around them. */
+.mm-dish-dietary {
+  display: grid;
+  gap: 8px;
+  margin: 0 0 17px;
+}
+.mm-dish-dietary-title {
+  font-size: var(--text-subhead);
+  font-weight: 500;
+  color: var(--workspace-ink);
+}
+.mm-dish-dietary .ui-dietary legend {
+  font-size: var(--text-subhead);
+  font-weight: 500;
+  color: var(--workspace-muted);
+}
+.mm-dish-dietary .cx-field {
+  margin: 0;
+}
 .mm-dish-usage {
   margin-top: 16px;
   padding-top: 0;

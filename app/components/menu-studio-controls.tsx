@@ -30,11 +30,13 @@ import {
 import {
   menuPurposeIds,
   menuPurposeLabel,
+  uncertainFields,
   type MenuDocument,
   type MenuEntry,
   type MenuSection,
 } from "@/lib/menu-document";
 import { menuDesignSpec } from "@/lib/menu-design-system";
+import DietaryPicker from "./dietary-picker";
 export const MenuActionContext = createContext({ busy: "", error: "" });
 
 export function MenuDialog({
@@ -187,7 +189,7 @@ export function MoneyInput({
     />
   );
 }
-function PriceOptions({
+export function PriceOptions({
   kind,
   values,
   change,
@@ -262,6 +264,9 @@ export function MenuItemInspector({
   reorder,
   onPhoto,
   onLibrary,
+  addonFor,
+  attachAddon,
+  addToLibrary,
   menuId,
 }: {
   item: MenuEntry;
@@ -274,14 +279,12 @@ export function MenuItemInspector({
   reorder: (direction: number) => void;
   onPhoto: () => void;
   onLibrary: () => void;
+  /** The dish above, when this one reads like "Add bacon". */
+  addonFor?: string;
+  attachAddon: () => void;
+  addToLibrary: () => void;
   menuId: string;
 }) {
-  const [dietaryText, setDietaryText] = useState(item.dietary.join(", "));
-  const dietaryFocus = useRef(false);
-  const dietaryValue = item.dietary.join(", ");
-  useEffect(() => {
-    if (!dietaryFocus.current) setDietaryText(dietaryValue);
-  }, [dietaryValue]);
   const [suggestion, setSuggestion] = useState<{
       original: string;
       text: string;
@@ -289,7 +292,11 @@ export function MenuItemInspector({
     [aiBusy, setAiBusy] = useState(false),
     [error, setError] = useState("");
   const photos = assets.filter(
-      (a) => a.dish_id === item.dishId && a.approved_at && !a.deleted_at,
+      (a) =>
+        item.dishId &&
+        a.dish_id === item.dishId &&
+        a.approved_at &&
+        !a.deleted_at,
     ),
     index = section.items.findIndex((i) => i.id === item.id);
   return (
@@ -317,12 +324,24 @@ export function MenuItemInspector({
           </button>
         </div>
       </div>
+      {addonFor !== undefined && (
+        <div className="md-review-callout">
+          <strong>Looks like an add-on</strong>
+          <p>
+            Guests may read it as a dish of its own. Add it to{" "}
+            {addonFor.trim() || "the dish above"} as an extra instead.
+          </p>
+          <button className="md-button md-secondary" onClick={attachAddon}>
+            Make it an add-on
+          </button>
+        </div>
+      )}
       {!item.sourceReviewed && (
         <div className="md-review-callout">
           <strong>Check against your original</strong>
           <p>Confirm the wording and price, then mark this dish reviewed.</p>
           {!!item.sourceUncertain.length && (
-            <p>Needs a closer look: {item.sourceUncertain.join(", ")}.</p>
+            <p>Needs a closer look: {uncertainFields(item.sourceUncertain)}.</p>
           )}
           <button
             className="md-button md-small"
@@ -463,39 +482,23 @@ export function MenuItemInspector({
         className="md-details"
         open={item.additions.length > 0 || undefined}
       >
-        <summary>Add-ons & dietary notes</summary>
+        <summary>Add-ons</summary>
         <PriceOptions
           kind="additions"
           values={item.additions}
           change={(additions) => change({ additions })}
         />
-        <Field
-          label="Verified dietary notes"
-          hint="Separate with commas. Only add claims you can confirm."
-        >
-          <input
-            value={dietaryText}
-            onFocus={() => {
-              dietaryFocus.current = true;
-            }}
-            onBlur={() => {
-              dietaryFocus.current = false;
-              setDietaryText(dietaryValue);
-            }}
-            maxLength={320}
-            placeholder="Vegetarian, contains nuts"
-            onChange={(e) => {
-              setDietaryText(e.target.value);
-              change({
-                dietary: e.target.value
-                  .split(",")
-                  .slice(0, 8)
-                  .map((v) => v.trim().slice(0, 40))
-                  .filter(Boolean),
-              });
-            }}
-          />
-        </Field>
+      </details>
+      <details
+        className="md-details"
+        open={item.dietary.length > 0 || undefined}
+      >
+        <summary>Dietary & allergens</summary>
+        <DietaryPicker
+          value={item.dietary}
+          fieldClass="md-field"
+          onChange={(dietary) => change({ dietary })}
+        />
       </details>
       <Field label="Section">
         <select value={section.id} onChange={(e) => move(e.target.value)}>
@@ -603,11 +606,28 @@ export function MenuItemInspector({
               </>
             )}
           </>
-        ) : (
+        ) : item.dishId ? (
           <p className="md-help">
-            A menu can look beautiful with typography alone. Add an approved
-            dish photo from your library when you want one.
+            No approved photo yet. Make one in Photo Studio, or keep this dish
+            typography only.
           </p>
+        ) : (
+          <>
+            <p className="md-help">
+              {item.sourceReviewed
+                ? "Add this dish to My Dishes to give it a photo. It keeps the details shown here."
+                : "Check this dish against your original first. Then it can join My Dishes and have a photo."}
+            </p>
+            {item.sourceReviewed && (
+              <button
+                className="md-button md-secondary"
+                disabled={!item.name.trim()}
+                onClick={addToLibrary}
+              >
+                Add to My Dishes
+              </button>
+            )}
+          </>
         )}
         {item.dishId && (
           <button className="md-text-button" onClick={onPhoto}>
