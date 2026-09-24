@@ -1,9 +1,11 @@
 import { photoStyles, type PhotoStyle } from "./photo-styles";
+import { channelRules, type ChannelRule } from "./channel-rules";
 export { photoStyles, styleCategories } from "./photo-styles";
 export const PIPELINE_VERSION = "studio-2026-09-17-studio-v7";
 const legacyLooks = [
   {
     id: "keep",
+    backdrop: "natural",
     name: "Polish my original",
     cue: "Your scene, beautifully lit",
     group: "Recommended",
@@ -13,6 +15,7 @@ const legacyLooks = [
   },
   {
     id: "white",
+    backdrop: "white",
     name: "Clean white studio",
     cue: "Soft shadows · fresh & simple",
     group: "Studio",
@@ -22,6 +25,7 @@ const legacyLooks = [
   },
   {
     id: "cafe",
+    backdrop: "natural",
     name: "Daylight café",
     cue: "Window light · warm oak",
     group: "Restaurant",
@@ -31,6 +35,7 @@ const legacyLooks = [
   },
   {
     id: "dark",
+    backdrop: "dark",
     name: "Dark & dramatic",
     cue: "Deep charcoal · rich contrast",
     group: "Studio",
@@ -40,6 +45,7 @@ const legacyLooks = [
   },
   {
     id: "rustic",
+    backdrop: "natural",
     name: "Rustic table",
     cue: "Warm wood · a cozy glow",
     group: "Restaurant",
@@ -49,6 +55,7 @@ const legacyLooks = [
   },
   {
     id: "terrace",
+    backdrop: "natural",
     name: "Resort terrace",
     cue: "Pale stone · open-air light",
     group: "Outdoor",
@@ -58,6 +65,7 @@ const legacyLooks = [
   },
   {
     id: "color",
+    backdrop: "colorful",
     name: "Bold brand color",
     cue: "A clean setting in your colors",
     group: "Studio",
@@ -75,6 +83,7 @@ const legacyLooks = [
   },
   {
     id: "reference",
+    backdrop: "natural",
     name: "Your inspiration",
     cue: "Bring a look you love",
     group: "My looks",
@@ -155,12 +164,15 @@ export const formats = {
     height: 1080,
     ratio: 16 / 9,
   },
+  // Uber Eats accepts 5:4 to 6:4 and shows photos best at 2880 × 2304 (5:4).
+  // 3:2 sat on the edge of that range; exports never enlarge past what the
+  // photo supports (lib/photo-export.ts).
   uber: {
     label: "Uber Eats item photo",
     short: "Delivery photo",
-    width: 1500,
-    height: 1000,
-    ratio: 3 / 2,
+    width: 2880,
+    height: 2304,
+    ratio: 5 / 4,
   },
   print: {
     label: "Print photo",
@@ -171,37 +183,21 @@ export const formats = {
   },
 } as const;
 export type PhotoFormat = keyof typeof formats;
-const deliveryProfiles = {
-  doordash: {
-    version: "2026-09-16",
-    verified: "2026-09-16",
-    source:
-      "https://help.doordash.com/en-us/merchants/article/common-photo-issues-explained",
-    minWidth: 1400,
-    minHeight: 800,
-    maxBytes: 16 * 1024 * 1024,
-  },
-  uber: {
-    version: "2026-09-15",
-    verified: "2026-09-15",
-    source:
-      "https://help.uber.com/merchants-and-restaurants/article/merchant-submitted-menu-catalog-photo-guidelines?nodeId=6985355b-0426-4523-94f2-89bb9b0566e9",
-    minWidth: 550,
-    minHeight: 440,
-    maxBytes: 10 * 1024 * 1024,
-  },
-};
+// Catalog export limits come from the channel rules (lib/channel-rules.ts).
+function catalogProfile(rule: ChannelRule) {
+  return {
+    version: rule.verified,
+    verified: rule.verified,
+    source: rule.sources[rule.sources.length - 1],
+    minWidth: rule.minWidth,
+    minHeight: rule.minHeight,
+    maxBytes: rule.maxBytes ?? Infinity,
+  };
+}
 export const catalogProfiles = {
-  ...deliveryProfiles,
-  toast: {
-    version: "2026-09-16",
-    verified: "2026-09-16",
-    source:
-      "https://support.toasttab.com/en/article/Adding-Images-to-Menu-Items-in-the-Menu?lang=en_US",
-    minWidth: 750,
-    minHeight: 450,
-    maxBytes: 5 * 1024 * 1024,
-  },
+  doordash: catalogProfile(channelRules.doordash),
+  uber: catalogProfile(channelRules.uber),
+  toast: catalogProfile(channelRules.toast),
 };
 // A real phone photo of a burger (credited on the homepage) for trying the
 // studio without one of your own. It is always labeled as a sample.
