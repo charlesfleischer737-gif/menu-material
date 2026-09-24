@@ -2483,3 +2483,122 @@ textarea.st-input {
   font-weight: 400;
 }
 
+/* The finished photo is the hub: Download, then posts, menus and a pack. */
+.st-review .st-inspector > .st-section:first-child {
+  position: relative;
+  padding-right: 48px;
+}
+:is(.st-studio) .st-result-more {
+  position: absolute;
+  top: -4px;
+  right: 0;
+  width: 40px;
+  height: 40px;
+}
+.st-hub-row {
+  display: grid;
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+  gap: 8px;
+}
+:is(.st-studio) .st-hub-button {
+  display: grid;
+  justify-items: center;
+  align-content: center;
+  gap: 4px;
+  min-width: 0;
+  min-height: 60px;
+  padding: 8px 4px;
+  border: 0;
+  border-radius: 14px;
+  background: var(--st-fill);
+  color: var(--st-ink);
+  font: inherit;
+  font-size: var(--text-footnote);
+  font-weight: 600;
+  line-height: 1.2;
+  text-align: center;
+  cursor: pointer;
+  transition:
+    background-color var(--duration-fast) var(--ease),
+    transform var(--duration-fast) var(--ease);
+}
+:is(.st-studio) .st-hub-button > svg {
+  color: var(--st-accent);
+}
+:is(.st-studio) .st-hub-button:hover:not(:disabled) {
+  background: var(--st-fill-hover);
+}
+:is(.st-studio) .st-hub-button:active:not(:disabled) {
+  transform: scale(0.98);
+}
+:is(.st-studio) .st-hub-button:disabled {
+  cursor: default;
+  opacity: 0.45;
+}
+:is(.st-studio) .st-hub-button:focus-visible {
+  outline: 2px solid var(--workspace-focus);
+  outline-offset: 2px;
+}
+/* The one-time check, asked inline on the first action. */
+.st-attest {
+  display: grid;
+  gap: 10px;
+}
+.st-attest-title {
+  margin: 0;
+  font-size: var(--text-callout);
+  font-weight: 600;
+}
+.st-attest-check {
+  display: flex;
+  align-items: flex-start;
+  gap: 10px;
+  padding: 12px;
+  border: 1px solid var(--workspace-line);
+  border-radius: 12px;
+  background: var(--workspace-canvas);
+  font-size: var(--text-footnote);
+  line-height: 1.45;
+  cursor: pointer;
+}
+.st-attest-check input {
+  flex: none;
+  width: 20px;
+  height: 20px;
+  margin: 0;
+  accent-color: var(--workspace-action);
+}
+.st-attest-error {
+  margin: 0;
+  color: var(--workspace-error);
+  font-size: var(--text-footnote);
+}
+.st-attest-actions {
+  display: grid;
+  grid-template-columns: auto minmax(0, 1fr);
+  gap: 8px;
+}
+:is(.st-studio) .st-attest-actions .st-pill {
+  min-height: 44px;
+}
+/* Failure: Try again first, going back second. */
+.st-action-inline .st-create + .st-pill {
+  margin-top: 2px;
+}
+@media (max-width: 760px) {
+  .st-review .st-inspector > .st-section:first-child {
+    padding-top: 4px;
+  }
+  :is(.st-studio) .st-result-more {
+    width: 44px;
+    height: 44px;
+  }
+  :is(.st-studio) .st-hub-button {
+    min-height: 52px;
+    padding: 6px 2px;
+    font-size: var(--text-caption);
+  }
+  .st-hub .st-action-note {
+    display: none;
+  }
+}

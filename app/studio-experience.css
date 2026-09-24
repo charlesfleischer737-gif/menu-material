@@ -1016,3 +1016,179 @@
     display: none;
   }
 }
+
+/* Download: the photo's own size first; other sizes are one disclosure away. */
+.ps2-finish .ps2-finish-size {
+  margin: 0 0 12px;
+}
+.ps2-finish-warning {
+  display: flex;
+  gap: 10px;
+  align-items: flex-start;
+  margin: 0 0 14px;
+  padding: 12px 14px;
+  border-radius: 12px;
+  background: var(--workspace-warning-surface);
+  color: var(--workspace-ink);
+  font-size: 0.875rem;
+  line-height: 1.5;
+}
+.ps2-finish-warning > svg {
+  flex: none;
+  margin-top: 2px;
+  color: var(--workspace-warning);
+}
+.ps2-dialog .ps2-finish-warning p {
+  margin: 0 0 6px;
+  font-size: 0.875rem;
+  line-height: 1.5;
+}
+.ps2-finish-warning .cx-link {
+  min-height: 32px;
+  padding: 0;
+  font-size: 0.875rem;
+}
+/* Different size, Adjust crop and File name sit together as quiet links. */
+.ps2-finish-scroll > [data-slot="collapsible"] {
+  margin: 0;
+}
+.ps2-finish-scroll > [data-slot="collapsible"] > .cx-link {
+  min-height: 44px;
+  padding-block: 8px;
+}
+.ps2-size-choices {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 8px;
+  margin: 4px 0 8px;
+}
+.ps2-dialog .ps2-size-choices button {
+  position: relative;
+  display: grid;
+  gap: 2px;
+  min-height: 56px;
+  padding: 9px 30px 9px 12px;
+  border: 1px solid var(--workspace-line);
+  border-radius: 12px;
+  background: var(--workspace-surface);
+  color: var(--workspace-ink);
+  font: inherit;
+  text-align: left;
+}
+.ps2-size-choices b {
+  font-size: 0.875rem;
+  font-weight: 600;
+}
+.ps2-size-choices span {
+  color: var(--workspace-muted);
+  font-size: 0.8125rem;
+}
+.ps2-size-choices button[aria-checked="true"] {
+  border-color: var(--workspace-action);
+  box-shadow: inset 0 0 0 1px var(--workspace-action);
+}
+.ps2-size-choices svg {
+  position: absolute;
+  top: 10px;
+  right: 10px;
+  color: var(--workspace-action);
+}
+.ps2-finish .ps2-finish-more {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+}
+
+/* Photo pack: one checklist row per channel. */
+.ps2-dialog .pk-summary {
+  margin: 0 0 12px;
+  color: var(--workspace-muted);
+  font-size: 0.875rem;
+}
+.pk-list {
+  display: grid;
+  gap: 8px;
+  margin: 0;
+  padding: 0;
+  list-style: none;
+}
+.pk-item {
+  display: grid;
+  grid-template-columns: 28px minmax(0, 1fr);
+  gap: 10px;
+  padding: 12px;
+  border: 1px solid var(--workspace-line);
+  border-radius: 12px;
+  background: var(--workspace-surface);
+}
+.pk-item[data-status="skip"] {
+  background: var(--workspace-canvas);
+}
+.pk-icon {
+  display: grid;
+  place-items: center;
+  width: 28px;
+  height: 28px;
+  border-radius: 50%;
+  background: var(--workspace-success-surface);
+  color: var(--workspace-success);
+}
+.pk-item[data-status="warn"] .pk-icon {
+  background: var(--workspace-warning-surface);
+  color: var(--workspace-warning);
+}
+.pk-item[data-status="skip"] .pk-icon {
+  background: var(--gray-200);
+  color: var(--workspace-muted);
+}
+.pk-body {
+  min-width: 0;
+}
+.pk-head {
+  display: flex;
+  flex-wrap: wrap;
+  justify-content: space-between;
+  gap: 2px 12px;
+  font-size: 0.9375rem;
+}
+.pk-head span {
+  color: var(--workspace-muted);
+  font-size: 0.8125rem;
+  font-variant-numeric: tabular-nums;
+}
+.pk-body > small {
+  display: block;
+  color: var(--workspace-muted);
+  font-size: 0.8125rem;
+}
+.pk-checks {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 4px 12px;
+  margin: 8px 0 0;
+  padding: 0;
+  list-style: none;
+  font-size: 0.8125rem;
+}
+.pk-checks li {
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+}
+.pk-checks li > svg {
+  color: var(--workspace-success);
+}
+.pk-checks li[data-status="warn"] > svg {
+  color: var(--workspace-warning);
+}
+.pk-checks li[data-status="warn"] {
+  font-weight: 600;
+}
+.ps2-dialog .pk-note {
+  margin: 8px 0 0;
+  font-size: 0.8125rem;
+  line-height: 1.5;
+}
+.pk-item[data-status="skip"] .pk-note {
+  color: var(--workspace-muted);
+}
