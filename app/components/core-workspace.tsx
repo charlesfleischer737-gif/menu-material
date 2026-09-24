@@ -283,7 +283,7 @@ export default function CoreWorkspace({
             onClick={() => navigate("studio")}
             aria-label="Menu Material Photo Studio"
           >
-            <Brand />
+            <Brand reversedMedia="(min-width: 761px)" />
           </button>
           <div className="cx-mobile-account">{accountMenu}</div>
         </div>

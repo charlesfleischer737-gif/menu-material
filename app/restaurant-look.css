@@ -465,8 +465,8 @@
 }
 .cx-look-categories > button[aria-pressed="true"] {
   color: white;
-  background: var(--gray-900);
-  border-color: var(--gray-900);
+  background: var(--workspace-action);
+  border-color: var(--workspace-action);
 }
 .cx-look-photo-options {
   display: grid;

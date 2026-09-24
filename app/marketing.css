@@ -112,12 +112,18 @@
   font-size: var(--text-callout);
 }
 
-/* Hero: headline, one action, then the before-and-after slider. */
+/* Hero: headline, one action, then the before-and-after slider, under a
+   faint glow of the logo's green. */
 .pw-hero {
   display: flex;
   flex-direction: column;
   align-items: center;
   padding: clamp(56px, 9vw, 112px) var(--pw-gutter) clamp(72px, 9vw, 120px);
+  background: radial-gradient(
+    60% 55% at 50% 0%,
+    rgb(63 191 127 / 9%),
+    transparent 70%
+  );
   text-align: center;
 }
 .pw-hero-intro {
@@ -274,7 +280,7 @@
   text-wrap: pretty;
 }
 
-/* Use cases: three equal cards on a light band. */
+/* Use cases: three equal cards on a stone band. */
 .pw-use-cases {
   padding: var(--pw-band) var(--pw-gutter);
   background: var(--gray-100);
@@ -303,6 +309,7 @@
   overflow: hidden;
   border-radius: var(--radius-media);
   background: var(--workspace-surface);
+  box-shadow: var(--shadow-card);
 }
 .pw-use-case-copy {
   padding: 8px 28px 32px;
@@ -733,14 +740,14 @@
   display: block;
 }
 
-/* Closing call to action: a dark band. */
+/* Closing call to action: an evergreen band lit from the top edge. */
 .pw-start {
   display: flex;
   flex-direction: column;
   align-items: center;
   padding: clamp(96px, 12vw, 168px) var(--pw-gutter);
-  background: #000;
-  color: var(--gray-100);
+  background: var(--green-glow), var(--green-ink);
+  color: var(--on-dark);
   text-align: center;
 }
 .pw-start h2 {
@@ -757,13 +764,13 @@
   font-size: var(--pw-lead);
   line-height: 1.4;
   letter-spacing: -0.016em;
-  color: var(--gray-400);
+  color: var(--on-dark-muted);
   text-wrap: pretty;
 }
 .pw-start [data-ui-button] {
   margin-top: 36px;
   background: var(--gray-100);
-  color: var(--gray-900);
+  color: var(--green-ink);
 }
 .pw-start [data-ui-button]:not(:disabled):hover {
   background: #fff;
@@ -1027,11 +1034,13 @@
   width: 100%;
 }
 .pw-plan-card.is-pro {
-  background: var(--gray-900);
-  color: var(--gray-100);
+  background:
+    radial-gradient(90% 60% at 100% 0%, rgb(63 191 127 / 22%), transparent 70%),
+    var(--green-ink);
+  color: var(--on-dark);
 }
 .pw-plan-card.is-pro :is(.pw-plan-tagline, .pw-plan-price span) {
-  color: var(--gray-400);
+  color: var(--on-dark-muted);
 }
 .pw-plan-card.is-pro .pw-plan-features svg {
   color: var(--green-bright);
@@ -1039,7 +1048,7 @@
 .pw-plan-card.is-pro .cx-btn {
   border-color: var(--gray-100);
   background: var(--gray-100);
-  color: var(--gray-900);
+  color: var(--green-ink);
 }
 .pw-plan-card.is-pro .cx-btn:hover:not(:disabled) {
   background: #fff;

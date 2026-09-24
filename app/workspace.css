@@ -799,8 +799,8 @@
 }
 .customer-special {
   padding: 22px;
-  border: 1px solid var(--gray-300);
-  background: var(--gray-100);
+  border: 1px solid var(--menu-chrome-line);
+  background: var(--menu-surround);
   border-radius: 5px;
   margin-bottom: 30px;
 }

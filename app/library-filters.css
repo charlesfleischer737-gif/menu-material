@@ -2,10 +2,13 @@
   gap: 12px;
   margin-bottom: 24px;
 }
+/* On the canvas, search is white like the buttons beside it. */
 .mm-library-toolbar input[type="search"] {
   min-width: 100px;
   max-width: 480px;
   flex: 1;
+  border-color: var(--workspace-line);
+  background-color: var(--workspace-surface);
 }
 .mm-select-toggle {
   justify-content: center;

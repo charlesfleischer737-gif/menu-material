@@ -1,5 +1,5 @@
-/* Workspace shell: the sidebar on larger screens; a top bar plus a
-   translucent bottom tab bar on phones. */
+/* Workspace shell: the dark sidebar on larger screens; a top bar plus a
+   dark bottom tab bar on phones. */
 .cx-app {
   --cx-sidebar-width: 232px;
   --cx-tabbar: 0px;
@@ -13,8 +13,15 @@
   width: var(--cx-sidebar-width);
   padding: 20px 12px 16px;
   overflow-y: auto;
-  border-right: 1px solid rgb(0 0 0 / 7%);
-  background: var(--gray-50);
+  background: var(--green-ink);
+  color: var(--on-dark);
+  color-scheme: dark;
+}
+/* Navigation sits on the dark surface at every width: the sidebar here, the
+   tab bar on phones. */
+.cx-sidebar,
+.cx-nav {
+  --workspace-focus: var(--green-bright);
 }
 .cx-sidebar-heading {
   display: flex;
@@ -33,7 +40,7 @@
   border: 0;
   border-radius: 8px;
   background: none;
-  color: var(--workspace-ink);
+  color: inherit;
 }
 .cx-sidebar .cx-brand .menu-material-wordmark {
   width: 100%;
@@ -57,7 +64,7 @@
   border: 0;
   border-radius: 10px;
   background: none;
-  color: rgb(29 29 31 / 82%);
+  color: var(--on-dark-muted);
   font-size: var(--text-callout);
   font-weight: 500;
   line-height: 1.3;
@@ -67,12 +74,12 @@
     color var(--duration-fast) var(--ease);
 }
 .cx-nav button:hover {
-  background: rgb(0 0 0 / 4%);
-  color: var(--workspace-ink);
+  background: var(--on-dark-hover);
+  color: var(--on-dark);
 }
 .cx-nav button.active {
-  background: rgb(0 0 0 / 7%);
-  color: var(--workspace-ink);
+  background: var(--on-dark-selected);
+  color: var(--on-dark);
   font-weight: 600;
 }
 .cx-nav-icon {
@@ -81,10 +88,10 @@
   place-items: center;
   width: 20px;
   height: 20px;
-  color: var(--workspace-muted);
+  color: var(--on-dark-muted);
 }
 .cx-nav button.active .cx-nav-icon {
-  color: var(--workspace-ink);
+  color: var(--green-bright);
 }
 .cx-nav-icon svg {
   width: 20px;
@@ -103,7 +110,7 @@
   right: -3px;
   width: 7px;
   height: 7px;
-  border: 1.5px solid var(--gray-50);
+  border: 1.5px solid var(--green-ink);
   border-radius: 50%;
   background: var(--green-bright);
 }
@@ -124,25 +131,25 @@
   border: 0;
   border-radius: 10px;
   background: none;
-  color: var(--workspace-muted);
+  color: var(--on-dark-muted);
   font-size: var(--text-footnote);
   font-weight: 500;
   text-align: left;
 }
 .cx-app .cx-credits:hover {
-  background: rgb(0 0 0 / 4%);
-  color: var(--workspace-ink);
+  background: var(--on-dark-hover);
+  color: var(--on-dark);
 }
 .cx-credits > svg {
   flex: none;
-  color: var(--green);
+  color: var(--green-bright);
 }
 .cx-plan-chip {
   margin-left: auto;
   padding: 2px 8px;
   border-radius: var(--radius-pill);
-  background: rgb(0 0 0 / 6%);
-  color: var(--workspace-ink);
+  background: var(--on-dark-selected);
+  color: var(--on-dark);
   font-size: var(--text-caption);
   font-weight: 600;
 }
@@ -172,7 +179,7 @@
   width: 32px;
   height: 32px;
   border-radius: 50%;
-  background: var(--workspace-ink);
+  background: var(--green-ink);
   color: #fff;
   font-size: var(--text-footnote);
   font-weight: 600;
@@ -187,6 +194,21 @@
   flex: none;
   margin-left: auto;
   color: var(--workspace-muted);
+}
+/* The sidebar's account button, on the dark surface. The phone copy sits on
+   the canvas and keeps the default colors. */
+.cx-app .cx-sidebar-bottom .cx-account {
+  color: var(--on-dark);
+}
+.cx-app .cx-sidebar-bottom .cx-account:is(:hover, [data-state="open"]) {
+  background: var(--on-dark-hover);
+}
+.cx-sidebar-bottom .cx-avatar {
+  background: var(--green-bright);
+  color: var(--green-ink);
+}
+.cx-sidebar-bottom .cx-account-chevron {
+  color: var(--on-dark-muted);
 }
 .cx-account-menu {
   min-width: 248px;
@@ -286,6 +308,11 @@
     overflow: visible;
     border: 0;
     background: none;
+    color: var(--workspace-ink);
+    color-scheme: light;
+  }
+  .cx-sidebar {
+    --workspace-focus: var(--green);
   }
   .cx-sidebar-heading {
     margin: 0;
@@ -322,8 +349,8 @@
     background: var(--nav-surface);
     -webkit-backdrop-filter: var(--glass-blur);
     backdrop-filter: var(--glass-blur);
-    border-top: 1px solid var(--workspace-line);
-    box-shadow: 0 -8px 24px rgb(0 0 0 / 4%);
+    color-scheme: dark;
+    box-shadow: 0 -8px 24px rgb(0 0 0 / 8%);
   }
   .cx-app .cx-nav button {
     grid-template-columns: minmax(0, 1fr);
@@ -332,7 +359,7 @@
     min-height: 52px;
     padding: 4px 2px;
     border-radius: 12px;
-    color: var(--workspace-muted);
+    color: var(--on-dark-muted);
     font-size: var(--text-caption2);
     font-weight: 500;
     text-align: center;
@@ -342,18 +369,12 @@
   }
   .cx-nav button.active {
     background: none;
-    color: var(--workspace-ink);
+    color: var(--on-dark);
     font-weight: 600;
-  }
-  .cx-nav button.active .cx-nav-icon {
-    color: var(--green);
   }
   .cx-nav-icon svg {
     width: 22px;
     height: 22px;
-  }
-  .cx-nav-dot {
-    border-color: #fff;
   }
   .cx-nav-full {
     display: none;

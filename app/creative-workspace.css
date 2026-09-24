@@ -90,7 +90,7 @@
   border: 1px solid transparent;
   border-radius: var(--radius-control);
   background: var(--fill)
-    url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24' fill='none' stroke='%236e6e73' stroke-width='2' stroke-linecap='round' stroke-linejoin='round'%3E%3Ccircle cx='11' cy='11' r='7'/%3E%3Cpath d='m20 20-3.5-3.5'/%3E%3C/svg%3E")
+    url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24' fill='none' stroke='%235f5f64' stroke-width='2' stroke-linecap='round' stroke-linejoin='round'%3E%3Ccircle cx='11' cy='11' r='7'/%3E%3Cpath d='m20 20-3.5-3.5'/%3E%3C/svg%3E")
     no-repeat 13px 50% / 16px;
   color: var(--workspace-ink);
   font: 400 var(--text-callout) / 1.3 var(--font-ui);
@@ -179,6 +179,7 @@
   padding: 12px;
   border: 1px dashed var(--workspace-line);
   border-radius: var(--radius-control);
+  background: var(--gray-100);
   color: var(--workspace-muted);
   font-size: var(--text-subhead);
 }
@@ -531,7 +532,13 @@
   line-height: 1.12;
   margin: 18px 0;
 }
-.mm-post-start .cx-btn {
+/* The main action and the Photo Studio link share a row, wrapping on
+   narrow screens. */
+.mm-post-start-actions {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 8px 24px;
   margin: 18px 0;
 }
 .mm-kicker {
@@ -1121,7 +1128,7 @@
   font-size: var(--text-base);
   min-height: 44px;
   padding: 10px;
-  border: 1px solid var(--gray-300);
+  border: 1px solid var(--menu-chrome-line);
   border-radius: 8px;
   color: var(--gray-900);
   background: #fff;
@@ -1145,7 +1152,7 @@
   margin: -4px -3px;
 }
 .mm-guest-nav button {
-  border: 1px solid var(--gray-300);
+  border: 1px solid var(--menu-chrome-line);
   border-radius: 8px;
   background: #fff;
   color: var(--gray-900);

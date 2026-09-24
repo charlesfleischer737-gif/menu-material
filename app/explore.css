@@ -1,9 +1,6 @@
 /* Explore: an editorial lookbook of every photographic style. Its larger
    title is the working-screen exception UX-08.4 allows; the page keeps the
    standard workspace gutters. */
-.cx-explore-body {
-  background: #fff;
-}
 .cx-main.cx-explore-main {
   max-width: 1600px;
 }
@@ -77,9 +74,9 @@
   min-width: 260px;
   min-height: 48px;
   padding: 0 4px 0 16px;
-  border: 1px solid transparent;
+  border: 1px solid var(--workspace-line);
   border-radius: var(--radius-pill);
-  background: var(--fill);
+  background: var(--workspace-surface);
   color: var(--workspace-muted);
   transition:
     background-color var(--duration-fast) var(--ease),
@@ -158,7 +155,7 @@
   z-index: 5;
   margin-inline: calc(var(--ex-bleed) * -1);
   padding-block: 4px;
-  background: rgb(255 255 255 / 86%);
+  background: var(--canvas-glass);
   -webkit-backdrop-filter: var(--glass-blur);
   backdrop-filter: var(--glass-blur);
   transition: box-shadow var(--duration) var(--ease);
@@ -183,7 +180,8 @@
   padding: 8px 16px;
   border: 0;
   border-radius: var(--radius-pill);
-  background: var(--fill);
+  background: var(--workspace-surface);
+  box-shadow: inset 0 0 0 1px var(--workspace-line);
   color: var(--workspace-ink);
   font-size: var(--text-callout);
   font-weight: 500;
@@ -191,13 +189,15 @@
   white-space: nowrap;
   transition:
     background-color var(--duration-fast) var(--ease),
+    box-shadow var(--duration-fast) var(--ease),
     color var(--duration-fast) var(--ease);
 }
 .cx-app .ex-chips button:hover:not([aria-checked="true"]) {
-  background: rgb(118 118 128 / 20%);
+  box-shadow: inset 0 0 0 1px var(--gray-400);
 }
 .cx-app .ex-chips button[aria-checked="true"] {
   background: var(--workspace-action);
+  box-shadow: none;
   color: #fff;
 }
 .cx-app .ex-chips button:focus-visible {
@@ -304,9 +304,9 @@
   border-radius: var(--radius-card);
   background: linear-gradient(
       100deg,
-      var(--gray-100) 40%,
-      var(--gray-50) 50%,
-      var(--gray-100) 60%
+      var(--gray-200) 40%,
+      var(--gray-100) 50%,
+      var(--gray-200) 60%
     )
     0 0 / 300% 100%;
   animation: ex-shimmer 1.4s linear infinite;
@@ -317,7 +317,7 @@
   border-radius: var(--radius-media);
 }
 .ex-tile-image[data-loaded] {
-  background: var(--gray-100);
+  background: var(--gray-200);
   animation: none;
 }
 .cx-app .ex-tile-image img {
@@ -562,7 +562,7 @@
   margin-top: 12px;
   padding: 56px 24px;
   border-radius: var(--radius-media);
-  background: var(--gray-100);
+  background: var(--workspace-surface);
   color: var(--workspace-muted);
   text-align: center;
 }
@@ -596,7 +596,7 @@
   font-weight: 500;
 }
 .cx-app .ex-pill:hover {
-  background: var(--gray-50);
+  background: var(--gray-100);
 }
 
 /* Closing invitation into Photo Studio */
@@ -609,7 +609,7 @@
   padding: 56px;
   overflow: hidden;
   border-radius: var(--radius-media);
-  background: var(--gray-900);
+  background: var(--green-glow), var(--green-ink);
   color: #fff;
 }
 .cx-app .ex-cta-title {
@@ -634,7 +634,7 @@
   border: 0;
   border-radius: var(--radius-pill);
   background: #fff;
-  color: var(--gray-900);
+  color: var(--green-ink);
   font-size: var(--text-callout);
   font-weight: 600;
   line-height: 1.2;

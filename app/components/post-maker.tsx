@@ -409,15 +409,17 @@ export default function PostMaker({
               Your approved photo, your restaurant’s look, and a matching post
               and Story.
             </p>
-            <button className="cx-btn" onClick={() => setPicker(true)}>
-              <ImagePlus size={18} />
-              Choose a dish
-            </button>
-            {!approved.length && (
-              <button className="cx-link" onClick={onPhoto}>
-                Prepare a photo in Photo Studio
+            <div className="mm-post-start-actions">
+              <button className="cx-btn" onClick={() => setPicker(true)}>
+                <ImagePlus size={18} />
+                Choose a dish
               </button>
-            )}
+              {!approved.length && (
+                <button className="cx-link" onClick={onPhoto}>
+                  Prepare a photo in Photo Studio
+                </button>
+              )}
+            </div>
           </div>
           <div className="mm-start-photos">
             {approved.slice(0, 3).map((d) => (

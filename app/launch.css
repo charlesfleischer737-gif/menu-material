@@ -43,7 +43,7 @@
   font-weight: 600;
 }
 .cx-draft-recovery .cx-button {
-  background: var(--gray-900);
+  background: var(--workspace-action);
   color: white;
 }
 .cx-saved-card {
@@ -129,7 +129,11 @@
   max-width: 1600px;
   margin: auto;
 }
-/* The header lines up with the studio column below it. */
+/* The header is frosted stone over the canvas and lines up with the studio
+   column below it. */
+.cx-guest .pw-header {
+  background: var(--canvas-glass);
+}
 .cx-guest .pw-header-inner {
   max-width: 1220px;
   padding-inline: 30px;

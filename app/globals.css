@@ -28,30 +28,47 @@
   --tracking-display: -0.012em;
   --tracking-hero: -0.018em;
 
-  /* Neutrals, with the logo's green as the only accent */
-  --gray-50: #fbfbfd;
-  --gray-100: #f5f5f7;
-  --gray-200: #e8e8ed;
-  --gray-300: #d2d2d7;
+  /* Neutrals. The light steps are a warm stone, so a tinted area always
+     steps clearly away from white and food reads appetizing; the text grays
+     stay neutral. The logo's greens are the only accent. */
+  --gray-50: #f7f6f3;
+  --gray-100: #efede8;
+  --gray-200: #e4e1da;
+  --gray-300: #d4d0c7;
   --gray-400: #aeaeb2;
   --gray-500: #86868b;
-  --gray-600: #6e6e73;
+  --gray-600: #5f5f64;
   --gray-700: #515154;
   --gray-800: #3a3a3c;
   --gray-900: #1d1d1f;
-  --green: #1e7a4c;
+  --green: #1a7045;
   --green-bright: #3fbf7f;
   --green-soft: #e8f5ee;
-  /* A translucent fill that reads on white and on the gray canvas. */
-  --fill: rgb(118 118 128 / 12%);
+  /* A near-black with the logo's green in it: the one dark color, used for
+     the workspace navigation, primary buttons and the site's feature bands. */
+  --green-ink: #12211a;
+  --green-ink-hover: #243a30;
+  --green-ink-pressed: #0a140f;
+  --on-dark: #ffffff;
+  --on-dark-muted: rgb(255 255 255 / 70%);
+  --on-dark-hover: rgb(255 255 255 / 8%);
+  --on-dark-selected: rgb(255 255 255 / 11%);
+  /* The bright green glowing from the top edge of a dark band. */
+  --green-glow: radial-gradient(
+    70% 90% at 50% 0%,
+    rgb(63 191 127 / 22%),
+    transparent 70%
+  );
+  /* A translucent fill that reads on white and on the stone canvas. */
+  --fill: rgb(120 110 90 / 12%);
 
   --workspace-canvas: var(--gray-100);
   --workspace-surface: #ffffff;
   --workspace-ink: var(--gray-900);
   --workspace-muted: var(--gray-600);
-  --workspace-action: var(--gray-900);
-  --workspace-action-hover: var(--gray-800);
-  --workspace-action-pressed: #000000;
+  --workspace-action: var(--green-ink);
+  --workspace-action-hover: var(--green-ink-hover);
+  --workspace-action-pressed: var(--green-ink-pressed);
   --workspace-focus: var(--green);
   --workspace-selected: var(--gray-200);
   --workspace-line: var(--gray-300);
@@ -78,14 +95,18 @@
   --radius-media: 28px;
   --radius-pill: 999px;
   --radius-panel: var(--radius-card);
-  --shadow-card: 0 1px 2px rgb(0 0 0 / 4%), 0 4px 16px rgb(0 0 0 / 4%);
+  --shadow-card:
+    0 0 0 1px rgb(40 30 10 / 4%), 0 1px 2px rgb(40 30 10 / 5%),
+    0 8px 24px -8px rgb(40 30 10 / 10%);
   --shadow-panel: 0 2px 8px rgb(0 0 0 / 6%), 0 24px 60px -12px rgb(0 0 0 / 22%);
   --ease: cubic-bezier(0.25, 1, 0.5, 1);
   --duration-fast: 150ms;
   --duration: 240ms;
   --duration-slow: 420ms;
   --glass: rgb(255 255 255 / 72%);
-  --nav-surface: rgb(255 255 255 / 96%);
+  /* Sticky bars over the stone canvas. */
+  --canvas-glass: rgb(239 237 232 / 86%);
+  --nav-surface: rgb(18 33 26 / 96%);
   --glass-blur: saturate(180%) blur(20px);
 
   --background: var(--workspace-canvas);
@@ -214,7 +235,7 @@ input[type="file"]:hover::file-selector-button {
    background properties are marked important. */
 select:not([multiple]):not([size]) {
   appearance: none;
-  background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 12 12'%3E%3Cpath d='M2.5 4.25 6 7.75l3.5-3.5' fill='none' stroke='%236e6e73' stroke-width='1.6' stroke-linecap='round' stroke-linejoin='round'/%3E%3C/svg%3E") !important;
+  background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 12 12'%3E%3Cpath d='M2.5 4.25 6 7.75l3.5-3.5' fill='none' stroke='%235f5f64' stroke-width='1.6' stroke-linecap='round' stroke-linejoin='round'/%3E%3C/svg%3E") !important;
   background-repeat: no-repeat !important;
   background-position: right 14px center !important;
   background-size: 12px !important;
@@ -684,6 +705,15 @@ h2 {
   border-bottom: 1px solid var(--border);
   padding-left: 0;
   border-radius: 0;
+}
+/* Published menus keep the neutral surround and chrome they were designed
+   with; the interface's stone stays out of restaurant artwork. */
+:root {
+  --menu-surround: #f5f5f7;
+  --menu-chrome-line: #d2d2d7;
+}
+body:has(> :is(.md-guest, .customer-menu, .unavailable)) {
+  background: var(--menu-surround);
 }
 .customer-menu {
   max-width: 780px;
