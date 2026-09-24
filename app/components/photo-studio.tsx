@@ -8,15 +8,23 @@ import {
   ChevronDown,
   ChevronRight,
   CircleAlert,
-  Download,
+  Ellipsis,
   Expand,
   History,
   Images,
   Plus,
+  RotateCcw,
   SlidersHorizontal,
   Sparkles,
 } from "lucide-react";
 import { Dialog, DialogContent, DialogTitle } from "@/components/ui/dialog";
+import {
+  DropdownMenu,
+  DropdownMenuContent,
+  DropdownMenuItem,
+  DropdownMenuSeparator,
+  DropdownMenuTrigger,
+} from "@/components/ui/dropdown-menu";
 import { api, normalizePhoto, type Row } from "@/lib/client";
 import {
   looks,
@@ -31,8 +39,11 @@ import {
   type PhotoFormat,
 } from "@/lib/studio";
 import { canvasBlob, drawPhoto, imageBitmap } from "@/lib/photo-export";
+import { photoLineage } from "@/lib/photo-destinations";
+import { lookProfile } from "@/lib/photo-pack";
 import { PhotoFinishSheet } from "./photo-finish-sheet";
-import WorkspaceActionBar from "./workspace-action-bar";
+import { PhotoPackSheet } from "./photo-pack-sheet";
+import { PhotoHubActions, type PhotoAction } from "./photo-hub-actions";
 import {
   PhotoAdjustmentSheet,
   type PhotoAdjustmentSession,
@@ -107,7 +118,8 @@ export default function PhotoStudio({
     [aiChanges, setAiChanges] = useState(""),
     [accurate, setAccurate] = useState(false),
     [zoom, setZoom] = useState(false),
-    [finishOpen, setFinishOpen] = useState(false);
+    [finishOpen, setFinishOpen] = useState(false),
+    [packOpen, setPackOpen] = useState(false);
   const [correctionOpen, setCorrectionOpen] = useState(false);
   const [exporting, setExporting] = useState(false);
   const [referenceBusy, setReferenceBusy] = useState(false);
@@ -147,6 +159,7 @@ export default function PhotoStudio({
   useStudioNavigation(
     [
       ...(finishOpen ? ["finish"] : []),
+      ...(packOpen ? ["pack"] : []),
       ...(correctionOpen ? ["correction"] : []),
       ...(batchOpen ? ["batch"] : []),
       ...(saveLookOpen ? ["save-look"] : []),
@@ -155,6 +168,7 @@ export default function PhotoStudio({
     ],
     (stack) => {
       setFinishOpen(stack.includes("finish"));
+      setPackOpen(stack.includes("pack"));
       setCorrectionOpen(stack.includes("correction"));
       setBatchOpen(stack.includes("batch"));
       setSaveLookOpen(stack.includes("save-look"));
@@ -563,7 +577,7 @@ export default function PhotoStudio({
       track("upload_complete", a.id);
     });
   }
-  async function generate(parentId?: string) {
+  async function generate(parentId?: string, retryControls?: Row) {
     if (!state.aiConnected)
       throw Error(
         "Image creation is not connected yet. Your photo and choices are saved. You can use your original photo while the connection is set up.",
@@ -601,9 +615,9 @@ export default function PhotoStudio({
         plate: b.plate,
         angle: b.angle,
         composition: b.composition,
-        cropX: b.adjustments.x,
-        cropY: b.adjustments.y,
-        zoom: b.adjustments.zoom,
+        cropX: retryControls?.cropX ?? b.adjustments.x,
+        cropY: retryControls?.cropY ?? b.adjustments.y,
+        zoom: retryControls?.zoom ?? b.adjustments.zoom,
       },
     }).catch((error) => {
       if (inspirationIds.length) inspirationAvailability.retry();
@@ -721,7 +735,61 @@ export default function PhotoStudio({
     setCompare(false);
     setAccurate(false);
   }
+  // A failed photo resubmits the same choices as a new request: generate()
+  // issues a fresh request key, and failed outputs never use the allowance.
+  async function retry() {
+    const failed = state.jobs.find((j: Row) => j.id === b.jobId);
+    let controls: Row = {};
+    try {
+      controls = JSON.parse(failed?.details || "{}").controls || {};
+    } catch {}
+    await generate(
+      failed?.parent_id && aiChanges.trim() ? failed.parent_id : undefined,
+      Number.isFinite(controls.cropX)
+        ? { cropX: controls.cropX, cropY: controls.cropY, zoom: controls.zoom }
+        : undefined,
+    );
+  }
+  function handoff(target: string) {
+    setFinishOpen(false);
+    setPackOpen(false);
+    track("handoff_started", resultId, {
+      destination: target,
+      draftId: draftStore.id,
+      ...(b.sourceId ? { sourceId: b.sourceId } : {}),
+    });
+    onDestination(
+      target,
+      b.dishId,
+      resultId,
+      target === "post"
+        ? { quick: true, occasion: occasionName(b.occasionId) }
+        : undefined,
+    );
+  }
+  function openPhotoAction(action: PhotoAction) {
+    if (action === "download") setFinishOpen(true);
+    else if (action === "pack") setPackOpen(true);
+    else handoff(action);
+  }
+  function needRecipe() {
+    if (resultRecipe) return true;
+    setError("The saved photo settings are still loading. Try again.");
+    return false;
+  }
   if (!ready) return <DraftRecovery store={draftStore} title="Photo Studio" />;
+  const lineage = photoLineage(state, asset);
+  const resultStyle = lookProfile(
+    lineage.lookId || b.look,
+    state.restaurant.style,
+  );
+  // Description-only illustrations stay out of delivery apps and Google.
+  const resultFromPhoto = b.mode === "photo";
+  const failedRetry = !state.aiConnected
+    ? "Photo creation is temporarily unavailable. Your work is saved."
+    : state.remaining < 1
+      ? "You’ve used your available images."
+      : "";
   const hour = new Date().getHours();
   const greeting =
     hour >= 5 && hour < 12
@@ -942,10 +1010,23 @@ export default function PhotoStudio({
                 <div className="st-action st-action-inline">
                   <button
                     className="st-create"
+                    disabled={!!busy || !!failedRetry}
+                    onClick={() => void act("Creating your photo", retry)}
+                  >
+                    <RotateCcw size={18} aria-hidden="true" />
+                    Try again
+                  </button>
+                  <button
+                    className="st-pill st-pill-quiet st-pill-wide"
+                    disabled={!!busy}
                     onClick={() => update({ step: 2, requestKey: "" })}
                   >
                     Back to my styles
                   </button>
+                  <p className="st-action-note">
+                    {failedRetry ||
+                      "Same photo and choices · Uses 1 image only if it works"}
+                  </p>
                 </div>
               </aside>
             </div>
@@ -1074,6 +1155,58 @@ export default function PhotoStudio({
                     "Ready for a quick check"
                   )}
                 </span>
+                <DropdownMenu>
+                  <DropdownMenuTrigger asChild>
+                    <button
+                      className="st-icon-button st-result-more"
+                      aria-label="More photo actions"
+                      disabled={!!busy}
+                    >
+                      <Ellipsis size={18} aria-hidden="true" />
+                    </button>
+                  </DropdownMenuTrigger>
+                  <DropdownMenuContent
+                    className="cx-workspace-popover ps2-finish-menu"
+                    align="end"
+                    sideOffset={6}
+                    collisionPadding={16}
+                  >
+                    <DropdownMenuItem
+                      onSelect={() =>
+                        void act("Starting a new photo", () => nextPhoto())
+                      }
+                    >
+                      Add another photo
+                    </DropdownMenuItem>
+                    <DropdownMenuItem
+                      onSelect={() =>
+                        void act("Reusing your look", () => nextPhoto(true))
+                      }
+                    >
+                      Use this look again
+                    </DropdownMenuItem>
+                    {asset?.approved_at && (
+                      <DropdownMenuItem
+                        onSelect={() => needRecipe() && setSaveLookOpen(true)}
+                      >
+                        Save this look
+                      </DropdownMenuItem>
+                    )}
+                    <DropdownMenuItem
+                      onSelect={() => needRecipe() && setBatchOpen(true)}
+                    >
+                      Apply to more dishes
+                    </DropdownMenuItem>
+                    {asset?.approved_at && (
+                      <>
+                        <DropdownMenuSeparator />
+                        <DropdownMenuItem onSelect={() => handoff("print")}>
+                          Create a print menu
+                        </DropdownMenuItem>
+                      </>
+                    )}
+                  </DropdownMenuContent>
+                </DropdownMenu>
                 <h2 className="st-result-title">
                   Your food. Beautifully presented.
                 </h2>
@@ -1192,22 +1325,21 @@ export default function PhotoStudio({
                   </button>
                 )}
               </div>
-              <WorkspaceActionBar className="st-action">
-                <button
-                  ref={resultAction}
-                  className="st-create"
-                  disabled={!!busy || adjust === "quick"}
-                  onClick={() => setFinishOpen(true)}
-                >
-                  <Download size={18} />
-                  Use photo
-                </button>
-                <p className="st-action-note">
-                  {adjust === "quick"
+              <PhotoHubActions
+                key={resultId}
+                downloadRef={resultAction}
+                approved={!!asset?.approved_at}
+                disabled={!!busy || adjust === "quick"}
+                note={
+                  adjust === "quick"
                     ? "Save this version before using your adjusted photo."
-                    : "Choose a size and download · No image used"}
-                </p>
-              </WorkspaceActionBar>
+                    : asset?.approved_at
+                      ? `Sized for ${format.label} · No image used`
+                      : "You’ll confirm the photo once · No image used"
+                }
+                onApprove={() => approve(true)}
+                onAction={openPhotoAction}
+              />
             </aside>
           </div>
         ))}
@@ -1299,58 +1431,31 @@ export default function PhotoStudio({
           assetId={resultId}
           dishId={b.dishId}
           name={b.name || ""}
-          fromPhoto={b.mode === "photo"}
+          fromPhoto={resultFromPhoto}
           approved={!!asset?.approved_at}
           initialFormat={b.format}
-          preferenceKey={workspacePreferenceKey(
-            state.user.id,
-            state.restaurant.id,
-          )}
-          checks={b.exportChecks || {}}
-          rememberCheck={(key) =>
-            change({
-              exportChecks: { ...(read().exportChecks || {}), [key]: true },
-            })
-          }
+          style={resultStyle}
           onApprove={() => approve(true)}
-          onNew={() => void act("Starting a new photo", () => nextPhoto())}
-          onReuse={() => void act("Reusing your look", () => nextPhoto(true))}
-          onBatch={() => {
-            if (!resultRecipe) {
-              setError(
-                "The saved photo settings are still loading. Try again.",
-              );
-              return;
-            }
+          onPack={() => {
             setFinishOpen(false);
-            setBatchOpen(true);
+            setPackOpen(true);
           }}
-          onSaveLook={() => {
-            if (!resultRecipe) {
-              setError(
-                "The saved photo settings are still loading. Try again.",
-              );
-              return;
-            }
-            setFinishOpen(false);
-            setSaveLookOpen(true);
+        />
+      )}
+      {resultId && asset?.approved_at && (
+        <PhotoPackSheet
+          key={`pack-${resultId}`}
+          measurementContext={{
+            draftId: draftStore.id,
+            ...(b.sourceId ? { sourceId: b.sourceId } : {}),
           }}
-          onDestination={(target) => {
-            setFinishOpen(false);
-            track("handoff_started", resultId, {
-              destination: target,
-              draftId: draftStore.id,
-              ...(b.sourceId ? { sourceId: b.sourceId } : {}),
-            });
-            onDestination(
-              target,
-              b.dishId,
-              resultId,
-              target === "post"
-                ? { quick: true, occasion: occasionName(b.occasionId) }
-                : undefined,
-            );
-          }}
+          onCloseAutoFocus={returnToResult}
+          open={packOpen}
+          onOpenChange={setPackOpen}
+          assetId={resultId}
+          name={b.name || ""}
+          fromPhoto={resultFromPhoto}
+          style={resultStyle}
         />
       )}
       <Dialog open={zoom} onOpenChange={setZoom}>

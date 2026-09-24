@@ -152,19 +152,90 @@ export function canvasBlob(
     ),
   );
 }
-export async function photoExport(
-  aid: string,
-  format: PhotoFormat,
-  edits: Partial<Adjustments> = {},
+const gcd = (a: number, b: number): number => (b ? gcd(b, a % b) : a);
+/**
+ * The export size for a target shape, cropped from a source of this size.
+ * Output keeps the target's exact ratio (e.g. 5:4 is always 5k × 4k, so
+ * rounding can't step outside a platform's allowed range) and never exceeds
+ * the target or what the source supports: enlarging adds no detail.
+ * `fit` keeps the whole photo inside the frame; otherwise the frame is filled.
+ */
+export function exportDimensions(
+  target: { width: number; height: number },
+  source: { width: number; height: number },
+  edits: { fit?: boolean; zoom?: number } = {},
 ) {
+  const unit = gcd(target.width, target.height);
+  const rw = target.width / unit,
+    rh = target.height / unit,
+    ratio = target.width / target.height;
+  const zoom = edits.zoom || 1;
+  const cropWidth = Math.min(source.width, source.height * ratio) / zoom,
+    cropHeight = cropWidth / ratio;
+  const availableWidth = edits.fit ? source.width : cropWidth,
+    availableHeight = edits.fit ? source.height : cropHeight;
+  const k = Math.max(
+    1,
+    Math.min(
+      unit,
+      Math.floor(Math.min(availableWidth / rw, availableHeight / rh) + 1e-9),
+    ),
+  );
+  return { width: rw * k, height: rh * k, cropWidth, cropHeight };
+}
+/** Width and height after a quarter-turn rotation, if any. */
+export function rotatedSize(
+  image: { width: number; height: number },
+  rotate = 0,
+) {
+  return photoTurn(rotate) % 180
+    ? { width: image.height, height: image.width }
+    : { width: image.width, height: image.height };
+}
+/** The saved original, decoded once for one or many exports. Close it after. */
+export async function openOriginalPhoto(aid: string) {
   const original = await fetch(`/api/assets/${aid}?original=1&download=1`);
   if (!original.ok)
     throw Error("This photo could not be opened. Please try again.");
   const originalBlob = await original.blob();
   // HEIC/HEIF originals stay available unchanged; browsers use their normalized JPEG for crops.
-  const im = ["image/heic", "image/heif"].includes(originalBlob.type)
+  return ["image/heic", "image/heif"].includes(originalBlob.type)
     ? await imageBitmap(`/api/assets/${aid}?download=1`)
     : await createImageBitmap(originalBlob);
+}
+/** Draws and encodes a JPEG, easing quality only as far as needed to fit. */
+export async function encodePhoto(
+  im: ImageBitmap,
+  width: number,
+  height: number,
+  edits: Adjustments,
+  maxBytes = Infinity,
+  qualities = [0.96, 0.95, 0.94],
+) {
+  const canvas = document.createElement("canvas");
+  try {
+    drawPhoto(canvas, im, width, height, edits);
+    let blob = await canvasBlob(canvas, "image/jpeg", qualities[0]);
+    for (const quality of qualities.slice(1)) {
+      if (blob.size <= maxBytes) break;
+      blob = await canvasBlob(canvas, "image/jpeg", quality);
+    }
+    if (blob.size > maxBytes)
+      throw Error(
+        "This file exceeds the destination’s size limit at full quality. Try a different crop or download the full-quality image.",
+      );
+    return { blob, width, height };
+  } finally {
+    canvas.width = 1;
+    canvas.height = 1;
+  }
+}
+export async function photoExport(
+  aid: string,
+  format: PhotoFormat,
+  edits: Partial<Adjustments> = {},
+) {
+  const im = await openOriginalPhoto(aid);
   try {
     const profile = formats[format];
     const delivery = format in catalogProfiles;
@@ -174,42 +245,22 @@ export async function photoExport(
       ...edits,
       ...(delivery ? { fit: false } : {}),
     };
-    const rw = e.rotate % 180 ? im.height : im.width,
-      rh = e.rotate % 180 ? im.width : im.height;
-    const cropW = Math.min(rw, rh * profile.ratio) / e.zoom,
-      cropH = cropW / profile.ratio;
-    let width: number = profile.width,
-      height: number = profile.height;
-    if (delivery) {
-      if (cropW < spec.minWidth || cropH < spec.minHeight)
-        throw Error(
-          `This crop is too small for ${profile.label}. Use a wider, higher-resolution photo; enlarging it will not add detail.`,
-        );
-      const scale = Math.min(1, cropW / width, cropH / height);
-      width = Math.floor(width * scale);
-      height = Math.round(width / profile.ratio);
-    } else {
-      const scale = Math.min(
-        1,
-        (e.fit ? rw : cropW) / width,
-        (e.fit ? rh : cropH) / height,
-      );
-      width = Math.max(1, Math.floor(width * scale));
-      height = Math.max(1, Math.round(width / profile.ratio));
-    }
-    const canvas = document.createElement("canvas");
-    drawPhoto(canvas, im, width, height, e);
-    let blob = await canvasBlob(canvas, "image/jpeg", 0.96);
-    const max = delivery ? spec.maxBytes : Infinity;
-    for (const quality of [0.95, 0.94]) {
-      if (blob.size <= max) break;
-      blob = await canvasBlob(canvas, "image/jpeg", quality);
-    }
-    if (blob.size > max)
+    const { width, height } = exportDimensions(
+      profile,
+      rotatedSize(im, e.rotate),
+      e,
+    );
+    if (delivery && (width < spec.minWidth || height < spec.minHeight))
       throw Error(
-        "This file exceeds the destination’s size limit at full quality. Try a different crop or download the full-quality image.",
+        `This crop is too small for ${profile.label}. Use a wider, higher-resolution photo; enlarging it will not add detail.`,
       );
-    return { blob, width, height };
+    return await encodePhoto(
+      im,
+      width,
+      height,
+      e,
+      delivery ? spec.maxBytes : Infinity,
+    );
   } finally {
     im.close();
   }

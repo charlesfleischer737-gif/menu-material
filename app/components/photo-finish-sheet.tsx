@@ -3,7 +3,9 @@ import { useEffect, useId, useRef, useState } from "react";
 import {
   Check,
   ChevronDown,
+  CircleAlert,
   Download,
+  Package,
   Share2,
   SlidersHorizontal,
   X,
@@ -19,15 +21,12 @@ import {
   CollapsibleContent,
   CollapsibleTrigger,
 } from "@/components/ui/collapsible";
+import { downloadBlob } from "@/lib/client";
 import {
-  DropdownMenu,
-  DropdownMenuContent,
-  DropdownMenuItem,
-  DropdownMenuSeparator,
-  DropdownMenuTrigger,
-} from "@/components/ui/dropdown-menu";
-import { downloadBlob, type Row } from "@/lib/client";
-import { masterPhotoExport, photoExport } from "@/lib/photo-export";
+  masterPhotoExport,
+  openOriginalPhoto,
+  photoExport,
+} from "@/lib/photo-export";
 import { photoExportEventKey } from "@/lib/photo-export-identity";
 import {
   emptyAdjustments,
@@ -36,10 +35,24 @@ import {
   type Adjustments,
 } from "@/lib/studio";
 import { isCatalogDestination, photoFilename } from "@/lib/photo-destinations";
-import { readPreference, rememberPreference } from "@/lib/workspace-navigation";
+import { destinationChannel, type StyleProfile } from "@/lib/channel-rules";
+import { downloadWarnings } from "@/lib/photo-pack";
 import { CropControls, Field, PhotoFrame, track } from "./creation-shared";
+import { radioKeys, radioTab } from "./radio-keys";
 
 type Destination = PhotoFormat | "master";
+// Labeled by use. The photo's own format is the default; the rest are a
+// secondary "Different size" choice.
+export const sizeChoices: { id: Destination; label: string; hint: string }[] = [
+  { id: "menu", label: "Menu & website", hint: "Square · 1:1" },
+  { id: "feed", label: "Instagram post", hint: "Portrait · 4:5" },
+  { id: "story", label: "Story", hint: "Full screen · 9:16" },
+  { id: "doordash", label: "DoorDash", hint: "Wide · 16:9" },
+  { id: "uber", label: "Uber Eats", hint: "Item photo · 5:4" },
+  { id: "toast", label: "Toast", hint: "Item photo · 5:3" },
+  { id: "print", label: "Print", hint: "Square · high resolution" },
+  { id: "master", label: "Full-quality image", hint: "Original size, no crop" },
+];
 const validDestination = (value: string): Destination =>
   value === "master" || value in formats ? (value as Destination) : "menu";
 export function PhotoFinishSheet({
@@ -51,15 +64,9 @@ export function PhotoFinishSheet({
   fromPhoto,
   approved,
   initialFormat,
-  preferenceKey,
-  checks,
-  rememberCheck,
+  style,
   onApprove,
-  onNew,
-  onReuse,
-  onBatch,
-  onSaveLook,
-  onDestination,
+  onPack,
   onCloseAutoFocus,
   onBusyChange,
   measurementContext = {},
@@ -71,17 +78,14 @@ export function PhotoFinishSheet({
   name: string;
   fromPhoto: boolean;
   approved: boolean;
+  /** The format the photo was made for; the download opens on it. */
   initialFormat: string;
-  preferenceKey: string;
-  checks: Row;
-  rememberCheck: (key: string) => void;
+  /** The photo's look, for delivery-app backdrop warnings. */
+  style: StyleProfile;
   onApprove: () => Promise<void>;
-  onNew: () => void;
-  onReuse: () => void;
-  onBatch: () => void;
-  onSaveLook: () => void;
-  onDestination: (target: string) => void;
-  onCloseAutoFocus: (event: Event) => void;
+  /** Opens the photo pack (every channel in one download). */
+  onPack?: () => void;
+  onCloseAutoFocus?: (event: Event) => void;
   onBusyChange?: (busy: boolean) => void;
   measurementContext?: { draftId?: string; sourceId?: string };
 }) {
@@ -93,13 +97,18 @@ export function PhotoFinishSheet({
     ...emptyAdjustments,
     fit: !isCatalogDestination(initialFormat),
   });
-  const [confirmed, setConfirmed] = useState<boolean | null>(null),
+  const [confirmed, setConfirmed] = useState(false),
+    [sizesOpen, setSizesOpen] = useState(false),
     [busy, setBusy] = useState(false),
     [error, setError] = useState(""),
     [notice, setNotice] = useState(""),
     [finished, setFinished] = useState(false);
   const [canShare, setCanShare] = useState(false),
     [dimensions, setDimensions] = useState<{
+      width: number;
+      height: number;
+    } | null>(null),
+    [originalSize, setOriginalSize] = useState<{
       width: number;
       height: number;
     } | null>(null);
@@ -109,19 +118,12 @@ export function PhotoFinishSheet({
     onBusyChange?.(busy);
     return () => onBusyChange?.(false);
   }, [busy, onBusyChange]);
-  const preference = preferenceKey + ":photo-destination";
   useEffect(() => {
-    const remembered = readPreference(preference);
-    if (remembered) {
-      const target = validDestination(remembered);
-      setDestination(target);
-      setEdits({ ...emptyAdjustments, fit: !isCatalogDestination(target) });
-    }
     setCanShare(
       typeof navigator.share === "function" &&
         typeof navigator.canShare === "function",
     );
-  }, [preference]);
+  }, []);
   useEffect(() => {
     let active = true;
     const image = new Image();
@@ -139,19 +141,42 @@ export function PhotoFinishSheet({
   }, [assetId]);
   const master = destination === "master",
     catalog = isCatalogDestination(destination);
-  const checkKey = `${assetId}:${destination}:${JSON.stringify(edits)}`;
-  const checked = confirmed ?? (!!approved && !!checks[checkKey]);
+  // Delivery minimums are measured on the saved original (the working copy
+  // is capped at 2048 pixels). Originals of unapproved photos stay private.
+  useEffect(() => {
+    if (!open || !approved || !catalog || originalSize) return;
+    let active = true;
+    void openOriginalPhoto(assetId)
+      .then((im) => {
+        if (active) setOriginalSize({ width: im.width, height: im.height });
+        im.close();
+      })
+      .catch(() => {});
+    return () => {
+      active = false;
+    };
+  }, [open, approved, catalog, assetId, originalSize]);
+  // Approval is once per photo: an approved photo downloads in any size or
+  // crop without another confirmation.
+  const checked = approved || confirmed;
   const eligible = !catalog || fromPhoto;
   const outputName = fileName.trim() || "Dish photo";
+  const choice = sizeChoices.find((entry) => entry.id === destination)!;
+  const rule = destinationChannel(destination);
+  const warnings = eligible
+    ? downloadWarnings(destination, {
+        style,
+        source: originalSize || dimensions,
+        edits,
+      })
+    : [];
   function changeDestination(value: string) {
     const target = validDestination(value);
     setDestination(target);
     setEdits({ ...emptyAdjustments, fit: !isCatalogDestination(target) });
-    setConfirmed(null);
     setFinished(false);
     setError("");
     setNotice("");
-    rememberPreference(preference, target);
   }
   async function finish(share = false) {
     if (downloadLock.current || busy || !eligible || !checked) return;
@@ -183,7 +208,6 @@ export function PhotoFinishSheet({
       const file = new File([output.blob], filename, {
         type: output.blob.type,
       });
-      rememberCheck(checkKey);
       track("export_prepared", assetId, eventDetails, exportKey);
       if (share && navigator.canShare?.({ files: [file] })) {
         await navigator.share({ files: [file], title: outputName });
@@ -228,7 +252,9 @@ export function PhotoFinishSheet({
           <div>
             <DialogTitle>Download photo</DialogTitle>
             <DialogDescription>
-              Choose a size and check your crop.
+              {master
+                ? "Your saved image at its original size."
+                : `Sized for ${choice.label} · ${choice.hint}`}
             </DialogDescription>
           </div>
           <button
@@ -253,20 +279,94 @@ export function PhotoFinishSheet({
               />
             )}
           </div>
-          <Field label="Save for">
-            <select
-              value={destination}
-              disabled={busy}
-              onChange={(e) => changeDestination(e.target.value)}
-            >
-              {Object.entries(formats).map(([id, format]) => (
-                <option key={id} value={id}>
-                  {format.label}
-                </option>
-              ))}
-              <option value="master">Full-quality image · no crop</option>
-            </select>
-          </Field>
+          <p className="ps2-control-help ps2-finish-size">
+            {master
+              ? `${dimensions ? `${dimensions.width} × ${dimensions.height} pixels · ` : ""}No resizing or recompression`
+              : `Up to ${formats[destination].width} × ${formats[destination].height} pixels · JPG · No image used`}
+          </p>
+          {warnings.length > 0 && (
+            <div className="ps2-finish-warning" role="note">
+              <CircleAlert size={18} aria-hidden="true" />
+              <div>
+                {warnings.map((warning) => (
+                  <p key={warning}>{warning}</p>
+                ))}
+                {rule && (
+                  <a
+                    className="cx-link"
+                    href={rule.sources[0]}
+                    target="_blank"
+                    rel="noreferrer"
+                  >
+                    {rule.label} photo rules
+                  </a>
+                )}
+              </div>
+            </div>
+          )}
+          <Collapsible
+            open={sizesOpen}
+            onOpenChange={setSizesOpen}
+            className="ps2-finish-more-sizes"
+          >
+            <CollapsibleTrigger className="cx-link" disabled={busy}>
+              Different size <ChevronDown size={14} />
+            </CollapsibleTrigger>
+            <CollapsibleContent>
+              <div
+                className="ps2-size-choices"
+                role="radiogroup"
+                aria-label="Size"
+                onKeyDown={radioKeys}
+              >
+                {sizeChoices.map((entry, index) => (
+                  <button
+                    key={entry.id}
+                    role="radio"
+                    aria-checked={destination === entry.id}
+                    tabIndex={radioTab(
+                      index,
+                      sizeChoices.findIndex((c) => c.id === destination),
+                    )}
+                    disabled={busy}
+                    onClick={() => changeDestination(entry.id)}
+                  >
+                    <b>{entry.label}</b>
+                    <span>{entry.hint}</span>
+                    {destination === entry.id && (
+                      <Check size={15} aria-hidden="true" />
+                    )}
+                  </button>
+                ))}
+              </div>
+            </CollapsibleContent>
+          </Collapsible>
+          {!master && (
+            <Collapsible className="ps2-finish-crop">
+              <CollapsibleTrigger className="cx-link" disabled={busy}>
+                <SlidersHorizontal size={15} />
+                Adjust crop
+                <ChevronDown size={14} />
+              </CollapsibleTrigger>
+              <CollapsibleContent>
+                <fieldset
+                  disabled={busy}
+                  style={{ border: 0, padding: 0, margin: 0 }}
+                >
+                  <CropControls
+                    value={edits}
+                    allowFit={!catalog}
+                    onChange={(next) => {
+                      setEdits(next);
+                      setFinished(false);
+                      setError("");
+                      setNotice("");
+                    }}
+                  />
+                </fieldset>
+              </CollapsibleContent>
+            </Collapsible>
+          )}
           <Collapsible>
             <CollapsibleTrigger className="cx-link" disabled={busy}>
               File name <ChevronDown size={14} />
@@ -283,47 +383,6 @@ export function PhotoFinishSheet({
               </Field>
             </CollapsibleContent>
           </Collapsible>
-          {master ? (
-            <p className="ps2-control-help">
-              {dimensions
-                ? `${dimensions.width} × ${dimensions.height} pixels. `
-                : ""}
-              The saved image, with no resizing or recompression.
-            </p>
-          ) : (
-            <>
-              <p className="ps2-control-help">
-                Up to {formats[destination].width} ×{" "}
-                {formats[destination].height} pixels · JPG · No image allowance
-                used
-              </p>
-              <Collapsible className="ps2-finish-crop">
-                <CollapsibleTrigger className="cx-link" disabled={busy}>
-                  <SlidersHorizontal size={15} />
-                  Adjust crop
-                  <ChevronDown size={14} />
-                </CollapsibleTrigger>
-                <CollapsibleContent>
-                  <fieldset
-                    disabled={busy}
-                    style={{ border: 0, padding: 0, margin: 0 }}
-                  >
-                    <CropControls
-                      value={edits}
-                      allowFit={!catalog}
-                      onChange={(next) => {
-                        setEdits(next);
-                        setConfirmed(null);
-                        setFinished(false);
-                        setError("");
-                        setNotice("");
-                      }}
-                    />
-                  </fieldset>
-                </CollapsibleContent>
-              </Collapsible>
-            </>
-          )}
           {destination === "print" && (
             <p className="ps2-control-help">
               {dimensions
@@ -335,30 +394,23 @@ export function PhotoFinishSheet({
           )}
         </div>
         <footer className="ps2-dialog-footer">
-          {!checked || !finished ? (
+          {!approved && (
             <label className="cx-check ps2-finish-check">
               <input
                 type="checkbox"
-                checked={checked}
+                checked={confirmed}
                 disabled={busy}
                 onChange={(e) => setConfirmed(e.target.checked)}
               />
-              {approved
-                ? master
-                  ? "I’ve checked this is the version I want to use."
-                  : "The whole dish and its packaging are visible in this crop."
-                : "The food, portion and branding match what I serve, and the whole dish is visible."}
+              The food, portion and branding match what I serve, and the whole
+              dish is visible.
             </label>
-          ) : (
-            <p className="ps2-finish-checked">
-              <Check size={16} /> This version is reviewed and saved.
-            </p>
           )}
           <p className="ps2-download-hint" id={downloadHintId} role="status">
             {!eligible
-              ? "Choose Website or menu. Ordering platforms require a photo of your actual dish."
+              ? "Choose Menu & website. Ordering platforms need a photo of your actual dish."
               : !checked
-                ? "Confirm the crop above to download."
+                ? "Confirm the photo above to download. You’ll only do this once."
                 : "Saved privately in My Dishes."}
           </p>
           {error && (
@@ -392,56 +444,18 @@ export function PhotoFinishSheet({
               onClick={() => void finish()}
             >
               <Download size={17} />
-              {busy
-                ? "Preparing…"
-                : finished
-                  ? "Download again"
-                  : "Download photo"}
+              {busy ? "Preparing…" : finished ? "Download again" : "Download"}
             </button>
           </div>
-          {(finished || approved) && (
-            <DropdownMenu>
-              <DropdownMenuTrigger
-                className="cx-link ps2-finish-more"
-                disabled={busy}
-              >
-                More photo actions <ChevronDown size={16} />
-              </DropdownMenuTrigger>
-              <DropdownMenuContent
-                className="cx-workspace-popover ps2-finish-menu"
-                side="top"
-                align="end"
-                sideOffset={8}
-                collisionPadding={16}
-              >
-                {approved && (
-                  <>
-                    <DropdownMenuItem onSelect={() => onDestination("post")}>
-                      Make a post
-                    </DropdownMenuItem>
-                    <DropdownMenuItem onSelect={() => onDestination("menu")}>
-                      Add to a menu
-                    </DropdownMenuItem>
-                    <DropdownMenuItem onSelect={() => onDestination("print")}>
-                      Create a print menu
-                    </DropdownMenuItem>
-                    <DropdownMenuSeparator />
-                  </>
-                )}
-                <DropdownMenuItem onSelect={onNew}>
-                  Add another photo
-                </DropdownMenuItem>
-                <DropdownMenuItem onSelect={onReuse}>
-                  Use this look again
-                </DropdownMenuItem>
-                <DropdownMenuItem onSelect={onSaveLook}>
-                  Save this look
-                </DropdownMenuItem>
-                <DropdownMenuItem onSelect={onBatch}>
-                  Apply to more dishes
-                </DropdownMenuItem>
-              </DropdownMenuContent>
-            </DropdownMenu>
+          {onPack && approved && (
+            <button
+              className="cx-link ps2-finish-more"
+              disabled={busy}
+              onClick={onPack}
+            >
+              <Package size={16} aria-hidden="true" />
+              Photo pack · every size in one download
+            </button>
           )}
         </footer>
       </DialogContent>

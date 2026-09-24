@@ -10,10 +10,18 @@ import {
   UtensilsCrossed,
   CircleAlert,
   SlidersHorizontal,
+  Download,
+  Package,
+  Megaphone,
+  BookOpen,
 } from "lucide-react";
 import { api, dishCount, money, normalizePhoto, type Row } from "@/lib/client";
 import { preferredPhoto, dishPhotos, dishStatus } from "@/lib/dish-library";
-import { downloadPhotoItem } from "@/lib/photo-destinations";
+import { downloadPhotoItem, photoLineage } from "@/lib/photo-destinations";
+import { lookProfile } from "@/lib/photo-pack";
+import { PhotoFinishSheet } from "./photo-finish-sheet";
+import { PhotoPackSheet } from "./photo-pack-sheet";
+import { photoActionLabels } from "./photo-hub-actions";
 import { workspacePreferenceKey } from "@/lib/workspace-navigation";
 import { Sheet, SheetContent, SheetTitle } from "@/components/ui/sheet";
 import { Dialog, DialogContent, DialogTitle } from "@/components/ui/dialog";
@@ -51,7 +59,12 @@ export default function DishLibrary({
     [filtersOpen, setFiltersOpen] = useState(false);
   const [selecting, setSelecting] = useState(false),
     [selected, setSelected] = useState<string[]>([]),
-    [downloadIds, setDownloadIds] = useState<string[]>([]);
+    [downloadIds, setDownloadIds] = useState<string[]>([]),
+    [photoUse, setPhotoUse] = useState<{
+      kind: "download" | "pack";
+      dish: Row;
+      photo: Row;
+    } | null>(null);
   const [detail, setDetail] = useState<Row | null>(null),
     [chosen, setChosen] = useState(""),
     [dirty, setDirty] = useState(false),
@@ -144,9 +157,6 @@ export default function DishLibrary({
       setDirty(false);
     }
   }
-  function download(d: Row, a: Row) {
-    setDownloadIds([a.id]);
-  }
   function reuse(d: Row, a: Row, where: string) {
     if (dirty && !window.confirm("Discard unsaved dish details and continue?"))
       return;
@@ -154,7 +164,10 @@ export default function DishLibrary({
     setDirty(false);
     onDestination(where, d.id, a.id, { quick: true });
   }
-  function UsePhoto({ dish, photo }: { dish: Row; photo: Row }) {
+  // The same actions, with the same names, as a finished photo in Photo Studio.
+  // Called as a function, not rendered as a component: an inner component
+  // type would remount (and close the menu) on every state refresh.
+  function photoUseMenu(dish: Row, photo: Row) {
     return (
       <DropdownMenu>
         <DropdownMenuTrigger asChild>
@@ -163,19 +176,46 @@ export default function DishLibrary({
           </button>
         </DropdownMenuTrigger>
         <DropdownMenuContent className="cx-workspace-popover" align="end">
+          <DropdownMenuItem
+            onSelect={() => setPhotoUse({ kind: "download", dish, photo })}
+          >
+            <Download size={16} aria-hidden="true" />
+            {photoActionLabels.download}
+          </DropdownMenuItem>
+          <DropdownMenuItem
+            onSelect={() => setPhotoUse({ kind: "pack", dish, photo })}
+          >
+            <Package size={16} aria-hidden="true" />
+            {photoActionLabels.pack}
+          </DropdownMenuItem>
           <DropdownMenuItem onSelect={() => reuse(dish, photo, "post")}>
-            Make a post
+            <Megaphone size={16} aria-hidden="true" />
+            {photoActionLabels.post}
           </DropdownMenuItem>
           <DropdownMenuItem onSelect={() => reuse(dish, photo, "menu")}>
-            Add to menu
-          </DropdownMenuItem>
-          <DropdownMenuItem onSelect={() => download(dish, photo)}>
-            Download photo
+            <BookOpen size={16} aria-hidden="true" />
+            {photoActionLabels.menu}
           </DropdownMenuItem>
         </DropdownMenuContent>
       </DropdownMenu>
     );
   }
+  const usedPhoto =
+    photoUse &&
+    (state.assets.find((a: Row) => a.id === photoUse.photo.id) ||
+      photoUse.photo);
+  const usedName =
+    (photoUse && allDishes.find((d) => d.id === photoUse.dish.id)?.name) ||
+    photoUse?.dish.name ||
+    "";
+  const usedLineage = usedPhoto ? photoLineage(state, usedPhoto) : null;
+  const usedStyle = lookProfile(
+    usedLineage?.lookId || "",
+    state.restaurant.style,
+  );
+  const usedFromPhoto = usedPhoto
+    ? downloadPhotoItem(state, usedPhoto, usedName).fromPhoto
+    : false;
   async function archiveDish(d: Row, value: boolean) {
     await api(`library/${d.id}`, { archived: value });
     await refresh();
@@ -547,7 +587,7 @@ export default function DishLibrary({
                     {label}
                   </span>
                   {a?.approved_at ? (
-                    <UsePhoto dish={d} photo={a} />
+                    photoUseMenu(d, a)
                   ) : (
                     <button className="cx-link" onClick={() => open(d)}>
                       {a ? "Review" : "Add photo"}
@@ -633,7 +673,7 @@ export default function DishLibrary({
                     <div className="mm-detail-actions">
                       {current?.approved_at ? (
                         <>
-                          <UsePhoto dish={detail} photo={current} />
+                          {photoUseMenu(detail, current)}
                           <button
                             className="cx-link"
                             disabled={
@@ -1049,6 +1089,40 @@ export default function DishLibrary({
           />
         </DialogContent>
       </Dialog>
+      {photoUse?.kind === "download" && usedPhoto && (
+        <PhotoFinishSheet
+          key={`download-${usedPhoto.id}`}
+          open
+          onOpenChange={(value) => {
+            if (!value) setPhotoUse(null);
+          }}
+          assetId={usedPhoto.id}
+          dishId={photoUse.dish.id}
+          name={usedName}
+          fromPhoto={usedFromPhoto}
+          approved={!!usedPhoto.approved_at}
+          initialFormat={usedLineage?.format || "menu"}
+          style={usedStyle}
+          onApprove={async () => {
+            await api(`assets/${usedPhoto.id}/approve`, { accurate: true });
+            await refresh();
+          }}
+          onPack={() => setPhotoUse({ ...photoUse, kind: "pack" })}
+        />
+      )}
+      {photoUse?.kind === "pack" && usedPhoto?.approved_at && (
+        <PhotoPackSheet
+          key={`pack-${usedPhoto.id}`}
+          open
+          onOpenChange={(value) => {
+            if (!value) setPhotoUse(null);
+          }}
+          assetId={usedPhoto.id}
+          name={usedName}
+          fromPhoto={usedFromPhoto}
+          style={usedStyle}
+        />
+      )}
       <ConfirmDelete
         open={!!deleting}
         onClose={() => setDeleting("")}
