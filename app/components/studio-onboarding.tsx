@@ -85,10 +85,9 @@ export function PhotoComparison({
           </p>
         )}
       </div>
-      <figcaption>
-        <span id={labelId}>
-          <ChevronsLeftRight size={16} /> Slide to compare
-        </span>
+      {/* The Before and After tags label the photos; the hint is spoken. */}
+      <figcaption className="sr-only">
+        <span id={labelId}>Slide to compare</span>
         <span>{example ? "Example edit" : "Original → your result"}</span>
       </figcaption>
     </figure>
