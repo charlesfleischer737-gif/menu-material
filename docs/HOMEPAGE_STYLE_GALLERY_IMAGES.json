@@ -11,9 +11,35 @@
     "original_path": "public/homepage/styles/cheesecake-original.jpg",
     "width": 2592,
     "height": 1944,
-    "attribution": "Strawberry cheesecake photo by Pilauricey, via Wikimedia Commons, CC BY-SA 3.0. Gallery variations edited with AI; derivatives licensed CC BY-SA 3.0."
+    "attribution": "Strawberry cheesecake photo by Pilauricey, via Wikimedia Commons, CC BY-SA 3.0. Gallery variations edited with AI; derivatives licensed CC BY-SA 3.0.",
+    "display_files": [
+      {
+        "path": "public/homepage/styles/cheesecake-original-320.webp",
+        "width": 320,
+        "height": 240,
+        "bytes": 9836
+      },
+      {
+        "path": "public/homepage/styles/cheesecake-original-640.webp",
+        "width": 640,
+        "height": 480,
+        "bytes": 24868
+      },
+      {
+        "path": "public/homepage/styles/cheesecake-original-960.webp",
+        "width": 960,
+        "height": 720,
+        "bytes": 43474
+      },
+      {
+        "path": "public/homepage/styles/cheesecake-original-1280.webp",
+        "width": 1280,
+        "height": 960,
+        "bytes": 66018
+      }
+    ]
   },
-  "notes": "Illustrative AI edits with exact pixel preservation in lossless WebP masters and responsive variants. Original downloaded JPEG is preserved unchanged; its 320, 640 and 960px responsive variants also use lossless WebP. Original and derivatives are CC BY-SA 3.0 with linked homepage credit.",
+  "notes": "Illustrative AI edits. The 1254 px lossless WebP masters (cheesecake-<style>.webp) and the original downloaded JPEG are preserved unchanged as sources and are not served. The homepage serves lossy WebP copies (quality 82, sharp YUV) resized from them by scripts/prepare-web-images.mjs: 160-1254 px per style and 320-1280 px for the original. Only the photo on screen is downloaded. Original and derivatives are CC BY-SA 3.0 with linked homepage credit.",
   "assets": [
     {
       "style": "color",
@@ -24,37 +50,44 @@
           "path": "public/homepage/styles/cheesecake-color-160.webp",
           "width": 160,
           "height": 160,
-          "bytes": 30260
+          "bytes": 4306
         },
         {
           "path": "public/homepage/styles/cheesecake-color-320.webp",
           "width": 320,
           "height": 320,
-          "bytes": 110836
+          "bytes": 12148
         },
         {
           "path": "public/homepage/styles/cheesecake-color-480.webp",
           "width": 480,
           "height": 480,
-          "bytes": 240412
+          "bytes": 22116
         },
         {
           "path": "public/homepage/styles/cheesecake-color-640.webp",
           "width": 640,
           "height": 640,
-          "bytes": 416942
+          "bytes": 34018
         },
         {
           "path": "public/homepage/styles/cheesecake-color-960.webp",
           "width": 960,
           "height": 960,
-          "bytes": 846966
+          "bytes": 60624
+        },
+        {
+          "path": "public/homepage/styles/cheesecake-color-1254.webp",
+          "width": 1254,
+          "height": 1254,
+          "bytes": 97734
         },
         {
           "path": "public/homepage/styles/cheesecake-color.webp",
           "width": 1254,
           "height": 1254,
-          "bytes": 1514566
+          "bytes": 1514566,
+          "role": "lossless master (source, not served)"
         }
       ]
     },
@@ -67,37 +100,44 @@
           "path": "public/homepage/styles/cheesecake-angle-160.webp",
           "width": 160,
           "height": 160,
-          "bytes": 30880
+          "bytes": 4520
         },
         {
           "path": "public/homepage/styles/cheesecake-angle-320.webp",
           "width": 320,
           "height": 320,
-          "bytes": 115306
+          "bytes": 15612
         },
         {
           "path": "public/homepage/styles/cheesecake-angle-480.webp",
           "width": 480,
           "height": 480,
-          "bytes": 258884
+          "bytes": 32436
         },
         {
           "path": "public/homepage/styles/cheesecake-angle-640.webp",
           "width": 640,
           "height": 640,
-          "bytes": 462482
+          "bytes": 54752
         },
         {
           "path": "public/homepage/styles/cheesecake-angle-960.webp",
           "width": 960,
           "height": 960,
-          "bytes": 965686
+          "bytes": 104068
+        },
+        {
+          "path": "public/homepage/styles/cheesecake-angle-1254.webp",
+          "width": 1254,
+          "height": 1254,
+          "bytes": 183340
         },
         {
           "path": "public/homepage/styles/cheesecake-angle.webp",
           "width": 1254,
           "height": 1254,
-          "bytes": 1722218
+          "bytes": 1722218,
+          "role": "lossless master (source, not served)"
         }
       ]
     },
@@ -110,37 +150,44 @@
           "path": "public/homepage/styles/cheesecake-hand-160.webp",
           "width": 160,
           "height": 160,
-          "bytes": 29904
+          "bytes": 4242
         },
         {
           "path": "public/homepage/styles/cheesecake-hand-320.webp",
           "width": 320,
           "height": 320,
-          "bytes": 104264
+          "bytes": 12032
         },
         {
           "path": "public/homepage/styles/cheesecake-hand-480.webp",
           "width": 480,
           "height": 480,
-          "bytes": 224828
+          "bytes": 21598
         },
         {
           "path": "public/homepage/styles/cheesecake-hand-640.webp",
           "width": 640,
           "height": 640,
-          "bytes": 384156
+          "bytes": 32700
         },
         {
           "path": "public/homepage/styles/cheesecake-hand-960.webp",
           "width": 960,
           "height": 960,
-          "bytes": 772284
+          "bytes": 57656
+        },
+        {
+          "path": "public/homepage/styles/cheesecake-hand-1254.webp",
+          "width": 1254,
+          "height": 1254,
+          "bytes": 90696
         },
         {
           "path": "public/homepage/styles/cheesecake-hand.webp",
           "width": 1254,
           "height": 1254,
-          "bytes": 1326728
+          "bytes": 1326728,
+          "role": "lossless master (source, not served)"
         }
       ]
     },
@@ -153,37 +200,44 @@
           "path": "public/homepage/styles/cheesecake-closeup-160.webp",
           "width": 160,
           "height": 160,
-          "bytes": 35810
+          "bytes": 5250
         },
         {
           "path": "public/homepage/styles/cheesecake-closeup-320.webp",
           "width": 320,
           "height": 320,
-          "bytes": 121502
+          "bytes": 15458
         },
         {
           "path": "public/homepage/styles/cheesecake-closeup-480.webp",
           "width": 480,
           "height": 480,
-          "bytes": 254832
+          "bytes": 28438
         },
         {
           "path": "public/homepage/styles/cheesecake-closeup-640.webp",
           "width": 640,
           "height": 640,
-          "bytes": 427400
+          "bytes": 42030
         },
         {
           "path": "public/homepage/styles/cheesecake-closeup-960.webp",
           "width": 960,
           "height": 960,
-          "bytes": 834682
+          "bytes": 70888
+        },
+        {
+          "path": "public/homepage/styles/cheesecake-closeup-1254.webp",
+          "width": 1254,
+          "height": 1254,
+          "bytes": 102384
         },
         {
           "path": "public/homepage/styles/cheesecake-closeup.webp",
           "width": 1254,
           "height": 1254,
-          "bytes": 1410958
+          "bytes": 1410958,
+          "role": "lossless master (source, not served)"
         }
       ]
     }
