@@ -2,10 +2,6 @@
 .cx-guided-studio {
   font-size: 1rem;
 }
-.cx-guided-studio .cx-eyebrow {
-  font-size: 0.75rem;
-  letter-spacing: 0.12em;
-}
 .cx-guided-studio .cx-hint,
 .cx-guided-studio .cx-link,
 .cx-guided-studio .cx-field,
@@ -146,24 +142,6 @@
 }
 
 /* Real queue state, with no invented percentage or countdown. */
-.cx-guided-studio .cx-review-layout > .cx-panel > p {
-  font-size: 0.9375rem;
-  line-height: 1.65;
-}
-.cx-guided-studio .cx-review-layout > .cx-panel > .cx-review-save-note {
-  text-align: center;
-  font-size: 0.8125rem;
-  margin: 12px 0 0;
-  color: var(--workspace-muted);
-}
-.cx-guided-studio .cx-review-layout .cx-segment {
-  flex-wrap: wrap;
-}
-.cx-guided-studio .cx-review-layout .cx-segment button {
-  min-height: 42px;
-  font-size: 0.875rem;
-  padding: 10px 13px;
-}
 @media (max-width: 760px) {
   .cx-comparison-tag {
     top: 10px;

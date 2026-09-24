@@ -24,9 +24,6 @@
   align-items: center;
   gap: 8px;
 }
-.workspace-action-bar.ps2-mobile-action {
-  display: none;
-}
 .ps2-finish-actions > button:last-child {
   flex: 1;
 }
@@ -44,169 +41,6 @@
   border-radius: 8px;
   color: var(--workspace-muted);
   background: var(--workspace-canvas);
-}
-.ps2-create {
-  min-height: 48px;
-  border-radius: var(--radius-pill);
-  font-size: 14px;
-  gap: 8px;
-  background: var(--workspace-action);
-}
-.ps2-gallery-card {
-  display: flex;
-  flex-direction: column;
-}
-.ps2-card-detail {
-  flex-shrink: 0;
-}
-.ps2-card-bottom {
-  flex: 1;
-}
-.ps2-gallery-card .ps2-card-bottom {
-  align-items: stretch;
-  gap: 8px;
-}
-.ps2-card-actions {
-  display: flex;
-  align-items: stretch;
-  gap: 8px;
-  width: 100%;
-}
-.ps2-card-actions .ps2-card-use {
-  flex: 1;
-  min-width: 0;
-  width: auto;
-  padding-inline: 8px;
-}
-.ps2-card-actions .ps2-favorite {
-  position: static;
-  flex: 0 0 44px;
-  border-color: var(--workspace-control);
-  background: var(--workspace-surface);
-  color: var(--workspace-muted);
-  backdrop-filter: none;
-}
-.ps2-card-actions .ps2-favorite[aria-pressed="true"] {
-  color: var(--workspace-action);
-  background: var(--workspace-selected);
-}
-.ps2-favorite {
-  width: 44px;
-  height: 44px;
-  min-width: 44px;
-  min-height: 44px;
-  border-radius: 8px;
-}
-.ps2-browser {
-  height: min(860px, calc(100dvh - 64px));
-}
-.ps2-browser .ps2-dialog-header {
-  padding: 24px 24px 8px;
-  gap: 16px;
-}
-.ps2-browser .ps2-dialog-header [data-slot="dialog-title"] {
-  font-size: 28px;
-  line-height: 1.2;
-  margin: 0;
-}
-.ps2-browser .ps2-dialog-header [data-slot="dialog-description"] {
-  font-size: 14px;
-  margin: 8px 0 0;
-  color: var(--workspace-muted);
-}
-.ps2-browser-tools {
-  padding-inline: 24px;
-}
-.ps2-browser-tabs {
-  margin: 0 0 8px;
-  gap: 16px;
-  border-color: var(--workspace-line);
-}
-.ps2-browser-tabs button {
-  min-height: 44px;
-  font-size: 14px;
-  color: var(--workspace-muted);
-}
-.ps2-browser-tabs button[aria-pressed="true"] {
-  color: var(--workspace-action);
-  border-color: var(--workspace-action);
-}
-.ps2-browser-search-row {
-  display: flex;
-  align-items: stretch;
-  gap: 8px;
-}
-.ps2-browser-search-row .ps2-search {
-  min-width: 0;
-  flex: 1;
-  min-height: 48px;
-  border: 1px solid var(--workspace-control);
-  border-radius: 8px;
-  background: var(--workspace-surface);
-}
-.ps2-search input {
-  font-size: 16px;
-}
-.ps2-search button {
-  min-width: 44px;
-  min-height: 44px;
-}
-.ps2-browser-search-row .ps2-filter-trigger {
-  min-height: 48px;
-  flex-shrink: 0;
-  padding-inline: 12px;
-}
-.ps2-filter-count {
-  display: inline-grid;
-  place-items: center;
-  min-width: 20px;
-  height: 20px;
-  border-radius: 50%;
-  background: var(--workspace-action);
-  color: white;
-  font-size: 12px;
-}
-.ps2-filters {
-  margin: 12px 0 4px;
-  gap: 12px;
-}
-.ps2-moods button {
-  min-height: 44px;
-  font-size: 14px;
-  color: var(--workspace-muted);
-  border-color: var(--workspace-control);
-}
-.ps2-moods button[aria-pressed="true"] {
-  background: var(--workspace-action);
-  border-color: var(--workspace-action);
-  color: white;
-}
-.ps2-filters select {
-  min-height: 44px;
-  font-size: 16px;
-  color: var(--workspace-ink);
-  border: 1px solid var(--workspace-control);
-  border-radius: 8px;
-  background: var(--workspace-surface);
-}
-.ps2-search-summary {
-  min-height: 32px;
-}
-.ps2-search-summary .ps2-result-count {
-  margin: 4px 0;
-  font-size: 14px;
-  color: var(--workspace-muted);
-}
-.ps2-gallery-scroll {
-  padding-inline: 24px;
-}
-.ps2-browser .ps2-dialog-footer {
-  padding: 12px 24px;
-}
-.ps2-browser .ps2-browser-current {
-  font-size: 14px;
-  line-height: 1.5;
-  color: var(--workspace-muted);
 }
 .workspace-action-menu {
   min-width: 190px;
@@ -388,25 +222,6 @@
   background: var(--workspace-error-surface);
 }
 @media (max-width: 760px) {
-  .ps2-browser .ps2-dialog-header {
-    padding: 20px 16px 12px;
-  }
-  .ps2-browser .ps2-dialog-header [data-slot="dialog-title"] {
-    font-size: 26px;
-  }
-  .ps2-browser-tools,
-  .ps2-gallery-scroll {
-    padding-inline: 16px;
-  }
-  .ps2-browser .ps2-dialog-footer {
-    padding: 12px 16px max(12px, env(safe-area-inset-bottom));
-  }
-  .workspace-action-bar.ps2-mobile-action {
-    display: flex;
-  }
-  [data-action-layout] .ps2-ready {
-    padding-bottom: 24px;
-  }
   [data-action-layout] {
     padding-bottom: calc(var(--workspace-action-height, 0px) + 24px) !important;
   }
@@ -437,16 +252,12 @@
     flex: 1;
     min-height: 48px;
   }
-  .mm-post-workspace .mm-header .workspace-action-bar .cx-btn,
-  .workspace-action-bar .ps2-result-primary {
+  .mm-post-workspace .mm-header .workspace-action-bar .cx-btn {
     position: static;
     width: 100% !important;
     min-height: 48px;
     box-shadow: none;
     margin: 0;
-  }
-  .cx-review-layout {
-    padding-bottom: 0;
   }
   .md-studio {
     padding-top: 0;
@@ -2196,8 +2007,7 @@
 .cx-app .md-text-button,
 .cx-app .md-outline-bottom .md-button,
 .cx-app .md-selected-design .md-button,
-.cx-app .md-quality-strip > button,
-.cx-app .ps2-description-link {
+.cx-app .md-quality-strip > button {
   min-height: 44px;
   font-size: 14px;
 }
@@ -2281,17 +2091,3 @@
 }
 /* Interface labels read in sentence case, never tracked-out capitals.
    Menu and post artwork keep their own typography. */
-:is(
-  .cx-eyebrow,
-  .md-eyebrow,
-  .mm-kicker,
-  .ps2-kicker,
-  .md-inspector-label,
-  .md-selected-design > span,
-  .md-design-card-copy > span,
-  .ex-category,
-  .md-section-name
-) {
-  text-transform: none;
-  letter-spacing: normal;
-}

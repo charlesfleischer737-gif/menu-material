@@ -38,6 +38,18 @@ for (const [name, source, widths] of [
     checks++;
   }
 }
+// Every catalog example has a small tile preview of the same scene.
+const { photoStyles, styleThumbnail } = await import("../lib/photo-styles.ts");
+for (const style of photoStyles) {
+  const thumbnail = "public" + styleThumbnail(style.image);
+  assert.notEqual(thumbnail, "public" + style.image, style.id);
+  const metadata = await sharp(thumbnail).metadata();
+  assert.deepEqual([metadata.width, metadata.height], [400, 400], thumbnail);
+  assert(
+    (await stat(thumbnail)).size < (await stat("public" + style.image)).size,
+  );
+  checks += 3;
+}
 console.log(
-  `PASS: ${checks} display-asset checks: lossless pixel equality at every display size and smaller files. Full-resolution originals and export settings are untouched.`,
+  `PASS: ${checks} display-asset checks: lossless pixel equality at every homepage display size, a smaller 400 px preview for every style tile, and smaller files. Full-resolution originals and export settings are untouched.`,
 );

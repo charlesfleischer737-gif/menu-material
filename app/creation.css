@@ -171,12 +171,6 @@
 .cx-skip:focus {
   transform: translateY(0);
 }
-.cx-eyebrow {
-  font-size: var(--text-footnote);
-  font-weight: 600;
-  color: var(--workspace-muted);
-  margin-bottom: 10px !important;
-}
 .cx-btn,
 .cx-app .cx-btn {
   border: 1px solid var(--cx-green);
@@ -342,19 +336,6 @@
   display: flex;
   font-size: 14px !important;
 }
-.cx-pill {
-  display: inline-flex;
-  align-items: center;
-  gap: 6px;
-  background: var(--workspace-canvas);
-  border: 1px solid var(--workspace-line);
-  color: var(--workspace-action);
-  border-radius: 20px;
-  font-size: 12px;
-  font-weight: 600;
-  padding: 5px 10px;
-  line-height: 1.4;
-}
 .cx-field {
   display: flex;
   flex-direction: column;
@@ -406,25 +387,6 @@
   color: var(--workspace-muted);
   margin: 15px 0;
   line-height: 1.7;
-}
-.cx-chips {
-  display: flex;
-  flex-wrap: wrap;
-  gap: 7px;
-  margin: 12px 0 20px;
-}
-.cx-chips button {
-  background: var(--workspace-surface);
-  border: 1px solid var(--workspace-control);
-  border-radius: 18px;
-  font-size: 14px;
-  padding: 7px 13px;
-  color: var(--workspace-muted);
-}
-.cx-chips button[aria-pressed="true"] {
-  background: var(--workspace-action);
-  color: var(--workspace-surface);
-  border-color: var(--workspace-action);
 }
 .cx-photo-frame {
   margin: 0;
@@ -532,106 +494,6 @@
   box-shadow: 0 1px 5px rgb(29 29 31 / 4%);
   color: var(--cx-ink);
   font-weight: 600;
-}
-.cx-review-layout {
-  display: grid;
-  grid-template-columns: minmax(0, 1.5fr) minmax(280px, 1fr);
-  gap: 28px;
-  align-items: start;
-}
-.cx-rule {
-  height: 1px;
-  background: var(--cx-line);
-  margin: 23px 0;
-}
-.cx-food-issue {
-  margin-top: 17px;
-  font-size: 12px;
-  color: var(--workspace-muted);
-}
-.cx-food-issue summary {
-  cursor: pointer;
-}
-.cx-food-issue p {
-  padding-top: 14px;
-  line-height: 1.7;
-}
-.cx-food-issue button {
-  font-size: 14px !important;
-  margin-right: 13px;
-}
-.cx-history {
-  margin: 20px 0;
-  color: var(--workspace-muted);
-  font-size: 12px;
-}
-.cx-history summary {
-  display: flex;
-  align-items: center;
-  gap: 7px;
-  cursor: pointer;
-  padding: 5px 0;
-}
-.cx-history > div {
-  display: flex;
-  overflow: auto;
-  gap: 12px;
-  padding: 15px 2px;
-}
-.cx-history button {
-  width: 105px;
-  flex-shrink: 0;
-  border: 1px solid var(--cx-line);
-  border-radius: 8px;
-  padding: 4px 4px 7px;
-  background: white;
-  font-size: 14px;
-  color: var(--workspace-muted);
-}
-.cx-history img {
-  width: 100%;
-  aspect-ratio: 1;
-  object-fit: cover;
-  border-radius: 5px;
-  margin-bottom: 6px;
-}
-.cx-adjust {
-  margin-top: 23px;
-  max-width: 560px;
-}
-.cx-generating {
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  gap: 40px;
-  padding: 50px;
-  background: var(--workspace-canvas);
-  border: 1px solid var(--workspace-line);
-  border-radius: 14px;
-  min-height: 320px;
-}
-.cx-generating > img {
-  width: 35%;
-  aspect-ratio: 1;
-  object-fit: cover;
-  border-radius: 14px;
-  filter: saturate(0.8);
-}
-.cx-generating > div {
-  max-width: 350px;
-}
-.cx-generating h2 {
-  margin: 17px 0 10px;
-  font-family: var(--font-display);
-  font-weight: 700;
-  font-size: 28px;
-  letter-spacing: var(--tracking-display);
-}
-.cx-generating p {
-  font-size: 12px;
-  color: var(--workspace-muted);
-  line-height: 1.8;
-  margin-bottom: 18px;
 }
 .cx-zoom-dialog {
   max-width: 90vw !important;
@@ -750,10 +612,6 @@
   }
 }
 @media (max-width: 980px) {
-  .cx-review-layout {
-    grid-template-columns: 1fr 1fr;
-    gap: 20px;
-  }
   .cx-panel {
     padding: 20px;
   }
@@ -765,13 +623,6 @@
   .cx-section-line > .cx-link {
     font-size: 14px !important;
   }
-  .cx-eyebrow {
-    font-size: 12px;
-  }
-  .cx-review-layout {
-    grid-template-columns: 1fr;
-    gap: 20px;
-  }
   .cx-panel {
     padding: 21px;
     border-radius: 12px;
@@ -781,25 +632,6 @@
   }
   .cx-photo-frame canvas {
     object-fit: contain;
-  }
-  .cx-review-layout .cx-panel {
-    margin-top: 0;
-  }
-  .cx-generating {
-    padding: 30px 22px;
-    gap: 23px;
-    flex-direction: column;
-    text-align: center;
-  }
-  .cx-generating > img {
-    width: 65%;
-    max-width: 260px;
-  }
-  .cx-generating h2 {
-    font-size: 25px;
-  }
-  .cx-generating svg {
-    margin: auto;
   }
 }
 @media (max-width: 440px) {

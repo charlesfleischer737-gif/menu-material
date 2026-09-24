@@ -1,15 +1,20 @@
 "use client";
 import { workspacePreferenceKey } from "@/lib/workspace-navigation";
-import { useEffect, useRef, useState } from "react";
+import { draftStatus } from "@/lib/workspace-status";
+import { useEffect, useRef, useState, type CSSProperties } from "react";
 import {
   Camera,
-  Sparkles,
-  SlidersHorizontal,
-  ArrowRight,
-  ImagePlus,
+  Check,
+  ChevronDown,
+  ChevronRight,
+  CircleAlert,
   Download,
-  History,
   Expand,
+  History,
+  Images,
+  Plus,
+  SlidersHorizontal,
+  Sparkles,
 } from "lucide-react";
 import { Dialog, DialogContent, DialogTitle } from "@/components/ui/dialog";
 import { api, normalizePhoto, type Row } from "@/lib/client";
@@ -22,6 +27,7 @@ import {
   resolvePhotoLook,
   unavailablePhotoLook,
   emptyAdjustments,
+  samplePhoto,
   type PhotoFormat,
 } from "@/lib/studio";
 import { canvasBlob, drawPhoto, imageBitmap } from "@/lib/photo-export";
@@ -41,10 +47,7 @@ import { recipeFromDraft } from "@/lib/studio-library";
 import { occasionName } from "@/lib/studio-occasions";
 import { capturedPhotoRecipe, photoLookContext } from "@/lib/photo-recipe";
 import { photoAdvice } from "@/lib/photo-advice";
-import {
-  restaurantPhotoDefaults,
-  restaurantPhotoSelection,
-} from "@/lib/restaurant-look";
+import { restaurantPhotoDefaults } from "@/lib/restaurant-look";
 import { photoAnalysisRecommendation } from "@/lib/studio-onboarding";
 import { exploreStyleSelection, studioLookPatch } from "@/lib/studio-discovery";
 import {
@@ -55,13 +58,11 @@ import {
 import { useInspirationAvailability } from "./use-inspiration-availability";
 import { PhotoComparison, StudioCreating } from "./studio-onboarding";
 import { StudioWorkbench } from "./studio-workbench";
+import { radioKeys, radioTab } from "./radio-keys";
 import {
   Feedback,
-  Field,
-  ToolHeader,
   DraftRecovery,
   SavedDrafts,
-  PhotoFrame,
   track,
   useAction,
   useCreationDraft,
@@ -270,15 +271,6 @@ export default function PhotoStudio({
     const preset = looks.find((l) => l.id === id);
     if (!preset) return;
     update(studioLookPatch(read(), id, state.restaurant));
-  }
-  function matchRestaurant(enabled: boolean) {
-    if (busy) return;
-    const patch = restaurantPhotoSelection(read(), state.restaurant, enabled);
-    update(patch);
-    track("style_selected", b.dishId, {
-      look: patch.look,
-      category: patch.lookCategory,
-    });
   }
   const styleImage =
     b.look === "keep" && source
@@ -495,12 +487,14 @@ export default function PhotoStudio({
     await refresh();
     onDestination("menu", "", "", { importId: imported.id });
   }
-  async function ensureDish() {
-    const prior = state.dishes.find((d: Row) => d.id === b.dishId);
+  // `fresh` starts a new dish, so a sample and a real photo never share one.
+  async function ensureDish(fresh?: { name: string }) {
+    const dishId = fresh ? "" : b.dishId;
+    const prior = state.dishes.find((d: Row) => d.id === dishId);
     const payload = {
       ...prior,
-      name: b.name.trim() || "Untitled dish",
-      description: b.description || "",
+      name: (fresh ? fresh.name : b.name).trim() || "Untitled dish",
+      description: fresh ? "" : b.description || "",
       category: prior?.category || "Dishes",
       price: (prior?.price || 0) / 100,
       available: prior ? !!prior.available : true,
@@ -509,14 +503,11 @@ export default function PhotoStudio({
         ? styleFor(b, state.restaurant).photoStyle
         : prior?.setting || "",
     };
-    const data = await api(
-      "dishes" + (b.dishId ? "/" + b.dishId : ""),
-      payload,
-    );
-    if (!b.dishId) change({ dishId: data.id });
+    const data = await api("dishes" + (dishId ? "/" + dishId : ""), payload);
+    if (!dishId) change({ dishId: data.id });
     return data.id;
   }
-  async function uploadPhoto(file: File) {
+  async function uploadPhoto(file: File, options: { sample?: boolean } = {}) {
     if (file.type === "application/pdf") {
       await act("Saving your menu file", async () => {
         const form = new FormData();
@@ -529,13 +520,19 @@ export default function PhotoStudio({
     }
     await act("Preparing your photo", async () => {
       const normalized = await normalizePhoto(file);
-      const did = await ensureDish();
+      const fresh =
+        options.sample || b.sample
+          ? { name: options.sample ? samplePhoto.name : "" }
+          : undefined;
+      const did = await ensureDish(fresh);
       const fd = new FormData();
       fd.set("file", file);
       fd.set("normalized", normalized, "working.jpg");
       fd.set("dishId", did);
       const a = await api("assets", fd);
       update({
+        ...(fresh ? { name: fresh.name, description: "" } : {}),
+        sample: !!options.sample,
         sourceId: a.id,
         menuDocument: false,
         analysisAdvice: "",
@@ -720,14 +717,54 @@ export default function PhotoStudio({
     setAccurate(false);
   }
   if (!ready) return <DraftRecovery store={draftStore} title="Photo Studio" />;
+  const hour = new Date().getHours();
+  const greeting =
+    hour >= 5 && hour < 12
+      ? "Good morning"
+      : hour >= 12 && hour < 18
+        ? "Good afternoon"
+        : "Good evening";
+  const shown = before && source ? source : `/api/assets/${resultId}`;
+  const shownLabel = before
+    ? "Your original"
+    : asset?.kind === "source"
+      ? "Your original"
+      : b.mode === "description"
+        ? "Illustration · check it against your dish"
+        : asset?.kind === "edited"
+          ? "Adjusted version"
+          : "Your result";
+  const views = [
+    { id: "result", label: "Result", show: true },
+    { id: "compare", label: "Compare", show: canCompare && adjust !== "quick" },
+    { id: "before", label: "Original", show: !!source },
+  ].filter((view) => view.show);
+  const view = before ? "before" : comparing ? "compare" : "result";
+  const versions = state.assets.filter(
+    (a: Row) =>
+      a.dish_id === b.dishId &&
+      ["source", "generated", "edited"].includes(a.kind),
+  );
   return (
     <section
-      className="cx-tool cx-feature-page cx-guided-studio"
+      className="cx-tool cx-feature-page cx-guided-studio st-page"
       ref={root}
       data-action-layout
     >
-      <ToolHeader title="Photo Studio" status={status}>
-        <div className="cx-button-row">
+      <header className="st-header">
+        <div className="st-header-copy">
+          <h1 tabIndex={-1}>Photo Studio</h1>
+          <p>{greeting}. What’s on the menu?</p>
+        </div>
+        <div className="st-header-tools">
+          <span
+            className="st-save-status"
+            role="status"
+            aria-live="polite"
+            data-error={status === draftStatus.failed || undefined}
+          >
+            {status}
+          </span>
           <SavedDrafts
             kind="studio"
             store={draftStore}
@@ -741,18 +778,18 @@ export default function PhotoStudio({
           />
           {(b.step >= 4 || resultId) && (
             <button
-              className="cx-link"
+              className="st-text-button"
               disabled={!!busy || creating}
               onClick={() => {
                 update({ step: b.step >= 4 ? 1 : 4 });
                 setAdjust("");
               }}
             >
-              {b.step >= 4 ? "Browse styles" : "Back to my result"}
+              {b.step >= 4 ? "Try another style" : "Back to result"}
             </button>
           )}
           <button
-            className="cx-link"
+            className="st-pill st-new-photo"
             disabled={!!busy || creating}
             onClick={() =>
               act("Starting a new photo", async () => {
@@ -767,388 +804,408 @@ export default function PhotoStudio({
               })
             }
           >
-            <ImagePlus size={16} />
+            <Plus size={16} />
             New photo
           </button>
         </div>
-      </ToolHeader>
+      </header>
       <DraftRecovery store={draftStore} />
       <Feedback {...action} />
-      {b.step <= 3 &&
-        b.analysisStatus === "unavailable" &&
-        state.aiConnected && (
-          <div className="cx-analysis-retry">
-            <p>
-              Automatic photo guidance is unavailable. You can keep choosing a
-              style yourself.
-            </p>
-            <button
-              className="cx-link"
-              disabled={!!busy}
-              onClick={() =>
-                void act("Checking your photo", async () => {
-                  const sourceId = read().sourceId;
-                  const result = await api("photo-analysis", { sourceId });
-                  if (read().sourceId === sourceId)
-                    change(
-                      photoAnalysisRecommendation(read(), result, sourceId),
-                    );
-                })
-              }
-            >
-              Retry photo guidance
-            </button>
-          </div>
-        )}
       {b.step <= 3 && (
-        <>
-          <StudioWorkbench
-            draft={b}
-            state={{ ...state, studioDraftId: draftStore.id }}
-            selected={selected}
-            styleImage={styleImage}
-            source={source}
-            busy={busy || (referenceBusy ? "Preparing inspiration" : "")}
-            advice={advice}
-            update={update}
-            chooseLook={chooseLook}
-            matchRestaurant={matchRestaurant}
-            uploadPhoto={(file) => void uploadPhoto(file)}
-            referencePhoto={
-              inspirationId
-                ? { id: inspirationId, url: `/api/assets/${inspirationId}` }
-                : null
+        <StudioWorkbench
+          draft={b}
+          state={{ ...state, studioDraftId: draftStore.id }}
+          selected={selected}
+          styleImage={styleImage}
+          source={source}
+          busy={busy || (referenceBusy ? "Preparing inspiration" : "")}
+          advice={advice}
+          update={update}
+          chooseLook={chooseLook}
+          uploadPhoto={(file, options) => void uploadPhoto(file, options)}
+          retryAnalysis={() =>
+            void act("Checking your photo", async () => {
+              const sourceId = read().sourceId;
+              const result = await api("photo-analysis", { sourceId });
+              if (read().sourceId === sourceId)
+                change(photoAnalysisRecommendation(read(), result, sourceId));
+            })
+          }
+          referencePhoto={
+            inspirationId
+              ? { id: inspirationId, url: `/api/assets/${inspirationId}` }
+              : null
+          }
+          onReferenceBusyChange={setReferenceBusy}
+          inspirationStatus={inspirationAvailability.status}
+          retryInspiration={inspirationAvailability.retry}
+          applyInspiration={async (selection, base, signal) => {
+            let referenceId =
+              selection?.kind === "existing" ? selection.photo.id : null;
+            if (selection?.kind === "file") {
+              const form = new FormData();
+              form.set("file", selection.file);
+              form.set("normalized", selection.normalized, "reference.jpg");
+              form.set("kind", "reference");
+              form.set("requestKey", selection.requestKey);
+              const a = await api("assets", form);
+              referenceId = a.id;
             }
-            onReferenceBusyChange={setReferenceBusy}
-            inspirationStatus={inspirationAvailability.status}
-            retryInspiration={inspirationAvailability.retry}
-            applyInspiration={async (selection, base, signal) => {
-              let referenceId =
-                selection?.kind === "existing" ? selection.photo.id : null;
-              if (selection?.kind === "file") {
-                const form = new FormData();
-                form.set("file", selection.file);
-                form.set("normalized", selection.normalized, "reference.jpg");
-                form.set("kind", "reference");
-                form.set("requestKey", selection.requestKey);
-                const a = await api("assets", form);
-                referenceId = a.id;
-              }
-              if (signal.aborted) return;
-              update(
-                inspirationPatch(
-                  base,
-                  referenceId,
-                  selection?.kind === "existing",
-                ),
-              );
-              await save();
-              // The draft is saved; a background refresh failure must not
-              // turn a successful application into a second upload attempt.
-              void refresh().catch(() => {});
-            }}
-            create={() => void act("Creating your photo", () => generate())}
-            quickEdit={() => openQuickEdits()}
-            openMenu={() => void act("Opening your menu", openPhotoAsMenu)}
-            refreshAvailability={() =>
-              void act("Checking availability", refresh)
-            }
-          />
-        </>
+            if (signal.aborted) return;
+            update(
+              inspirationPatch(
+                base,
+                referenceId,
+                selection?.kind === "existing",
+              ),
+            );
+            await save();
+            // The draft is saved; a background refresh failure must not
+            // turn a successful application into a second upload attempt.
+            void refresh().catch(() => {});
+          }}
+          create={() => void act("Creating your photo", () => generate())}
+          quickEdit={() => openQuickEdits()}
+          openMenu={() => void act("Opening your menu", openPhotoAsMenu)}
+          refreshAvailability={() => void act("Checking availability", refresh)}
+        />
       )}
-      {b.step >= 4 && (
-        <>
-          {!resultId ? (
-            creating ? (
-              <>
-                <StudioCreating
-                  source={source}
-                  style={{ ...selected, image: styleImage }}
-                  queued={!job || job.status === "queued"}
-                  startedAt={job?.created_at || b.generationStartedAt}
-                  jobId={b.jobId}
-                />
-                {state.outputs
-                  .filter((o: Row) => o.job_id === b.jobId && o.error)
-                  .map((o: Row) => (
-                    <p className="cx-feedback" role="status" key={o.id}>
-                      {o.error}
-                    </p>
-                  ))}
-                {job?.status === "queued" && (
-                  <button
-                    className="cx-link"
-                    disabled={!!busy}
-                    onClick={() =>
-                      void act("Cancelling queued image", async () => {
-                        await api(`jobs/${job.id}/cancel`, {});
-                        await refresh();
-                      })
-                    }
-                  >
-                    Cancel queued image
-                  </button>
-                )}
-              </>
-            ) : (
-              <div className="cx-generating">
-                {source && <img src={source} alt="Your saved original" />}
-                <div>
-                  <Camera size={28} />
-                  <h2>Image creation needs attention</h2>
-                  <p>
+      {b.step >= 4 &&
+        (!resultId ? (
+          creating ? (
+            <StudioCreating
+              source={source}
+              style={{ ...selected, image: styleImage }}
+              queued={!job || job.status === "queued"}
+              startedAt={job?.created_at || b.generationStartedAt}
+              jobId={b.jobId}
+            >
+              {state.outputs
+                .filter((o: Row) => o.job_id === b.jobId && o.error)
+                .map((o: Row) => (
+                  <p className="st-alert" role="status" key={o.id}>
+                    {o.error}
+                  </p>
+                ))}
+              {job?.status === "queued" && (
+                <button
+                  className="st-text-button"
+                  disabled={!!busy}
+                  onClick={() =>
+                    void act("Cancelling queued image", async () => {
+                      await api(`jobs/${job.id}/cancel`, {});
+                      await refresh();
+                    })
+                  }
+                >
+                  Cancel queued image
+                </button>
+              )}
+            </StudioCreating>
+          ) : (
+            <div className="st-studio st-attention">
+              <section className="st-stage" aria-label="Your photo">
+                <div className="st-canvas has-photo">
+                  {source ? (
+                    <>
+                      <img
+                        className="st-photo"
+                        src={source}
+                        alt="Your saved original"
+                      />
+                      <span className="st-canvas-label">Your original</span>
+                    </>
+                  ) : (
+                    <Camera size={32} aria-hidden="true" />
+                  )}
+                </div>
+              </section>
+              <aside className="st-inspector" aria-label="Image creation">
+                <div className="st-section">
+                  <span className="st-badge st-badge-warning">
+                    Needs attention
+                  </span>
+                  <h2 className="st-result-title">
+                    This photo couldn’t be created.
+                  </h2>
+                  <p className="st-result-copy">
                     {state.outputs.find((o: Row) => o.job_id === b.jobId)
                       ?.error ||
                       "You don’t need to do anything else. Your original and choices are saved."}
                   </p>
+                </div>
+                <div className="st-action st-action-inline">
                   <button
-                    className="cx-btn"
+                    className="st-create"
                     onClick={() => update({ step: 2, requestKey: "" })}
                   >
                     Back to my styles
                   </button>
                 </div>
-              </div>
-            )
-          ) : (
-            <>
-              <div className="cx-review-layout">
-                <div>
-                  <div className="cx-section-line">
-                    <div className="cx-segment">
-                      <button
-                        aria-pressed={!before && !comparing}
-                        onClick={() => {
-                          setBefore(false);
-                          setCompare(false);
-                        }}
-                      >
-                        Your result
-                      </button>
-                      {canCompare && adjust !== "quick" && (
-                        <button
-                          aria-pressed={comparing}
-                          onClick={() => {
-                            setBefore(false);
-                            setCompare(true);
-                          }}
-                        >
-                          Compare
-                        </button>
+              </aside>
+            </div>
+          )
+        ) : (
+          <div className="st-studio st-review">
+            <section className="st-stage" aria-label="Your photo">
+              <div className="st-stage-bar">
+                <div
+                  className="st-segmented st-view"
+                  role="radiogroup"
+                  aria-label="Show"
+                  onKeyDown={radioKeys}
+                  style={{ "--segments": views.length } as CSSProperties}
+                >
+                  {views.map((entry, index) => (
+                    <button
+                      key={entry.id}
+                      role="radio"
+                      aria-checked={view === entry.id}
+                      tabIndex={radioTab(
+                        index,
+                        views.findIndex((item) => item.id === view),
                       )}
-                      {source && (
-                        <button
-                          aria-pressed={before}
-                          onClick={() => setBefore(true)}
-                        >
-                          Before
-                        </button>
-                      )}
-                    </div>
-                    <button className="cx-link" onClick={() => setZoom(true)}>
-                      <Expand size={16} />
-                      Zoom
+                      onClick={() => {
+                        setBefore(entry.id === "before");
+                        setCompare(entry.id === "compare");
+                      }}
+                    >
+                      {entry.label}
                     </button>
-                  </div>
-                  {comparing ? (
-                    <PhotoComparison
-                      key={resultId}
-                      original={source}
-                      result={`/api/assets/${resultId}`}
-                      ratio={format.ratio}
-                    />
-                  ) : (
-                    <PhotoFrame
-                      src={
-                        before && source ? source : `/api/assets/${resultId}`
-                      }
-                      ratio={format.ratio}
-                      edits={emptyAdjustments}
-                      label={
+                  ))}
+                </div>
+                <button
+                  className="st-text-button"
+                  onClick={() => setZoom(true)}
+                >
+                  <Expand size={15} />
+                  Zoom
+                </button>
+              </div>
+              <div
+                className={`st-canvas has-photo st-result${comparing ? " is-comparing" : ""}`}
+                style={{ "--st-ratio": format.ratio } as CSSProperties}
+              >
+                {comparing ? (
+                  <PhotoComparison
+                    key={resultId}
+                    original={source}
+                    result={`/api/assets/${resultId}`}
+                    ratio={format.ratio}
+                  />
+                ) : (
+                  <>
+                    <img
+                      key={shown}
+                      className="st-photo"
+                      src={shown}
+                      alt={
                         before
                           ? "Original photo"
-                          : asset?.kind === "source"
-                            ? "Your original photo"
-                            : b.mode === "description"
-                              ? "Generated illustration · review against your real dish"
-                              : asset?.kind === "edited"
-                                ? "Quick adjustment · saved version"
-                                : "Generated result"
+                          : `${shownLabel} of ${b.name || "your dish"}`
                       }
                     />
-                  )}
-                  <details className="cx-history">
-                    <summary>
-                      <History size={16} />
-                      Original & saved versions
-                    </summary>
-                    <div>
-                      {state.assets
-                        .filter(
-                          (a: Row) =>
-                            a.dish_id === b.dishId &&
-                            ["source", "generated", "edited"].includes(a.kind),
-                        )
-                        .map((a: Row) => (
-                          <button
-                            key={a.id}
-                            onClick={() =>
-                              void act("Opening this version", async () => {
-                                const context = await api(
-                                  `assets/${a.id}/context`,
-                                );
-                                change({
-                                  ...capturedPhotoRecipe(context),
-                                  resultId: a.id,
-                                  jobId: context.jobId || "",
-                                  step: 4,
-                                  adjustments: { ...emptyAdjustments },
-                                });
-                                setBefore(false);
-                                setAccurate(false);
-                                setAdjust("");
-                              })
-                            }
-                          >
-                            <img
-                              src={`/api/assets/${a.id}`}
-                              alt={`${a.kind === "source" ? "Original" : "Saved version"} of ${b.name || "your dish"}`}
-                            />
-                            <span>
-                              {a.needs_correction
-                                ? "Needs correction"
-                                : a.kind === "source"
-                                  ? "Original"
-                                  : a.approved_at
-                                    ? "Approved"
-                                    : "Review photo"}
-                            </span>
-                          </button>
-                        ))}
-                    </div>
-                  </details>
-                </div>
-                <aside className="cx-panel">
-                  <span className="cx-pill">
-                    {asset?.approved_at ? "Approved photo" : "A quick check"}
-                  </span>
-                  <h2>Your food. Beautifully presented.</h2>
-                  <p>
-                    Take a closer look at your dish. When it feels right, save a
-                    size made for where you’ll use it.
-                  </p>
-                  <WorkspaceActionBar>
-                    <button
-                      ref={resultAction}
-                      className="cx-btn cx-full ps2-result-primary"
-                      disabled={!!busy || adjust === "quick"}
-                      onClick={() => setFinishOpen(true)}
-                    >
-                      <Download size={18} />
-                      Use photo
-                      <ArrowRight size={16} />
-                    </button>
-                  </WorkspaceActionBar>
-                  <p className="cx-review-save-note">
-                    {adjust === "quick"
-                      ? "Save this version before using your adjusted photo."
-                      : "Review and download. No image allowance used."}
-                  </p>
-                  <div className="cx-rule" />
-                  <button
-                    className="cx-btn cx-secondary cx-full"
-                    onClick={() => openQuickEdits(resultId)}
-                  >
-                    <SlidersHorizontal size={17} />
-                    Quick adjustments
-                  </button>
-                  <button
-                    className="cx-link"
-                    onClick={() => {
-                      setAdjust(adjust === "ai" ? "" : "ai");
-                    }}
-                  >
-                    <Sparkles size={16} />
-                    Change the setting with AI
-                  </button>
-                  {(resultHasGeneration || !!asset?.needs_correction) && (
-                    <button
-                      className="cx-link cx-food-issue"
-                      onClick={() => setCorrectionOpen(true)}
-                    >
-                      {asset?.needs_correction
-                        ? "View food correction report"
-                        : "Something changed in my food"}
-                    </button>
-                  )}
-                  {!!asset?.needs_correction && (
-                    <p className="ps2-inline-note">
-                      Needs correction · Kept in history and excluded from
-                      automatic photo choices.
-                    </p>
-                  )}
-                  {b.photoBatchId && (
-                    <button
-                      className="cx-link"
-                      onClick={() => setBatchOpen(true)}
-                    >
-                      Return to photo set
-                    </button>
-                  )}
-                </aside>
+                    <span className="st-canvas-label">{shownLabel}</span>
+                  </>
+                )}
               </div>
-              {adjust === "ai" && (
-                <div className="cx-panel cx-adjust">
-                  <h2>What would you like to change?</h2>
-                  <p>
-                    Combine your changes in one request. We’ll use your original
-                    food and this version as references.
-                  </p>
-                  <div className="cx-chips">
-                    {[
-                      "Remove a distracting object",
-                      "Simplify the background",
-                      "Use a cooler background",
-                    ].map((t) => (
+              {versions.length > 1 && (
+                <details className="st-versions">
+                  <summary>
+                    <History size={15} aria-hidden="true" />
+                    Original and saved versions
+                    <span>{versions.length}</span>
+                  </summary>
+                  <div>
+                    {versions.map((a: Row) => (
                       <button
-                        key={t}
+                        key={a.id}
+                        aria-current={a.id === resultId ? "true" : undefined}
                         onClick={() =>
-                          setAiChanges((v) => v + (v ? "\n" : "") + t + ". ")
+                          void act("Opening this version", async () => {
+                            const context = await api(`assets/${a.id}/context`);
+                            change({
+                              ...capturedPhotoRecipe(context),
+                              resultId: a.id,
+                              jobId: context.jobId || "",
+                              step: 4,
+                              adjustments: { ...emptyAdjustments },
+                            });
+                            setBefore(false);
+                            setAccurate(false);
+                            setAdjust("");
+                          })
                         }
                       >
-                        {t}
+                        <img
+                          src={`/api/assets/${a.id}`}
+                          alt={`${a.kind === "source" ? "Original" : "Saved version"} of ${b.name || "your dish"}`}
+                          loading="lazy"
+                        />
+                        <span>
+                          {a.needs_correction
+                            ? "Needs correction"
+                            : a.kind === "source"
+                              ? "Original"
+                              : a.approved_at
+                                ? "Approved"
+                                : "To review"}
+                        </span>
                       </button>
                     ))}
                   </div>
-                  <Field label="Changes to make">
+                </details>
+              )}
+            </section>
+            <aside className="st-inspector" aria-label="Use your photo">
+              <div className="st-section">
+                <span className="st-badge">
+                  {asset?.approved_at ? (
+                    <>
+                      <Check size={12} aria-hidden="true" />
+                      Approved
+                    </>
+                  ) : (
+                    "Ready for a quick check"
+                  )}
+                </span>
+                <h2 className="st-result-title">
+                  Your food. Beautifully presented.
+                </h2>
+                <p className="st-result-copy">
+                  Take a close look at your dish. When it feels right, save a
+                  size made for where you’ll use it.
+                </p>
+              </div>
+              <div
+                className="st-rows"
+                role="group"
+                aria-label="More for this photo"
+              >
+                <button
+                  className="st-row"
+                  onClick={() => openQuickEdits(resultId)}
+                >
+                  <SlidersHorizontal size={18} aria-hidden="true" />
+                  <span>
+                    <b>Quick adjustments</b>
+                    <small>Crop, light and warmth · No image used</small>
+                  </span>
+                  <ChevronRight size={16} aria-hidden="true" />
+                </button>
+                <button
+                  className="st-row"
+                  aria-expanded={adjust === "ai"}
+                  aria-controls="st-ai-change"
+                  onClick={() => setAdjust(adjust === "ai" ? "" : "ai")}
+                >
+                  <Sparkles size={18} aria-hidden="true" />
+                  <span>
+                    <b>Change the setting with AI</b>
+                    <small>Describe it in your words · Uses 1 image</small>
+                  </span>
+                  <ChevronDown size={16} aria-hidden="true" />
+                </button>
+                {adjust === "ai" && (
+                  <div className="st-ai" id="st-ai-change">
+                    <p>
+                      Combine your changes in one request. Your original food
+                      and this version stay the reference.
+                    </p>
+                    <div className="st-ai-chips">
+                      {[
+                        "Remove a distracting object",
+                        "Simplify the background",
+                        "Use a cooler background",
+                      ].map((t) => (
+                        <button
+                          key={t}
+                          className="st-chip st-chip-quiet"
+                          onClick={() =>
+                            setAiChanges((v) => v + (v ? "\n" : "") + t + ". ")
+                          }
+                        >
+                          {t}
+                        </button>
+                      ))}
+                    </div>
                     <textarea
+                      className="st-input"
+                      aria-label="Changes to make"
                       value={aiChanges}
                       maxLength={1000}
+                      rows={3}
                       onChange={(e) => setAiChanges(e.target.value)}
                       placeholder="Remove the napkin and use softer window light."
                     />
-                  </Field>
+                    <button
+                      className="st-pill st-pill-primary st-pill-wide"
+                      disabled={
+                        !!busy ||
+                        !aiChanges.trim() ||
+                        !state.aiConnected ||
+                        state.remaining < 1
+                      }
+                      onClick={() =>
+                        act("Applying your changes", () => generate(resultId))
+                      }
+                    >
+                      <Sparkles size={16} />
+                      Apply changes · 1 image
+                    </button>
+                  </div>
+                )}
+                {(resultHasGeneration || !!asset?.needs_correction) && (
                   <button
-                    className="cx-btn"
-                    disabled={
-                      !!busy ||
-                      !aiChanges.trim() ||
-                      !state.aiConnected ||
-                      state.remaining < 1
-                    }
-                    onClick={() =>
-                      act("Applying your changes", () => generate(resultId))
-                    }
+                    className="st-row"
+                    onClick={() => setCorrectionOpen(true)}
                   >
-                    <Sparkles size={17} />
-                    Apply changes · 1 image
+                    <CircleAlert size={18} aria-hidden="true" />
+                    <span>
+                      <b>
+                        {asset?.needs_correction
+                          ? "View food correction report"
+                          : "Something changed in my food"}
+                      </b>
+                      <small>
+                        {asset?.needs_correction
+                          ? "Kept in history, left out of automatic choices"
+                          : "Tell us what’s different"}
+                      </small>
+                    </span>
+                    <ChevronRight size={16} aria-hidden="true" />
                   </button>
-                </div>
-              )}
-            </>
-          )}
-        </>
-      )}
+                )}
+                {b.photoBatchId && (
+                  <button className="st-row" onClick={() => setBatchOpen(true)}>
+                    <Images size={18} aria-hidden="true" />
+                    <span>
+                      <b>Return to photo set</b>
+                      <small>Continue with your other dishes</small>
+                    </span>
+                    <ChevronRight size={16} aria-hidden="true" />
+                  </button>
+                )}
+              </div>
+              <WorkspaceActionBar className="st-action">
+                <button
+                  ref={resultAction}
+                  className="st-create"
+                  disabled={!!busy || adjust === "quick"}
+                  onClick={() => setFinishOpen(true)}
+                >
+                  <Download size={18} />
+                  Use photo
+                </button>
+                <p className="st-action-note">
+                  {adjust === "quick"
+                    ? "Save this version before using your adjusted photo."
+                    : "Choose a size and download · No image used"}
+                </p>
+              </WorkspaceActionBar>
+            </aside>
+          </div>
+        ))}
       {saveLookOpen && resultId && asset?.approved_at && (
         <SavePhotoLookSheet
           onCloseAutoFocus={returnToResult}

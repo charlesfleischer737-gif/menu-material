@@ -1,7 +1,7 @@
 "use client";
-import { useEffect, useId, useRef, useState } from "react";
+import { useEffect, useId, useRef, useState, type ReactNode } from "react";
 import { Check, ChevronsLeftRight, Sparkles } from "lucide-react";
-import type { PhotoStyle } from "@/lib/photo-styles";
+import { styleThumbnail, type PhotoStyle } from "@/lib/photo-styles";
 
 export function PhotoComparison({
   original,
@@ -89,28 +89,32 @@ export function StudioCreating({
   queued,
   startedAt,
   jobId,
+  children,
 }: {
   source: string;
   style: PhotoStyle;
   queued: boolean;
   startedAt?: number;
   jobId: string;
+  children?: ReactNode;
 }) {
-  const fallbackStart = useRef(Date.now());
+  const fallbackStart = useRef(0);
   const [elapsed, setElapsed] = useState(0);
   useEffect(() => {
-    const start = Number(startedAt) || fallbackStart.current;
+    const start = Number(startedAt) || (fallbackStart.current ||= Date.now());
     const tick = () => setElapsed(Math.max(0, (Date.now() - start) / 1000));
     tick();
     const timer = window.setInterval(tick, 1000);
     return () => clearInterval(timer);
   }, [startedAt, jobId]);
   const takingLonger = elapsed > 120;
+  // Time-based shimmer is decoration only; status comes from the saved job.
   return (
-    <div className="ps-render" aria-busy="true">
-      <div className="ps-render-visual">
-        <div className="ps-render-photo">
+    <div className="st-studio st-creating" aria-busy="true">
+      <section className="st-stage" aria-label="Your photo">
+        <div className="st-canvas has-photo st-developing">
           <img
+            className="st-photo"
             src={source || style.image}
             alt={
               source
@@ -118,50 +122,56 @@ export function StudioCreating({
                 : "Your selected style example"
             }
           />
-          <span>{source ? "YOUR ORIGINAL" : "STYLE INSPIRATION"}</span>
+          <span className="st-canvas-label">
+            {source ? "Your original" : "Style example"}
+          </span>
+          <span className="st-develop" aria-hidden="true" />
         </div>
-        <div className="ps-render-style">
-          <img src={style.image} alt="Selected style example" />
+        <div className="st-stage-foot">
+          <span>
+            <Check size={14} aria-hidden="true" />
+            Your original stays saved. Your result appears here.
+          </span>
+        </div>
+      </section>
+      <aside className="st-inspector" aria-label="Creating your photo">
+        <div className="st-section">
+          <span className="st-badge">
+            <span className="st-pulse" aria-hidden="true" />
+            {queued ? "Waiting to start" : "Creating"}
+          </span>
+          <h2 className="st-result-title">
+            {queued
+              ? "Your photo is next in line."
+              : "Your photo is taking shape."}
+          </h2>
+          <p className="st-result-copy" role="status">
+            {queued
+              ? takingLonger
+                ? "Still waiting for the studio. Your photo and choices are safely saved."
+                : "Your photo is saved. The studio starts in a moment."
+              : takingLonger
+                ? "Still creating. Some images take a little longer."
+                : "Creation time varies with the image and service demand."}
+          </p>
+        </div>
+        <div className="st-creating-look">
+          <img src={styleThumbnail(style.image)} alt="" />
           <div>
-            <span>The look we’re creating</span>
+            <small>Style</small>
             <b>{style.name}</b>
           </div>
+          <Sparkles size={16} aria-hidden="true" />
         </div>
-      </div>
-      <div className="ps-render-copy">
-        <span className="ps-render-mark">
-          <Sparkles size={23} />
-        </span>
-        <p className="cx-eyebrow">In your Photo Studio</p>
-        <h1 tabIndex={-1}>
-          A little light.
-          <br />A whole new look.
-        </h1>
-        <p className="ps-render-status" role="status">
-          {queued
-            ? takingLonger
-              ? "Your image is still queued. Your photo and choices are safely saved."
-              : "Your photo is saved. Waiting for the studio to start."
-            : takingLonger
-              ? "Still creating your photo. Some images take a little longer."
-              : "Your photo is taking shape. Creation time varies with the image and service demand."}
-        </p>
-        <div className="ps2-job-status">
-          <span className="ps2-job-indicator" aria-hidden="true" />
-          <div>
-            <b>{queued ? "Waiting to start" : "Creating your photo"}</b>
-            <p>
-              {queued
-                ? "Your place in the queue is saved."
-                : "We’ll show your result when it is ready. You can leave this page and return to the same photo."}
-            </p>
-          </div>
+        <div className="st-progress" aria-hidden="true">
+          <span />
         </div>
-        <p className="ps-render-safe">
-          <Check size={15} />
-          Your original stays saved. Your result appears here.
+        <p className="st-result-copy">
+          You can leave this page. We’ll keep working, and your result will be
+          waiting here.
         </p>
-      </div>
+        {children}
+      </aside>
     </div>
   );
 }

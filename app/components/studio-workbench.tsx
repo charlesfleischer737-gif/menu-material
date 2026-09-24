@@ -1,25 +1,26 @@
 "use client";
-import { useEffect, useLayoutEffect, useMemo, useRef, useState } from "react";
+import {
+  useEffect,
+  useLayoutEffect,
+  useRef,
+  useState,
+  type CSSProperties,
+} from "react";
 import {
   ArrowRight,
   BookOpen,
-  Camera,
-  Check,
   ChevronDown,
-  ChevronLeft,
-  ChevronRight,
   ImagePlus,
   Images,
+  Lightbulb,
   LoaderCircle,
-  Search,
+  PenLine,
   ShieldCheck,
   SlidersHorizontal,
   Sparkles,
   Undo2,
   Upload,
   X,
-  Heart,
-  BookmarkPlus,
 } from "lucide-react";
 import {
   Dialog,
@@ -28,49 +29,58 @@ import {
   DialogTitle,
 } from "@/components/ui/dialog";
 import {
-  Collapsible,
-  CollapsibleContent,
-  CollapsibleTrigger,
-} from "@/components/ui/collapsible";
+  DropdownMenu,
+  DropdownMenuContent,
+  DropdownMenuItem,
+  DropdownMenuLabel,
+  DropdownMenuRadioGroup,
+  DropdownMenuRadioItem,
+  DropdownMenuSeparator,
+  DropdownMenuSub,
+  DropdownMenuSubContent,
+  DropdownMenuSubTrigger,
+  DropdownMenuTrigger,
+} from "@/components/ui/dropdown-menu";
 import {
   emptyAdjustments,
-  photoStyles,
-  styleCategories,
-  formats,
   foodFamilies,
+  formats,
+  looks,
+  photoStyles,
+  resolvePhotoLook,
+  samplePhoto,
   type PhotoFormat,
 } from "@/lib/studio";
-import { recommendationsForPhoto, drinkKinds } from "@/lib/studio-onboarding";
+import { drinkKinds } from "@/lib/studio-onboarding";
 import {
   lookControls,
-  lookMoods,
-  lookSummary,
   lookExpectations,
   startingLooks,
-  studioLookPatch,
   studioCreationBlock,
-  searchIntent,
+  studioLookPatch,
 } from "@/lib/studio-discovery";
 import {
-  searchStyles,
-  styleSearchShortcut,
-  maximumStyleQueryLength,
-} from "@/lib/studio-search";
-import type { PhotoStyle } from "@/lib/photo-styles";
+  draftRelevanceContext,
+  subjectLabel,
+  cachedSuggestions,
+  suggestionReason,
+} from "@/lib/style-relevance";
+import { styleThumbnail, type PhotoStyle } from "@/lib/photo-styles";
 import type { Row } from "@/lib/client";
-import { CropControls, Field, PhotoFrame, track } from "./creation-shared";
+import { track } from "./creation-shared";
 import { useStudioLibrary } from "./use-studio-library";
-import { StudioSavedLooks } from "./studio-saved-looks";
-import { StudioOccasions } from "./studio-occasions";
 import { PhotoInspirationSheet } from "./photo-inspiration-sheet";
 import WorkspaceActionBar from "./workspace-action-bar";
+import { StudioStyleLibrary, type LibraryOrigin } from "./studio-style-library";
+import { StudioCustomizeSheet } from "./studio-customize-sheet";
+import { StyleMosaic, StyleTile } from "./studio-style-tile";
+import { radioKeys, radioTab } from "./radio-keys";
 import type {
   InspirationPhoto,
   InspirationSelection,
   InspirationStatus,
 } from "@/lib/studio-reference";
 import { inspirationStatusMessage } from "@/lib/studio-reference";
-import { looks, resolvePhotoLook } from "@/lib/studio";
 import { occasionName } from "@/lib/studio-occasions";
 import { useStudioNavigation } from "./use-studio-navigation";
 import {
@@ -79,23 +89,41 @@ import {
   type SavedLook,
 } from "@/lib/studio-library";
 
-const surfaces = [
-  { value: "As shown", title: "Follow this look", image: "menu-stone" },
-  { value: "Warm wood", title: "Warm wood", image: "menu-wood" },
-  { value: "Pale stone", title: "Pale stone", image: "menu-stone" },
-  { value: "White seamless", title: "Clean white", image: "delivery-white" },
-];
-const lights = [
-  { value: "As shown", title: "Follow this look", image: "fine-linen" },
-  {
-    value: "Soft daylight",
-    title: "Soft daylight",
-    image: "delivery-daylight",
-  },
-  { value: "Warm & cozy", title: "Warm & cozy", image: "bar-speakeasy" },
-];
-const imageFor = (id: string) =>
-  photoStyles.find((s) => s.id === id)?.image || photoStyles[0].image;
+// The generated master is square, portrait or landscape; these are the four
+// shapes owners reach for. Other saved destinations stay selectable.
+const formatChoices: PhotoFormat[] = ["menu", "feed", "story", "doordash"];
+const formatShape: Record<string, string> = {
+  menu: "1:1",
+  feed: "4:5",
+  story: "9:16",
+  doordash: "16:9",
+  toast: "5:3",
+  uber: "3:2",
+  print: "Print",
+};
+const formatUse: Record<string, string> = {
+  menu: "Menus, websites and listings",
+  feed: "Instagram and Facebook posts",
+  story: "Stories and Reels",
+  doordash: "Delivery apps and wide banners",
+  toast: "Toast item photos",
+  uber: "Uber Eats item photos",
+  print: "Printed menus and table cards",
+};
+const drinkNames: Record<string, string> = {
+  coffee: "Coffee",
+  tea: "Tea",
+  juice: "Juice",
+  smoothie: "Smoothie",
+  beer: "Beer",
+  wine: "Wine",
+  cocktail: "Cocktail",
+  spirits: "Spirits",
+  other: "Another drink",
+};
+// Suggested looks shown beside the photo, plus a tile that opens every style:
+// 4 × 2 beside the photo, 3 × 3 on phones (where the eighth look appears).
+const gridSize = 8;
 
 export function StudioWorkbench({
   draft: b,
@@ -103,7 +131,7 @@ export function StudioWorkbench({
   selected,
   styleImage,
   source,
-  busy,
+  busy: parentBusy,
   advice,
   update,
   chooseLook,
@@ -113,6 +141,7 @@ export function StudioWorkbench({
   onReferenceBusyChange,
   inspirationStatus = "ready",
   retryInspiration,
+  retryAnalysis,
   create,
   quickEdit,
   openMenu,
@@ -127,8 +156,7 @@ export function StudioWorkbench({
   advice: string;
   update: (patch: Row) => void;
   chooseLook: (id: string) => void;
-  matchRestaurant: (enabled: boolean) => void;
-  uploadPhoto: (file: File) => void;
+  uploadPhoto: (file: File, options?: { sample?: boolean }) => void;
   referencePhoto: InspirationPhoto | null;
   applyInspiration: (
     selection: InspirationSelection | null,
@@ -138,6 +166,7 @@ export function StudioWorkbench({
   onReferenceBusyChange?: (busy: boolean) => void;
   inspirationStatus?: InspirationStatus;
   retryInspiration?: () => void;
+  retryAnalysis?: () => void;
   create: () => void;
   quickEdit: () => void;
   openMenu: () => void;
@@ -146,14 +175,8 @@ export function StudioWorkbench({
   const saved = useStudioLibrary(
     state.guest ? undefined : state.restaurant?.id,
   );
-  const [browseTab, setBrowseTab] = useState("all"),
-    [filtersOpen, setFiltersOpen] = useState(false),
-    [saveOpen, setSaveOpen] = useState(false),
-    [saveName, setSaveName] = useState(""),
-    [saveError, setSaveError] = useState("");
-  const [occasion, setOccasion] = useState(""),
-    [detailOccasion, setDetailOccasion] = useState("");
-  const saveTrigger = useRef<HTMLButtonElement>(null);
+  const [sampleLoading, setSampleLoading] = useState(false);
+  const busy = parentBusy || (sampleLoading ? "Preparing your photo" : "");
   const lookName = b.savedLookName || selected.name;
   const disabledStyles: string[] =
     state.studioAvailability?.disabledStyleIds || [];
@@ -163,6 +186,7 @@ export function StudioWorkbench({
     ...(state.studioDraftId ? { draftId: state.studioDraftId } : {}),
     ...(b.sourceId ? { sourceId: b.sourceId } : {}),
   };
+  // A fresh draft starts from the restaurant's default saved look.
   useEffect(() => {
     if (
       !saved.ready ||
@@ -183,41 +207,42 @@ export function StudioWorkbench({
       selectionOrigin: "default",
     });
   }, [saved.ready, b.studioDefaultResolved]);
-  const [browserOpen, setBrowserOpen] = useState(false),
+
+  const [libraryOpen, setLibraryOpen] = useState(false),
+    [detail, setDetail] = useState<PhotoStyle | null>(null),
     [customOpen, setCustomOpen] = useState(false),
-    [libraryOpen, setLibraryOpen] = useState(false),
+    [dishesOpen, setDishesOpen] = useState(false),
+    [saveOpen, setSaveOpen] = useState(false),
     [inspirationOpen, setInspirationOpen] = useState(false);
+  const [controls, setControls] = useState<Row>({}),
+    [section, setSection] = useState("surface");
+  const [saveName, setSaveName] = useState(""),
+    [saveError, setSaveError] = useState("");
+  const [undo, setUndo] = useState<{ patch: Row; name: string } | null>(null),
+    [notice, setNotice] = useState("");
+  const [dragging, setDragging] = useState(false);
   const inspirationSession = useRef<{
     base: Row;
     origin: "browse" | "custom" | "main";
     trigger: HTMLButtonElement | null;
   }>({ base: b, origin: "main", trigger: null });
-  const [query, setQuery] = useState(""),
-    [mood, setMood] = useState("All"),
-    [category, setCategory] = useState("all"),
-    [scopedResultCount, setScopedResultCount] = useState(0);
-  const searchInput = useRef<HTMLInputElement>(null),
-    customDialog = useRef<HTMLDivElement>(null),
-    shortcutSection = useRef("");
-  const [detail, setDetail] = useState<PhotoStyle | null>(null),
-    [dragging, setDragging] = useState(false);
   useStudioNavigation(
     [
-      ...(browserOpen ? ["browse"] : []),
-      ...(browserOpen && detail ? [`look:${detail.id}`] : []),
+      ...(libraryOpen ? ["browse"] : []),
+      ...(libraryOpen && detail ? [`look:${detail.id}`] : []),
       ...(customOpen ? ["custom"] : []),
-      ...(libraryOpen ? ["library"] : []),
+      ...(dishesOpen ? ["library"] : []),
       ...(saveOpen ? ["save"] : []),
       ...(inspirationOpen ? ["inspiration"] : []),
     ],
     (stack) => {
-      setBrowserOpen(stack.includes("browse"));
+      setLibraryOpen(stack.includes("browse"));
       const detailId = stack.find((item) => item.startsWith("look:"))?.slice(5);
       setDetail(
         detailId ? looks.find((look) => look.id === detailId) || null : null,
       );
       setCustomOpen(stack.includes("custom"));
-      setLibraryOpen(stack.includes("library"));
+      setDishesOpen(stack.includes("library"));
       setSaveOpen(stack.includes("save"));
       if (stack.includes("inspiration") && !inspirationOpen)
         inspirationSession.current.base = stack.includes("custom")
@@ -226,18 +251,18 @@ export function StudioWorkbench({
       setInspirationOpen(stack.includes("inspiration"));
     },
   );
-  const [controls, setControls] = useState<Row>({}),
-    [section, setSection] = useState("surface");
-  const [undo, setUndo] = useState<Row | null>(null),
-    [notice, setNotice] = useState("");
   const upload = useRef<HTMLInputElement>(null),
-    camera = useRef<HTMLInputElement>(null);
-  const browseTrigger = useRef<HTMLButtonElement>(null),
+    browseTrigger = useRef<HTMLButtonElement>(null),
     customizeTrigger = useRef<HTMLButtonElement>(null),
-    libraryTrigger = useRef<HTMLButtonElement>(null);
-  const referenceTrigger = useRef<HTMLButtonElement>(null),
+    dishesTrigger = useRef<HTMLButtonElement>(null),
+    saveTrigger = useRef<HTMLButtonElement>(null),
+    referenceTrigger = useRef<HTMLButtonElement>(null),
     referenceRetryTrigger = useRef<HTMLButtonElement>(null),
     returnFromReferenceCheck = useRef(false);
+  const [focusSection, setFocusSection] = useState(""),
+    [inspirationOrigin, setInspirationOrigin] = useState<
+      "browse" | "custom" | "main"
+    >("main");
   useEffect(() => {
     if (inspirationStatus === "checking" || !returnFromReferenceCheck.current)
       return;
@@ -260,12 +285,18 @@ export function StudioWorkbench({
       origin,
       trigger,
     };
+    setInspirationOrigin(origin);
     setInspirationOpen(true);
   }
+
+  // The looks beside the photo: a saved restaurant look first, then Polish,
+  // then the most relevant, varied suggestions for this photo.
   const hasRestaurant = !!(
     state.restaurant?.style?.photoPreset ||
     state.restaurant?.style?.referenceIds?.length
   );
+  const imageFor = (id: string) =>
+    photoStyles.find((style) => style.id === id)?.image || photoStyles[0].image;
   const restaurantLook: PhotoStyle | undefined = hasRestaurant
     ? {
         id: "restaurant",
@@ -278,130 +309,159 @@ export function StudioWorkbench({
           : imageFor(state.restaurant.style.photoPreset),
       }
     : undefined;
-  const suggested = recommendationsForPhoto(b);
   const defaultSaved = saved.library.looks.find(
     (look) => look.id === saved.library.defaultLookId && !look.archived,
   );
-  const savedRecommendation: PhotoStyle | undefined = defaultSaved
-    ? {
-        id: defaultSaved.id,
-        name: defaultSaved.name,
-        cue: "Your default restaurant look",
-        group: "Saved",
-        prompt: "",
-        image: defaultSaved.previewAssetId
-          ? `/api/assets/${defaultSaved.previewAssetId}`
-          : imageFor(defaultSaved.recipe.look),
-      }
-    : undefined;
-  const recommendations = startingLooks(
+  const savedTile = (look: SavedLook): PhotoStyle => ({
+    id: look.id,
+    name: look.name,
+    cue: "Your restaurant look",
+    group: "Saved",
+    prompt: "",
+    image: look.previewAssetId
+      ? `/api/assets/${look.previewAssetId}`
+      : imageFor(look.recipe.look),
+  });
+  const context = draftRelevanceContext(b, {
+    cuisine: state.restaurant?.cuisine,
+    favorites: saved.library.favorites,
+    recent: saved.library.recent,
+    unavailable: disabledStyles,
+  });
+  const suggestions = cachedSuggestions(context, 12);
+  const pinned =
+    defaultSaved && !disabledStyles.includes(defaultSaved.recipe.look)
+      ? savedTile(defaultSaved)
+      : restaurantLook;
+  const base = startingLooks(
     b,
-    suggested,
-    defaultSaved && disabledStyles.includes(defaultSaved.recipe.look)
-      ? undefined
-      : savedRecommendation || restaurantLook,
+    suggestions,
+    pinned,
     [defaultSaved?.recipe.look || state.restaurant?.style?.photoPreset].filter(
       Boolean,
     ),
     disabledStyles,
+    gridSize,
   );
-  const galleryScroll = useRef<HTMLDivElement>(null),
-    detailScroll = useRef<HTMLDivElement>(null),
-    scrollPosition = useRef(0),
-    detailHeading = useRef<HTMLHeadingElement>(null),
-    detailReturnKey = useRef(""),
-    previousDetail = useRef<string | null>(null);
-  function galleryScroller() {
-    const gallery = galleryScroll.current;
-    if (!gallery) return null;
-    return getComputedStyle(gallery).overflowY === "visible"
-      ? gallery.closest<HTMLElement>('[role="dialog"]')
-      : gallery;
-  }
-  function rememberGalleryPosition() {
-    if (!detail) scrollPosition.current = galleryScroller()?.scrollTop || 0;
-  }
-  useLayoutEffect(() => {
-    const returning = previousDetail.current !== null && !detail;
-    previousDetail.current = detail?.id || null;
-    if (!browserOpen) return;
-    if (detail) {
-      const dialog = detailHeading.current?.closest('[role="dialog"]');
-      if (dialog) dialog.scrollTop = 0;
-      if (detailScroll.current) detailScroll.current.scrollTop = 0;
-      detailHeading.current?.focus({ preventScroll: true });
-    } else if (galleryScroll.current) {
-      const gallery = galleryScroll.current;
-      const scroller = galleryScroller();
-      if (scroller) scroller.scrollTop = scrollPosition.current;
-      if (returning) {
-        const trigger = [
-          ...gallery.querySelectorAll<HTMLButtonElement>("[data-look-detail]"),
-        ].find(
-          (button) => button.dataset.lookDetail === detailReturnKey.current,
-        );
-        trigger?.focus({ preventScroll: true });
-      }
-    }
-  }, [detail, browserOpen]);
-  function openDetail(
-    style: PhotoStyle,
-    occasionId = "",
-    trigger?: HTMLButtonElement,
-  ) {
-    scrollPosition.current = galleryScroller()?.scrollTop || 0;
-    detailReturnKey.current = trigger?.dataset.lookDetail || "";
-    setDetail(style);
-    setDetailOccasion(occasionId);
-  }
-  const search = useMemo(
-    () =>
-      searchStyles(
-        query,
-        mood,
-        category === "all"
-          ? photoStyles.filter((s) => !disabledStyles.includes(s.id))
-          : photoStyles.filter(
-              (s) => s.category === category && !disabledStyles.includes(s.id),
-            ),
+  const selectedKey = b.savedLookId || b.look;
+  // A look chosen from the full library joins the grid and stays there for
+  // this photo, so tiles never jump around beneath the pointer.
+  const draftKey = state.studioDraftId || "guest";
+  const [extra, setExtra] = useState({ key: "", draft: draftKey });
+  const extraKey = extra.draft === draftKey ? extra.key : "";
+  if (
+    selectedKey &&
+    selectedKey !== extraKey &&
+    !base.some((style) => style.id === selectedKey)
+  )
+    setExtra({ key: selectedKey, draft: draftKey });
+  else if (extra.draft !== draftKey) setExtra({ key: "", draft: draftKey });
+  const extraStyle = ((): PhotoStyle | undefined => {
+    if (
+      !extraKey ||
+      disabledStyles.includes(extraKey) ||
+      base.some((style) => style.id === extraKey)
+    )
+      return;
+    const savedLook = saved.library.looks.find((look) => look.id === extraKey);
+    if (savedLook) return savedTile(savedLook);
+    if (extraKey === "restaurant") return restaurantLook;
+    if (extraKey === "reference")
+      return referencePhoto
+        ? {
+            ...looks.find((look) => look.id === "reference")!,
+            image: referencePhoto.url,
+          }
+        : undefined;
+    const catalogLook = photoStyles.find((style) => style.id === extraKey);
+    if (catalogLook) return catalogLook;
+    if (extraKey === b.look && resolvePhotoLook(b))
+      return { ...resolvePhotoLook(b)!, image: styleImage || selected.image };
+  })();
+  const tiles = extraStyle
+    ? [
+        ...base.slice(0, base.findIndex((style) => style.id === "keep") + 1),
+        extraStyle,
+        ...base.slice(base.findIndex((style) => style.id === "keep") + 1),
+      ].slice(0, gridSize)
+    : base;
+  const available = photoStyles.filter(
+    (style) => !style.legacy && !disabledStyles.includes(style.id),
+  );
+  const mosaic = suggestions
+    .filter((style) => !tiles.some((tile) => tile.id === style.id))
+    .slice(0, 4)
+    .map((style) => style.image);
+
+  // Tiles glide to their new places when suggestions change.
+  const grid = useRef<HTMLDivElement>(null),
+    positions = useRef(new Map<string, { x: number; y: number }>());
+  const tileKeys = tiles.map((style) => style.id).join();
+  function tilePositions(container: HTMLElement) {
+    const origin = container.getBoundingClientRect();
+    return new Map(
+      [...container.querySelectorAll<HTMLElement>("[data-style-key]")].map(
+        (button) => {
+          const rect = (
+            button.closest(".st-tile") || button
+          ).getBoundingClientRect();
+          return [
+            button.dataset.styleKey!,
+            { x: rect.left - origin.left, y: rect.top - origin.top },
+          ];
+        },
       ),
-    [query, mood, category, state.studioAvailability],
-  );
-  const cards = search.styles;
-  const capability =
-    browseTab === "all" ? styleSearchShortcut(query, b.family) : null;
-  const resultCount =
-    browseTab === "all"
-      ? cards.length + (capability ? 1 : 0)
-      : scopedResultCount;
-  function changeQuery(value: string) {
-    setQuery(value);
-    if (browseTab === "occasions") setOccasion("");
-  }
-  function searchAllLooks() {
-    setBrowseTab("all");
-    setMood("All");
-    setCategory("all");
-    setOccasion("");
-    searchInput.current?.focus();
-  }
-  const format = formats[b.format as PhotoFormat] || formats.menu;
-  useEffect(() => {
-    if (!browserOpen || !query.trim() || state.guest) return;
-    const timer = setTimeout(
-      () =>
-        track("style_search_used", undefined, {
-          ...measurementContext,
-          intent: searchIntent(query),
-          scope: browseTab,
-          resultCount,
-          category: browseTab === "all" ? category : "all",
-          mood: browseTab === "all" ? mood : "All",
-        }),
-      500,
     );
-    return () => clearTimeout(timer);
-  }, [query, mood, category, browseTab, browserOpen, resultCount]);
+  }
+  useEffect(() => {
+    const container = grid.current;
+    if (!container) return;
+    const observer = new ResizeObserver(() => {
+      positions.current = tilePositions(container);
+    });
+    observer.observe(container);
+    return () => observer.disconnect();
+  }, [creationPaused]);
+  useLayoutEffect(() => {
+    const container = grid.current;
+    if (!container) return;
+    const origin = container.getBoundingClientRect();
+    const still = matchMedia("(prefers-reduced-motion: reduce)").matches;
+    const next = new Map<string, { x: number; y: number }>();
+    for (const button of container.querySelectorAll<HTMLElement>(
+      "[data-style-key]",
+    )) {
+      const tile = button.closest<HTMLElement>(".st-tile");
+      const key = button.dataset.styleKey;
+      if (!tile || !key) continue;
+      const rect = tile.getBoundingClientRect();
+      const point = { x: rect.left - origin.left, y: rect.top - origin.top };
+      next.set(key, point);
+      const before = positions.current.get(key);
+      if (still || !positions.current.size) continue;
+      if (!before)
+        tile.animate(
+          [
+            { opacity: 0, transform: "scale(0.92)" },
+            { opacity: 1, transform: "none" },
+          ],
+          { duration: 320, easing: "cubic-bezier(0.25, 1, 0.5, 1)" },
+        );
+      else if (before.x !== point.x || before.y !== point.y)
+        tile.animate(
+          [
+            {
+              transform: `translate(${before.x - point.x}px, ${before.y - point.y}px)`,
+            },
+            { transform: "none" },
+          ],
+          { duration: 380, easing: "cubic-bezier(0.25, 1, 0.5, 1)" },
+        );
+    }
+    positions.current = next;
+  }, [tileKeys]);
+
+  const format = formats[b.format as PhotoFormat] || formats.menu;
   const photoReady =
     b.mode === "photo" ? !!source : !!b.name?.trim() && !!b.description?.trim();
   const vesselConflict = b.family === "Drinks" && b.plate !== "keep";
@@ -424,7 +484,9 @@ export function StudioWorkbench({
       : vesselConflict
         ? "Keep your original glass to use this look with a drink."
         : !photoReady
-          ? "Add a photo to get started."
+          ? b.mode === "photo"
+            ? "Add a photo to get started."
+            : "Add a dish name and description."
           : b.look === "reference" && !referencePhoto
             ? "Add an inspiration photo to use this look."
             : !state.guest && !state.aiConnected
@@ -432,8 +494,8 @@ export function StudioWorkbench({
               : state.remaining <= 0
                 ? "You’ve used your available images."
                 : state.guest
-                  ? "Create a free account to continue · 1 of 5 free images"
-                  : `Uses 1 image · ${state.remaining} remaining`);
+                  ? "Create a free account to continue · 5 free images"
+                  : `Uses 1 image · ${state.remaining} left`);
   const showImage =
     b.look === "keep" && source
       ? source
@@ -441,63 +503,78 @@ export function StudioWorkbench({
           styleImage.startsWith("/api/assets/")
         ? ""
         : styleImage;
-  const detailExpectations = detail
-    ? lookExpectations(b, detail.id, state.restaurant)
-    : null;
-  function select(id: string, from?: string) {
+  const drink = b.family === "Drinks";
+  const confirmed =
+    !!source &&
+    b.analysisSourceId === b.sourceId &&
+    ["ready", "manual"].includes(b.analysisStatus) &&
+    !!b.recommendationFamily;
+  const originals = (state.assets || []).filter((asset: Row) =>
+    ["source", "staff"].includes(asset.kind),
+  );
+
+  function select(
+    id: string,
+    origin: LibraryOrigin | "suggestion" = "suggestion",
+    extra: { occasionId?: string; rank?: number } = {},
+  ) {
+    const savedLook = saved.library.looks.find((look) => look.id === id);
+    if (savedLook) return applySaved(savedLook);
     if (disabledStyles.includes(id)) {
-      setNotice("This look is temporarily unavailable. Choose another look.");
+      setNotice("This style is temporarily unavailable. Choose another.");
       return;
     }
+    const keep = !!b.studioOverrides?.length;
+    // The previous look stays one tap away in the grid, unless the new pick
+    // takes its place there; only then (or with custom choices) offer Undo.
+    const stays =
+      base.some((style) => style.id === selectedKey) ||
+      (selectedKey === extraKey && base.some((style) => style.id === id));
     setUndo(
-      Object.fromEntries(
-        [
-          "look",
-          "lookCategory",
-          "studioOverrides",
-          "savedLookId",
-          "savedLookName",
-          "savedLookVersion",
-          "occasionId",
-          "photoStyleSnapshot",
-          "photoReferenceIds",
-          "selectionOrigin",
-          ...lookControls,
-        ].map((key) => [key, b[key]]),
-      ),
+      keep || !stays
+        ? {
+            name: lookName,
+            patch: Object.fromEntries(
+              [
+                "look",
+                "lookCategory",
+                "studioOverrides",
+                "savedLookId",
+                "savedLookName",
+                "savedLookVersion",
+                "occasionId",
+                "photoStyleSnapshot",
+                "photoReferenceIds",
+                "selectionOrigin",
+                ...lookControls,
+              ].map((key) => [key, b[key]]),
+            ),
+          }
+        : null,
     );
     chooseLook(id);
-    const origin =
-      from ||
-      (browserOpen
-        ? detail && detailOccasion
-          ? "occasion"
-          : query.trim()
-            ? "search"
-            : "catalog"
-        : "suggestion");
-    update({ selectionOrigin: origin });
-    if (!state.guest) {
-      const rank =
-        origin === "search" && browseTab === "all"
-          ? cards.findIndex((style) => style.id === id) + 1
-          : 0;
+    update({
+      selectionOrigin: origin,
+      ...(extra.occasionId ? { occasionId: extra.occasionId } : {}),
+    });
+    if (!state.guest)
       track("look_selected", undefined, {
         ...measurementContext,
         look: id,
         origin,
-        ...(rank ? { selectedRank: rank } : {}),
+        ...(extra.rank ? { selectedRank: extra.rank } : {}),
       });
-    }
-    setBrowserOpen(false);
+    setLibraryOpen(false);
     setDetail(null);
     setNotice(
-      b.studioOverrides?.length
-        ? "Look changed. Your custom choices are kept."
-        : "Look selected.",
+      keep
+        ? "Style changed. Your custom choices are kept."
+        : stays
+          ? ""
+          : `Replaced ${lookName}.`,
     );
   }
-  function useSaved(look: SavedLook) {
+  function applySaved(look: SavedLook) {
     if (!state.guest)
       track("look_selected", undefined, {
         ...measurementContext,
@@ -505,12 +582,13 @@ export function StudioWorkbench({
         version: look.version,
         origin: "saved",
       });
+    setUndo(null);
     update({
       ...applySavedLook(look),
       styleIntent: true,
       selectionOrigin: "saved",
     });
-    setBrowserOpen(false);
+    setLibraryOpen(false);
     setDetail(null);
     setNotice(`“${look.name}” is ready for this photo.`);
   }
@@ -547,6 +625,7 @@ export function StudioWorkbench({
           savedLookVersion: updateExisting ? (b.savedLookVersion || 1) + 1 : 1,
         });
         setSaveOpen(false);
+        setCustomOpen(false);
         setNotice(
           `“${look.name}” is saved. Restaurant defaults are unchanged.`,
         );
@@ -556,28 +635,20 @@ export function StudioWorkbench({
     }
   }
   function customize(initialSection?: string) {
-    shortcutSection.current = initialSection || "";
-    if (initialSection) setSection(initialSection);
+    setFocusSection(initialSection || "");
+    setSection(initialSection || "surface");
     setControls({
       ...Object.fromEntries(lookControls.map((key) => [key, b[key]])),
       studioOverrides: [...(b.studioOverrides || [])],
-      note: b.note || "",
       adjustments: { ...b.adjustments },
     });
     setCustomOpen(true);
   }
-  function control(key: string, value: string) {
-    setControls((current) => ({
-      ...current,
-      [key]: value,
-      studioOverrides: [...new Set([...(current.studioOverrides || []), key])],
-    }));
-  }
-  function identify(family: string) {
+  function identify(family: string, drinkKind = "other") {
     update({
       family,
       recommendationFamily: family,
-      recommendationDrink: "other",
+      recommendationDrink: family === "Drinks" ? drinkKind : "other",
       analysisStatus: "manual",
       analysisSourceId: b.sourceId,
       analysisSubject: "",
@@ -588,35 +659,117 @@ export function StudioWorkbench({
     if (!files?.length || busy) return;
     if (files.length > 1)
       setNotice(`Using ${files[0].name}. Add one dish photo at a time.`);
+    else setNotice("");
+    setUndo(null);
     uploadPhoto(files[0]);
   }
+  async function trySample() {
+    if (busy) return;
+    setSampleLoading(true);
+    setNotice("");
+    try {
+      const response = await fetch(samplePhoto.url);
+      if (!response.ok) throw Error();
+      const blob = await response.blob();
+      setSampleLoading(false);
+      uploadPhoto(
+        new File([blob], samplePhoto.file, { type: blob.type || "image/jpeg" }),
+        { sample: true },
+      );
+    } catch {
+      setSampleLoading(false);
+      setNotice("The sample couldn’t load. Try again, or add your own photo.");
+    }
+  }
+  function chooseFormat(id: string) {
+    update({
+      format: id,
+      destination: ["feed", "story"].includes(id)
+        ? "social"
+        : ["uber", "door", "doordash"].includes(id)
+          ? "delivery"
+          : "menu",
+    });
+  }
+  const formatOptions = formatChoices.includes(b.format)
+    ? formatChoices
+    : [...formatChoices, b.format as PhotoFormat];
+  const changes = [
+    b.look === "keep"
+      ? "Your setting, beautifully refined"
+      : b.look === "restaurant"
+        ? "Consistent with your restaurant"
+        : b.look === "reference"
+          ? "Matches your inspiration photo"
+          : b.savedLookId
+            ? "Your saved setting and light"
+            : selected.cue,
+    ...(b.mode === "photo" && !drink && b.plate !== "keep"
+      ? [b.plate === "white" ? "White serving dish" : "New serving dish"]
+      : []),
+    ...(b.angle && b.angle !== "keep"
+      ? [b.angle === "overhead" ? "New overhead angle" : "New angled view"]
+      : []),
+    ...(b.studioOverrides?.length ? ["Customized"] : []),
+  ];
+
   const createButton = (
-    <button
-      className="cx-btn ps2-create"
-      disabled={!canCreate}
-      onClick={create}
-    >
+    <button className="st-create" disabled={!canCreate} onClick={create}>
       {busy ? (
-        <LoaderCircle size={17} className="cx-spin" />
+        <LoaderCircle size={18} className="cx-spin" />
       ) : (
-        <Sparkles size={17} />
+        <Sparkles size={18} />
       )}
       {busy || "Create photo"}
-      {!busy && <ArrowRight size={17} />}
     </button>
   );
+
+  const tile = (style: PhotoStyle, index: number) => {
+    const reason = suggestionReason(style, context);
+    const polish = style.id === "keep";
+    const label = polish
+      ? "Polish"
+      : style.id === "restaurant"
+        ? "Your look"
+        : style.id === "reference"
+          ? "Inspiration"
+          : style.name;
+    return (
+      <StyleTile
+        key={style.id}
+        styleKey={style.id}
+        label={label}
+        description={
+          polish
+            ? "Polish my original. Your setting, beautifully refined."
+            : [label !== style.name && style.name, reason, style.cue]
+                .filter(Boolean)
+                .join(". ")
+        }
+        image={polish ? source || undefined : style.image}
+        media={
+          polish && !source ? (
+            <span className="st-tile-icon" aria-hidden="true">
+              <Sparkles size={22} strokeWidth={1.6} />
+            </span>
+          ) : undefined
+        }
+        eager={index < 4}
+        className={index === gridSize - 1 ? "st-tile-phone" : ""}
+        selected={selectedKey === style.id}
+        disabled={!!busy}
+        onSelect={() => select(style.id, "suggestion")}
+      />
+    );
+  };
+
   return (
     <>
       {creationPaused ? (
-        <section
-          className="ps2-unavailable"
-          aria-labelledby="studio-unavailable-title"
-        >
-          <div className="ps2-unavailable-copy">
-            <span className="ps2-kicker">Your work is still here</span>
-            <h2 id="studio-unavailable-title">
-              Photo creation is unavailable.
-            </h2>
+        <section className="st-paused" aria-labelledby="st-paused-title">
+          <div>
+            <span className="st-sheet-kicker">Your work is still here</span>
+            <h2 id="st-paused-title">Photo creation is paused.</h2>
             <p role="status">{state.studioAvailability.message}</p>
             {!state.guest && (
               <p>
@@ -624,31 +777,31 @@ export function StudioWorkbench({
                 brighten an original.
               </p>
             )}
-            <div className="cx-button-row">
+            <div className="st-paused-actions">
               {!state.guest &&
                 (source ? (
                   <button
-                    className="cx-btn cx-secondary"
+                    className="st-pill"
                     disabled={!!busy}
                     onClick={quickEdit}
                   >
-                    <SlidersHorizontal size={17} />
+                    <SlidersHorizontal size={16} />
                     Crop or brighten
                   </button>
                 ) : (
                   <button
-                    ref={libraryTrigger}
-                    className="cx-btn cx-secondary"
+                    ref={dishesTrigger}
+                    className="st-pill"
                     disabled={!!busy}
-                    onClick={() => setLibraryOpen(true)}
+                    onClick={() => setDishesOpen(true)}
                   >
-                    <Images size={17} />
+                    <Images size={16} />
                     Choose an original
                   </button>
                 ))}
               {refreshAvailability && (
                 <button
-                  className="cx-link"
+                  className="st-text-button"
                   disabled={!!busy}
                   onClick={refreshAvailability}
                 >
@@ -660,254 +813,342 @@ export function StudioWorkbench({
           {source && <img src={source} alt="Your original dish photo" />}
         </section>
       ) : (
-        <div className={`ps2-workbench ${photoReady ? "ps2-ready" : ""}`}>
-          <section className="ps2-photo-area" aria-label="Your photo">
-            <div className="ps2-section-heading">
-              <div>
-                <span className="ps2-step">01</span>
-                <h2>Your photo</h2>
-              </div>
-              {source && (
-                <button
-                  className="cx-link"
-                  disabled={!!busy}
-                  onClick={() => upload.current?.click()}
-                >
-                  <Upload size={15} />
-                  Replace
-                </button>
-              )}
-            </div>
+        <div className={`st-studio${photoReady ? " is-ready" : ""}`}>
+          <section className="st-stage" aria-label="Your photo">
             <div
-              className={`ps2-canvas ${source && b.mode === "photo" ? "has-photo" : ""} ${dragging ? "is-dragging" : ""}`}
-              onDragOver={(e) => {
-                e.preventDefault();
-                if (!busy) setDragging(true);
+              className={`st-canvas${source && b.mode === "photo" ? " has-photo" : ""}${dragging ? " is-dragging" : ""}`}
+              onDragOver={(event) => {
+                event.preventDefault();
+                if (!busy && b.mode === "photo") setDragging(true);
               }}
-              onDragLeave={() => setDragging(false)}
-              onDrop={(e) => {
-                e.preventDefault();
+              onDragLeave={(event) => {
+                if (!event.currentTarget.contains(event.relatedTarget as Node))
+                  setDragging(false);
+              }}
+              onDrop={(event) => {
+                event.preventDefault();
                 setDragging(false);
-                accept(e.dataTransfer.files);
+                if (b.mode === "photo") accept(event.dataTransfer.files);
               }}
             >
               {source && b.mode === "photo" ? (
                 <>
                   <img
-                    className="ps2-original"
+                    key={source}
+                    className="st-photo"
                     src={source}
-                    alt="Your original dish photo"
+                    alt={
+                      b.sample
+                        ? "Sample burger photo"
+                        : "Your original dish photo"
+                    }
                   />
-                  <span className="ps2-photo-label">Your original</span>
+                  <span className="st-canvas-label">
+                    {b.sample ? "Sample photo" : "Your original"}
+                  </span>
+                  <button
+                    className="st-glass-button"
+                    disabled={!!busy}
+                    onClick={() => upload.current?.click()}
+                  >
+                    <Upload size={15} />
+                    Replace
+                  </button>
                 </>
               ) : b.mode === "description" ? (
-                <div className="ps2-description">
-                  <span className="ps2-kicker">From a description</span>
+                <div className="st-describe">
+                  <span className="st-sheet-kicker">From a description</span>
                   <h3>Imagine your dish.</h3>
-                  <Field label="Dish name">
+                  <label className="st-field">
+                    <span>Dish name</span>
                     <input
+                      className="st-input"
                       value={b.name}
                       maxLength={100}
-                      onChange={(e) => update({ name: e.target.value })}
+                      onChange={(event) => update({ name: event.target.value })}
                       placeholder="Roasted tomato pasta"
                     />
-                  </Field>
-                  <Field label="Ingredients, portion and presentation">
+                  </label>
+                  <label className="st-field">
+                    <span>Ingredients, portion and presentation</span>
                     <textarea
+                      className="st-input"
                       value={b.description}
                       maxLength={2000}
-                      onChange={(e) => update({ description: e.target.value })}
+                      rows={4}
+                      onChange={(event) =>
+                        update({ description: event.target.value })
+                      }
                       placeholder="Describe the dish you actually serve."
                     />
-                  </Field>
+                  </label>
                   <p>
                     Creates an illustration. Check it against the real dish
                     before using it.
                   </p>
-                  <button
-                    className="cx-link"
-                    onClick={() => update({ mode: "photo" })}
-                  >
-                    Use a real photo instead
-                  </button>
                 </div>
               ) : (
-                <div className="ps2-empty-photo">
-                  <span className="ps2-upload-icon">
-                    <ImagePlus size={28} strokeWidth={1.5} />
+                <button
+                  className="st-dropzone"
+                  disabled={!!busy}
+                  aria-describedby="st-dropzone-hint"
+                  onClick={() => upload.current?.click()}
+                >
+                  <span className="st-dropzone-icon" aria-hidden="true">
+                    <ImagePlus size={30} strokeWidth={1.4} />
                   </span>
-                  <h3>
-                    Your food.
-                    <br />
-                    In its best light.
-                  </h3>
-                  <p>Add a photo of a dish you serve.</p>
-                  <button
-                    className="cx-btn"
-                    disabled={!!busy}
-                    onClick={() => upload.current?.click()}
-                  >
-                    <Upload size={17} />
-                    Add a photo
-                  </button>
-                  <div className="ps2-photo-sources">
-                    <button
-                      className="cx-link"
-                      disabled={!!busy}
-                      onClick={() => camera.current?.click()}
-                    >
-                      <Camera size={16} />
-                      Take a photo
-                    </button>
-                    {!state.guest && (
-                      <button
-                        ref={libraryTrigger}
-                        className="cx-link"
-                        disabled={!!busy}
-                        onClick={() => setLibraryOpen(true)}
-                      >
-                        <Images size={16} />
-                        My Dishes
-                      </button>
-                    )}
-                  </div>
+                  <b>
+                    {dragging
+                      ? "Drop to add your photo"
+                      : "Add a photo of your dish"}
+                  </b>
+                  <span id="st-dropzone-hint">
+                    <span className="st-when-pointer">
+                      Drop it here, or click to choose a file.
+                    </span>
+                    <span className="st-when-touch">
+                      Tap to take a photo or choose one.
+                    </span>
+                  </span>
                   <small>
-                    Or drop a photo here · JPG, PNG, HEIC · Up to 20 MB
+                    Shoot from above or at a slight angle, with the whole plate
+                    in frame.
                   </small>
-                </div>
+                </button>
               )}
               {busy && (
-                <div className="ps2-preparing" role="status">
+                <div className="st-canvas-busy" role="status">
                   <LoaderCircle className="cx-spin" size={22} />
                   <span>{busy}</span>
                 </div>
               )}
             </div>
-            <div className="ps2-photo-foot">
+            <div className="st-stage-foot">
               <span>
-                <ShieldCheck size={15} />
+                <ShieldCheck size={14} aria-hidden="true" />
                 {state.guest
                   ? "Your photo stays on this device until you sign up."
-                  : "Your original photo is always kept."}
+                  : b.mode === "description"
+                    ? "Illustrations are labeled as illustrations."
+                    : "Your original photo is always kept."}
               </span>
-              {source && !state.guest && (
+              {source && !state.guest && b.mode === "photo" && (
                 <button
-                  className="cx-link"
+                  className="st-text-button"
                   disabled={!!busy}
                   onClick={quickEdit}
                 >
                   Just crop or brighten
                 </button>
               )}
+              {!source && b.mode === "photo" && (
+                <button
+                  className="st-text-button"
+                  disabled={!!busy}
+                  onClick={() => update({ mode: "description" })}
+                >
+                  <PenLine size={14} />
+                  No photo? Describe your dish
+                </button>
+              )}
+              {b.mode === "description" && (
+                <button
+                  className="st-text-button"
+                  onClick={() => update({ mode: "photo" })}
+                >
+                  Use a real photo instead
+                </button>
+              )}
             </div>
-            {advice && (
-              <p className="ps2-inline-note" role="status">
-                {advice}
+            {(advice || b.analysisAdvice) && (
+              <p className="st-note" role="status">
+                <Lightbulb size={15} aria-hidden="true" />
+                {advice || b.analysisAdvice}
               </p>
             )}
             {b.menuDocument && (
-              <div className="ps2-inline-note">
-                <p>
-                  Use a single dish photo here, or open this menu in Menu Maker.
-                </p>
-                <button className="cx-link" onClick={openMenu}>
-                  <BookOpen size={16} />
-                  Open Menu Maker
-                </button>
+              <div className="st-note">
+                <BookOpen size={15} aria-hidden="true" />
+                <span>
+                  This looks like a menu. Use a photo of one dish here, or open
+                  it in Menus.{" "}
+                  <button className="st-text-button" onClick={openMenu}>
+                    Open in Menus
+                  </button>
+                </span>
               </div>
-            )}
-            {!source && b.mode === "photo" && (
-              <button
-                className="cx-link ps2-description-link"
-                disabled={!!busy}
-                onClick={() => update({ mode: "description" })}
-              >
-                No photo? Describe your dish
-              </button>
             )}
           </section>
-          <section className="ps2-decision" aria-label="Choose your look">
-            <div className="ps2-section-heading">
-              <div>
-                <span className="ps2-step">02</span>
-                <h2>Find your look</h2>
-              </div>
-            </div>
-            <p className="ps2-intro">
-              A little polish. A new setting. Still your food.
-            </p>
-            <div
-              className="ps2-starting-looks"
-              role="group"
-              aria-label="Suggested starting looks"
-            >
-              {recommendations.map((style) => (
+          <aside className="st-inspector" aria-label="Photo settings">
+            {!source && b.mode === "photo" && (
+              <section className="st-section" aria-labelledby="st-photo-title">
+                <h2 id="st-photo-title" className="st-section-title">
+                  Photo
+                </h2>
                 <button
-                  key={style.id}
-                  className="ps2-starting-look"
-                  aria-pressed={
-                    b.savedLookId
-                      ? b.savedLookId === style.id
-                      : b.look === style.id
-                  }
+                  className="st-pill st-pill-wide st-photo-pill"
                   disabled={!!busy}
-                  onClick={() =>
-                    defaultSaved?.id === style.id
-                      ? useSaved(defaultSaved)
-                      : select(style.id)
-                  }
+                  onClick={() => upload.current?.click()}
                 >
-                  {style.id === "keep" && !source ? (
-                    <span className="ps2-polish-icon">
-                      <Sparkles size={24} strokeWidth={1.4} />
-                    </span>
-                  ) : (
-                    <img
-                      src={style.id === "keep" ? source : style.image}
-                      alt=""
-                      width={72}
-                      height={72}
-                    />
-                  )}
-                  <span>
-                    <b>{style.name}</b>
-                    <small>
-                      {style.id === "keep"
-                        ? "Your setting, beautifully refined"
-                        : style.id === "restaurant"
-                          ? "Consistent with your restaurant"
-                          : style.cue}
-                    </small>
-                  </span>
-                  <span className="ps2-selection">
-                    {(b.savedLookId
-                      ? b.savedLookId === style.id
-                      : b.look === style.id) && (
-                      <Check size={13} strokeWidth={3} />
-                    )}
-                  </span>
+                  Choose a photo
                 </button>
-              ))}
-            </div>
-            <button
-              ref={browseTrigger}
-              className="ps2-browse"
-              disabled={!!busy}
-              onClick={() => {
-                setDetail(null);
-                setBrowserOpen(true);
-              }}
-            >
-              <Images size={17} />
-              <span>{photoReady ? "Browse all looks" : "Explore styles"}</span>
-              <ChevronRight size={17} />
-            </button>
-            <div className="ps2-selected">
-              <div className="ps2-selected-heading">
-                <span className="ps2-kicker">Your look</span>
+                <p className="st-photo-links">
+                  {!state.guest && originals.length > 0 && (
+                    <>
+                      <button
+                        ref={dishesTrigger}
+                        className="st-text-button"
+                        disabled={!!busy}
+                        onClick={() => setDishesOpen(true)}
+                      >
+                        From My Dishes
+                      </button>
+                      <span aria-hidden="true">·</span>
+                    </>
+                  )}
+                  <button
+                    className="st-text-button"
+                    disabled={!!busy}
+                    onClick={() => void trySample()}
+                  >
+                    {!state.guest && originals.length
+                      ? "Try a sample"
+                      : "No photo handy? Try a sample"}
+                  </button>
+                </p>
+              </section>
+            )}
+
+            <section className="st-section" aria-labelledby="st-style-title">
+              <div className="st-section-head">
+                <h2 id="st-style-title" className="st-section-title">
+                  Style
+                </h2>
+                {source && b.mode === "photo" && (
+                  <DropdownMenu>
+                    <DropdownMenuTrigger asChild>
+                      <button
+                        className="st-subject"
+                        disabled={!!busy}
+                        aria-label={
+                          confirmed
+                            ? `Suggestions for ${b.analysisSubject || subjectLabel(b.recommendationFamily, b.recommendationDrink)}. Change what’s in your photo`
+                            : "Tell us what’s in your photo"
+                        }
+                      >
+                        {b.analysisStatus === "analyzing" ? (
+                          <>
+                            <LoaderCircle size={13} className="cx-spin" />
+                            <span>Reading your photo…</span>
+                          </>
+                        ) : (
+                          <span>
+                            {confirmed
+                              ? `For ${(b.analysisSubject || subjectLabel(b.recommendationFamily, b.recommendationDrink)).toLowerCase()}`
+                              : "What’s in your photo?"}
+                          </span>
+                        )}
+                        <ChevronDown size={13} aria-hidden="true" />
+                      </button>
+                    </DropdownMenuTrigger>
+                    <DropdownMenuContent
+                      className="cx-workspace-popover st-menu"
+                      align="end"
+                    >
+                      <DropdownMenuLabel>Suggest styles for</DropdownMenuLabel>
+                      <DropdownMenuRadioGroup
+                        value={
+                          confirmed && b.recommendationFamily !== "Drinks"
+                            ? b.recommendationFamily
+                            : ""
+                        }
+                        onValueChange={(value) => identify(value)}
+                      >
+                        {foodFamilies
+                          .filter((family) => family !== "Drinks")
+                          .map((family) => (
+                            <DropdownMenuRadioItem key={family} value={family}>
+                              {family}
+                            </DropdownMenuRadioItem>
+                          ))}
+                      </DropdownMenuRadioGroup>
+                      <DropdownMenuSub>
+                        <DropdownMenuSubTrigger>
+                          Drinks
+                          {confirmed && b.recommendationFamily === "Drinks" && (
+                            <span className="st-menu-value">
+                              {drinkNames[b.recommendationDrink] || "Drink"}
+                            </span>
+                          )}
+                        </DropdownMenuSubTrigger>
+                        <DropdownMenuSubContent className="cx-workspace-popover st-menu">
+                          <DropdownMenuRadioGroup
+                            value={
+                              confirmed && b.recommendationFamily === "Drinks"
+                                ? b.recommendationDrink
+                                : ""
+                            }
+                            onValueChange={(value) => identify("Drinks", value)}
+                          >
+                            {drinkKinds.map((kind) => (
+                              <DropdownMenuRadioItem key={kind} value={kind}>
+                                {drinkNames[kind]}
+                              </DropdownMenuRadioItem>
+                            ))}
+                          </DropdownMenuRadioGroup>
+                        </DropdownMenuSubContent>
+                      </DropdownMenuSub>
+                      {retryAnalysis &&
+                        b.analysisStatus === "unavailable" &&
+                        state.aiConnected && (
+                          <>
+                            <DropdownMenuSeparator />
+                            <DropdownMenuItem onSelect={retryAnalysis}>
+                              Read my photo again
+                            </DropdownMenuItem>
+                          </>
+                        )}
+                    </DropdownMenuContent>
+                  </DropdownMenu>
+                )}
+              </div>
+              <div
+                ref={grid}
+                className="st-style-grid"
+                role="group"
+                aria-label={
+                  confirmed
+                    ? `Styles suggested for your ${subjectLabel(b.recommendationFamily, b.recommendationDrink)}`
+                    : "Suggested styles"
+                }
+              >
+                {tiles.map(tile)}
+                <StyleTile
+                  label="All styles"
+                  description={`Browse all ${available.length} styles, collections and occasions`}
+                  media={<StyleMosaic images={mosaic} />}
+                  kind="dialog"
+                  buttonRef={browseTrigger}
+                  disabled={!!busy}
+                  onSelect={() => {
+                    setDetail(null);
+                    setLibraryOpen(true);
+                  }}
+                />
+              </div>
+              <div className="st-selected">
+                <div>
+                  <b>{lookName}</b>
+                  {b.occasionId && (
+                    <span className="st-occasion">
+                      {occasionName(b.occasionId)} collection
+                    </span>
+                  )}
+                  <span>{changes.filter(Boolean).join(" · ")}</span>
+                </div>
                 <button
                   ref={customizeTrigger}
-                  className="cx-link"
+                  className="st-text-button"
                   disabled={!!busy || !resolvePhotoLook(b)}
                   onClick={() => customize()}
                 >
@@ -915,24 +1156,17 @@ export function StudioWorkbench({
                   Customize
                 </button>
               </div>
-              <b>{lookName}</b>
-              {b.occasionId && (
-                <span className="ps2-occasion-label">
-                  {occasionName(b.occasionId)} collection
-                </span>
-              )}
-              <p>{lookSummary(b).join(" · ")}</p>
               {creationBlock && (
-                <p className="ps2-inline-note" role="status">
+                <p className="st-alert" role="status">
                   {creationBlock}
                 </p>
               )}
               {vesselConflict && (
-                <p className="ps2-inline-note">
-                  This saved look changes the serving dish. For a drink, keep
-                  the glass you serve it in.{" "}
+                <p className="st-alert">
+                  This look changes the serving dish. For a drink, keep the
+                  glass you serve it in.{" "}
                   <button
-                    className="cx-link"
+                    className="st-text-button"
                     onClick={() =>
                       update({
                         plate: "keep",
@@ -948,8 +1182,8 @@ export function StudioWorkbench({
               )}
               {(b.look === "reference" || referencePhoto) && (
                 <button
-                  className="cx-link ps2-reference-entry"
                   ref={referenceTrigger}
+                  className="st-reference"
                   disabled={!!busy}
                   onClick={(event) =>
                     openInspiration("main", event.currentTarget)
@@ -968,13 +1202,13 @@ export function StudioWorkbench({
                 </button>
               )}
               {inspirationBlock && (
-                <div className="ps2-reference-recovery" role="status">
+                <div className="st-alert" role="status">
                   <p>{inspirationBlock}</p>
                   {retryInspiration && (
                     <div>
                       <button
                         ref={referenceRetryTrigger}
-                        className="cx-link"
+                        className="st-text-button"
                         disabled={!!busy || inspirationStatus === "checking"}
                         onClick={() => {
                           returnFromReferenceCheck.current = true;
@@ -986,125 +1220,101 @@ export function StudioWorkbench({
                           : "Check again"}
                       </button>
                       <button
-                        className="cx-link"
+                        className="st-text-button"
                         disabled={!!busy}
                         onClick={() => {
-                          setQuery("");
-                          setCategory("all");
-                          setMood("All");
-                          setBrowseTab("all");
                           setDetail(null);
-                          setBrowserOpen(true);
+                          setLibraryOpen(true);
                         }}
                       >
-                        Choose another look
-                        <ArrowRight size={15} />
+                        Choose another style
+                        <ArrowRight size={14} />
                       </button>
                     </div>
                   )}
                 </div>
               )}
-            </div>
-            <div className="ps2-notice" role="status">
-              {notice && <span>{notice}</span>}
-              {undo && (
-                <button
-                  className="cx-link"
-                  disabled={!!busy}
-                  onClick={() => {
-                    update(undo);
-                    setUndo(null);
-                    setNotice("Previous look restored.");
-                  }}
-                >
-                  <Undo2 size={13} />
-                  Undo
-                </button>
-              )}
-            </div>
-            <Field label="Made for">
-              <select
-                value={b.format}
-                onChange={(e) =>
-                  update({
-                    format: e.target.value,
-                    destination: ["feed", "story"].includes(e.target.value)
-                      ? "social"
-                      : ["uber", "door", "doordash"].includes(e.target.value)
-                        ? "delivery"
-                        : "menu",
-                  })
-                }
+              <p className="st-status" role="status">
+                {notice}
+                {undo && (
+                  <button
+                    className="st-text-button"
+                    disabled={!!busy}
+                    onClick={() => {
+                      update(undo.patch);
+                      setNotice(`${undo.name} restored.`);
+                      setUndo(null);
+                    }}
+                  >
+                    <Undo2 size={13} />
+                    Undo
+                  </button>
+                )}
+              </p>
+            </section>
+
+            <section className="st-section" aria-labelledby="st-format-title">
+              <h2 id="st-format-title" className="st-section-title">
+                Format
+              </h2>
+              <div
+                className="st-segmented"
+                role="radiogroup"
+                aria-labelledby="st-format-title"
+                onKeyDown={radioKeys}
+                style={{ "--segments": formatOptions.length } as CSSProperties}
               >
-                {Object.entries(formats).map(([id, value]) => (
-                  <option key={id} value={id}>
-                    {value.label}
-                  </option>
+                {formatOptions.map((id, index) => (
+                  <button
+                    key={id}
+                    role="radio"
+                    aria-checked={b.format === id}
+                    aria-label={`${formatShape[id] || formats[id].short}, ${formatUse[id] || formats[id].label}`}
+                    tabIndex={radioTab(index, formatOptions.indexOf(b.format))}
+                    disabled={!!busy}
+                    onClick={() => chooseFormat(id)}
+                  >
+                    {formatShape[id] || formats[id].short}
+                  </button>
                 ))}
-              </select>
-            </Field>
-            {source && (
-              <Collapsible className="ps2-identify">
-                <CollapsibleTrigger className="cx-link">
-                  {b.analysisStatus === "analyzing" ? (
-                    <>
-                      <LoaderCircle size={13} className="cx-spin" />
-                      Finding looks for your photo
-                    </>
-                  ) : b.analysisSubject ? (
-                    `Looks like ${b.analysisSubject.toLowerCase()}`
-                  ) : (
-                    "Get suggestions for your dish"
-                  )}
-                  <ChevronDown size={13} />
-                </CollapsibleTrigger>
-                <CollapsibleContent>
-                  <Field label="What’s in the photo?">
-                    <select
-                      value={b.recommendationFamily || ""}
-                      onChange={(e) => identify(e.target.value)}
-                    >
-                      <option value="" disabled>
-                        Choose a subject
-                      </option>
-                      {foodFamilies.map((family) => (
-                        <option key={family}>{family}</option>
-                      ))}
-                    </select>
-                  </Field>
-                  {b.family === "Drinks" && (
-                    <Field label="Type of drink">
-                      <select
-                        value={b.recommendationDrink || "other"}
-                        onChange={(e) =>
-                          update({
-                            recommendationDrink: e.target.value,
-                            analysisStatus: "manual",
-                            analysisSourceId: b.sourceId,
-                            recommendationFamily: "Drinks",
-                          })
-                        }
-                      >
-                        {drinkKinds.map((kind) => (
-                          <option key={kind} value={kind}>
-                            {kind === "other"
-                              ? "Another drink"
-                              : kind.charAt(0).toUpperCase() + kind.slice(1)}
-                          </option>
-                        ))}
-                      </select>
-                    </Field>
-                  )}
-                </CollapsibleContent>
-              </Collapsible>
-            )}
-            {photoReady && (
-              <div className="ps2-desktop-action">
-                {createButton}
-                <p className="ps2-cost">{reason}</p>
+              </div>
+              <p className="st-format-use" aria-hidden="true">
+                {formatUse[b.format] || format.label}
+              </p>
+            </section>
+
+            <section className="st-section" aria-labelledby="st-details-title">
+              <div className="st-section-head">
+                <h2 id="st-details-title" className="st-section-title">
+                  Details
+                </h2>
+                <span className="st-optional">Optional</span>
+              </div>
+              <textarea
+                className="st-input st-details"
+                aria-labelledby="st-details-title"
+                aria-describedby="st-details-hint"
+                value={b.note || ""}
+                maxLength={500}
+                rows={3}
+                placeholder="Candlelight, more room above the dish…"
+                onChange={(event) => update({ note: event.target.value })}
+              />
+              <span id="st-details-hint" className="sr-only">
+                Describe the light, setting or framing you’d like. Your food
+                always stays the same.
+              </span>
+            </section>
+
+            <WorkspaceActionBar
+              className={`st-action${photoReady ? "" : " is-waiting"}`}
+            >
+              {createButton}
+              <p className="st-action-note">
+                {reason}
                 {!state.guest && state.remaining <= 0 && (
                   <button
-                    className="cx-link"
+                    className="st-text-button"
                     onClick={() =>
                       window.dispatchEvent(new Event("menu-material:plans"))
                     }
@@ -1112,19 +1322,10 @@ export function StudioWorkbench({
                     View plans
                   </button>
                 )}
-              </div>
-            )}
-          </section>
+              </p>
+            </WorkspaceActionBar>
+          </aside>
         </div>
-      )}
-      {photoReady && !creationPaused && (
-        <WorkspaceActionBar className="ps2-mobile-action">
-          <div>
-            <b>{lookName}</b>
-            <span>{reason}</span>
-          </div>
-          {createButton}
-        </WorkspaceActionBar>
       )}
       <input
         ref={upload}
@@ -1132,857 +1333,120 @@ export function StudioWorkbench({
         disabled={!!busy}
         type="file"
         accept="image/jpeg,image/png,image/heic,image/heif,.heic,.heif"
-        onChange={(e) => {
-          accept(e.target.files);
-          e.target.value = "";
+        onChange={(event) => {
+          accept(event.target.files);
+          event.target.value = "";
         }}
       />
-      <input
-        ref={camera}
-        hidden
-        disabled={!!busy}
-        type="file"
-        accept="image/*"
-        capture="environment"
-        onChange={(e) => {
-          accept(e.target.files);
-          e.target.value = "";
+      <StudioStyleLibrary
+        open={libraryOpen}
+        onOpenChange={(open) => {
+          setLibraryOpen(open);
+          if (!open) setDetail(null);
+        }}
+        detail={detail}
+        onDetail={setDetail}
+        context={context}
+        selectedKey={selectedKey}
+        unavailable={disabledStyles}
+        store={saved}
+        restaurantLook={restaurantLook}
+        guest={!!state.guest}
+        busy={!!busy}
+        timezone={state.restaurant?.timezone}
+        expectations={(id) => lookExpectations(b, id, state.restaurant)}
+        source={b.mode === "photo" ? source : ""}
+        onSelect={select}
+        onApplySaved={applySaved}
+        onInspiration={(trigger) => openInspiration("browse", trigger)}
+        onCustomize={(section) => {
+          setLibraryOpen(false);
+          setDetail(null);
+          customize(section);
+        }}
+        onSearch={(details) => {
+          if (!state.guest)
+            track("style_search_used", undefined, {
+              ...measurementContext,
+              ...details,
+              scope: "all",
+            });
+        }}
+        onCloseAutoFocus={(event) => {
+          event.preventDefault();
+          if (!customOpen && !inspirationOpen)
+            browseTrigger.current?.focus({ preventScroll: true });
         }}
       />
-      <Dialog open={browserOpen} onOpenChange={setBrowserOpen}>
-        <DialogContent
-          className="cx-workspace-popover ps2-dialog ps2-browser"
-          showCloseButton={false}
-          onScroll={rememberGalleryPosition}
-          onCloseAutoFocus={(e) => {
-            e.preventDefault();
-            if (!customOpen && !inspirationOpen) browseTrigger.current?.focus();
-          }}
-        >
-          <header className="ps2-dialog-header">
-            <div>
-              <DialogTitle ref={detailHeading} tabIndex={-1}>
-                {detail ? detail.name : "Browse styles"}
-              </DialogTitle>
-              <DialogDescription>
-                {detail
-                  ? "Style example · your food stays your food"
-                  : "Style examples to make your own."}
-              </DialogDescription>
-            </div>
-            <button
-              className="ps2-icon-button"
-              aria-label="Close style browser"
-              onClick={() => setBrowserOpen(false)}
-            >
-              <X size={21} />
-            </button>
-          </header>
-          {detail ? (
-            <>
-              <div ref={detailScroll} className="ps2-detail ps2-dialog-scroll">
-                <button className="cx-link" onClick={() => setDetail(null)}>
-                  <ChevronLeft size={15} />
-                  Back to looks
-                </button>
-                <figure className="ps2-style-example">
-                  <img
-                    src={detail.image}
-                    alt={`${detail.name}: ${detail.cue}`}
-                  />
-                  <figcaption>Style example</figcaption>
-                </figure>
-                <div>
-                  <span className="ps2-kicker">{detail.group}</span>
-                  <p className="ps2-look-description">
-                    {detail.description || detail.cue}
-                  </p>
-                  {detail.bestFor && (
-                    <p>
-                      <b>Beautiful for</b>
-                      <br />
-                      {detail.bestFor}
-                    </p>
-                  )}
-                  {detailExpectations && (
-                    <section
-                      className="ps2-expectations"
-                      aria-label="Your photo settings"
-                    >
-                      <h4>
-                        {detailExpectations.fromPhoto
-                          ? "With your photo"
-                          : "For your illustration"}
-                      </h4>
-                      <dl>
-                        {detailExpectations.rows.map((row) => (
-                          <div key={row.label}>
-                            <dt>{row.label}</dt>
-                            <dd>
-                              {row.value}
-                              {row.custom && <span>Your choice</span>}
-                            </dd>
-                          </div>
-                        ))}
-                      </dl>
-                      {detailExpectations.framing && (
-                        <p>
-                          Framing: {detailExpectations.framing} · Your choice
-                        </p>
-                      )}
-                      {detailExpectations.angleChanged && (
-                        <p>
-                          A new angle may reveal parts of the dish that aren’t
-                          visible in your photo.
-                        </p>
-                      )}
-                      {detailExpectations.vesselConflict && (
-                        <p>
-                          Keep your original glass in Customize before creating
-                          this drink photo.
-                        </p>
-                      )}
-                      <p className="ps2-fidelity">
-                        <ShieldCheck size={16} />
-                        {detailExpectations.fromPhoto
-                          ? "Your food and portion stay the same. Custom choices carry over when you use this look."
-                          : "Created from your description. Review the result against the real dish before using it."}
-                      </p>
-                    </section>
-                  )}
-                  <button
-                    className="cx-link ps2-detail-favorite"
-                    aria-pressed={saved.library.favorites.includes(detail.id)}
-                    disabled={saved.busy || !saved.ready}
-                    onClick={() => void saved.favorite(detail.id)}
-                  >
-                    <Heart
-                      size={17}
-                      fill={
-                        saved.library.favorites.includes(detail.id)
-                          ? "currentColor"
-                          : "none"
-                      }
-                    />
-                    {saved.library.favorites.includes(detail.id)
-                      ? "Saved to favorites"
-                      : "Save to favorites"}
-                  </button>
-                  {saved.error && (
-                    <p role="alert">
-                      {saved.error}
-                      <button
-                        className="cx-link"
-                        disabled={saved.busy}
-                        onClick={() => void saved.reload()}
-                      >
-                        Reload saved looks
-                      </button>
-                    </p>
-                  )}
-                </div>
-              </div>
-              <footer className="ps2-dialog-footer">
-                <span>
-                  {disabledStyles.includes(detail.id)
-                    ? "This look is temporarily unavailable. Choose another look."
-                    : detailExpectations?.fromPhoto &&
-                        detail.angle &&
-                        detail.angle !== "keep" &&
-                        !detailExpectations.angleChanged
-                      ? "Your camera angle is kept. Change it in Customize."
-                      : "Example for inspiration, not a preview of your dish."}
-                </span>
-                <button
-                  className="cx-btn"
-                  disabled={!!busy || disabledStyles.includes(detail.id)}
-                  onClick={() => {
-                    select(detail.id);
-                    if (detailOccasion) update({ occasionId: detailOccasion });
-                  }}
-                >
-                  Use this look
-                  <ArrowRight size={16} />
-                </button>
-              </footer>
-            </>
-          ) : (
-            <>
-              <div
-                ref={galleryScroll}
-                className="ps2-browser-content ps2-dialog-scroll"
-                onScroll={rememberGalleryPosition}
-              >
-                <div className="ps2-browser-tools">
-                  <div
-                    className="ps2-browser-tabs"
-                    role="group"
-                    aria-label="Look collections"
-                  >
-                    <button
-                      aria-pressed={browseTab === "all"}
-                      onClick={() => setBrowseTab("all")}
-                    >
-                      All looks
-                    </button>
-                    <button
-                      aria-pressed={browseTab === "occasions"}
-                      onClick={() => setBrowseTab("occasions")}
-                    >
-                      Occasions
-                    </button>
-                    <button
-                      aria-pressed={browseTab === "saved"}
-                      onClick={() => setBrowseTab("saved")}
-                    >
-                      Saved
-                    </button>
-                  </div>
-                  {saved.error && (
-                    <p className="ps2-inline-note" role="alert">
-                      {saved.error}{" "}
-                      <button
-                        className="cx-link"
-                        onClick={() => void saved.reload()}
-                      >
-                        Reload saved looks
-                      </button>
-                    </p>
-                  )}
-                  <Collapsible open={filtersOpen} onOpenChange={setFiltersOpen}>
-                    <div className="ps2-browser-search-row">
-                      <div
-                        className="ps2-search"
-                        role="search"
-                        aria-label="Style browser"
-                      >
-                        <Search size={19} />
-                        <input
-                          ref={searchInput}
-                          aria-label={
-                            browseTab === "saved"
-                              ? "Search saved looks"
-                              : browseTab === "occasions"
-                                ? "Search occasions"
-                                : "Search all looks"
-                          }
-                          maxLength={maximumStyleQueryLength}
-                          value={query}
-                          onChange={(e) => changeQuery(e.target.value)}
-                          placeholder={
-                            browseTab === "saved"
-                              ? "Search a name, setting or light…"
-                              : browseTab === "occasions"
-                                ? "Try Christmas, football, summer…"
-                                : "Try warm wood, café, keep my plate…"
-                          }
-                        />
-                        {query && (
-                          <button
-                            aria-label="Clear search"
-                            onClick={() => {
-                              changeQuery("");
-                              searchInput.current?.focus();
-                            }}
-                          >
-                            <X size={16} />
-                          </button>
-                        )}
-                      </div>
-                      {browseTab === "all" &&
-                        (!capability || cards.length > 0) && (
-                          <CollapsibleTrigger asChild>
-                            <button className="cx-btn cx-secondary ps2-filter-trigger">
-                              <SlidersHorizontal size={16} />
-                              Filters
-                              {(mood !== "All" || category !== "all") && (
-                                <span className="ps2-filter-count">
-                                  {Number(mood !== "All") +
-                                    Number(category !== "all")}
-                                </span>
-                              )}
-                            </button>
-                          </CollapsibleTrigger>
-                        )}
-                    </div>
-                    {browseTab === "all" &&
-                      (!capability || cards.length > 0) && (
-                        <CollapsibleContent>
-                          <div className="ps2-filters">
-                            <div
-                              className="ps2-moods"
-                              role="group"
-                              aria-label="Mood"
-                            >
-                              {lookMoods.map((value) => (
-                                <button
-                                  key={value}
-                                  aria-pressed={mood === value}
-                                  onClick={() => setMood(value)}
-                                >
-                                  {value}
-                                </button>
-                              ))}
-                            </div>
-                            <select
-                              aria-label="Type of look"
-                              value={category}
-                              onChange={(e) => setCategory(e.target.value)}
-                            >
-                              <option value="all">All looks</option>
-                              {styleCategories.map((c) => (
-                                <option key={c.id} value={c.id}>
-                                  {c.name}
-                                </option>
-                              ))}
-                            </select>
-                          </div>
-                        </CollapsibleContent>
-                      )}
-                  </Collapsible>
-                  {browseTab === "all" && (
-                    <div className="ps2-search-summary">
-                      <p className="ps2-result-count" role="status">
-                        {capability && !cards.length ? (
-                          "A choice you can customize"
-                        ) : (
-                          <>
-                            {cards.length} {search.related ? "related " : ""}
-                            {cards.length === 1 ? "look" : "looks"}
-                            {query ? ` for “${query}”` : " to make your own"}
-                            {mood !== "All" ? ` · ${mood}` : ""}
-                            {category !== "all"
-                              ? ` · ${styleCategories.find((entry) => entry.id === category)?.name || category}`
-                              : ""}
-                          </>
-                        )}
-                      </p>
-                      {(mood !== "All" || category !== "all") && (
-                        <button
-                          className="cx-link"
-                          onClick={() => {
-                            setMood("All");
-                            setCategory("all");
-                            searchInput.current?.focus();
-                          }}
-                        >
-                          Clear filters
-                        </button>
-                      )}
-                    </div>
-                  )}
-                </div>
-                <div className="ps2-gallery-scroll">
-                  {capability && (
-                    <div className="ps2-search-shortcut">
-                      <SlidersHorizontal size={22} aria-hidden="true" />
-                      <div>
-                        <h3>{capability.title}</h3>
-                        <p>{capability.description}</p>
-                        <button
-                          className="cx-link"
-                          disabled={!!busy}
-                          onClick={() => {
-                            setBrowserOpen(false);
-                            customize(capability.section);
-                          }}
-                        >
-                          {capability.action}
-                          <ArrowRight size={16} />
-                        </button>
-                      </div>
-                    </div>
-                  )}
-                  {browseTab === "occasions" ? (
-                    <StudioOccasions
-                      onSearchAll={searchAllLooks}
-                      onResultCount={setScopedResultCount}
-                      disabledStyleIds={disabledStyles}
-                      timezone={state.restaurant?.timezone}
-                      query={query}
-                      active={occasion}
-                      onActive={setOccasion}
-                      explore={openDetail}
-                    />
-                  ) : browseTab === "saved" ? (
-                    <StudioSavedLooks
-                      onSearchAll={searchAllLooks}
-                      onResultCount={setScopedResultCount}
-                      disabledStyleIds={disabledStyles}
-                      store={saved}
-                      restaurantLook={restaurantLook}
-                      select={select}
-                      apply={useSaved}
-                      guest={!!state.guest}
-                      query={query}
-                    />
-                  ) : cards.length ? (
-                    <div className="ps2-gallery">
-                      {cards.map((style) => (
-                        <article
-                          key={style.id}
-                          className="ps2-gallery-card"
-                          data-selected={b.look === style.id}
-                        >
-                          <button
-                            className="ps2-card-detail"
-                            data-look-detail={`catalog-image:${style.id}`}
-                            onClick={(event) =>
-                              openDetail(style, "", event.currentTarget)
-                            }
-                            aria-label={`Explore ${style.name}`}
-                          >
-                            <img
-                              src={style.image}
-                              alt={style.cue}
-                              loading="lazy"
-                              width={512}
-                              height={512}
-                            />
-                          </button>
-                          <div className="ps2-card-bottom">
-                            <button
-                              data-look-detail={`catalog-label:${style.id}`}
-                              onClick={(event) =>
-                                openDetail(style, "", event.currentTarget)
-                              }
-                            >
-                              <b>{style.name}</b>
-                              <span>
-                                {search.relatedIds.includes(style.id)
-                                  ? "Related · "
-                                  : ""}
-                                {style.cue}
-                              </span>
-                            </button>
-                            <div className="ps2-card-actions">
-                              <button
-                                className="cx-btn cx-secondary ps2-card-use"
-                                aria-label={`Use ${style.name}`}
-                                aria-pressed={b.look === style.id}
-                                disabled={!!busy}
-                                onClick={() => select(style.id)}
-                              >
-                                {b.look === style.id ? "Selected" : "Use look"}
-                              </button>
-                              <button
-                                className="ps2-favorite"
-                                aria-label={`${saved.library.favorites.includes(style.id) ? "Remove" : "Add"} ${style.name} ${saved.library.favorites.includes(style.id) ? "from" : "to"} favorites`}
-                                aria-pressed={saved.library.favorites.includes(
-                                  style.id,
-                                )}
-                                disabled={saved.busy || !saved.ready}
-                                onClick={() => void saved.favorite(style.id)}
-                              >
-                                <Heart
-                                  size={16}
-                                  fill={
-                                    saved.library.favorites.includes(style.id)
-                                      ? "currentColor"
-                                      : "none"
-                                  }
-                                />
-                              </button>
-                            </div>
-                          </div>
-                        </article>
-                      ))}
-                    </div>
-                  ) : capability ? null : (
-                    <div className="ps2-empty-results">
-                      <Search size={28} />
-                      <h3>No looks found yet.</h3>
-                      <p>
-                        Try a mood, a color or a surface — or build your own.
-                      </p>
-                      <button
-                        className="cx-btn"
-                        onClick={() => {
-                          setQuery("");
-                          setMood("All");
-                          setCategory("all");
-                          searchInput.current?.focus();
-                        }}
-                      >
-                        Show all looks
-                      </button>
-                      <button
-                        className="cx-link"
-                        onClick={() => {
-                          setBrowserOpen(false);
-                          customize();
-                        }}
-                      >
-                        Customize my look
-                      </button>
-                    </div>
-                  )}
-                </div>
-              </div>
-              {(!capability || cards.length > 0) && (
-                <footer className="ps2-dialog-footer">
-                  <span className="ps2-browser-current" role="status">
-                    Current look: {lookName}
-                  </span>
-                  <button
-                    className="cx-link"
-                    disabled={!!busy}
-                    onClick={(event) =>
-                      openInspiration("browse", event.currentTarget)
-                    }
-                  >
-                    <ImagePlus size={17} />
-                    Use a photo as inspiration
-                    <ArrowRight size={15} />
-                  </button>
-                </footer>
-              )}
-            </>
-          )}
-        </DialogContent>
-      </Dialog>
-      <Dialog open={customOpen} onOpenChange={setCustomOpen}>
-        <DialogContent
-          ref={customDialog}
-          className="cx-workspace-popover ps2-dialog ps2-customizer"
-          showCloseButton={false}
-          onOpenAutoFocus={(e) => {
-            if (!shortcutSection.current) return;
-            const target = [
-              ...(customDialog.current?.querySelectorAll<HTMLButtonElement>(
-                "[data-control-section]",
-              ) || []),
-            ].find(
-              (button) =>
-                button.dataset.controlSection === shortcutSection.current,
-            );
-            if (target) {
-              e.preventDefault();
-              target.focus();
-            }
-            shortcutSection.current = "";
-          }}
-          onCloseAutoFocus={(e) => {
-            e.preventDefault();
-            if (!inspirationOpen) customizeTrigger.current?.focus();
-          }}
-        >
-          <header className="ps2-dialog-header">
-            <div>
-              <span className="ps2-kicker">{lookName}</span>
-              <DialogTitle>Make it yours.</DialogTitle>
-              <DialogDescription>
-                A few thoughtful choices. No prompt needed.
-              </DialogDescription>
-            </div>
-            <button
-              className="ps2-icon-button"
-              aria-label="Cancel customization"
-              onClick={() => setCustomOpen(false)}
-            >
-              <X size={21} />
-            </button>
-          </header>
-          <div className="ps2-dialog-scroll ps2-custom-scroll">
-            <div className="ps2-recipe">
-              {showImage ? (
-                <img src={showImage} alt="Current look example" />
-              ) : (
-                <p>
-                  Your saved recipe is retained. No example photo is attached.
-                </p>
-              )}
-              <p>{lookSummary({ ...b, ...controls }).join(" · ")}</p>
-            </div>
-            {[
-              { key: "surface", name: "Setting", value: controls.surface },
-              {
-                key: "plate",
-                name: b.family === "Drinks" ? "Glass" : "Serving dish",
-                value:
-                  b.family === "Drinks" || controls.plate === "keep"
-                    ? "Keep mine"
-                    : controls.plate === "white"
-                      ? "Simple white"
-                      : "Follow this look",
-              },
-              { key: "lighting", name: "Light", value: controls.lighting },
-              { key: "framing", name: "Framing", value: controls.composition },
-            ].map((item) => (
-              <Collapsible
-                key={item.key}
-                className="ps2-control-group"
-                open={section === item.key}
-                onOpenChange={(open) => setSection(open ? item.key : "")}
-              >
-                <CollapsibleTrigger
-                  className="ps2-control-heading"
-                  data-control-section={item.key}
-                >
-                  <b>{item.name}</b>
-                  <span>
-                    {item.value === "As shown"
-                      ? "Follow this look"
-                      : item.value}
-                  </span>
-                  <ChevronDown size={17} />
-                </CollapsibleTrigger>
-                <CollapsibleContent>
-                  {(item.key === "surface" || item.key === "lighting") && (
-                    <div
-                      className="ps2-visual-options"
-                      role="group"
-                      aria-label={item.name}
-                    >
-                      {(item.key === "surface" ? surfaces : lights).map(
-                        (option) => (
-                          <button
-                            key={option.value}
-                            aria-pressed={controls[item.key] === option.value}
-                            onClick={() => control(item.key, option.value)}
-                          >
-                            <img
-                              src={
-                                option.value === "As shown"
-                                  ? showImage
-                                  : imageFor(option.image)
-                              }
-                              alt=""
-                              loading="lazy"
-                            />
-                            <span>
-                              {option.title}
-                              {controls[item.key] === option.value && (
-                                <Check size={14} />
-                              )}
-                            </span>
-                          </button>
-                        ),
-                      )}
-                    </div>
-                  )}
-                  {item.key === "plate" &&
-                    (b.family === "Drinks" ? (
-                      <p className="ps2-control-help">
-                        We keep your glass, ice, garnish and liquid level true
-                        to the drink you serve.
-                      </p>
-                    ) : (
-                      <>
-                        <div
-                          className="ps2-ware-options"
-                          role="group"
-                          aria-label="Serving dish"
-                        >
-                          {[
-                            {
-                              value: "keep",
-                              name: "Keep mine",
-                              help: "Your original serving dish",
-                            },
-                            {
-                              value: "style",
-                              name: "Follow this look",
-                              help: "May replace your serving dish",
-                            },
-                            {
-                              value: "white",
-                              name: "Simple white",
-                              help: "Replace with white serving ware",
-                            },
-                          ].map((option) => (
-                            <button
-                              key={option.value}
-                              aria-pressed={controls.plate === option.value}
-                              onClick={() => control("plate", option.value)}
-                            >
-                              <span
-                                className={`ps2-ware ps2-ware-${option.value}`}
-                              >
-                                {option.value === "keep" && (
-                                  <ShieldCheck size={22} />
-                                )}
-                              </span>
-                              <b>{option.name}</b>
-                              <small>{option.help}</small>
-                            </button>
-                          ))}
-                        </div>
-                        {controls.plate !== "keep" && (
-                          <p className="ps2-control-help">
-                            This changes the serving dish. Ingredients, portions
-                            and meaningful branding must stay the same.
-                          </p>
-                        )}
-                      </>
-                    ))}
-                  {item.key === "framing" && (
-                    <div className="ps2-framing">
-                      <Field label="Composition">
-                        <select
-                          value={controls.composition || "Full dish"}
-                          onChange={(e) =>
-                            control("composition", e.target.value)
-                          }
-                        >
-                          <option>Full dish</option>
-                          <option>Close-up detail</option>
-                          <option>Space above for a headline</option>
-                          <option>Room around the plate</option>
-                        </select>
-                      </Field>
-                      <Field label="Camera angle">
-                        <select
-                          value={controls.angle || "keep"}
-                          onChange={(e) => control("angle", e.target.value)}
-                        >
-                          <option value="keep">Keep my photo’s angle</option>
-                          <option value="overhead">From above</option>
-                          <option value="three-quarter">At an angle</option>
-                        </select>
-                      </Field>
-                      {controls.angle !== "keep" && (
-                        <p className="ps2-control-help">
-                          A new angle may reveal details the original photo
-                          doesn’t show. Check the result carefully.
-                        </p>
-                      )}
-                      {source && (
-                        <Collapsible>
-                          <CollapsibleTrigger className="cx-link">
-                            Adjust crop
-                            <ChevronDown size={14} />
-                          </CollapsibleTrigger>
-                          <CollapsibleContent>
-                            <PhotoFrame
-                              src={source}
-                              ratio={format.ratio}
-                              edits={controls.adjustments}
-                            />
-                            <CropControls
-                              value={controls.adjustments}
-                              onChange={(adjustments) =>
-                                setControls((current) => ({
-                                  ...current,
-                                  adjustments,
-                                }))
-                              }
-                            />
-                          </CollapsibleContent>
-                        </Collapsible>
-                      )}
-                    </div>
-                  )}
-                </CollapsibleContent>
-              </Collapsible>
-            ))}
-            <button
-              className="cx-link ps2-custom-inspiration"
-              disabled={!!busy}
-              onClick={(event) =>
-                openInspiration("custom", event.currentTarget)
-              }
-            >
-              <ImagePlus size={17} />
-              {referencePhoto
-                ? "Edit inspiration photo"
-                : "Use a photo as inspiration"}
-              <ArrowRight size={15} />
-            </button>
-            <Collapsible className="ps2-note-control">
-              <CollapsibleTrigger className="cx-link">
-                Add a note (optional)
-                <ChevronDown size={14} />
-              </CollapsibleTrigger>
-              <CollapsibleContent>
-                <Field label="Anything else about the setting?">
-                  <textarea
-                    maxLength={500}
-                    value={controls.note || ""}
-                    onChange={(e) =>
-                      setControls((current) => ({
-                        ...current,
-                        note: e.target.value,
-                      }))
-                    }
-                    placeholder="For example, leave some space on the left."
-                  />
-                </Field>
-              </CollapsibleContent>
-            </Collapsible>
-            {!state.guest && (
-              <button
-                ref={saveTrigger}
-                className="cx-link ps2-save-look"
-                disabled={!saved.ready || saved.busy}
-                onClick={() => {
-                  setSaveName(b.savedLookName || selected.name);
-                  setSaveError("");
-                  setSaveOpen(true);
-                }}
-              >
-                <BookmarkPlus size={15} />
-                Save as a restaurant look
-              </button>
-            )}
-            <button
-              className="cx-link ps2-reset"
-              onClick={() =>
-                setControls({
-                  ...studioLookPatch(
-                    { ...b, studioOverrides: [] },
-                    b.look,
-                    state.restaurant,
-                  ),
-                  note: "",
-                  adjustments: { ...emptyAdjustments },
-                })
-              }
-            >
-              <Undo2 size={14} />
-              Reset to this look
-            </button>
-          </div>
-          <footer className="ps2-dialog-footer">
-            <button className="cx-link" onClick={() => setCustomOpen(false)}>
-              Cancel
-            </button>
-            <button
-              className="cx-btn"
-              onClick={() => {
-                const changed = lookControls.filter(
-                  (key) => controls[key] !== b[key],
-                );
-                const categories: string[] = [...changed];
-                if ((controls.note || "") !== (b.note || ""))
-                  categories.push("note");
-                if (
-                  JSON.stringify(controls.adjustments) !==
-                  JSON.stringify(b.adjustments)
-                )
-                  categories.push("crop");
-                update(controls);
-                if (!state.guest && categories.length)
-                  track("customization_applied", undefined, {
-                    ...measurementContext,
-                    controls: categories.join(","),
-                  });
-                setCustomOpen(false);
-                setNotice("Your custom choices are saved for this photo.");
-              }}
-            >
-              Done
-              <Check size={16} />
-            </button>
-          </footer>
-        </DialogContent>
-      </Dialog>
+      <StudioCustomizeSheet
+        open={customOpen}
+        onOpenChange={setCustomOpen}
+        draft={b}
+        controls={controls}
+        setControls={setControls}
+        section={section}
+        setSection={setSection}
+        focusSection={focusSection}
+        lookName={lookName}
+        lookImage={showImage ? styleThumbnail(showImage) : ""}
+        source={b.mode === "photo" ? source : ""}
+        ratio={format.ratio}
+        guest={!!state.guest}
+        canSave={saved.ready && !saved.busy}
+        hasReference={!!referencePhoto}
+        busy={!!busy}
+        onDone={() => {
+          const changed = lookControls.filter(
+            (key) => controls[key] !== b[key],
+          );
+          const categories: string[] = [...changed];
+          if (
+            JSON.stringify(controls.adjustments) !==
+            JSON.stringify(b.adjustments)
+          )
+            categories.push("crop");
+          update(controls);
+          if (!state.guest && categories.length)
+            track("customization_applied", undefined, {
+              ...measurementContext,
+              controls: categories.join(","),
+            });
+          setCustomOpen(false);
+          setUndo(null);
+          setNotice(
+            categories.length
+              ? "Your custom choices are saved for this photo."
+              : "",
+          );
+        }}
+        onReset={() =>
+          setControls({
+            ...studioLookPatch(
+              { ...b, studioOverrides: [] },
+              b.look,
+              state.restaurant,
+            ),
+            adjustments: { ...emptyAdjustments },
+          })
+        }
+        onInspiration={(trigger) => openInspiration("custom", trigger)}
+        onSaveLook={() => {
+          setSaveName(b.savedLookName || selected.name);
+          setSaveError("");
+          setSaveOpen(true);
+        }}
+        onCloseAutoFocus={(event) => {
+          event.preventDefault();
+          if (!inspirationOpen && !saveOpen)
+            customizeTrigger.current?.focus({ preventScroll: true });
+        }}
+      />
       <PhotoInspirationSheet
         open={inspirationOpen}
         source={source}
         dishName={b.name || b.description || ""}
         current={referencePhoto}
-        customChoices={inspirationSession.current.origin === "custom"}
+        customChoices={inspirationOrigin === "custom"}
         onOpenChange={setInspirationOpen}
         onBusyChange={onReferenceBusyChange}
         onCloseAutoFocus={(event) => {
@@ -1994,8 +1458,6 @@ export function StudioWorkbench({
               !trigger.closest('[aria-hidden="true"]')
             )
               trigger.focus({ preventScroll: true });
-            else if (browserOpen)
-              searchInput.current?.focus({ preventScroll: true });
             else
               (inspirationSession.current.origin === "custom"
                 ? customizeTrigger
@@ -2015,14 +1477,10 @@ export function StudioWorkbench({
           setDetail(null);
           setUndo(null);
           if (!selection) {
-            setQuery("");
-            setCategory("all");
-            setMood("All");
-            setBrowseTab("all");
-            setBrowserOpen(true);
-            setNotice("Inspiration removed. Choose a look for your photo.");
+            setLibraryOpen(true);
+            setNotice("Inspiration removed. Choose a style for your photo.");
           } else {
-            setBrowserOpen(false);
+            setLibraryOpen(false);
             setNotice(
               "Inspiration is ready. Your dish and custom choices stay yours.",
             );
@@ -2037,123 +1495,110 @@ export function StudioWorkbench({
       />
       <Dialog open={saveOpen} onOpenChange={setSaveOpen}>
         <DialogContent
-          className="cx-workspace-popover ps2-dialog ps2-save-dialog"
+          className="cx-workspace-popover st-sheet st-rename"
           showCloseButton={false}
-          onCloseAutoFocus={(e) => {
-            e.preventDefault();
-            saveTrigger.current?.focus();
+          onCloseAutoFocus={(event) => {
+            event.preventDefault();
+            (customOpen ? saveTrigger : customizeTrigger).current?.focus({
+              preventScroll: true,
+            });
           }}
         >
-          <header className="ps2-dialog-header">
-            <div>
-              <DialogTitle>Keep this look.</DialogTitle>
-              <DialogDescription>
-                Save the setting and light for your next dish. Your photo
-                defaults stay as they are.
-              </DialogDescription>
-            </div>
-            <button
-              className="ps2-icon-button"
-              aria-label="Cancel saving look"
-              onClick={() => setSaveOpen(false)}
-            >
-              <X size={20} />
-            </button>
-          </header>
           <form
-            onSubmit={(e) => {
-              e.preventDefault();
+            onSubmit={(event) => {
+              event.preventDefault();
               void saveCustomLook();
             }}
           >
-            <div className="ps2-save-form">
-              <Field label="Look name">
-                <input
-                  value={saveName}
-                  onChange={(e) => setSaveName(e.target.value)}
-                  maxLength={60}
-                  placeholder="Our evening menu"
-                  autoFocus
-                />
-              </Field>
-              {(saveError || saved.error) && (
-                <p role="alert" className="ps2-inline-note">
-                  {saveError || saved.error}
-                </p>
-              )}
-            </div>
-            <footer className="ps2-dialog-footer">
-              <button
-                type="button"
-                className="cx-link"
-                onClick={() => setSaveOpen(false)}
-              >
-                Cancel
-              </button>
-              <button
-                className="cx-btn"
-                disabled={saved.busy || !saveName.trim()}
-                type="submit"
-              >
-                {saved.busy ? "Saving…" : "Save look"}
-                <BookmarkPlus size={16} />
-              </button>
+            <DialogTitle>Keep this look</DialogTitle>
+            <DialogDescription>
+              Save the setting and light for your next dish. Your restaurant
+              defaults stay as they are.
+            </DialogDescription>
+            <input
+              className="st-input"
+              aria-label="Look name"
+              value={saveName}
+              onChange={(event) => setSaveName(event.target.value)}
+              maxLength={60}
+              placeholder="Our evening menu"
+              autoFocus
+            />
+            {(saveError || saved.error) && (
+              <p role="alert" className="st-inline-error">
+                {saveError || saved.error}
+              </p>
+            )}
+            <footer>
               {b.savedLookId &&
                 saved.library.looks.some(
                   (look) => look.id === b.savedLookId && !look.archived,
                 ) && (
                   <button
                     type="button"
-                    className="cx-link"
+                    className="st-text-button"
                     disabled={saved.busy || !saveName.trim()}
                     onClick={() => void saveCustomLook(true)}
                   >
                     Update saved look
                   </button>
                 )}
+              <button
+                type="button"
+                className="st-pill st-pill-quiet"
+                onClick={() => setSaveOpen(false)}
+              >
+                Cancel
+              </button>
+              <button
+                className="st-pill st-pill-primary"
+                disabled={saved.busy || !saveName.trim()}
+                type="submit"
+              >
+                {saved.busy ? "Saving…" : "Save look"}
+              </button>
             </footer>
           </form>
         </DialogContent>
       </Dialog>
-      <Dialog open={libraryOpen} onOpenChange={setLibraryOpen}>
+      <Dialog open={dishesOpen} onOpenChange={setDishesOpen}>
         <DialogContent
-          className="cx-workspace-popover ps2-dialog ps2-library"
+          className="cx-workspace-popover st-sheet st-dishes"
           showCloseButton={false}
-          onCloseAutoFocus={(e) => {
-            e.preventDefault();
-            libraryTrigger.current?.focus();
+          onCloseAutoFocus={(event) => {
+            event.preventDefault();
+            dishesTrigger.current?.focus({ preventScroll: true });
           }}
         >
-          <header className="ps2-dialog-header">
+          <header className="st-sheet-header">
             <div>
-              <DialogTitle>Start with one of your dishes.</DialogTitle>
+              <DialogTitle>My Dishes</DialogTitle>
               <DialogDescription>
-                Choose an original photo from My Dishes.
+                Start from an original photo you’ve already added.
               </DialogDescription>
             </div>
             <button
-              className="ps2-icon-button"
+              className="st-icon-button"
               aria-label="Close My Dishes"
-              onClick={() => setLibraryOpen(false)}
+              onClick={() => setDishesOpen(false)}
             >
-              <X size={21} />
+              <X size={18} />
             </button>
           </header>
-          <div className="ps2-dialog-scroll ps2-gallery-scroll">
-            <div className="ps2-gallery">
-              {(state.assets || [])
-                .filter((asset: Row) =>
-                  ["source", "staff"].includes(asset.kind),
-                )
-                .map((asset: Row) => {
+          <div className="st-sheet-scroll">
+            {originals.length ? (
+              <div className="st-library-grid">
+                {originals.map((asset: Row) => {
                   const dish = state.dishes?.find(
-                    (d: Row) => d.id === asset.dish_id,
+                    (entry: Row) => entry.id === asset.dish_id,
                   );
                   return (
-                    <button
-                      className="ps2-library-photo"
+                    <StyleTile
                       key={asset.id}
-                      onClick={() => {
+                      label={dish?.name || "Untitled dish"}
+                      image={`/api/assets/${asset.id}`}
+                      kind="action"
+                      onSelect={() => {
                         update({
                           sourceId: asset.id,
                           dishId: asset.dish_id || "",
@@ -2163,6 +1608,7 @@ export function StudioWorkbench({
                               : dish?.name || "",
                           description: dish?.description || "",
                           mode: "photo",
+                          sample: false,
                           resultId: "",
                           jobId: "",
                           analysisSourceId: "",
@@ -2172,34 +1618,25 @@ export function StudioWorkbench({
                           adjustments: { ...emptyAdjustments },
                           step: 1,
                         });
-                        setLibraryOpen(false);
+                        setDishesOpen(false);
                       }}
-                    >
-                      <img
-                        src={`/api/assets/${asset.id}`}
-                        alt={dish?.name || "Original dish photo"}
-                        loading="lazy"
-                      />
-                      <span>{dish?.name || "Untitled dish"}</span>
-                    </button>
+                    />
                   );
                 })}
-            </div>
-            {!(state.assets || []).some((asset: Row) =>
-              ["source", "staff"].includes(asset.kind),
-            ) && (
-              <div className="ps2-empty-results">
-                <Images size={28} />
+              </div>
+            ) : (
+              <div className="st-library-empty">
+                <Images size={26} aria-hidden="true" />
                 <h3>Your dishes will appear here.</h3>
                 <p>Add your first photo to get started.</p>
                 <button
-                  className="cx-btn"
+                  className="st-pill"
                   onClick={() => {
-                    setLibraryOpen(false);
+                    setDishesOpen(false);
                     upload.current?.click();
                   }}
                 >
-                  Add a photo
+                  Choose a photo
                 </button>
               </div>
             )}
