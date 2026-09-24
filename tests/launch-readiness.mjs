@@ -371,8 +371,9 @@ try {
   );
   checks++;
   cookie = adminCookie;
-  // Earlier background responses are still polled by ID with backoff, and
-  // keep a deadline that restores the parent job status too.
+  // Earlier background responses are still polled by ID: every two seconds
+  // at first, less often after two minutes. Their deadline restores the
+  // parent job status too.
   const earlier = await enqueue(b, "earlier");
   await run(
     "UPDATE outputs SET status='processing',response_id='launch-earlier',submitted_at=?,next_poll_at=0,lease_until=0 WHERE job_id=?",
@@ -382,7 +383,21 @@ try {
   const before = retrieved;
   await tick();
   await tick();
-  assert.equal(retrieved, before + 1, "Polling an earlier response backs off");
+  assert.equal(retrieved, before + 1, "One check at a time");
+  checks++;
+  offset += 2000;
+  await tick();
+  assert.equal(retrieved, before + 2, "Checked again after two seconds");
+  checks++;
+  await run(
+    "UPDATE outputs SET submitted_at=?,next_poll_at=0 WHERE job_id=?",
+    Date.now() - 5 * 60000,
+    earlier.id,
+  );
+  await tick();
+  offset += 2000;
+  await tick();
+  assert.equal(retrieved, before + 3, "A slow response is checked less often");
   checks++;
   await run(
     "UPDATE outputs SET submitted_at=?,next_poll_at=0,lease_until=0 WHERE job_id=?",

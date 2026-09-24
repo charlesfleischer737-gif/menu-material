@@ -775,12 +775,17 @@ async function settle(o: Row, res: Row) {
       JSON.stringify(res.usage ?? {}),
       o.id,
     );
-  } else
+  } else {
+    // Most images finish within two minutes, so check every two seconds until
+    // then; a slower one is checked less often, at most every 30 seconds.
+    const elapsed = now() - Number(o.submitted_at || o.created_at);
     await run(
       "UPDATE outputs SET status='processing',lease_until=0,next_poll_at=?,poll_count=poll_count+1,error=NULL WHERE id=? AND status NOT IN ('completed','failed')",
-      now() + Math.min(30000, 3000 + Number(o.poll_count || 0) * 2000),
+      now() +
+        (elapsed < 120000 ? 2000 : Math.min(30000, Math.round(elapsed / 10))),
       o.id,
     );
+  }
 }
 export async function tick(restaurantId?: string, { startNew = true } = {}) {
   if (!config("OPENAI_API_KEY")) return;
