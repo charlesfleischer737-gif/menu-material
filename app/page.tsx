@@ -12,6 +12,7 @@ import Landing from "./components/menu-material-landing";
 import Brand from "./components/brand";
 import WorkspacePlaceholder from "./components/workspace-placeholder";
 import { api, type Row } from "@/lib/client";
+import { rememberScroll } from "@/lib/scroll-memory";
 const GuestStudio = lazy(() => import("./components/guest-studio"));
 const PlanDialog = lazy(() => import("./components/plan-dialog"));
 const CoreWorkspace = lazy(() => import("./components/core-workspace"));
@@ -87,6 +88,14 @@ export default function Home() {
       cancelled = true;
     };
   }, [loaded, state.user?.id, state.restaurant?.id]);
+  // Back and Forward move between the home page and the guest studio.
+  const signedIn = !!state.user;
+  useEffect(() => {
+    if (!loaded || signedIn) return;
+    const follow = () => setGuest(location.hash === "#studio");
+    window.addEventListener("popstate", follow);
+    return () => window.removeEventListener("popstate", follow);
+  }, [loaded, signedIn]);
   useEffect(() => {
     const open = () => setPlans(true);
     window.addEventListener("menu-material:plans", open);
@@ -180,6 +189,7 @@ export default function Home() {
         <Landing
           signedIn={!!state.user}
           onStart={() => {
+            rememberScroll();
             setGuest(true);
             history.pushState(null, "", "/#studio");
           }}

@@ -1,5 +1,6 @@
 "use client";
 import { useEffect, useRef } from "react";
+import { rememberScroll } from "@/lib/scroll-memory";
 
 // Browser Back leaves the top sheet/detail without discarding the photo draft.
 // Only small navigation markers go in history; photos and recipes stay private.
@@ -34,6 +35,8 @@ export function useStudioNavigation(
       if (history.state?.photoStudioOverlay?.session === session.current)
         history.go(next.length - previous.length);
     } else if (extending) {
+      // Back from a sheet returns to the page where it was scrolled.
+      rememberScroll();
       for (let length = previous.length + 1; length <= next.length; length++)
         history.pushState(
           {

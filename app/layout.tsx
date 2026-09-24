@@ -1,5 +1,6 @@
 import type { Metadata } from "next";
 import { config } from "@/lib/server/core";
+import ScrollMemory from "./components/scroll-memory";
 // Imported here rather than from CSS so the build bundles the font files.
 import "@fontsource-variable/inter/opsz.css";
 import "./globals.css";
@@ -61,7 +62,10 @@ export default function RootLayout({
 }) {
   return (
     <html lang="en">
-      <body>{children}</body>
+      <body>
+        <ScrollMemory />
+        {children}
+      </body>
     </html>
   );
 }

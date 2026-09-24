@@ -24,6 +24,7 @@ import {
   DropdownMenuTrigger,
 } from "@/components/ui/dropdown-menu";
 import { api, type Row } from "@/lib/client";
+import { rememberScroll } from "@/lib/scroll-memory";
 import {
   hasSavedContent,
   readPreference,
@@ -84,6 +85,8 @@ export default function CoreWorkspace({
     [visited, setVisited] = useState<string[]>([]);
   const explorePosition = useRef(0);
   const exploreReturnStyle = useRef<string | null>(null);
+  // Set when a section is chosen here rather than reached by Back or Forward.
+  const chosen = useRef(false);
   useEffect(() => {
     let live = true;
     let request = 0;
@@ -98,6 +101,7 @@ export default function CoreWorkspace({
     };
     const read = async () => {
       const current = ++request;
+      chosen.current = false;
       const hash = location.hash;
       const next = resolveWorkspace(
         hash,
@@ -126,6 +130,9 @@ export default function CoreWorkspace({
   }, [preferenceKey, state.user.role]);
   function navigate(next: string) {
     if (view === "explore") explorePosition.current = window.scrollY;
+    // Back returns to this section at this position.
+    rememberScroll();
+    chosen.current = true;
     if (location.hash !== "#" + next) history.pushState(null, "", "#" + next);
     if (next !== "admin") rememberPreference(preferenceKey, next);
     setView(next);
@@ -142,6 +149,10 @@ export default function CoreWorkspace({
           )
         : null;
     (previousStyle || heading)?.focus({ preventScroll: true });
+    // A section chosen here opens at the top, or for Explore where it was
+    // left. Back, Forward and reload return to the saved position instead.
+    if (!chosen.current) return;
+    chosen.current = false;
     window.scrollTo({
       top: view === "explore" ? explorePosition.current : 0,
       behavior: "instant",
