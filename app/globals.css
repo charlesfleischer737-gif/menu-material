@@ -14,7 +14,9 @@
   /* Type scale */
   --text-caption: 0.75rem;
   --text-footnote: 0.8125rem;
+  --text-subhead: 0.875rem;
   --text-callout: 0.9375rem;
+  --text-base: 1rem;
   --text-body: 1.0625rem;
   --text-title3: 1.25rem;
   --text-title2: 1.625rem;

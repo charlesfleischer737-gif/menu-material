@@ -289,62 +289,6 @@
 }
 
 /* Buttons shared by the studio and its sheets. */
-:is(.st-studio, .st-sheet, .st-paused, .st-header) .st-pill {
-  display: inline-flex;
-  align-items: center;
-  justify-content: center;
-  gap: 8px;
-  min-height: 40px;
-  padding: 8px 18px;
-  border: 0;
-  border-radius: var(--radius-pill);
-  background: var(--st-fill);
-  color: var(--st-ink);
-  font: inherit;
-  font-size: var(--text-callout);
-  font-weight: 500;
-  line-height: 1.2;
-  cursor: pointer;
-  transition:
-    background-color var(--duration-fast) var(--ease),
-    transform var(--duration-fast) var(--ease);
-}
-:is(.st-studio, .st-sheet, .st-paused, .st-header)
-  .st-pill:hover:not(:disabled) {
-  background: var(--st-fill-hover);
-}
-:is(.st-studio, .st-sheet, .st-paused, .st-header)
-  .st-pill:active:not(:disabled) {
-  transform: scale(0.98);
-}
-:is(.st-studio, .st-sheet, .st-paused, .st-header) .st-pill:disabled {
-  cursor: default;
-  opacity: 0.45;
-  color: var(--st-ink);
-}
-.st-pill-wide {
-  width: 100%;
-  min-height: 48px;
-  font-size: var(--text-body);
-}
-:is(.st-studio, .st-sheet, .st-paused, .st-header) .st-pill.st-pill-primary {
-  background: var(--workspace-action);
-  color: #fff;
-}
-:is(.st-studio, .st-sheet, .st-paused, .st-header)
-  .st-pill.st-pill-primary:hover:not(:disabled) {
-  background: var(--workspace-action-hover);
-}
-:is(.st-studio, .st-sheet) .st-pill.st-pill-primary:disabled {
-  color: #fff;
-}
-:is(.st-studio, .st-sheet, .st-paused, .st-header) .st-pill.st-pill-quiet {
-  background: transparent;
-}
-:is(.st-studio, .st-sheet, .st-paused, .st-header)
-  .st-pill.st-pill-quiet:hover:not(:disabled) {
-  background: var(--st-fill);
-}
 :is(.st-studio, .st-sheet, .st-paused, .st-header) .st-text-button {
   display: inline-flex;
   align-items: center;
@@ -684,52 +628,6 @@
 }
 
 /* Format: an Apple-style segmented control with a sliding thumb. */
-.st-segmented {
-  position: relative;
-  display: grid;
-  grid-template-columns: repeat(var(--segments, 4), minmax(0, 1fr));
-  padding: 3px;
-  border-radius: 12px;
-  background: var(--st-fill);
-}
-:is(.st-studio, .st-sheet, .st-paused, .st-header) .st-segmented button {
-  position: relative;
-  z-index: 1;
-  min-height: 34px;
-  padding: 4px 6px;
-  border: 0;
-  border-radius: 9px;
-  background: transparent;
-  color: var(--st-ink);
-  font: inherit;
-  font-size: var(--text-footnote);
-  font-weight: 500;
-  font-variant-numeric: tabular-nums;
-  cursor: pointer;
-  transition:
-    background-color var(--duration) var(--ease),
-    box-shadow var(--duration) var(--ease);
-}
-:is(.st-studio, .st-sheet, .st-paused, .st-header)
-  .st-segmented
-  button[aria-checked="true"] {
-  background: var(--st-surface);
-  box-shadow:
-    0 3px 8px rgb(0 0 0 / 12%),
-    0 0 0 0.5px rgb(0 0 0 / 4%);
-  font-weight: 600;
-}
-:is(.st-studio, .st-sheet, .st-paused, .st-header)
-  .st-segmented
-  button:not([aria-checked="true"]):hover:not(:disabled) {
-  background: rgb(255 255 255 / 45%);
-}
-:is(.st-studio, .st-sheet, .st-paused, .st-header)
-  .st-segmented
-  button:focus-visible {
-  outline: 2px solid var(--workspace-focus);
-  outline-offset: 1px;
-}
 .st-studio .st-format-use {
   margin: 10px 2px 0;
   color: var(--st-muted);
@@ -775,39 +673,6 @@ textarea.st-input {
   gap: 8px;
   margin: 12px -24px 0;
   padding: 16px 24px 22px;
-}
-.st-inspector .st-create {
-  display: inline-flex;
-  align-items: center;
-  justify-content: center;
-  gap: 8px;
-  width: 100%;
-  min-height: 52px;
-  padding: 12px 20px;
-  border: 0;
-  border-radius: var(--radius-pill);
-  background: var(--workspace-action);
-  color: #fff;
-  font: inherit;
-  font-size: var(--text-body);
-  font-weight: 600;
-  letter-spacing: -0.01em;
-  cursor: pointer;
-  transition:
-    background-color var(--duration-fast) var(--ease),
-    transform var(--duration-fast) var(--ease);
-}
-.st-inspector .st-create:hover:not(:disabled) {
-  background: var(--workspace-action-hover);
-}
-.st-inspector .st-create:active:not(:disabled) {
-  transform: scale(0.985);
-}
-.st-inspector .st-create:disabled {
-  cursor: default;
-  opacity: 1;
-  background: var(--gray-200);
-  color: var(--gray-500);
 }
 /* Before there is a photo, adding one is the only thing to do. */
 .st-inspector .st-action.is-waiting {
@@ -2195,9 +2060,6 @@ textarea.st-input {
     ) {
     min-height: 44px;
   }
-  :is(.st-studio, .st-sheet) .st-segmented button {
-    min-height: 40px;
-  }
   :is(.st-studio, .st-sheet) .st-icon-button {
     width: 44px;
     height: 44px;
@@ -2327,9 +2189,6 @@ textarea.st-input {
     gap: 6px;
     margin: 0;
     padding: 10px 16px;
-  }
-  .st-inspector .st-create {
-    min-height: 48px;
   }
   .st-action-note {
     font-size: var(--text-caption);
@@ -2532,8 +2391,9 @@ textarea.st-input {
   transform: scale(0.98);
 }
 :is(.st-studio) .st-hub-button:disabled {
-  cursor: default;
-  opacity: 0.45;
+  background: var(--workspace-disabled);
+  color: var(--gray-500);
+  cursor: not-allowed;
 }
 :is(.st-studio) .st-hub-button:focus-visible {
   outline: 2px solid var(--workspace-focus);
@@ -2577,9 +2437,6 @@ textarea.st-input {
   display: grid;
   grid-template-columns: auto minmax(0, 1fr);
   gap: 8px;
-}
-:is(.st-studio) .st-attest-actions .st-pill {
-  min-height: 44px;
 }
 /* Failure: Try again first, going back second. */
 .st-action-inline .st-create + .st-pill {

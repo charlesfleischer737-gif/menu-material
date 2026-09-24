@@ -277,7 +277,6 @@
   }
   .ps2-inspiration .ps2-dialog-footer .cx-btn {
     padding-inline: 16px;
-    font-size: 0.8125rem;
   }
 }
 .ps2-dialog-footer {
@@ -297,12 +296,6 @@
 .ps2-dialog-footer .cx-link {
   font-size: 0.75rem;
   min-height: 35px;
-}
-.ps2-dialog .cx-btn {
-  border-radius: var(--radius-pill);
-  min-height: 44px;
-  font-size: 0.875rem;
-  padding: 10px 16px;
 }
 .ps2-control-help {
   font-size: 0.75rem;
@@ -384,9 +377,6 @@
 .ps2-control-help {
   font-size: 0.8125rem;
 }
-.ps2-dialog .cx-btn {
-  font-size: 0.875rem;
-}
 .ps2-dialog-footer .cx-link {
   font-size: 0.8125rem;
 }
@@ -421,11 +411,6 @@
   color: var(--gray-600);
   margin: 5px 0 0;
 }
-.ps2-guest-recovery .cx-btn {
-  min-height: 40px;
-  font-size: 0.75rem;
-  border-radius: var(--radius-pill);
-}
 .ps2-guest-recovery .cx-link {
   font-size: 0.75rem;
 }
@@ -438,7 +423,6 @@
 /* Readable type and generous touch targets are part of the studio contract. */
 .ps2-dialog button,
 .ps2-dialog button.cx-link,
-.ps2-dialog button.cx-btn,
 .ps2-dialog select,
 .cx-guided-studio .cx-feature-header button {
   min-height: 44px;
@@ -534,9 +518,6 @@
   align-items: center;
   justify-content: space-between;
   gap: 8px;
-}
-.ps2-finish-actions button.cx-btn {
-  min-height: 48px;
 }
 .ps2-finish .ps2-download-hint {
   color: var(--workspace-muted);

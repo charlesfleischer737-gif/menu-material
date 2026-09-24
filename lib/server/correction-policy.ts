@@ -86,7 +86,7 @@ export function correctionView(row: Row, resultId?: string) {
     ready:
       "Your correction is ready to review. If the food is still inaccurate, report it here.",
     credited:
-      "1 image has been restored to your current allowance. No additional image was charged for the correction.",
+      "1 image has been given back. The correction did not use an image.",
     review:
       "Your report is saved for review by our team. You have not been charged for another image.",
     resolved: row.resolution || "Your report has been reviewed.",

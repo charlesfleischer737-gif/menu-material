@@ -33,7 +33,7 @@ export default function PlanDialog({
       setNotice(
         result.plan === "pro"
           ? "Your Pro plan is ready."
-          : "Payment is not confirmed yet. Your free allowance remains available.",
+          : "Payment is not confirmed yet. Your free images are still available.",
       );
       await refresh();
     } catch (e) {
@@ -106,16 +106,14 @@ export default function PlanDialog({
       >
         <DialogHeader>
           <DialogTitle>
-            {billing.plan === "pro"
-              ? "Your Pro plan"
-              : "Make room for more great photos."}
+            {billing.plan === "pro" ? "Your Pro plan" : "Get more images"}
           </DialogTitle>
           <DialogDescription>
             {billing.remaining ?? state.remaining} of {billing.allowance ?? 5}{" "}
             images left
             {billing.plan === "pro"
               ? " this billing period"
-              : " in your free allowance"}
+              : " on the free plan"}
             .
           </DialogDescription>
         </DialogHeader>
@@ -133,7 +131,7 @@ export default function PlanDialog({
               <p>
                 {billing.cancelAtPeriodEnd
                   ? "Your subscription ends"
-                  : "Your allowance renews"}{" "}
+                  : "Your images renew"}{" "}
                 {billing.renewsAt
                   ? new Date(billing.renewsAt).toLocaleDateString()
                   : "at the end of this billing period"}

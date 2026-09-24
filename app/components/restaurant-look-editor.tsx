@@ -309,7 +309,7 @@ export default function RestaurantLookEditor({
           {preview === "menu"
             ? `${state.dishes?.length ? "Your dishes" : "Sample dishes"} · Your published menu changes only when you republish.`
             : preview === "post"
-              ? "The same design tools used in Post Maker. No image credits used."
+              ? "The same design tools used in Post Maker. No images used."
               : "New photos use this look. Each image is yours to review before sharing."}
         </p>
       </div>

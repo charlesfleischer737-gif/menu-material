@@ -1135,7 +1135,7 @@ export default function PhotoStudio({
                               ? "Original"
                               : a.approved_at
                                 ? "Approved"
-                                : "To review"}
+                                : "Needs review"}
                         </span>
                       </button>
                     ))}
@@ -1152,7 +1152,7 @@ export default function PhotoStudio({
                       Approved
                     </>
                   ) : (
-                    "Ready for a quick check"
+                    "Needs review"
                   )}
                 </span>
                 <DropdownMenu>

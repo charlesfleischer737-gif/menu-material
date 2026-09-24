@@ -774,7 +774,7 @@ function BatchProgressItem({
         ? "Some photos need another try"
         : "Couldn’t create photos"
       : ready
-        ? "Ready to review"
+        ? "Photos ready"
         : "No photos ready";
   return (
     <article className="batch-progress-row">

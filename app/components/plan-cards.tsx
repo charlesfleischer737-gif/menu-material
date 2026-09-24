@@ -37,7 +37,7 @@ export default function PlanCards({
         </p>
         <Features
           items={[
-            "One-time allowance, no expiry",
+            "Free images never expire",
             "Full-quality images and exports",
             "Photos for your menu and social channels",
             "No credit card required",
@@ -69,7 +69,7 @@ export default function PlanCards({
         </p>
         <Features
           items={[
-            "A fresh allowance every billing period",
+            "New images every billing period",
             "The same full-quality images and exports",
             "New dishes, menu refreshes and weekly specials",
             "Matching posts and Stories from approved photos",
