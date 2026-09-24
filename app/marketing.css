@@ -903,6 +903,14 @@
   text-underline-offset: 3px;
 }
 
+/* Not-found and error pages: the page's two actions. */
+.pw-status-actions {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 12px;
+  margin-top: 40px;
+}
+
 /* Pricing questions. */
 .pw-information > .pw-faq {
   margin-top: 80px;

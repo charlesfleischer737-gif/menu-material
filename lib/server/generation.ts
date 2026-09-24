@@ -3,6 +3,7 @@ import { entitlementSql } from "./entitlements";
 import { settleCorrection } from "./correction-policy";
 import { z } from "zod";
 import { checkStudioGeneration } from "./studio-release";
+import { reportError } from "./monitoring";
 import { PIPELINE_VERSION, looks } from "../studio";
 import { styleSchema } from "./promotions";
 import {
@@ -971,11 +972,13 @@ export async function tick(restaurantId?: string) {
           o.id,
           lease,
         );
-      console.error(
-        "Generation recovery",
-        o.id,
-        e instanceof Error ? e.message : "Unknown failure",
-      );
+      await reportError(e, {
+        kind: "job",
+        route: o.response_id ? "job/retrieval" : "job/dispatch",
+        status: e instanceof AppError ? e.status : undefined,
+        restaurantId: o.restaurant_id,
+        detail: { jobId: o.job_id, outputId: o.id },
+      });
     } finally {
       await updateJob(o.job_id);
     }

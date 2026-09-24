@@ -542,6 +542,68 @@ function AdminRestaurant({
   );
 }
 
+const readinessLabels: Record<string, string> = {
+  database: "Database",
+  storage: "File storage",
+  worker: "Background worker",
+  queue: "Job queue",
+  aiBudget: "AI budget",
+};
+const ago = (seconds: number) =>
+  seconds < 120 ? `${seconds} s` : `${Math.round(seconds / 60)} min`;
+function readinessDetail(name: string, check: Row) {
+  if (check.error) return check.error;
+  if (name === "worker")
+    return !check.configured
+      ? "JOB_RUNNER_SECRET is not set"
+      : check.ageSeconds === null
+        ? "has never checked in"
+        : `checked in ${ago(check.ageSeconds)} ago`;
+  if (name === "queue")
+    return `${check.queued} queued, ${check.inProgress} in progress${
+      check.oldestQueuedSeconds !== null
+        ? `; oldest waiting ${ago(check.oldestQueuedSeconds)}`
+        : ""
+    }`;
+  if (name === "aiBudget")
+    return `${check.percent}% of today’s budget used${
+      check.status === "paused" ? "; AI work is paused" : ""
+    }`;
+  return `${check.latencyMs} ms`;
+}
+function ReadinessStatus({ readiness }: { readiness: Row }) {
+  const failed = readiness.failed?.length || 0;
+  return (
+    <details className="admin-explanation" open={failed > 0}>
+      <summary>
+        {failed
+          ? `Readiness: ${failed} ${failed === 1 ? "check needs" : "checks need"} attention.`
+          : "Readiness: all checks passing."}
+      </summary>
+      {Object.entries(readiness.checks as Record<string, Row>).map(
+        ([name, check]) => (
+          <p key={name}>
+            <strong>{readinessLabels[name] || name}:</strong>{" "}
+            {check.ok ? "OK" : "Needs attention"} ·{" "}
+            {readinessDetail(name, check)}
+          </p>
+        ),
+      )}
+      <p>
+        Alerts:{" "}
+        {readiness.monitoring?.alerting
+          ? "sent to the alert webhook"
+          : "not configured (set ALERT_WEBHOOK_URL)"}
+        . Error reports:{" "}
+        {readiness.monitoring?.errorReporting
+          ? "logged and sent to the error webhook"
+          : "server logs only (set ERROR_WEBHOOK_URL)"}
+        . Point an uptime monitor at /api/health/ready.
+      </p>
+    </details>
+  );
+}
+
 function AiOperations({
   data,
   busy,
@@ -574,6 +636,7 @@ function AiOperations({
           <> Last check: {new Date(data.worker.lastSeen).toLocaleString()}.</>
         )}
       </p>
+      {data.readiness && <ReadinessStatus readiness={data.readiness} />}
       <p>
         <strong>${total.toFixed(2)}</strong> reserved against today’s estimated
         AI budget.
