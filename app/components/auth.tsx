@@ -106,17 +106,17 @@ export default function Auth({
         <DialogHeader>
           <DialogTitle>
             {mode === "login"
-              ? "Welcome back."
+              ? "Sign in"
               : resetting
-                ? "Choose a new password."
-                : "Start with 5 free images."}
+                ? "Choose a new password"
+                : "Create your free account"}
           </DialogTitle>
           <DialogDescription>
             {mode === "login"
               ? "Sign in to your restaurant workspace."
               : resetting
                 ? "Restore access with your secure reset link. Your previous sign-ins will be closed."
-                : "Your photo and selected look stay ready. No credit card needed."}
+                : "Start with 5 free images. Your photo and selected look stay ready. No credit card needed."}
           </DialogDescription>
         </DialogHeader>
         {!resetting && (

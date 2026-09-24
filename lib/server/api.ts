@@ -1387,7 +1387,7 @@ export async function handle(req: Request) {
         );
         assert(job, 404, "Generation not found.");
         const cancelled = await run(
-          "UPDATE outputs SET status='failed',error='Cancelled before creation. No image allowance used.',lease_until=0 WHERE job_id=? AND status='queued' AND response_id IS NULL AND lease_until<?",
+          "UPDATE outputs SET status='failed',error='Cancelled before creation. No images used.',lease_until=0 WHERE job_id=? AND status='queued' AND response_id IS NULL AND lease_until<?",
           job.id,
           now(),
         );

@@ -189,7 +189,7 @@ export function PhotoBatchSheet({
       >
         <header className="ps2-dialog-header">
           <div>
-            <DialogTitle>One look. More dishes.</DialogTitle>
+            <DialogTitle>Apply to more dishes</DialogTitle>
             <DialogDescription>
               Create one sample first. Review it before continuing with the
               rest.

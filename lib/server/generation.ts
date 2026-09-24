@@ -950,7 +950,7 @@ export async function tick(restaurantId?: string) {
         await run(
           "UPDATE outputs SET status='failed',error=?,lease_until=0 WHERE id=? AND lease_token=?",
           preSubmit && e instanceof UnavailableStudioReference
-            ? `${e.message} Your image allowance has been restored.`
+            ? `${e.message} The image has been returned to your account.`
             : "Image creation failed. Your allowance has been restored.",
           o.id,
           lease,

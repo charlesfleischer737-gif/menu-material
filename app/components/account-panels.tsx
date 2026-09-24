@@ -162,7 +162,7 @@ export function Admin({ act, refresh, busy }: AdminProps) {
               />
             </label>
             <label className="field">
-              Free image allowance
+              Free images
               <input
                 disabled={!!busy || loading}
                 value={allowance}

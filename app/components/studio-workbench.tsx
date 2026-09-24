@@ -1510,7 +1510,7 @@ export function StudioWorkbench({
               void saveCustomLook();
             }}
           >
-            <DialogTitle>Keep this look</DialogTitle>
+            <DialogTitle>Save this look</DialogTitle>
             <DialogDescription>
               Save the setting and light for your next dish. Your restaurant
               defaults stay as they are.

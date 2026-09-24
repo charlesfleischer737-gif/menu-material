@@ -212,7 +212,7 @@ export default function DishLibrary({
         setUploads((prev) =>
           prev.map((u) =>
             u.key === item.key
-              ? { ...u, dishId, assetId: data.id, status: "Ready for review" }
+              ? { ...u, dishId, assetId: data.id, status: "Needs review" }
               : u,
           ),
         );
@@ -349,7 +349,7 @@ export default function DishLibrary({
                 onChange={(event) => setStatus(event.target.value)}
               >
                 <option value="">All photos</option>
-                {["Ready to use", "Needs review", "No photo"].map((value) => (
+                {["Approved", "Needs review", "No photo"].map((value) => (
                   <option key={value}>{value}</option>
                 ))}
               </select>

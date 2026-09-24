@@ -171,7 +171,7 @@ export default function PhotoDownloads({
             {items.length > 1 ? "these photos" : "this photo"}?
           </h2>
           <p className="cx-hint">
-            Choose a destination. Downloads and crops use no image generations.
+            Choose a destination. Downloads and crops don’t use any images.
           </p>
         </div>
       </div>
@@ -340,7 +340,7 @@ export default function PhotoDownloads({
             </h3>
             <p>
               Use this approved photo, your restaurant’s look, and an editable
-              caption. No new image generation.
+              caption. No images used.
             </p>
           </div>
           <button

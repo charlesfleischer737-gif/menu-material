@@ -688,7 +688,7 @@ export function MenuImportReview({
                   <div className="md-review-dish-heading">
                     <strong>{i.name || "Untitled dish"}</strong>
                     <span>
-                      {i.sourceReviewed ? "Checked" : "Check original"}
+                      {i.sourceReviewed ? "Looks right" : "Needs review"}
                     </span>
                   </div>
                   {!!i.sourceUncertain?.length && (

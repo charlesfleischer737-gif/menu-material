@@ -164,7 +164,7 @@ export async function retryFailed(r: Row, jobId: string) {
   assert(
     retried.meta.changes,
     402,
-    "Not enough image generations. Check your plan or wait for your next allowance.",
+    "Not enough images left. Check your plan or wait for your next allowance.",
   );
   await run("UPDATE jobs SET status='queued' WHERE id=?", job.id);
   await event(r.id, "generation_retried", job.id, { slots: failed.length });

@@ -112,7 +112,7 @@ export default function PlanDialog({
           </DialogTitle>
           <DialogDescription>
             {billing.remaining ?? state.remaining} of {billing.allowance ?? 5}{" "}
-            generations remaining
+            images left
             {billing.plan === "pro"
               ? " this billing period"
               : " in your free allowance"}
@@ -130,7 +130,7 @@ export default function PlanDialog({
             <section className="pw-plan-current">
               <h2>Pro · $9.99/month</h2>
               <p>
-                100 full-quality image generations each paid billing period.
+                100 full-quality images each paid billing period.
               </p>
               <p>
                 {billing.cancelAtPeriodEnd
@@ -177,9 +177,8 @@ export default function PlanDialog({
           )}
           <p className="fine">
             Prices in USD. Pro renews monthly until cancelled. Unused monthly
-            generations do not roll over. Failed generations return to the
-            allowance they used. Your saved work remains available when you
-            cancel.
+            images don’t roll over. Images that fail to create are returned.
+            Your saved work remains available when you cancel.
           </p>
         </div>
       </DialogContent>

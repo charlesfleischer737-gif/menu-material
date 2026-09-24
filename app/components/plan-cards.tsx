@@ -33,7 +33,7 @@ export default function PlanCards({
         <p className="pw-plan-tagline">A great first impression.</p>
         <p className="pw-plan-price">$0</p>
         <p className="pw-plan-allowance">
-          <strong>5 image generations</strong> to get started.
+          <strong>5 images</strong> to get started.
         </p>
         <Features
           items={[
@@ -65,7 +65,7 @@ export default function PlanCards({
           $9.99<span>/month</span>
         </p>
         <p className="pw-plan-allowance">
-          <strong>100 image generations</strong> every month.
+          <strong>100 images</strong> every month.
         </p>
         <Features
           items={[

@@ -78,6 +78,7 @@
   --duration: 240ms;
   --duration-slow: 420ms;
   --glass: rgb(255 255 255 / 72%);
+  --nav-surface: rgb(255 255 255 / 96%);
   --glass-blur: saturate(180%) blur(20px);
 
   --background: var(--workspace-canvas);

@@ -104,7 +104,7 @@ try {
   let current = await call("state");
   saved = current.dishes.find((d) => d.id === dish.id);
   assert.equal(preferredPhoto(saved, current.assets).id, first.id);
-  assert.equal(dishStatus(saved, current.assets), "Ready to use");
+  assert.equal(dishStatus(saved, current.assets), "Approved");
   assert.equal(
     dishStatus(
       saved,

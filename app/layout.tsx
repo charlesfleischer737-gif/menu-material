@@ -34,7 +34,7 @@ export async function generateMetadata(): Promise<Metadata> {
   return {
     title: "Menu Material — Food photos worth ordering from.",
     description:
-      "Turn real dish photos into professional images and matching posts for Toast, delivery apps, your website, and Instagram. Start with 5 free image generations.",
+      "Turn real dish photos into professional images and matching posts for Toast, delivery apps, your website, and Instagram. Start with 5 free images.",
     icons: {
       icon: "/favicon.svg?v=menu-material-2",
       shortcut: "/favicon.svg?v=menu-material-2",

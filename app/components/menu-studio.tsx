@@ -33,7 +33,10 @@ import {
   type MenuEntry,
   type MenuSection,
 } from "@/lib/menu-document";
-import { menuDesignSpec } from "@/lib/menu-design-system";
+import {
+  menuDesignCollection,
+  menuDesignSpec,
+} from "@/lib/menu-design-system";
 import { blockingChecks, menuPublishChecks } from "@/lib/menu-checks";
 import type { MenuPdfResult } from "@/lib/menu-pdf-v2";
 import { useMenuDocument, type SavedMenu } from "./use-menu-document";
@@ -624,8 +627,8 @@ export default function MenuStudio({
                 Start with a blank menu <Plus size={14} />
               </button>
               <div className="md-start-note">
-                Seven considered designs. Print-ready pages. A matching menu for
-                every phone.
+                {menuDesignCollection.length} designs. Print-ready pages. A
+                matching menu for every phone.
               </div>
             </div>
             <div className="md-start-art" aria-hidden="true">
@@ -711,7 +714,7 @@ export default function MenuStudio({
                           )}
                           <span>
                             {i.name || "Untitled dish"}
-                            {!i.sourceReviewed && <small>Review needed</small>}
+                            {!i.sourceReviewed && <small>Needs review</small>}
                             {!i.visible && <small>Hidden</small>}
                           </span>
                           <small>{entryPrice(i, menu)}</small>
@@ -984,10 +987,10 @@ export default function MenuStudio({
                     <span className="md-inspector-orbit">
                       <Settings2 size={24} />
                     </span>
-                    <h3>Make it yours.</h3>
+                    <h3>Edit your menu</h3>
                     <p>
-                      Select a dish or section to edit its details, or explore
-                      the designs for a different point of view.
+                      Select a dish or section to edit its details, or choose
+                      a different design.
                     </p>
                     <button
                       className="md-button md-secondary"
