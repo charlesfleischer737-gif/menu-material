@@ -56,7 +56,11 @@ export default function Auth({
   async function submit(e: React.FormEvent) {
     e.preventDefault();
     if (busy) return;
-    if (mode === "signup" && !resetting && isPlaceholderRestaurantName(restaurant)) {
+    if (
+      mode === "signup" &&
+      !resetting &&
+      isPlaceholderRestaurantName(restaurant)
+    ) {
       setError("Enter your restaurant’s real name.");
       return;
     }

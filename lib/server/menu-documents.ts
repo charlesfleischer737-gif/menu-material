@@ -732,10 +732,12 @@ export async function syncDishToMenus(rid: string, before: Row, after: Row) {
         statements.push(
           db()
             .prepare(
-              "UPDATE menu_documents SET draft=?,revision=revision+1,updated_at=? WHERE id=? AND restaurant_id=? AND revision=? AND archived_at IS NULL",
+              // When the live copy matched this draft, it still does.
+              "UPDATE menu_documents SET draft=?,revision=revision+1,published_revision=CASE WHEN ? AND published_revision=revision THEN revision+1 ELSE published_revision END,updated_at=? WHERE id=? AND restaurant_id=? AND revision=? AND archived_at IS NULL",
             )
             .bind(
               JSON.stringify(menuDocumentSchema.parse(nextDraft.menu)),
+              nextPublished?.changed ? 1 : 0,
               now(),
               row.id,
               rid,

@@ -129,9 +129,7 @@ export default function PlanDialog({
           {billing.plan === "pro" ? (
             <section className="pw-plan-current">
               <h2>Pro · $9.99/month</h2>
-              <p>
-                100 full-quality images each paid billing period.
-              </p>
+              <p>100 full-quality images each paid billing period.</p>
               <p>
                 {billing.cancelAtPeriodEnd
                   ? "Your subscription ends"

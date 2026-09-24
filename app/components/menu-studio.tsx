@@ -33,10 +33,7 @@ import {
   type MenuEntry,
   type MenuSection,
 } from "@/lib/menu-document";
-import {
-  menuDesignCollection,
-  menuDesignSpec,
-} from "@/lib/menu-design-system";
+import { menuDesignCollection, menuDesignSpec } from "@/lib/menu-design-system";
 import { blockingChecks, menuPublishChecks } from "@/lib/menu-checks";
 import type { MenuPdfResult } from "@/lib/menu-pdf-v2";
 import { useMenuDocument, type SavedMenu } from "./use-menu-document";
@@ -841,7 +838,9 @@ export default function MenuStudio({
                         ? setDialog("publish")
                         : items.some((i) => !i.sourceReviewed)
                           ? setDialog("review")
-                          : select(issues[0].entryId || issues[0].sectionId || "")
+                          : select(
+                              issues[0].entryId || issues[0].sectionId || "",
+                            )
                     }
                   >
                     <span className="md-attention-dot" />
@@ -989,8 +988,8 @@ export default function MenuStudio({
                     </span>
                     <h3>Edit your menu</h3>
                     <p>
-                      Select a dish or section to edit its details, or choose
-                      a different design.
+                      Select a dish or section to edit its details, or choose a
+                      different design.
                     </p>
                     <button
                       className="md-button md-secondary"

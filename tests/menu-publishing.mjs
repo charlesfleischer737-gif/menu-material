@@ -259,6 +259,11 @@ try {
   );
   const updated = await call(`menus/${created.id}`);
   assert.equal(updated.revision, current.revision + 1);
+  assert.equal(
+    updated.publishedRevision,
+    updated.revision,
+    "the live copy is still current after a synced edit",
+  );
   assert.equal(updated.draft.sections[0].items[0].price, 1750);
   assert.equal(updated.published.sections[0].items[0].price, 1750);
   assert.equal(
@@ -270,8 +275,7 @@ try {
     "the main menu's live copy follows",
   );
   assert.equal(
-    (await call("public/corner-house-kitchen")).menu.sections[0].items[0]
-      .price,
+    (await call("public/corner-house-kitchen")).menu.sections[0].items[0].price,
     1750,
   );
   // A tailored menu price stays put.

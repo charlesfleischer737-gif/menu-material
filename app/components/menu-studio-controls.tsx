@@ -22,6 +22,12 @@ import {
 } from "lucide-react";
 import { api, type Row } from "@/lib/client";
 import {
+  Dialog,
+  DialogContent,
+  DialogDescription,
+  DialogTitle,
+} from "@/components/ui/dialog";
+import {
   menuPurposeIds,
   menuPurposeLabel,
   type MenuDocument,
@@ -45,62 +51,43 @@ export function MenuDialog({
   wide?: boolean;
 }) {
   const action = useContext(MenuActionContext);
-  const ref = useRef<HTMLDialogElement>(null),
-    heading = useId(),
-    detail = useId();
-  useEffect(() => {
-    const el = ref.current!;
-    const before = document.activeElement as HTMLElement;
-    el.showModal();
-    return () => {
-      el.close();
-      before?.focus();
-    };
-  }, []);
+  // The same dialog system as the rest of the workspace (focus trap,
+  // Escape, outside click and focus return come from Radix).
   return (
-    <dialog
-      ref={ref}
-      className={`md-dialog ${wide ? "md-dialog-wide" : ""}`}
-      aria-labelledby={heading}
-      aria-describedby={description ? detail : undefined}
-      onCancel={(e) => {
-        e.preventDefault();
-        close();
-      }}
-      onClick={(e) => {
-        if (e.target === ref.current) {
-          const r = ref.current.getBoundingClientRect();
-          if (
-            e.clientX < r.left ||
-            e.clientX > r.right ||
-            e.clientY < r.top ||
-            e.clientY > r.bottom
-          )
-            close();
-        }
-      }}
-    >
-      <div className="md-dialog-heading">
-        <div>
-          <h2 id={heading}>{title}</h2>
-          {description && <p id={detail}>{description}</p>}
+    <Dialog open onOpenChange={(open) => !open && close()}>
+      <DialogContent
+        className={`md-dialog ${wide ? "md-dialog-wide" : ""}`}
+        showCloseButton={false}
+        {...(description ? {} : { "aria-describedby": undefined })}
+      >
+        <div className="md-dialog-heading">
+          <div>
+            <DialogTitle asChild>
+              <h2>{title}</h2>
+            </DialogTitle>
+            {description && (
+              <DialogDescription asChild>
+                <p>{description}</p>
+              </DialogDescription>
+            )}
+          </div>
+          <button className="md-icon" aria-label="Close dialog" onClick={close}>
+            <X size={20} />
+          </button>
         </div>
-        <button className="md-icon" aria-label="Close dialog" onClick={close}>
-          <X size={20} />
-        </button>
-      </div>
-      {children}
-      {action.error && (
-        <p className="md-inline-error" role="alert">
-          {action.error}
-        </p>
-      )}
-      {action.busy && (
-        <p className="md-import-progress" role="status">
-          {action.busy}…
-        </p>
-      )}
-    </dialog>
+        {children}
+        {action.error && (
+          <p className="md-inline-error" role="alert">
+            {action.error}
+          </p>
+        )}
+        {action.busy && (
+          <p className="md-import-progress" role="status">
+            {action.busy}…
+          </p>
+        )}
+      </DialogContent>
+    </Dialog>
   );
 }
 export function Field({

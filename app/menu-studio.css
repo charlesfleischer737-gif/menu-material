@@ -1001,6 +1001,9 @@
   justify-self: start;
   min-height: 32px;
   padding: 0;
+  font-weight: 600;
+  text-decoration: underline;
+  text-underline-offset: 3px;
 }
 .md-checks > small {
   color: var(--workspace-muted);
@@ -1233,9 +1236,9 @@
   overflow: auto;
   overscroll-behavior: contain;
 }
-.md-dialog::backdrop {
-  background: rgb(0 0 0 / 32%);
-  backdrop-filter: blur(4px);
+/* Menus use the shared Radix dialog; keep the menu layout inside it. */
+.md-dialog[data-slot="dialog-content"] {
+  display: block;
 }
 .md-dialog-wide {
   width: 1140px;

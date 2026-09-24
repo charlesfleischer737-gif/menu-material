@@ -78,6 +78,10 @@ export default async function PublicMenu({
       </main>
     );
   return (
-    <MenuView menu={result.menu} slug={slug} serverNow={result.menu.serverNow} />
+    <MenuView
+      menu={result.menu}
+      slug={slug}
+      serverNow={result.menu.serverNow}
+    />
   );
 }

@@ -20,10 +20,7 @@ export async function suggestMenuAddress(name: string, rid: string) {
     `${base}-${suffix.slice(0, 4)}`,
     `${base}-${suffix.slice(0, 8)}`,
   ])
-    if (
-      !menuAddressProblem(candidate) &&
-      !(await addressTaken(candidate, rid))
-    )
+    if (!menuAddressProblem(candidate) && !(await addressTaken(candidate, rid)))
       return candidate;
   return `${base}-${suffix.slice(0, 12)}`;
 }
@@ -75,8 +72,7 @@ export async function changeMenuAddress(r: Row, next: string) {
 /** Addresses created at signup, before the owner chose one. */
 export function isAutomaticAddress(r: Row) {
   return (
-    r.slug === "local-pilot" ||
-    r.slug.endsWith("-" + String(r.id).slice(0, 8))
+    r.slug === "local-pilot" || r.slug.endsWith("-" + String(r.id).slice(0, 8))
   );
 }
 

@@ -135,6 +135,29 @@ export function MenuDesignPicker({
   );
 }
 
+const sectionOrder = [
+  ["breakfast", "brunch", "morning"],
+  ["bakery", "pastr", "bread"],
+  ["snack", "small plate", "share", "appetizer", "starter", "antipast"],
+  ["soup", "salad"],
+  [
+    "main",
+    "entrée",
+    "entree",
+    "plate",
+    "pasta",
+    "pizza",
+    "burger",
+    "sandwich",
+    "taco",
+    "bowl",
+  ],
+  ["side"],
+  ["dessert", "sweet"],
+  ["kid"],
+  ["coffee", "tea", "drink", "beverage", "juice", "smoothie"],
+  ["cocktail", "wine", "beer", "bar"],
+];
 export function MenuSourceDialog({
   mode,
   setMode,
@@ -218,7 +241,24 @@ export function MenuSourceDialog({
         }),
       );
     }
-    return sections;
+    // Courses in the order guests read them; unknown sections keep their place.
+    const course = (name: string) => {
+      const key = name.toLowerCase();
+      const index = sectionOrder.findIndex((words) =>
+        words.some((word) => key.includes(word)),
+      );
+      return index < 0 ? sectionOrder.length / 2 : index;
+    };
+    return imported
+      ? sections
+      : sections
+          .map((section, index) => ({ section, index }))
+          .sort(
+            (a, b) =>
+              course(a.section.name) - course(b.section.name) ||
+              a.index - b.index,
+          )
+          .map(({ section }) => section);
   }
   async function read(id: string) {
     setBusy("Reading your menu. This can take a minute");
@@ -1048,8 +1088,8 @@ export function MenuDeliveryDialog({
                 `${blocking.length} ${blocking.length === 1 ? "thing" : "things"} to fix before ${action}`
               ) : (
                 <>
-                  <CheckCircle2 size={16} aria-hidden="true" /> Automatic
-                  checks passed
+                  <CheckCircle2 size={16} aria-hidden="true" /> Automatic checks
+                  passed
                 </>
               )}
             </strong>
@@ -1076,8 +1116,7 @@ export function MenuDeliveryDialog({
             )}
             {blocking.length + warnings.length > 10 && (
               <small>
-                And {blocking.length + warnings.length - 10} more in the
-                editor.
+                And {blocking.length + warnings.length - 10} more in the editor.
               </small>
             )}
             <small>

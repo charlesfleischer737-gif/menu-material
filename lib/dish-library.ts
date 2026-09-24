@@ -17,11 +17,7 @@ export function preferredPhoto(dish: Row, assets: Row[]) {
 }
 export function dishStatus(dish: Row, assets: Row[]) {
   const photo = preferredPhoto(dish, assets);
-  return photo?.approved_at
-    ? "Approved"
-    : photo
-      ? "Needs review"
-      : "No photo";
+  return photo?.approved_at ? "Approved" : photo ? "Needs review" : "No photo";
 }
 export function dishSnapshot(dish: Row): Row {
   return {
