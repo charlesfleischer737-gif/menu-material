@@ -2469,3 +2469,17 @@ textarea.st-input {
     grid-template-columns: repeat(2, minmax(0, 1fr));
   }
 }
+
+/* Format chips: named by use, with the ratio as secondary text. */
+:is(.st-studio, .st-sheet) .st-segmented button {
+  display: grid;
+  place-content: center;
+  gap: 0;
+  line-height: 1.15;
+}
+.st-segmented .st-format-ratio {
+  color: var(--st-muted);
+  font-size: var(--text-caption);
+  font-weight: 400;
+}
+

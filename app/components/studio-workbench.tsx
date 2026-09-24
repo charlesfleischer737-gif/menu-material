@@ -92,14 +92,24 @@ import {
 // The generated master is square, portrait or landscape; these are the four
 // shapes owners reach for. Other saved destinations stay selectable.
 const formatChoices: PhotoFormat[] = ["menu", "feed", "story", "doordash"];
+// Named by use first; the ratio is secondary.
+const formatName: Record<string, string> = {
+  menu: "Square",
+  feed: "Portrait",
+  story: "Story",
+  doordash: "Wide",
+  toast: "Toast",
+  uber: "Uber Eats",
+  print: "Print",
+};
 const formatShape: Record<string, string> = {
   menu: "1:1",
   feed: "4:5",
   story: "9:16",
   doordash: "16:9",
   toast: "5:3",
-  uber: "3:2",
-  print: "Print",
+  uber: "5:4",
+  print: "1:1",
 };
 const formatUse: Record<string, string> = {
   menu: "Menus, websites and listings",
@@ -1269,12 +1279,19 @@ export function StudioWorkbench({
                     key={id}
                     role="radio"
                     aria-checked={b.format === id}
-                    aria-label={`${formatShape[id] || formats[id].short}, ${formatUse[id] || formats[id].label}`}
+                    aria-label={`${formatName[id] || formats[id].short}, ${formatShape[id] || ""}, ${formatUse[id] || formats[id].label}`}
                     tabIndex={radioTab(index, formatOptions.indexOf(b.format))}
                     disabled={!!busy}
                     onClick={() => chooseFormat(id)}
                   >
-                    {formatShape[id] || formats[id].short}
+                    <span className="st-format-name">
+                      {formatName[id] || formats[id].short}
+                    </span>
+                    {formatShape[id] && (
+                      <small className="st-format-ratio">
+                        {formatShape[id]}
+                      </small>
+                    )}
                   </button>
                 ))}
               </div>
