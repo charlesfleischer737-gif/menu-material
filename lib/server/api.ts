@@ -57,6 +57,14 @@ import {
 } from "./core";
 import { enqueue, updateJob, generateCaption, tick } from "./generation";
 import {
+  checkAlertsInBackground,
+  clientErrorRoute,
+  readiness,
+  readinessRoute,
+  reportError,
+  workerStatus,
+} from "./monitoring";
+import {
   studioReferenceAvailability,
   studioReferenceRequest,
 } from "./studio-references";
@@ -554,7 +562,15 @@ export async function handle(req: Request) {
     if (p[0] === "billing") return await billingRoute(req, p);
     const staffResponse = await staffAccess(req, p, upload);
     if (staffResponse) return staffResponse;
+    if (
+      p[0] === "health" &&
+      p[1] === "ready" &&
+      ["GET", "HEAD"].includes(method)
+    )
+      return await readinessRoute(req);
     if (p[0] === "health") return response({ ok: true });
+    if (p[0] === "client-errors" && method === "POST")
+      return await clientErrorRoute(req);
     if (p[0] === "access-requests" && method === "POST") {
       await publicLimit(req, "access-request", 5, 3600);
       const b = z
@@ -630,6 +646,7 @@ export async function handle(req: Request) {
       await advanceBatches();
       await tick();
       await housekeeping();
+      checkAlertsInBackground();
       return response({ ok: true });
     }
     if (p[0] === "auth") {
@@ -762,6 +779,7 @@ export async function handle(req: Request) {
         billing: await billingSummary(r.id),
         aiConnected: !!config("OPENAI_API_KEY"),
         local: config("LOCAL_DEVELOPMENT") === "true",
+        workerHealthy: (await workerStatus()).healthy,
         dishes: await all(
           "SELECT * FROM dishes WHERE restaurant_id=? ORDER BY created_at DESC",
           r.id,
@@ -855,6 +873,7 @@ export async function handle(req: Request) {
               )?.value || 0,
             ),
           },
+          readiness: await readiness(),
           spend: await all(
             "SELECT restaurant_id,kind,SUM(reserved_cents) AS cents FROM ai_spend WHERE budget_day=? AND status!='rejected' GROUP BY restaurant_id,kind",
             new Date(now()).toISOString().slice(0, 10),
@@ -1330,6 +1349,7 @@ export async function handle(req: Request) {
       if (p[1] === "tick") {
         await advanceBatches(r.id);
         await tick(r.id);
+        checkAlertsInBackground();
         return response({ ok: true });
       }
       if (p[1] && p[2] === "cancel") {
@@ -1445,8 +1465,13 @@ export async function handle(req: Request) {
   } catch (e) {
     if (e instanceof z.ZodError)
       return response({ error: e.issues.map((x) => x.message).join(" ") }, 400);
+    if (e instanceof AppError && e.status < 500)
+      return response({ error: e.message }, e.status);
+    await reportError(e, {
+      request: req,
+      status: e instanceof AppError ? e.status : 500,
+    });
     if (e instanceof AppError) return response({ error: e.message }, e.status);
-    console.error("Request failed", e);
     return response(
       {
         error:
