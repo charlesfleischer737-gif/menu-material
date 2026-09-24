@@ -7,9 +7,6 @@
   max-width: 480px;
   flex: 1;
 }
-.mm-library-toolbar .cx-btn {
-  min-height: 44px;
-}
 .mm-select-toggle {
   justify-content: center;
   min-width: 44px;
@@ -164,7 +161,6 @@
 }
 .mm-dish-detail-footer > .cx-btn {
   width: 100%;
-  min-height: 48px;
 }
 .mm-dish-detail-footer > .mm-muted {
   font-size: 13px;

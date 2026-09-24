@@ -10,10 +10,6 @@
 .cx-guided-studio .cx-check {
   font-size: 0.875rem;
 }
-.cx-guided-studio .cx-btn {
-  min-height: 48px;
-  font-size: 0.9375rem;
-}
 .cx-guided-studio :is(button, input, select, textarea):focus-visible {
   outline: 3px solid var(--workspace-action);
   outline-offset: 4px;

@@ -155,57 +155,6 @@
   gap: 8px;
   flex-shrink: 0;
 }
-.md-button {
-  display: inline-flex;
-  align-items: center;
-  justify-content: center;
-  gap: 8px;
-  min-height: 44px;
-  border: 1px solid var(--workspace-action);
-  border-radius: var(--radius-pill);
-  background: var(--workspace-action);
-  color: #fff !important;
-  padding: 10px 16px;
-  font-size: 14px !important;
-  font-weight: 600 !important;
-  line-height: 1.4;
-  text-decoration: none;
-  transition:
-    background-color var(--duration-fast) var(--ease),
-    border-color var(--duration-fast) var(--ease);
-}
-.md-button:hover:not(:disabled) {
-  background: var(--workspace-action-hover);
-}
-.md-button:active:not(:disabled) {
-  background: var(--workspace-action-pressed);
-}
-.md-button.md-secondary {
-  background: #fff;
-  color: var(--workspace-ink) !important;
-  border-color: var(--workspace-control);
-}
-.md-button.md-secondary:hover:not(:disabled) {
-  background: var(--workspace-canvas);
-  border-color: var(--workspace-control);
-}
-.md-button.md-secondary:active:not(:disabled) {
-  background: var(--workspace-selected);
-}
-.md-studio .md-button:disabled,
-.md-dialog .md-button:disabled {
-  color: var(--workspace-muted) !important;
-  background: var(--workspace-disabled);
-  border-color: var(--workspace-line);
-}
-.md-button.md-small {
-  padding: 7px 10px;
-  min-height: 44px;
-  font-size: 14px !important;
-}
-.md-button.md-full {
-  width: 100%;
-}
 .md-icon {
   display: inline-flex;
   align-items: center;
@@ -460,9 +409,6 @@
 .md-outline-bottom .md-text-button {
   font-size: 14px !important;
 }
-.md-outline-bottom .md-button {
-  font-size: 14px !important;
-}
 .md-stage {
   min-width: 0;
   align-self: stretch;
@@ -476,35 +422,6 @@
   align-items: center;
   gap: 12px;
   padding: 14px 17px 0;
-}
-.md-segment {
-  display: inline-flex;
-  align-items: center;
-  padding: 3px;
-  gap: 2px;
-  border: 1px solid var(--gray-300);
-  background: var(--gray-200);
-  border-radius: 7px;
-}
-.md-segment button {
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  gap: 6px;
-  min-height: 29px;
-  border: 0;
-  border-radius: 4px;
-  padding: 6px 12px;
-  font-size: 13px !important;
-  color: var(--gray-500);
-  background: transparent;
-  white-space: nowrap;
-}
-.md-segment button[aria-pressed="true"] {
-  background: #fff;
-  box-shadow: 0 1px 3px rgb(29 29 31 / 9%);
-  color: var(--gray-900);
-  font-weight: 650;
 }
 .md-design-label {
   display: flex;
@@ -871,11 +788,6 @@
   color: var(--gray-500);
   margin: 4px 0 16px;
   line-height: 1.7;
-}
-.md-selected-design .md-button {
-  font-size: 12px !important;
-  padding: 7px 12px;
-  min-height: 32px;
 }
 .md-inspector-welcome {
   padding: 55px 24px;
@@ -2495,9 +2407,6 @@
     font-size: 12px !important;
     gap: 4px;
   }
-  .md-segment button {
-    padding-inline: 9px;
-  }
   .md-studio-header {
     gap: 12px;
   }
@@ -2630,10 +2539,6 @@
     border: 0;
     padding: 0;
   }
-  .md-header-actions .md-button {
-    font-size: 13px !important;
-    padding: 9px 12px;
-  }
   .md-header-actions .md-share-button {
     display: inline-flex;
     font-size: 0 !important;
@@ -2642,33 +2547,10 @@
   .md-save-status {
     font-size: 12px;
   }
+  /* Looks like every segmented control (app/controls.css). */
   .md-mobile-nav {
     display: flex;
-    gap: 3px;
     margin: 0 0 10px;
-    padding: 3px;
-    border: 1px solid var(--gray-300);
-    background: var(--gray-200);
-    border-radius: 7px;
-  }
-  .md-mobile-nav button {
-    display: flex;
-    align-items: center;
-    justify-content: center;
-    gap: 6px;
-    flex: 1;
-    border: 0;
-    border-radius: 5px;
-    padding: 10px 5px;
-    font-size: 13px;
-    color: var(--gray-500);
-    background: none;
-    white-space: nowrap;
-  }
-  .md-mobile-nav button[aria-pressed="true"] {
-    background: #fff;
-    color: var(--gray-900);
-    box-shadow: 0 1px 3px rgb(29 29 31 / 13%);
   }
   .md-workspace {
     display: block;
@@ -2908,9 +2790,6 @@
   .md-delivery-controls h3 {
     font-size: 26px;
   }
-  .md-delivery-controls > .md-button {
-    min-height: 43px;
-  }
   .md-import-review {
     grid-template-columns: 1fr;
     max-height: none;
@@ -2951,9 +2830,6 @@
   }
   .md-source-tabs svg {
     width: 13px;
-  }
-  .md-dialog .md-segment button {
-    min-height: 34px;
   }
   .md-phone-stage {
     padding: 18px 15px 25px;
@@ -3234,9 +3110,6 @@
   .md-workspace {
     grid-template-columns: 180px minmax(260px, 1fr) 270px;
   }
-  .md-header-actions .md-button {
-    font-size: 13px !important;
-  }
   .md-document-picker h1 {
     font-size: 30px;
   }
@@ -3344,9 +3217,6 @@
   }
   .md-field-pair {
     grid-template-columns: 1fr 1fr;
-  }
-  .md-header-actions .md-button {
-    font-size: 12px !important;
   }
   .md-header-actions .md-share-button {
     font-size: 0 !important;

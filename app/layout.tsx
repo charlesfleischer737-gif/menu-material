@@ -22,6 +22,8 @@ import "./library-filters.css";
 import "./workspace-patterns.css";
 import "./workspace-shell.css";
 import "./photo-studio.css";
+// One control family (buttons, segmented choices); loaded last.
+import "./controls.css";
 export async function generateMetadata(): Promise<Metadata> {
   const origin = config("APP_ORIGIN");
   const images = origin

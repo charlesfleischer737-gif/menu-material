@@ -1025,11 +1025,6 @@
 }
 .pw-plan-card .cx-btn {
   width: 100%;
-  min-height: 48px;
-  justify-content: center;
-  border-radius: var(--radius-pill);
-  font-size: var(--text-callout);
-  text-decoration: none;
 }
 .pw-plan-card.is-pro {
   background: #1d1d1f;
