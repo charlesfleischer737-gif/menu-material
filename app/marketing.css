@@ -7,7 +7,7 @@
   --pw-line: var(--workspace-line);
   --pw-width: 1120px;
   --pw-gutter: max(22px, calc((100% - var(--pw-width)) / 2));
-  --pw-band: clamp(80px, 10vw, 140px);
+  --pw-band: clamp(64px, 7vw, 96px);
   --pw-lead: clamp(1.1875rem, 2vw, 1.375rem);
   min-height: 100vh;
   background: var(--workspace-surface);
@@ -118,7 +118,7 @@
   display: flex;
   flex-direction: column;
   align-items: center;
-  padding: clamp(56px, 9vw, 112px) var(--pw-gutter) clamp(72px, 9vw, 120px);
+  padding: clamp(56px, 9vw, 112px) var(--pw-gutter) clamp(56px, 6vw, 88px);
   background: radial-gradient(
     60% 55% at 50% 0%,
     rgb(63 191 127 / 9%),
@@ -287,7 +287,7 @@
 .pw-showcase {
   --pw-tile: clamp(172px, 22vw, 300px);
   --pw-tile-gap: clamp(12px, 1.2vw, 16px);
-  padding-block: var(--pw-band) clamp(48px, 6vw, 88px);
+  padding-block: var(--pw-band) clamp(40px, 4.5vw, 64px);
   background: var(--green-glow), var(--green-ink);
   color: var(--on-dark);
 }
@@ -913,7 +913,7 @@
   display: flex;
   flex-direction: column;
   align-items: center;
-  padding: clamp(96px, 12vw, 168px) var(--pw-gutter);
+  padding: clamp(72px, 8.5vw, 120px) var(--pw-gutter);
   background: var(--green-glow), var(--green-ink);
   color: var(--on-dark);
   text-align: center;
