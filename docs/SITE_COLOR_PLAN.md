@@ -10,7 +10,7 @@ The interface separated areas with three near-whites: white, `#fbfbfd` and `#f5f
 
 - **Two light tones.** White for cards, panels and dialogs; warm stone `#efede8` for the canvas and for any tinted area on white. No other near-white is used as a surface. White cards on stone carry a hairline and a soft warm shadow (`--shadow-card`).
 - **One dark color.** Evergreen ink `#12211a`, a near-black with the logo's green in it, is used for the workspace sidebar, the phone tab bar, primary buttons, selected chips, the homepage closing band, the Explore closing card and the Pro plan card.
-- **Bright green on dark only.** The logo's `#3fbf7f` marks the active navigation icon, the sidebar avatar, credits, Pro checkmarks, focus rings on dark surfaces and a soft glow at the top of dark bands (`--green-glow`). On light surfaces, evergreen `#1a7045` stays the color for links, eyebrows and success.
+- **Bright green on dark only.** The logo's `#3fbf7f` marks the sidebar avatar, Pro checkmarks, focus rings on dark surfaces and a soft glow at the top of dark bands (`--green-glow`). On light surfaces, evergreen `#1a7045` stays the color for links, eyebrows and success.
 - **Restaurant artwork is untouched.** Menus, posts, table cards and exports keep their own colors. Published menu pages keep their previous neutral surround and chrome (`--menu-surround`, `--menu-chrome-line`).
 
 ## Tokens (`app/globals.css`)
@@ -33,7 +33,7 @@ The text grays from `--gray-400` to `--gray-900` are unchanged.
 
 ## Where it shows
 
-- **Workspace shell:** evergreen sidebar with the reversed logo (`Brand reversedMedia`), bright-green active icon and avatar; evergreen phone tab bar. The phone top bar stays on the canvas with the regular logo.
+- **Workspace shell:** evergreen sidebar with the reversed logo (`Brand reversedMedia`), white icons and a bright-green avatar; evergreen phone tab bar with the same white icons. The phone top bar stays on the canvas with the regular logo.
 - **Photo Studio:** the drop zone, style library rail and dish placeholders are stone wells inside white panels.
 - **Explore:** stone page, white filter chips with a hairline, white search, stone frosted filter bar, evergreen closing card.
 - **My Dishes:** white search beside the white Filters and Select buttons.
@@ -54,7 +54,8 @@ The text grays from `--gray-400` to `--gray-900` are unchanged.
 | Primary hover | #ffffff | #243a30 | 12.19:1 |
 | Primary pressed | #ffffff | #0a140f | 18.75:1 |
 | Sidebar item (white 70%) | #b8bcba | #12211a | 8.70:1 |
-| Sidebar active icon | #3fbf7f | #2c3933 | 5.15:1 |
+| Sidebar icon | #ffffff | #12211a | 16.69:1 |
+| Sidebar active icon | #ffffff | #2c3933 | 12.07:1 |
 | Bright green on evergreen | #3fbf7f | #12211a | 7.13:1 |
 | Error text on stone | #b3261e | #efede8 | 5.59:1 |
 | Control boundary | #86868b | #ffffff | 3.62:1 |

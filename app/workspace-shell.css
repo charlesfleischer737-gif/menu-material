@@ -88,10 +88,7 @@
   place-items: center;
   width: 20px;
   height: 20px;
-  color: var(--on-dark-muted);
-}
-.cx-nav button.active .cx-nav-icon {
-  color: var(--green-bright);
+  color: var(--on-dark);
 }
 .cx-nav-icon svg {
   width: 20px;
@@ -142,7 +139,7 @@
 }
 .cx-credits > svg {
   flex: none;
-  color: var(--green-bright);
+  color: var(--on-dark);
 }
 .cx-plan-chip {
   margin-left: auto;
@@ -208,7 +205,7 @@
   color: var(--green-ink);
 }
 .cx-sidebar-bottom .cx-account-chevron {
-  color: var(--on-dark-muted);
+  color: var(--on-dark);
 }
 .cx-account-menu {
   min-width: 248px;
