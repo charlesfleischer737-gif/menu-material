@@ -9,11 +9,20 @@ export type PhotoStyle = {
   description?: string;
   bestFor?: string;
   traits?: string[];
+  // Optional subject families (see foodFamilies) this look is made for.
+  // When omitted, relevance is inferred from bestFor, traits and category.
+  subjects?: string[];
   angle?: string;
   // Only presets with explicit food serving ware opt into replacing it.
   plate?: "style";
   legacy?: boolean;
 };
+/** A small preview of a catalog example for tiles; other images pass through. */
+export function styleThumbnail(image: string) {
+  return /^\/studio\/styles\/[^/]+\.webp$/.test(image)
+    ? image.replace("/studio/styles/", "/studio/styles/thumbs/")
+    : image;
+}
 export const styleCategories = [
   {
     id: "delivery",

@@ -7,7 +7,6 @@ import "./workspace.css";
 import "./menu-material.css";
 import "./creation.css";
 import "./studio-onboarding.css";
-import "./studio-workbench.css";
 import "./restaurant-look.css";
 import "./launch.css";
 import "./marketing.css";
@@ -21,6 +20,7 @@ import "./restaurant-settings.css";
 import "./library-filters.css";
 import "./workspace-patterns.css";
 import "./workspace-shell.css";
+import "./photo-studio.css";
 export async function generateMetadata(): Promise<Metadata> {
   const origin = config("APP_ORIGIN");
   const images = origin

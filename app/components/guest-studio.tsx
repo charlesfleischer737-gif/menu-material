@@ -6,6 +6,7 @@ import {
   emptyAdjustments,
   photoBrief,
   resolvePhotoLook,
+  samplePhoto,
   unavailablePhotoLook,
 } from "@/lib/studio";
 import {
@@ -238,7 +239,7 @@ export default function GuestStudio({
       }
     }
   }
-  async function upload(file: File) {
+  async function upload(file: File, options: { sample?: boolean } = {}) {
     if (lock.current) return;
     lock.current = true;
     setBusy("Preparing your photo");
@@ -250,6 +251,10 @@ export default function GuestStudio({
       const next = { file, normalized, url };
       setPhoto(next);
       update({
+        ...(options.sample || draft.sample
+          ? { name: options.sample ? samplePhoto.name : "", description: "" }
+          : {}),
+        sample: !!options.sample,
         sourceId: "guest-photo",
         mode: "photo",
         analysisStatus: "manual",
@@ -305,17 +310,22 @@ export default function GuestStudio({
       </header>
       <main id="creation-main" className="cx-main cx-feature-main">
         <section className="cx-tool cx-feature-page cx-guided-studio">
-          <div className="cx-guest-heading">
-            <div>
-              <p className="cx-eyebrow">Your first great food photo</p>
+          <header className="st-header">
+            <div className="st-header-copy">
               <h1>Photo Studio</h1>
               <p>Add your photo. Find your look. Make it menu material.</p>
             </div>
-            <button className="cx-link" onClick={onBack} disabled={!!busy}>
-              <ArrowLeft size={16} />
-              Back
-            </button>
-          </div>
+            <div className="st-header-tools">
+              <button
+                className="st-text-button"
+                onClick={onBack}
+                disabled={!!busy}
+              >
+                <ArrowLeft size={16} />
+                Back
+              </button>
+            </div>
+          </header>
           {error && (
             <div className="cx-feedback error" role="alert">
               {error}
@@ -389,8 +399,7 @@ export default function GuestStudio({
             chooseLook={(look) => {
               update(studioLookPatch(draft, look));
             }}
-            matchRestaurant={() => {}}
-            uploadPhoto={(file) => void upload(file)}
+            uploadPhoto={(file, options) => void upload(file, options)}
             referencePhoto={
               activeInspirationId(draft) && reference
                 ? { id: "guest-reference", url: reference.url }

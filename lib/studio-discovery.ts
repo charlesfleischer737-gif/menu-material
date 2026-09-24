@@ -207,6 +207,7 @@ export function startingLooks(
   restaurantLook?: PhotoStyle,
   excludeIds: string[] = [],
   unavailableIds: string[] = [],
+  count = 3,
 ) {
   const keep = looks.find((look) => look.id === "keep")!;
   const defaults =
@@ -233,5 +234,5 @@ export function startingLooks(
       (style, index, candidates) =>
         candidates.findIndex((s) => s.id === style.id) === index,
     )
-    .slice(0, 3);
+    .slice(0, count);
 }

@@ -150,7 +150,7 @@ function literal(document: SearchDocument, token: string) {
     (synonyms[token] || []).some((term) => contains(document.text, term))
   );
 }
-function styleMoods(style: PhotoStyle) {
+export function styleMoods(style: PhotoStyle) {
   const text = documentFor(style).text;
   return [
     /bright|white|daylight|luminous|ivory/.test(text) && "Bright",

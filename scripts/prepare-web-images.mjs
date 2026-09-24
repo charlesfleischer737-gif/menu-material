@@ -25,3 +25,18 @@ for (const [name, source] of [
     } else console.log(path, size);
   }
 }
+
+// Style tiles show examples at up to ~200 CSS px. Small lossy previews keep
+// the studio and style library light; the full examples stay for details.
+await mkdir("public/studio/styles/thumbs", { recursive: true });
+const { readdir } = await import("node:fs/promises");
+for (const file of (await readdir("public/studio/styles")).filter((name) =>
+  name.endsWith(".webp"),
+)) {
+  const path = `public/studio/styles/thumbs/${file}`;
+  await sharp(`public/studio/styles/${file}`)
+    .resize({ width: 400, height: 400, fit: "cover", kernel: "lanczos3" })
+    .webp({ quality: 82, effort: 6 })
+    .toFile(path);
+  console.log(path, (await stat(path)).size);
+}

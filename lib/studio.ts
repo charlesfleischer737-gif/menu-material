@@ -203,6 +203,13 @@ export const catalogProfiles = {
     maxBytes: 5 * 1024 * 1024,
   },
 };
+// A real phone photo of a burger (credited on the homepage) for trying the
+// studio without one of your own. It is always labeled as a sample.
+export const samplePhoto = {
+  url: "/burger-phone-original.jpg",
+  file: "sample-burger.jpg",
+  name: "Sample burger",
+};
 export const emptyAdjustments = {
   x: 50,
   y: 50,
