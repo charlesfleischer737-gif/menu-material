@@ -281,10 +281,10 @@
   border: 0;
   border-radius: var(--radius-pill);
   background: transparent;
-  color: var(--workspace-muted);
+  color: var(--workspace-ink);
   font-family: var(--font-ui);
   font-size: var(--text-footnote);
-  font-weight: 600;
+  font-weight: 500;
   line-height: 1.2;
   white-space: nowrap;
   box-shadow: none;
@@ -304,7 +304,7 @@
     .md-mobile-nav
   )
   > :is(button, a, label):not(:disabled):hover {
-  color: var(--workspace-ink);
+  background: rgb(255 255 255 / 55%);
 }
 :is(
     .cx-segment,
@@ -326,6 +326,7 @@
   ) {
   background: var(--workspace-surface);
   color: var(--workspace-ink);
+  font-weight: 600;
   box-shadow:
     0 1px 2px rgb(0 0 0 / 8%),
     0 1px 6px rgb(0 0 0 / 4%);
@@ -358,9 +359,23 @@
   color: var(--gray-400);
   cursor: not-allowed;
 }
+:is(
+    .cx-segment,
+    .md-segment,
+    .mm-segments,
+    .workspace-segments,
+    .st-segmented,
+    .cx-look-preview-tabs,
+    .rs-tab-list,
+    .md-mobile-nav
+  )
+  > :is(button, a, label)
+  svg {
+  flex-shrink: 0;
+}
 @media (pointer: coarse) {
   :root {
-    --segment-height: 40px;
+    --segment-height: 44px;
   }
 }
 @media (max-width: 1250px) {
