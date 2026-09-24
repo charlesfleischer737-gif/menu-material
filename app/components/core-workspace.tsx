@@ -334,6 +334,8 @@ export default function CoreWorkspace({
               <ExploreGallery
                 active={foreground && view === "explore"}
                 disabledStyleIds={state.studioAvailability?.disabledStyleIds}
+                timezone={state.restaurant?.timezone}
+                onOpenStudio={() => navigate("studio")}
                 onTryStyle={(styleId) => {
                   exploreReturnStyle.current = styleId;
                   setPhotoSeed({ token: crypto.randomUUID(), styleId });

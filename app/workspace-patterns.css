@@ -760,8 +760,7 @@
 /* One page title across the workspace. */
 .cx-app .mm-header h1,
 .cx-app .cx-feature-header h1,
-.cx-app .md-document-picker h1,
-.cx-app .ex-header h1 {
+.cx-app .md-document-picker h1 {
   font: 700 var(--text-title1) / 1.15 var(--font-display);
   letter-spacing: var(--tracking-display);
 }
@@ -874,8 +873,7 @@
 @media (max-width: 760px) {
   .cx-app .mm-header h1,
   .cx-app .cx-feature-header h1,
-  .cx-app .md-document-picker h1,
-  .cx-app .ex-header h1 {
+  .cx-app .md-document-picker h1 {
     font-size: var(--text-title2);
   }
   .admin-panel > .cx-panel {
