@@ -2181,22 +2181,20 @@
   justify-content: center;
 }
 /* On a phone the status and actions share one row that scrolls sideways, so
-   the first dish stays near the top. */
+   the first dish stays near the top. Phone previews show the same row. */
 @media (max-width: 740px) {
   .md-guest-visit-bar {
     display: flex;
     flex-wrap: nowrap;
     align-items: center;
     gap: 8px;
+    margin-top: 12px;
     overflow-x: auto;
     overscroll-behavior-x: contain;
     scrollbar-width: none;
   }
   .md-guest-visit-bar::-webkit-scrollbar {
     display: none;
-  }
-  .md-guest-visit-bar {
-    margin-top: 12px;
   }
   .md-guest-visit-bar > .md-guest-status {
     flex: none;
@@ -2214,6 +2212,36 @@
     :is(.md-guest-status, .md-guest-actions) {
     justify-content: flex-start;
   }
+}
+.md-phone-frame .md-guest-visit-bar {
+  display: flex;
+  flex-wrap: nowrap;
+  align-items: center;
+  gap: 8px;
+  margin-top: 12px;
+  overflow-x: auto;
+  overscroll-behavior-x: contain;
+  scrollbar-width: none;
+}
+.md-phone-frame .md-guest-visit-bar::-webkit-scrollbar {
+  display: none;
+}
+.md-phone-frame .md-guest-visit-bar > .md-guest-status {
+  flex: none;
+  padding-right: 4px;
+  white-space: nowrap;
+}
+.md-phone-frame .md-guest-visit-bar > .md-guest-actions {
+  flex-wrap: nowrap;
+}
+.md-phone-frame .md-guest-actions > :is(a, span) {
+  flex: none;
+  white-space: nowrap;
+}
+.md-phone-frame
+  :is(.md-design-fine, .md-design-special)
+  :is(.md-guest-status, .md-guest-actions) {
+  justify-content: flex-start;
 }
 /* Hours and location close the menu. */
 .md-guest-visit {
