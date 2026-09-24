@@ -172,15 +172,20 @@ const allowed: Record<string, string[]> = {
   studio_timing: ["phase", "milliseconds"],
 };
 export const creationEventKinds = Object.keys(allowed) as [string, ...string[]];
+// Timing events always name their draft, phase and duration.
+const requiredTiming = ["draftId", "phase", "milliseconds"];
 export function parseCreationEventDetails(kind: string, details: unknown) {
   const keys = [...common, ...(allowed[kind] || [])];
   const schema = Object.fromEntries(
-    keys.map((key) => [key, fields[key as keyof typeof fields].optional()]),
+    keys.map((key) => {
+      const field = fields[key as keyof typeof fields];
+      return [
+        key,
+        kind === "studio_timing" && requiredTiming.includes(key)
+          ? field
+          : field.optional(),
+      ];
+    }),
   );
-  if (kind === "studio_timing") {
-    schema.draftId = fields.draftId as any;
-    schema.phase = fields.phase as any;
-    schema.milliseconds = fields.milliseconds as any;
-  }
   return z.object(schema).strict().parse(details);
 }

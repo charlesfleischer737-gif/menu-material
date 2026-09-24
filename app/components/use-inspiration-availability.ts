@@ -17,11 +17,9 @@ export function useInspirationAvailability(
   const key = JSON.stringify([restaurantId, ids, attempt]);
   const needed = enabled && !!restaurantId && referenceIds.length > 0;
   const retry = useCallback(() => setAttempt((value) => value + 1), []);
+  if (!needed && result.key) setResult({ key: "", status: "ready" });
   useEffect(() => {
-    if (!needed) {
-      setResult({ key: "", status: "ready" });
-      return;
-    }
+    if (!needed) return;
     let current = true;
     const controller = new AbortController();
     const timeout = setTimeout(() => controller.abort(), 10000);

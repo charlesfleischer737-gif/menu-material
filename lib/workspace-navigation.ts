@@ -1,3 +1,4 @@
+import type { Row } from "./client";
 // These preferences only select a workspace; all saved content stays on the server.
 export function workspacePreferenceKey(userId: string, restaurantId: string) {
   return `menu-material:workspace:${userId}:${restaurantId}`;
@@ -41,7 +42,7 @@ export function resolveWorkspace(
   return valid.includes(remembered) ? remembered : null;
 }
 
-export function hasSavedContent(row: Record<string, any>) {
+export function hasSavedContent(row: Row) {
   const draft = row.draft || {};
   return !!(row.kind === "studio"
     ? draft.sourceId || draft.description || draft.resultId || draft.jobId

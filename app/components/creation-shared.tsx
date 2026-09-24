@@ -3,6 +3,7 @@ import { draftStatus } from "@/lib/workspace-status";
 import {
   useCallback,
   useEffect,
+  useEffectEvent,
   useLayoutEffect,
   useRef,
   useState,
@@ -74,7 +75,15 @@ export function useCreationDraft(
     [ready, setReady] = useState(false),
     [status, setStatus] = useState("Opening saved work…"),
     [loadError, setLoadError] = useState(""),
-    [saveError, setSaveError] = useState("");
+    [saveError, setSaveError] = useState(""),
+    [draftId, setDraftId] = useState(""),
+    [loadedFrom, setLoadedFrom] = useState(preferenceKey);
+  // Opening another workspace's drafts starts a fresh load.
+  if (loadedFrom !== preferenceKey) {
+    setLoadedFrom(preferenceKey);
+    setLoadError("");
+    setStatus("Opening saved work…");
+  }
   const meta = useRef({ id: "", revision: 0 }),
     latest = useRef(draft),
     saved = useRef(""),
@@ -103,8 +112,6 @@ export function useCreationDraft(
   }
   const load = useCallback(async () => {
     const request = ++loading.current;
-    setLoadError("");
-    setStatus("Opening saved work…");
     try {
       const data = await api(`creation-drafts?kind=${kind}`);
       const remembered = readPreference(preferenceKey);
@@ -144,6 +151,7 @@ export function useCreationDraft(
         }
       } catch {}
       latest.current = value;
+      setDraftId(meta.current.id);
       setDraft(value);
       setReady(true);
       if (row) rememberPreference(preferenceKey, meta.current.id);
@@ -250,6 +258,7 @@ export function useCreationDraft(
       id: row?.id || crypto.randomUUID(),
       revision: row?.revision || 0,
     };
+    setDraftId(meta.current.id);
     latest.current = value;
     saved.current = row ? JSON.stringify(value) : "";
     setDraft(value);
@@ -268,6 +277,7 @@ export function useCreationDraft(
   async function saveCopy() {
     if (saving.current) await saving.current.catch(() => {});
     meta.current = { id: crypto.randomUUID(), revision: 0 };
+    setDraftId(meta.current.id);
     saved.current = "";
     backup();
     await save();
@@ -286,6 +296,7 @@ export function useCreationDraft(
   }
   function clear() {
     meta.current = { id: crypto.randomUUID(), revision: 0 };
+    setDraftId(meta.current.id);
     latest.current = initialRef.current;
     saved.current = JSON.stringify(latest.current);
     forgetBackup();
@@ -302,11 +313,15 @@ export function useCreationDraft(
     resume,
     ready,
     status,
-    id: meta.current.id,
+    id: draftId,
     read: () => latest.current,
     loadError,
     saveError,
-    retryLoad: load,
+    retryLoad: () => {
+      setLoadError("");
+      setStatus("Opening saved work…");
+      return load();
+    },
     saveCopy,
     openLatest,
     clear,
@@ -400,8 +415,18 @@ export function SavedDrafts({
     [filter, setFilter] = useState("active"),
     [next, setNext] = useState<number | null>(null),
     [rename, setRename] = useState(""),
-    [name, setName] = useState("");
+    [name, setName] = useState(""),
+    [listing, setListing] = useState("");
   const request = useRef(0);
+  // Opening the list or changing its search shows it loading again.
+  const query = open ? JSON.stringify([kind, search, filter]) : "";
+  if (query !== listing) {
+    setListing(query);
+    if (query) {
+      setDrafts(null);
+      setError("");
+    }
+  }
   const label =
     kind === "studio"
       ? "Saved photos"
@@ -436,8 +461,6 @@ export function SavedDrafts({
   );
   useEffect(() => {
     if (!open) return;
-    setDrafts(null);
-    setError("");
     const timer = setTimeout(
       () => void load().catch((e) => setError(e.message)),
       200,
@@ -745,12 +768,14 @@ export function PhotoFrame({
   label?: string;
   onReadyChange?: (ready: boolean) => void;
 }) {
-  const readyCallback = useRef(onReadyChange);
-  readyCallback.current = onReadyChange;
+  const notifyReady = useEffectEvent((ready: boolean) =>
+    onReadyChange?.(ready),
+  );
   const canvas = useRef<HTMLCanvasElement>(null),
     im = useRef<ImageBitmap | null>(null),
     [attempt, setAttempt] = useState(0),
     [load, setLoad] = useState({ src, status: "loading", error: "" }),
+    [opened, setOpened] = useState({ src, attempt }),
     drag = useRef<{ x: number; y: number; ex: number; ey: number } | null>(
       null,
     );
@@ -762,6 +787,7 @@ export function PhotoFrame({
       ratio: number;
       edits: Adjustments;
       src: string;
+      onReady: (ready: boolean) => void;
     }>((frame) => {
       try {
         preview.draw(
@@ -771,9 +797,9 @@ export function PhotoFrame({
           Math.round(800 / frame.ratio),
           frame.edits,
         );
-        readyCallback.current?.(true);
+        frame.onReady(true);
       } catch {
-        readyCallback.current?.(false);
+        frame.onReady(false);
         setLoad({
           src: frame.src,
           status: "error",
@@ -782,6 +808,11 @@ export function PhotoFrame({
       }
     }),
   );
+  // A new photo, or another attempt, starts loading again.
+  if (opened.src !== src || opened.attempt !== attempt) {
+    setOpened({ src, attempt });
+    setLoad({ src, status: "loading", error: "" });
+  }
   const ready = load.src === src && load.status === "ready";
   const error = load.src === src ? load.error : "";
   useLayoutEffect(() => {
@@ -790,8 +821,7 @@ export function PhotoFrame({
     frames.clear();
     preview.clear();
     drag.current = null;
-    readyCallback.current?.(false);
-    setLoad({ src, status: "loading", error: "" });
+    notifyReady(false);
     if (canvas.current) {
       canvas.current.width = 0;
       canvas.current.height = 0;
@@ -823,7 +853,7 @@ export function PhotoFrame({
     };
   }, [src, attempt, preview, frames]);
   useLayoutEffect(() => {
-    readyCallback.current?.(false);
+    notifyReady(false);
     if (ready && canvas.current && im.current)
       frames.push({
         canvas: canvas.current,
@@ -831,6 +861,7 @@ export function PhotoFrame({
         ratio,
         edits,
         src,
+        onReady: (value) => notifyReady(value),
       });
   }, [ready, load, edits, ratio, src, frames]);
   return (

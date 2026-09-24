@@ -1,8 +1,9 @@
 import { looks, photoStyles, resolvePhotoLook } from "./studio";
 import { restaurantPhotoDefaults } from "./restaurant-look";
 import type { PhotoStyle } from "./photo-styles";
+import type { Row } from "./client";
 
-type Draft = Record<string, any>;
+type Draft = Row;
 export function searchIntent(query: string) {
   const text = query.toLowerCase();
   if (

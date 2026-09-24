@@ -1,5 +1,5 @@
 "use client";
-import { useEffect, useState } from "react";
+import { useState } from "react";
 import { ArrowRight, Check, Download, Megaphone } from "lucide-react";
 import { downloadBlob } from "@/lib/client";
 import { masterPhotoExport, photoExport } from "@/lib/photo-export";
@@ -39,20 +39,22 @@ export default function PhotoDownloads({
   initialFormat?: string;
   onPromote?: (item: DownloadPhoto) => void;
 }) {
-  const [destination, setDestination] = useState<PhotoDestination>(
-    photoDestination(initialFormat),
+  const key = `${preferenceKey}:photo-destination`;
+  const [destination, setDestination] = useState<PhotoDestination>(() =>
+    photoDestination(readPreference(key) || initialFormat),
   );
+  const [destinationKey, setDestinationKey] = useState(key);
+  if (destinationKey !== key) {
+    setDestinationKey(key);
+    const remembered = readPreference(key);
+    if (remembered) setDestination(photoDestination(remembered));
+  }
   const [index, setIndex] = useState(0);
   const [crops, setCrops] = useState<Record<string, Adjustments>>({});
   const [checked, setChecked] = useState<Record<string, boolean>>({});
   const [progress, setProgress] = useState("");
   const [downloaded, setDownloaded] = useState(false);
   const action = useAction();
-  const key = `${preferenceKey}:photo-destination`;
-  useEffect(() => {
-    const remembered = readPreference(key);
-    if (remembered) setDestination(photoDestination(remembered));
-  }, [key]);
   const item = items[Math.min(index, items.length - 1)];
   if (!item) return null;
   const master = destination === "master";

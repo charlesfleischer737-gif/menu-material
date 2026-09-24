@@ -1,5 +1,5 @@
 // Local-only Vite alias. Never imported into a production Worker.
-import { DatabaseSync } from "node:sqlite";
+import { DatabaseSync, type SQLInputValue } from "node:sqlite";
 import {
   mkdirSync,
   readFileSync,
@@ -12,7 +12,9 @@ import {
 import { join, resolve, dirname } from "node:path";
 const root = resolve(process.env.MENU_MATERIAL_DATA_DIR || ".local-data");
 mkdirSync(root, { recursive: true });
-const globalStore = globalThis as any;
+const globalStore = globalThis as typeof globalThis & {
+  __menuMaterialSqlite?: DatabaseSync;
+};
 const sqlite: DatabaseSync = (globalStore.__menuMaterialSqlite ??=
   new DatabaseSync(join(root, "menu-material.sqlite")));
 sqlite.exec(
@@ -41,13 +43,13 @@ if (existsSync("drizzle"))
 class Statement {
   constructor(
     private sql: string,
-    private values: any[] = [],
+    private values: SQLInputValue[] = [],
   ) {}
-  bind(...v: any[]) {
+  bind(...v: SQLInputValue[]) {
     return new Statement(this.sql, v);
   }
   async first(column?: string) {
-    const r = sqlite.prepare(this.sql).get(...this.values) as any;
+    const r = sqlite.prepare(this.sql).get(...this.values);
     return column ? (r?.[column] ?? null) : (r ?? null);
   }
   executeAll() {
@@ -92,14 +94,18 @@ const objectPath = (key: string) => {
   return join(root, "objects", key);
 };
 const BUCKET = {
-  async put(key: string, value: any, options: any = {}) {
+  async put(
+    key: string,
+    value: ReadableStream | ArrayBuffer | Uint8Array,
+    options: Record<string, unknown> = {},
+  ) {
     const p = objectPath(key);
     mkdirSync(dirname(p), { recursive: true });
     const bytes =
       value instanceof ReadableStream
         ? await new Response(value).arrayBuffer()
         : value;
-    writeFileSync(p, Buffer.from(bytes));
+    writeFileSync(p, new Uint8Array(bytes));
     writeFileSync(p + ".meta", JSON.stringify(options));
     return { key };
   },

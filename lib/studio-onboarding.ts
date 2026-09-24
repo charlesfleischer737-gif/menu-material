@@ -1,4 +1,5 @@
 import { photoStyles } from "./photo-styles";
+import type { Row } from "./client";
 
 export const drinkKinds = [
   "beer",
@@ -59,8 +60,8 @@ export function recommendedPhotoStyles(
 
 // Analysis can offer alternatives, but never silently select a different style.
 export function photoAnalysisRecommendation(
-  current: Record<string, any>,
-  result: Record<string, any>,
+  current: Row,
+  result: Row,
   sourceId: string,
 ) {
   if (
@@ -90,7 +91,7 @@ export function photoAnalysisRecommendation(
   };
 }
 
-export function recommendationsForPhoto(draft: Record<string, any>) {
+export function recommendationsForPhoto(draft: Row) {
   if (
     !draft.sourceId ||
     draft.mode !== "photo" ||

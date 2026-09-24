@@ -1,4 +1,5 @@
 import { photoStyles, type PhotoStyle } from "./photo-styles";
+import type { Row } from "./client";
 export { photoStyles, styleCategories } from "./photo-styles";
 export const PIPELINE_VERSION = "studio-2026-09-17-studio-v7";
 const legacyLooks = [
@@ -90,9 +91,7 @@ export const looks: PhotoStyle[] = [
     legacy: !["keep", "restaurant", "reference"].includes(l.id),
   })),
 ];
-export function resolvePhotoLook(
-  brief: Record<string, any>,
-): PhotoStyle | null {
+export function resolvePhotoLook(brief: Row): PhotoStyle | null {
   const known = looks.find((look) => look.id === brief.look);
   if (known) return known;
   if (
@@ -272,10 +271,7 @@ export function photoBrief(destination = "menu") {
     adjustments: { ...emptyAdjustments },
   };
 }
-export function styleFor(
-  brief: Record<string, any>,
-  restaurant: Record<string, any>,
-) {
+export function styleFor(brief: Row, restaurant: Row) {
   const base = restaurant.style || {};
   const look = resolvePhotoLook(brief);
   if (!look)

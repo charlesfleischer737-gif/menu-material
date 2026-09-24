@@ -1,5 +1,5 @@
 "use client";
-import { useEffect, useState } from "react";
+import { useState } from "react";
 import { Check, Palette, RotateCcw, Sparkles } from "lucide-react";
 import {
   brandTypefaces,
@@ -27,10 +27,12 @@ function BrandColor({
 }) {
   const [text, setText] = useState(value);
   const [error, setError] = useState("");
-  useEffect(() => {
+  const [shown, setShown] = useState(value);
+  if (shown !== value) {
+    setShown(value);
     setText(value);
     setError("");
-  }, [value]);
+  }
   return (
     <div className="cx-look-color-field">
       <span>{label}</span>

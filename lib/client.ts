@@ -1,3 +1,4 @@
+// eslint-disable-next-line @typescript-eslint/no-explicit-any -- rows and drafts are loosely shaped JSON from SQL and the API
 export type Row = Record<string, any>;
 export async function api(
   path: string,

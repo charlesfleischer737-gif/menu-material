@@ -1,6 +1,7 @@
 import { z } from "zod";
 import { looks, styleFor } from "./studio";
 import { lookControls } from "./studio-discovery";
+import type { Row } from "./client";
 
 export const lookRecipeSchema = z.object({
   look: z
@@ -80,10 +81,7 @@ export const emptyStudioLibrary = (): StudioLibrary => ({
   looks: [],
   defaultLookId: null,
 });
-export function recipeFromDraft(
-  draft: Record<string, any>,
-  restaurant: Record<string, any>,
-) {
+export function recipeFromDraft(draft: Row, restaurant: Row) {
   const style = styleFor(draft, restaurant);
   return lookRecipeSchema.parse({
     ...draft,

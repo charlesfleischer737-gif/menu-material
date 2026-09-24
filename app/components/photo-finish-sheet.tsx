@@ -85,20 +85,42 @@ export function PhotoFinishSheet({
   onBusyChange?: (busy: boolean) => void;
   measurementContext?: { draftId?: string; sourceId?: string };
 }) {
-  const [destination, setDestination] = useState<Destination>(
-    validDestination(initialFormat),
+  const preference = preferenceKey + ":photo-destination";
+  // The workspace's last destination wins over the draft's format.
+  const [destination, setDestination] = useState<Destination>(() =>
+    validDestination(readPreference(preference) || initialFormat),
   );
   const [fileName, setFileName] = useState(name);
-  const [edits, setEdits] = useState<Adjustments>({
-    ...emptyAdjustments,
-    fit: !isCatalogDestination(initialFormat),
+  const [edits, setEdits] = useState<Adjustments>(() => {
+    const remembered = readPreference(preference);
+    return {
+      ...emptyAdjustments,
+      fit: !isCatalogDestination(
+        remembered ? validDestination(remembered) : initialFormat,
+      ),
+    };
   });
+  const [destinationFor, setDestinationFor] = useState(preference);
+  if (destinationFor !== preference) {
+    setDestinationFor(preference);
+    const remembered = readPreference(preference);
+    if (remembered) {
+      const target = validDestination(remembered);
+      setDestination(target);
+      setEdits({ ...emptyAdjustments, fit: !isCatalogDestination(target) });
+    }
+  }
   const [confirmed, setConfirmed] = useState<boolean | null>(null),
     [busy, setBusy] = useState(false),
     [error, setError] = useState(""),
     [notice, setNotice] = useState(""),
     [finished, setFinished] = useState(false);
-  const [canShare, setCanShare] = useState(false),
+  const [canShare] = useState(
+      () =>
+        typeof navigator !== "undefined" &&
+        typeof navigator.share === "function" &&
+        typeof navigator.canShare === "function",
+    ),
     [dimensions, setDimensions] = useState<{
       width: number;
       height: number;
@@ -109,19 +131,6 @@ export function PhotoFinishSheet({
     onBusyChange?.(busy);
     return () => onBusyChange?.(false);
   }, [busy, onBusyChange]);
-  const preference = preferenceKey + ":photo-destination";
-  useEffect(() => {
-    const remembered = readPreference(preference);
-    if (remembered) {
-      const target = validDestination(remembered);
-      setDestination(target);
-      setEdits({ ...emptyAdjustments, fit: !isCatalogDestination(target) });
-    }
-    setCanShare(
-      typeof navigator.share === "function" &&
-        typeof navigator.canShare === "function",
-    );
-  }, [preference]);
   useEffect(() => {
     let active = true;
     const image = new Image();

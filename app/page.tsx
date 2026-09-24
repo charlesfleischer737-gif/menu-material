@@ -42,11 +42,14 @@ export default function Home() {
     [error, setError] = useState("");
   const actionBusy = useRef(false),
     tickBusy = useRef(false);
-  const refresh = useCallback(async () => {
-    const data = await api("state");
-    setState(data);
-    setLoaded(true);
-  }, []);
+  const refresh = useCallback(
+    () =>
+      api("state").then((data) => {
+        setState(data);
+        setLoaded(true);
+      }),
+    [],
+  );
   useEffect(() => {
     refresh().catch((e) => {
       setError(e.message);
@@ -56,26 +59,13 @@ export default function Home() {
   useEffect(() => {
     if (state.user?.id) void api("events", { kind: "visit" }).catch(() => {});
   }, [state.user?.id]);
-  useEffect(() => {
-    let cancelled = false;
+  // Links into the studio or plans apply once the account loads or changes.
+  // The account only loads in the browser.
+  const account = loaded ? `${state.user?.id}:${state.restaurant?.id}` : "";
+  const [linkedAccount, setLinkedAccount] = useState("");
+  if (account !== linkedAccount) {
+    setLinkedAccount(account);
     if (loaded && !state.user && location.hash === "#studio") setGuest(true);
-    if (loaded && state.user && location.hash === "#studio") {
-      void import("@/lib/guest-studio-storage")
-        .then(({ loadGuestDrafts }) => loadGuestDrafts())
-        .then((drafts) => {
-          if (
-            !cancelled &&
-            drafts.some(
-              (draft) =>
-                draft.requested &&
-                (!draft.transfer?.restaurantId ||
-                  draft.transfer.restaurantId === state.restaurant?.id),
-            )
-          )
-            setGuest(true);
-        })
-        .catch(() => {});
-    }
     if (loaded && new URLSearchParams(location.search).has("upgrade")) {
       if (state.user) setPlans(true);
       else {
@@ -83,6 +73,31 @@ export default function Home() {
         setAuth(true);
       }
     }
+  }
+  const [billingUser, setBillingUser] = useState(state.user?.id);
+  if (state.user?.id !== billingUser) {
+    setBillingUser(state.user?.id);
+    if (state.user && new URLSearchParams(location.search).has("billing"))
+      setPlans(true);
+  }
+  useEffect(() => {
+    if (!loaded || !state.user || location.hash !== "#studio") return;
+    let cancelled = false;
+    void import("@/lib/guest-studio-storage")
+      .then(({ loadGuestDrafts }) => loadGuestDrafts())
+      .then((drafts) => {
+        if (
+          !cancelled &&
+          drafts.some(
+            (draft) =>
+              draft.requested &&
+              (!draft.transfer?.restaurantId ||
+                draft.transfer.restaurantId === state.restaurant?.id),
+          )
+        )
+          setGuest(true);
+      })
+      .catch(() => {});
     return () => {
       cancelled = true;
     };
@@ -92,10 +107,6 @@ export default function Home() {
     window.addEventListener("menu-material:plans", open);
     return () => window.removeEventListener("menu-material:plans", open);
   }, []);
-  useEffect(() => {
-    if (state.user && new URLSearchParams(location.search).has("billing"))
-      setPlans(true);
-  }, [state.user?.id]);
   useEffect(() => {
     if (!state.user) return;
     const timer = setInterval(async () => {

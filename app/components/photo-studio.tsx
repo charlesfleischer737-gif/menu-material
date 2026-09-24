@@ -105,7 +105,6 @@ export default function PhotoStudio({
     [compare, setCompare] = useState(false),
     [adjust, setAdjust] = useState(""),
     [aiChanges, setAiChanges] = useState(""),
-    [accurate, setAccurate] = useState(false),
     [zoom, setZoom] = useState(false),
     [finishOpen, setFinishOpen] = useState(false);
   const [correctionOpen, setCorrectionOpen] = useState(false);
@@ -210,9 +209,13 @@ export default function PhotoStudio({
     cue: "Your saved lighting, setting and photographic style",
     group: "SAVED FOR YOUR RESTAURANT",
   };
-  useEffect(() => {
+  // Reaching the last step with a result opens the finish sheet.
+  const finishKey = JSON.stringify([b.step, resultId, seed?.styleId]);
+  const [finishSeen, setFinishSeen] = useState("");
+  if (finishKey !== finishSeen) {
+    setFinishSeen(finishKey);
     if (b.step === 5 && resultId && !seed?.styleId) setFinishOpen(true);
-  }, [b.step, resultId, seed?.styleId]);
+  }
   const canCompare = !!source && !!resultId && resultId !== b.sourceId;
   useEffect(() => {
     if (!ready || !draftStore.id) return;
@@ -237,30 +240,40 @@ export default function PhotoStudio({
       )
       .catch(() => {});
   }, [ready, draftStore.id]);
-  useEffect(() => {
-    let active = true;
+  // A different or newly reviewed result reloads its captured recipe.
+  const contextKey = JSON.stringify([
+    resultId,
+    asset?.approved_at,
+    asset?.needs_correction,
+  ]);
+  const [contextFor, setContextFor] = useState("");
+  if (contextKey !== contextFor) {
+    setContextFor(contextKey);
     setResultRecipe(null);
     setResultHasGeneration(asset?.kind === "generated");
-    if (resultId)
-      void api(`assets/${resultId}/context`)
-        .then((context) => {
-          if (active) {
-            setResultHasGeneration(!!context.jobId);
-            const captured = capturedPhotoRecipe(context);
-            const usable = state.assets.find(
-              (entry: Row) => entry.id === resultId,
-            );
-            setResultRecipe({
-              ...captured,
-              ...(usable?.approved_at &&
-              !usable.needs_correction &&
-              ["generated", "edited"].includes(usable.kind)
-                ? { photoReferenceIds: [resultId], referenceId: resultId }
-                : {}),
-            });
-          }
-        })
-        .catch(() => {});
+  }
+  useEffect(() => {
+    if (!resultId) return;
+    let active = true;
+    void api(`assets/${resultId}/context`)
+      .then((context) => {
+        if (active) {
+          setResultHasGeneration(!!context.jobId);
+          const captured = capturedPhotoRecipe(context);
+          const usable = state.assets.find(
+            (entry: Row) => entry.id === resultId,
+          );
+          setResultRecipe({
+            ...captured,
+            ...(usable?.approved_at &&
+            !usable.needs_correction &&
+            ["generated", "edited"].includes(usable.kind)
+              ? { photoReferenceIds: [resultId], referenceId: resultId }
+              : {}),
+          });
+        }
+      })
+      .catch(() => {});
     return () => {
       active = false;
     };
@@ -319,7 +332,6 @@ export default function PhotoStudio({
           change(selection.draft);
           await save();
         }
-        setAccurate(false);
         setAdjust("");
         setBefore(false);
         setCompare(false);
@@ -332,7 +344,6 @@ export default function PhotoStudio({
       }
       if (seed.draftId) {
         await draftStore.resume(seed.draftId);
-        setAccurate(false);
         setAdjust("");
         onSeedUsed();
         return;
@@ -387,7 +398,6 @@ export default function PhotoStudio({
           ? { resultId: seed.photoId, jobId: context.jobId || "", step: 4 }
           : {}),
       });
-      setAccurate(false);
       setAdjust("");
       onSeedUsed();
     });
@@ -395,7 +405,6 @@ export default function PhotoStudio({
   useEffect(() => {
     if (b.jobId && output?.asset_id && !b.resultId) {
       change({ resultId: output.asset_id, step: 4 });
-      setAccurate(false);
     }
   }, [output?.asset_id, b.jobId]);
   useEffect(() => {
@@ -612,7 +621,6 @@ export default function PhotoStudio({
       adjustments: { ...emptyAdjustments },
     });
     setAdjust("");
-    setAccurate(false);
     setBefore(false);
     setCompare(false);
     await save();
@@ -625,7 +633,7 @@ export default function PhotoStudio({
       .then(refresh)
       .catch(() => {});
   }
-  async function approve(confirmed = accurate) {
+  async function approve(confirmed = false) {
     if (adjust === "quick")
       throw Error("Save your adjustments as a new version before downloading.");
     if (!confirmed && !asset?.approved_at)
@@ -670,7 +678,6 @@ export default function PhotoStudio({
         adjustments: { ...emptyAdjustments },
         step: 4,
       });
-      setAccurate(false);
       setBefore(false);
       setCompare(false);
       setQuickOpen(false);
@@ -714,7 +721,6 @@ export default function PhotoStudio({
     setAdjust("");
     setBefore(false);
     setCompare(false);
-    setAccurate(false);
   }
   if (!ready) return <DraftRecovery store={draftStore} title="Photo Studio" />;
   const hour = new Date().getHours();
@@ -770,7 +776,6 @@ export default function PhotoStudio({
             store={draftStore}
             disabled={!!busy || creating}
             onResume={() => {
-              setAccurate(false);
               setAdjust("");
               setAdvice("");
               setBefore(false);
@@ -798,7 +803,6 @@ export default function PhotoStudio({
                   ...restaurantPhotoDefaults(state.restaurant),
                 });
                 setAdjust("");
-                setAccurate(false);
                 setAdvice("");
                 setBefore(false);
               })
@@ -1032,7 +1036,6 @@ export default function PhotoStudio({
                               adjustments: { ...emptyAdjustments },
                             });
                             setBefore(false);
-                            setAccurate(false);
                             setAdjust("");
                           })
                         }

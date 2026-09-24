@@ -12,51 +12,65 @@ export function useStudioLibrary(restaurantId?: string) {
   const [ready, setReady] = useState(false),
     [busy, setBusy] = useState(false),
     [error, setError] = useState("");
+  const [shownFor, setShownFor] = useState(restaurantId);
   const revision = useRef(0),
     loadSequence = useRef(0),
     current = useRef(library),
     lock = useRef(false),
     scope = useRef(restaurantId);
-  scope.current = restaurantId;
-  async function reload() {
-    if (lock.current) return;
+  // Another restaurant starts from an empty library while its own loads.
+  if (shownFor !== restaurantId) {
+    setShownFor(restaurantId);
+    setReady(false);
+    setError("");
+    setLibrary(emptyStudioLibrary());
+  }
+  function load() {
+    if (lock.current) return Promise.resolve();
     const sequence = ++loadSequence.current;
     const owner = restaurantId;
+    // Owners load their restaurant's library; guests keep favorites here.
+    const request = owner
+      ? api("studio-library")
+      : Promise.resolve().then(() => {
+          const saved = localStorage.getItem(
+            "menu-material:guest-look-favorites",
+          );
+          return {
+            ...emptyStudioLibrary(),
+            favorites: saved ? JSON.parse(saved) : [],
+            revision: 0,
+          };
+        });
+    return request
+      .then((data) => {
+        if (scope.current !== owner || sequence !== loadSequence.current)
+          return;
+        const valid = studioLibrarySchema.parse(data);
+        current.current = valid;
+        revision.current = data.revision || 0;
+        setLibrary(valid);
+        setReady(true);
+      })
+      .catch(() => {
+        if (scope.current === owner)
+          setError(
+            owner
+              ? "Saved looks couldn’t load. Try again."
+              : "This browser can’t save favorites. You can still choose any look.",
+          );
+      });
+  }
+  function reload() {
+    if (lock.current) return Promise.resolve();
     setError("");
     setReady(false);
-    try {
-      let data;
-      if (owner) data = await api("studio-library");
-      else {
-        const saved = localStorage.getItem(
-          "menu-material:guest-look-favorites",
-        );
-        data = {
-          ...emptyStudioLibrary(),
-          favorites: saved ? JSON.parse(saved) : [],
-          revision: 0,
-        };
-      }
-      if (scope.current !== owner || sequence !== loadSequence.current) return;
-      const valid = studioLibrarySchema.parse(data);
-      current.current = valid;
-      revision.current = data.revision || 0;
-      setLibrary(valid);
-      setReady(true);
-    } catch {
-      if (scope.current === owner)
-        setError(
-          owner
-            ? "Saved looks couldn’t load. Try again."
-            : "This browser can’t save favorites. You can still choose any look.",
-        );
-    }
+    return load();
   }
   useEffect(() => {
-    setReady(false);
+    scope.current = restaurantId;
     current.current = emptyStudioLibrary();
-    setLibrary(current.current);
-    void reload();
+    void load();
   }, [restaurantId]);
   async function mutate(change: (library: StudioLibrary) => StudioLibrary) {
     if (lock.current || !ready) return false;

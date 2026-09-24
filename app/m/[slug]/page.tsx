@@ -38,38 +38,43 @@ export default async function PublicMenu({
 }) {
   const { slug } = await params;
   const requested = (await searchParams)?.menu;
-  try {
-    const r = await one(
-      "SELECT * FROM restaurants WHERE slug=? AND published IS NOT NULL",
-      slug,
-    );
-    if (!r)
-      return (
-        <main className="unavailable">
-          <h1>This menu isn’t available right now.</h1>
-          <p>Please check with the restaurant for their latest menu.</p>
-        </main>
-      );
-    const selected = requested
-      ? await publicDocumentSnapshot(r.id, requested)
-      : null;
-    if (requested && !selected)
-      return (
-        <main className="unavailable">
-          <h1>This menu isn’t available right now.</h1>
-          <a href={`/m/${slug}`}>View the current menu</a>
-        </main>
-      );
-    const menu = (await publicMenu(
-      selected ? { ...r, published: JSON.stringify(selected) } : r,
-    ))!;
-    return <MenuView menu={menu} slug={slug} serverNow={menu.serverNow} />;
-  } catch {
+  const loaded = await loadMenu(slug, requested).catch(() => null);
+  if (!loaded)
     return (
       <main className="unavailable">
         <h1>The menu is taking a moment.</h1>
         <p>Please refresh in a little while.</p>
       </main>
     );
-  }
+  if (loaded === "unpublished")
+    return (
+      <main className="unavailable">
+        <h1>This menu isn’t available right now.</h1>
+        <p>Please check with the restaurant for their latest menu.</p>
+      </main>
+    );
+  if (loaded === "unknown")
+    return (
+      <main className="unavailable">
+        <h1>This menu isn’t available right now.</h1>
+        <a href={`/m/${slug}`}>View the current menu</a>
+      </main>
+    );
+  return <MenuView menu={loaded} slug={slug} serverNow={loaded.serverNow} />;
+}
+// Loading stays apart from rendering so a failed lookup shows the retry
+// message; a missing published menu resolves to null and shows it too.
+async function loadMenu(slug: string, requested?: string) {
+  const r = await one(
+    "SELECT * FROM restaurants WHERE slug=? AND published IS NOT NULL",
+    slug,
+  );
+  if (!r) return "unpublished" as const;
+  const selected = requested
+    ? await publicDocumentSnapshot(r.id, requested)
+    : null;
+  if (requested && !selected) return "unknown" as const;
+  return publicMenu(
+    selected ? { ...r, published: JSON.stringify(selected) } : r,
+  );
 }

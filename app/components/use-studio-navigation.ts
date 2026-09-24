@@ -1,5 +1,5 @@
 "use client";
-import { useEffect, useRef } from "react";
+import { useEffect, useEffectEvent, useRef } from "react";
 
 // Browser Back leaves the top sheet/detail without discarding the photo draft.
 // Only small navigation markers go in history; photos and recipes stay private.
@@ -8,9 +8,8 @@ export function useStudioNavigation(
   restore: (stack: string[]) => void,
 ) {
   const session = useRef(""),
-    current = useRef<string[]>([]),
-    restoreRef = useRef(restore);
-  restoreRef.current = restore;
+    current = useRef<string[]>([]);
+  const onRestore = useEffectEvent(restore);
   const key = JSON.stringify(stack);
   useEffect(() => {
     session.current ||= crypto.randomUUID();
@@ -18,7 +17,7 @@ export function useStudioNavigation(
       const marker = event.state?.photoStudioOverlay;
       const next = marker?.session === session.current ? marker.stack : [];
       current.current = next;
-      restoreRef.current(next);
+      onRestore(next);
     };
     window.addEventListener("popstate", pop);
     return () => window.removeEventListener("popstate", pop);

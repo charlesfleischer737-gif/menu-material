@@ -544,7 +544,7 @@ export async function provider(
         ? "The image service is busy. Please retry shortly."
         : "The image service could not complete this request.",
     );
-    (error as any).providerRejected = res.status >= 400 && res.status < 500;
+    error.providerRejected = res.status >= 400 && res.status < 500;
     throw error;
   }
   const result = (await res.json()) as Row;
@@ -930,7 +930,7 @@ export async function tick(restaurantId?: string) {
       if (
         e instanceof AppError &&
         [423, 429].includes(e.status) &&
-        !(e as any).providerRejected &&
+        !e.providerRejected &&
         !current?.response_id
       ) {
         await run(
@@ -943,7 +943,9 @@ export async function tick(restaurantId?: string) {
         return;
       }
       const definitive =
-        ((e as any).providerRejected && !current?.response_id) ||
+        (e instanceof AppError &&
+          e.providerRejected &&
+          !current?.response_id) ||
         (e instanceof AppError && e.status === 404 && !!current?.response_id);
       const preSubmit = current?.status === "queued";
       if (definitive || preSubmit)

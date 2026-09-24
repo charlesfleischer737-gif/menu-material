@@ -1,4 +1,5 @@
 import { photoStyles } from "./photo-styles";
+import type { Row } from "./client";
 
 export const brandTypefaces = [
   {
@@ -136,13 +137,13 @@ export function readableBrandInk(color: string) {
     values[0] * 0.2126 + values[1] * 0.7152 + values[2] * 0.0722;
   return luminance > 0.179 ? "#000000" : "#ffffff";
 }
-export function brandTypeface(style: Record<string, any> = {}) {
+export function brandTypeface(style: Row = {}) {
   return (
     brandTypefaces.find((font) => font.id === style.typography) ||
     brandTypefaces[0]
   );
 }
-export function restaurantPhotoDefaults(restaurant: Record<string, any>) {
+export function restaurantPhotoDefaults(restaurant: Row) {
   const style = restaurant.style || {};
   if (!style.autoApply) return {};
   return {
@@ -173,11 +174,11 @@ const photoSelectionKeys = [
 ] as const;
 
 export function restaurantPhotoSelection(
-  draft: Record<string, any>,
-  restaurant: Record<string, any>,
+  draft: Row,
+  restaurant: Row,
   enabled: boolean,
 ) {
-  const selection = (value: Record<string, any>) =>
+  const selection = (value: Row) =>
     Object.fromEntries(
       photoSelectionKeys
         .filter((key) => value[key] !== undefined)
@@ -217,7 +218,7 @@ export function restaurantPhotoSelection(
     previousPhotoStyle: null,
   };
 }
-export function brandPostFields(style: Record<string, any> = {}) {
+export function brandPostFields(style: Row = {}) {
   return {
     color: style.primary || "#202820",
     accent: style.accent || "#f0e3c3",
@@ -226,7 +227,7 @@ export function brandPostFields(style: Record<string, any> = {}) {
   };
 }
 // Public menu data never needs the private photographic prompt or reference IDs.
-export function publicBrandStyle(style: Record<string, any> = {}) {
+export function publicBrandStyle(style: Row = {}) {
   return {
     primary: /^#[0-9a-f]{6}$/i.test(style.primary) ? style.primary : "#202820",
     accent: /^#[0-9a-f]{6}$/i.test(style.accent) ? style.accent : "#f0e3c3",

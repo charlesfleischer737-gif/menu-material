@@ -6,9 +6,12 @@ import {
   scryptSync,
   timingSafeEqual,
 } from "node:crypto";
+// eslint-disable-next-line @typescript-eslint/no-explicit-any -- rows and drafts are loosely shaped JSON from SQL and the API
 export type Row = Record<string, any>;
 export function config(key: string, fallback = "") {
-  return String((env as any)[key] ?? process.env[key] ?? fallback);
+  return String(
+    (env as Record<string, unknown>)[key] ?? process.env[key] ?? fallback,
+  );
 }
 export function db() {
   if (!env.DB)
@@ -39,6 +42,8 @@ export function checkPassword(p: string, hash: string) {
   return expected.length === actual.length && timingSafeEqual(expected, actual);
 }
 export class AppError extends Error {
+  // Set when the image provider itself rejected the request (a 4xx).
+  declare providerRejected?: boolean;
   constructor(
     public status: number,
     message: string,
@@ -46,16 +51,23 @@ export class AppError extends Error {
     super(message);
   }
 }
-export function assert(ok: any, status: number, message: string): asserts ok {
+export function assert(
+  ok: unknown,
+  status: number,
+  message: string,
+): asserts ok {
   if (!ok) throw new AppError(status, message);
 }
-export async function one(sql: string, ...args: any[]): Promise<Row | null> {
+export async function one(
+  sql: string,
+  ...args: unknown[]
+): Promise<Row | null> {
   return db()
     .prepare(sql)
     .bind(...args)
     .first<Row>();
 }
-export async function all(sql: string, ...args: any[]): Promise<Row[]> {
+export async function all(sql: string, ...args: unknown[]): Promise<Row[]> {
   return (
     await db()
       .prepare(sql)
@@ -63,7 +75,7 @@ export async function all(sql: string, ...args: any[]): Promise<Row[]> {
       .all<Row>()
   ).results;
 }
-export async function run(sql: string, ...args: any[]) {
+export async function run(sql: string, ...args: unknown[]) {
   return db()
     .prepare(sql)
     .bind(...args)

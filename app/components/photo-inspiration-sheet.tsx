@@ -38,10 +38,12 @@ export function PhotoInspirationSheet({
   onBusyChange?: (busy: boolean) => void;
 }) {
   const [selection, setSelection] = useState<InspirationSelection | null>(
-    current ? { kind: "existing", photo: current } : null,
+    open && current ? { kind: "existing", photo: current } : null,
   );
-  const [preview, setPreview] = useState(current?.url || "");
+  const [preview, setPreview] = useState(open ? current?.url || "" : "");
   const [busy, setBusy] = useState("");
+  const [applying, setApplying] = useState(false);
+  const [wasOpen, setWasOpen] = useState(open);
   const [error, setError] = useState("");
   const [previewStatus, setPreviewStatus] = useState("loading");
   const [sourceFailed, setSourceFailed] = useState(false);
@@ -51,31 +53,32 @@ export function PhotoInspirationSheet({
     fileSequence = useRef(0);
   const ownedUrl = useRef(""),
     locked = useRef(false);
-  const initial = useRef(current);
-  initial.current = current;
+  // Each opening starts from the draft's current inspiration. Closing
+  // releases the temporary selection; guest drafts keep their applied copy.
+  if (open !== wasOpen) {
+    setWasOpen(open);
+    if (open) {
+      setApplying(false);
+      setBusy("");
+      setError("");
+      setSourceFailed(false);
+      setSelection(current ? { kind: "existing", photo: current } : null);
+      setPreview(current?.url || "");
+      setPreviewStatus("loading");
+    } else {
+      setSelection(null);
+      setPreview("");
+    }
+  }
   function releasePreview() {
     if (ownedUrl.current) URL.revokeObjectURL(ownedUrl.current);
     ownedUrl.current = "";
   }
   useLayoutEffect(() => {
-    if (!open) {
-      // Closing releases the temporary binary selection as well as its URL.
-      // Guest drafts retain their own explicitly applied copy.
-      setSelection(null);
-      setPreview("");
-      return;
-    }
+    if (!open) return;
     const sessionController = new AbortController();
     controller.current = sessionController;
     locked.current = false;
-    setBusy("");
-    setError("");
-    setSourceFailed(false);
-    setSelection(
-      initial.current ? { kind: "existing", photo: initial.current } : null,
-    );
-    setPreview(initial.current?.url || "");
-    setPreviewStatus("loading");
     return () => {
       sessionController.abort();
       fileSequence.current++;
@@ -127,6 +130,7 @@ export function PhotoInspirationSheet({
     const signal = controller.current?.signal;
     if (!signal || signal.aborted) return;
     locked.current = true;
+    setApplying(true);
     setBusy(remove ? "Removing inspiration…" : "Saving inspiration…");
     setError("");
     try {
@@ -141,6 +145,7 @@ export function PhotoInspirationSheet({
     } finally {
       if (controller.current?.signal === signal) {
         locked.current = false;
+        setApplying(false);
         if (!signal.aborted) setBusy("");
       }
     }
@@ -179,7 +184,7 @@ export function PhotoInspirationSheet({
           <button
             className="ps2-icon-button"
             aria-label="Cancel inspiration"
-            disabled={locked.current}
+            disabled={applying}
             onClick={() => onOpenChange(false)}
           >
             <X size={20} />
@@ -330,7 +335,7 @@ export function PhotoInspirationSheet({
         <footer className="ps2-dialog-footer">
           <button
             className="cx-link"
-            disabled={locked.current}
+            disabled={applying}
             onClick={() => onOpenChange(false)}
           >
             Cancel

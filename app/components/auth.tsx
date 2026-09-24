@@ -15,6 +15,19 @@ import {
 } from "@/components/ui/collapsible";
 import { api } from "@/lib/client";
 import Brand from "./brand";
+// An invitation link opens sign-up with its details filled in.
+function readInvitation() {
+  if (typeof location === "undefined") return null;
+  const query = new URLSearchParams(location.search);
+  const invite = query.get("invite");
+  return invite
+    ? {
+        invite,
+        email: query.get("email") || "",
+        reset: query.get("reset") === "1",
+      }
+    : null;
+}
 export default function Auth({
   open,
   setOpen,
@@ -32,31 +45,30 @@ export default function Auth({
   initialMode?: "login" | "signup";
   billingEnabled?: boolean;
 }) {
-  const [mode, setMode] = useState("login"),
-    [email, setEmail] = useState(""),
+  const [invitation] = useState(readInvitation);
+  const [mode, setMode] = useState(invitation ? "signup" : "login"),
+    [email, setEmail] = useState(invitation?.email || ""),
     [password, setPassword] = useState(""),
-    [invite, setInvite] = useState(""),
+    [invite, setInvite] = useState(invitation?.invite || ""),
     [restaurant, setRestaurant] = useState(""),
     [error, setError] = useState(""),
     [busy, setBusy] = useState(false),
     [website, setWebsite] = useState(""),
-    [resetting, setResetting] = useState(false);
-  useEffect(() => {
-    if (open && !new URLSearchParams(location.search).get("invite")) {
+    [resetting, setResetting] = useState(!!invitation?.reset),
+    [openedAs, setOpenedAs] = useState<string | null>(null);
+  // Each opening starts in the requested mode, unless the page still carries
+  // an invitation link. Opening only happens in the browser.
+  const opening = open ? initialMode : null;
+  if (opening !== openedAs) {
+    setOpenedAs(opening);
+    if (open && !readInvitation()) {
       setMode(initialMode);
       setError("");
     }
-  }, [open, initialMode]);
+  }
   useEffect(() => {
-    const q = new URLSearchParams(location.search);
-    if (q.get("invite")) {
-      setMode("signup");
-      setResetting(q.get("reset") === "1");
-      setInvite(q.get("invite")!);
-      setEmail(q.get("email") || "");
-      setOpen(true);
-    }
-  }, [setOpen]);
+    if (invitation) setOpen(true);
+  }, [invitation, setOpen]);
   async function submit(e: React.FormEvent) {
     e.preventDefault();
     if (busy) return;
