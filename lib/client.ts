@@ -1,3 +1,4 @@
+import { publishWorkerHealth } from "./worker-health";
 export type Row = Record<string, any>;
 export async function api(
   path: string,
@@ -37,6 +38,7 @@ export async function api(
     throw Error(
       "The service returned an incomplete response. Please try again.",
     );
+  if (path === "state") publishWorkerHealth(data.workerHealthy === true);
   return data;
 }
 export async function normalizePhoto(file: File): Promise<Blob> {
