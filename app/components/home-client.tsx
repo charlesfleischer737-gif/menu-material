@@ -148,6 +148,15 @@ export default function HomeClient({ hasSession }: { hasSession: boolean }) {
         })
         .catch(() => {});
     }
+    // Log in links (/?login) work before JavaScript loads and from the
+    // information pages.
+    if (loaded && new URLSearchParams(location.search).has("login")) {
+      if (!state.user) {
+        setAuthMode("login");
+        setAuth(true);
+      }
+      forgetParam("login");
+    }
     if (loaded && new URLSearchParams(location.search).has("upgrade")) {
       if (state.user) {
         setPlans(true);

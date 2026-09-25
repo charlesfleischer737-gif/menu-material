@@ -1,6 +1,7 @@
 import type { ReactNode } from "react";
 import Link from "next/link";
 import { Button } from "@/components/ui/button";
+import PublicMenu from "./public-menu";
 import { SiteFooter, SiteHeader } from "./site-chrome";
 export default function PublicInformation({
   title,
@@ -24,9 +25,19 @@ export default function PublicInformation({
       <SiteHeader>
         <nav className="pw-nav" aria-label="Main navigation">
           <a href="/pricing">Pricing</a>
+          {/* The homepage opens sign-in for /?login. */}
+          <Link className="pw-login" href="/?login">
+            Log in
+          </Link>
           <Button className="pw-header-cta" asChild>
-            <Link href="/">Try it free</Link>
+            <Link href="/#studio">Try it free</Link>
           </Button>
+          <PublicMenu
+            links={[
+              { href: "/pricing", label: "Pricing" },
+              { href: "/?login", label: "Log in" },
+            ]}
+          />
         </nav>
       </SiteHeader>
       <main id="main" className="pw-information">
