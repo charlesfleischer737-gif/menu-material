@@ -129,10 +129,17 @@
   max-width: 1600px;
   margin: auto;
 }
-/* The header is frosted stone over the canvas and lines up with the studio
-   column below it. */
+/* The header is frosted stone over the canvas, with ink links, and lines up
+   with the studio column below it. */
 .cx-guest .pw-header {
   background: var(--canvas-glass);
+  box-shadow: 0 1px 0 rgb(0 0 0 / 6%);
+}
+.cx-guest .pw-nav > :is(a, .pw-login) {
+  color: rgb(29 29 31 / 80%);
+}
+.cx-guest .pw-nav > :is(a, .pw-login):hover {
+  color: var(--workspace-ink);
 }
 .cx-guest .pw-header-inner {
   max-width: 1220px;
