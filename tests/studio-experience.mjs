@@ -588,6 +588,19 @@ try {
     originalJob.id,
   );
   await updateJob(originalJob.id);
+  // Each photo arrives with its own history, so the page never depends on
+  // the recent-requests list to tell a real DoorDash photo from an
+  // illustration.
+  const withHistory = (await call("state")).assets.find(
+    (entry) => entry.id === resultAsset,
+  );
+  assert.equal(withHistory.from_photo, true);
+  assert.equal(withHistory.photo_format, "doordash");
+  assert.equal(withHistory.look_id, "delivery-takeout");
+  assert.equal(
+    (await call("state")).assets.find((entry) => entry.id === asset.id).look_id,
+    "keep",
+  );
   await run(
     "UPDATE restaurants SET allowance=2 WHERE id=?",
     correctionState.restaurant.id,

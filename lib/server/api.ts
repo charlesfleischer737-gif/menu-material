@@ -789,6 +789,21 @@ export async function handle(req: Request) {
           aiConnected: !!config("OPENAI_API_KEY"),
         });
       const { r } = await owner(req);
+      // Each photo's history (from a real photo? which size and look?) comes
+      // from its whole lineage, removed originals included, rather than the
+      // recent requests listed below.
+      const { photoHistories } = await import("../photo-destinations");
+      const histories = photoHistories(
+        await all("SELECT id,kind FROM assets WHERE restaurant_id=?", r.id),
+        await all(
+          "SELECT e.asset_id,e.parent_id,e.source_id,e.edits FROM asset_edits e JOIN assets a ON a.id=e.asset_id WHERE a.restaurant_id=?",
+          r.id,
+        ),
+        await all(
+          "SELECT o.asset_id,j.source_id,json_extract(j.details,'$.controls.format') AS format,json_extract(j.details,'$.lookContext.presetId') AS preset_id,json_extract(j.details,'$.style.photoStyle') AS photo_style FROM outputs o JOIN jobs j ON j.id=o.job_id WHERE o.restaurant_id=? AND o.asset_id IS NOT NULL",
+          r.id,
+        ),
+      );
       return response({
         user: u,
         studioAvailability: await studioAvailability(r.id),
@@ -810,10 +825,20 @@ export async function handle(req: Request) {
             r.id,
           )
         ).map((d) => ({ ...d, dietary: normalizeDietary(d.dietary) })),
-        assets: await all(
-          "SELECT id,dish_id,kind,mime,name,approved_at,needs_correction,created_at FROM assets WHERE restaurant_id=? AND deleted_at IS NULL ORDER BY created_at DESC",
-          r.id,
-        ),
+        assets: (
+          await all(
+            "SELECT id,dish_id,kind,mime,name,approved_at,needs_correction,created_at FROM assets WHERE restaurant_id=? AND deleted_at IS NULL ORDER BY created_at DESC",
+            r.id,
+          )
+        ).map((asset) => {
+          const history = histories.get(asset.id);
+          return {
+            ...asset,
+            from_photo: !!history?.fromPhoto,
+            photo_format: history?.format || "menu",
+            look_id: history?.lookId || "",
+          };
+        }),
         assetEdits: await all(
           "SELECT e.* FROM asset_edits e JOIN assets a ON a.id=e.asset_id WHERE a.restaurant_id=? AND a.deleted_at IS NULL",
           r.id,
