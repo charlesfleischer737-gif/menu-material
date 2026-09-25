@@ -28,6 +28,7 @@ import {
 } from "./core";
 import { enqueue, provider } from "./generation";
 import { localTime, localToInstant, defaultStyle } from "../promotions";
+import { menuPlacementIds } from "../menu-placements";
 const importRows = z
   .array(
     z.object({
@@ -717,9 +718,18 @@ export async function publicEvent(
   if (p[2] !== "events" || req.method !== "POST") return null;
   const b = z
     .object({
-      kind: z.enum(["menu_visit", "dish_view", "ordering_click"]),
+      kind: z.enum([
+        "menu_visit",
+        "dish_view",
+        "ordering_click",
+        "call_click",
+        "directions_click",
+        "reserve_click",
+      ]),
       entityId: z.string().uuid().optional(),
       session: z.string().uuid(),
+      // Where a guest found the menu: the QR code's placement or a link.
+      src: z.enum(menuPlacementIds).optional(),
     })
     .parse(await body(req));
   const dishes = menu.sections
@@ -731,20 +741,32 @@ export async function publicEvent(
   if (b.kind === "dish_view")
     assert(dishes.includes(b.entityId), 404, "Dish not found.");
   if (b.kind === "ordering_click")
-    assert(menu.restaurant.orderingUrl, 400, "No ordering link.");
+    assert(
+      menu.contact?.orderingUrl || menu.restaurant.orderingUrl,
+      400,
+      "No ordering link.",
+    );
+  if (b.kind === "call_click") assert(menu.contact?.phone, 400, "No phone.");
+  if (b.kind === "directions_click")
+    assert(menu.contact?.address, 400, "No address.");
+  if (b.kind === "reserve_click")
+    assert(menu.contact?.reservationUrl, 400, "No reservation link.");
   await limit(
     "public-event:" + r.id + ":" + req.headers.get("cf-connecting-ip"),
     300,
     3600,
   );
-  const eid = digest([r.id, b.kind, b.entityId || "", b.session].join(":"));
+  const menuId = menu.documentId || null;
+  const eid = digest(
+    [r.id, b.kind, b.entityId || "", b.session, menuId || ""].join(":"),
+  );
   await run(
     "INSERT OR IGNORE INTO events (id,restaurant_id,kind,entity_id,details,created_at) VALUES (?,?,?,?,?,?)",
     eid,
     r.id,
     b.kind,
     b.entityId || null,
-    "{}",
+    JSON.stringify({ menu: menuId, src: b.src || null }),
     now(),
   );
   return response({ ok: true });

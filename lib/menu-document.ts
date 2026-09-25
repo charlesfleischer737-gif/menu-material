@@ -1,5 +1,7 @@
 import { z } from "zod";
 import type { Row } from "./client";
+import { normalizeDietary } from "./dietary";
+import type { MenuContact } from "./restaurant-contact";
 
 const menuDesignIds = [
   "bistro",
@@ -29,12 +31,46 @@ export const menuPurposeIds = [
 export const menuPurposeLabel = (purpose: string) =>
   (
     ({
+      cafe: "Café",
       food_truck: "Food truck / counter service",
       bar: "Dive bar & beer",
       cocktails: "Cocktail bar",
       smoothies: "Smoothies & juice",
     }) as Record<string, string>
   )[purpose] || purpose.charAt(0).toUpperCase() + purpose.slice(1);
+type MenuPurpose = (typeof menuPurposeIds)[number];
+const purposeDefaults: Record<MenuPurpose, { name: string; title: string }> = {
+  dinner: { name: "Dinner menu", title: "Dinner" },
+  lunch: { name: "Lunch menu", title: "Lunch" },
+  brunch: { name: "Brunch menu", title: "Brunch" },
+  cafe: { name: "Café menu", title: "Menu" },
+  drinks: { name: "Drinks menu", title: "Drinks" },
+  specials: { name: "Specials menu", title: "Specials" },
+  tasting: { name: "Tasting menu", title: "Tasting menu" },
+  food_truck: { name: "Food truck menu", title: "Menu" },
+  bar: { name: "Bar menu", title: "Drinks" },
+  cocktails: { name: "Cocktail menu", title: "Cocktails" },
+  smoothies: { name: "Smoothie menu", title: "Smoothies & juice" },
+};
+/** The saved name and printed title a new menu of this type starts with. */
+export const menuPurposeDefaults = (purpose: MenuPurpose) =>
+  purposeDefaults[purpose] || purposeDefaults.dinner;
+/**
+ * Change a menu's type, renaming it only where the owner kept the previous
+ * type's default name or title.
+ */
+export function menuPurposePatch(
+  menu: Pick<MenuDocument, "purpose" | "name" | "title">,
+  purpose: MenuPurpose,
+): Partial<MenuDocument> {
+  const before = menuPurposeDefaults(menu.purpose),
+    after = menuPurposeDefaults(purpose);
+  return {
+    purpose,
+    ...(menu.title === before.title ? { title: after.title } : {}),
+    ...(menu.name === before.name ? { name: after.name } : {}),
+  };
+}
 const shortText = z.string().trim().max(120);
 const price = z.number().int().min(0).max(100000000);
 const priceOption = z.object({
@@ -54,7 +90,7 @@ const menuEntrySchema = z.object({
   priceLabel: z.string().max(60).default(""),
   variants: z.array(priceOption).max(12).default([]),
   additions: z.array(priceOption).max(12).default([]),
-  dietary: z.array(z.string().trim().max(40)).max(8).default([]),
+  dietary: z.array(z.string().trim().max(40)).max(16).default([]),
   available: z.boolean().default(true),
   visible: z.boolean().default(true),
   photoId: z.string().uuid().nullable().default(null),
@@ -69,10 +105,20 @@ const menuEntrySchema = z.object({
     .default({}),
   sourceReviewed: z.boolean().default(true),
   sourceUncertain: z
-    .array(z.enum(["name", "description", "category", "price"]))
-    .max(4)
+    .array(
+      z.enum(["name", "description", "category", "price", "sizes", "addons"]),
+    )
+    .max(6)
     .default([]),
 });
+const uncertainLabels: Record<string, string> = {
+  category: "section",
+  sizes: "size names",
+  addons: "add-ons",
+};
+/** Plain words for the details an import was unsure about. */
+export const uncertainFields = (fields: string[]) =>
+  fields.map((field) => uncertainLabels[field] || field).join(", ");
 const menuSectionSchema = z.object({
   id: z.string().min(1).max(100),
   name: shortText,
@@ -141,6 +187,8 @@ export type DesignedMenu = MenuDocument & {
   restaurant: MenuRestaurant;
   qrUrl?: string;
   documentId?: string;
+  /** Live contact details, shown on the guest menu (never printed). */
+  contact?: MenuContact;
 };
 
 export function newMenuDocument(
@@ -264,6 +312,8 @@ export function upgradeMenuDocument(
           ...d,
           ...i,
           id: crypto.randomUUID(),
+          // Dish rows keep tags as JSON text.
+          dietary: normalizeDietary(i.dietary ?? d?.dietary),
           dishId: d?.id || i.dishId || null,
           name: i.name ?? d?.name ?? "",
           price: i.price ?? d?.price ?? null,

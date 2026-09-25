@@ -385,6 +385,105 @@
   }
 }
 
+/* ---------- Choice chips ---------- */
+/* Several independent choices, such as a dish's dietary tags: a hairline pill
+   that fills with the action color when chosen, like Explore's filters. */
+.ui-chips {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+}
+.ui-chips > button {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  min-height: 40px;
+  margin: 0;
+  padding: 0 14px;
+  border: 0;
+  border-radius: var(--radius-pill);
+  background: var(--workspace-surface);
+  box-shadow: inset 0 0 0 1px var(--workspace-line);
+  color: var(--workspace-ink);
+  font-family: var(--font-ui);
+  font-size: var(--text-footnote);
+  font-weight: 500;
+  line-height: 1.2;
+  white-space: nowrap;
+  cursor: pointer;
+  transition:
+    background-color var(--duration-fast) var(--ease),
+    box-shadow var(--duration-fast) var(--ease),
+    color var(--duration-fast) var(--ease);
+}
+.ui-chips > button:not(:disabled, [aria-pressed="true"]):hover {
+  box-shadow: inset 0 0 0 1px var(--gray-400);
+}
+.ui-chips > button[aria-pressed="true"] {
+  background: var(--workspace-action);
+  box-shadow: none;
+  color: var(--workspace-surface);
+}
+.ui-chips > button:focus-visible {
+  outline: 2px solid var(--workspace-focus);
+  outline-offset: 2px;
+}
+.ui-chips > button:disabled {
+  color: var(--gray-500);
+  cursor: not-allowed;
+}
+@media (pointer: coarse) {
+  .ui-chips > button {
+    min-height: 44px;
+  }
+}
+
+/* Dietary and allergen tags for a dish (Menus inspector and My Dishes). */
+.ui-dietary {
+  display: grid;
+  gap: 16px;
+}
+.ui-dietary fieldset {
+  display: grid;
+  gap: 8px;
+  min-width: 0;
+  margin: 0;
+  padding: 0;
+  border: 0;
+}
+.ui-dietary legend,
+.ui-dietary-note > span {
+  padding: 0;
+  margin-bottom: 8px;
+  color: var(--workspace-muted);
+  font-size: var(--text-caption);
+  font-weight: 650;
+}
+.ui-dietary details > summary {
+  min-height: 32px;
+  color: var(--workspace-muted);
+  font-size: var(--text-footnote);
+  font-weight: 500;
+}
+.ui-dietary details[open] > summary {
+  margin-bottom: 8px;
+}
+.ui-dietary-note {
+  display: grid;
+  min-width: 0;
+}
+.ui-dietary-note > span {
+  margin-bottom: 6px;
+}
+.ui-dietary-note input {
+  width: 100%;
+}
+.ui-dietary > small {
+  color: var(--workspace-muted);
+  font-size: var(--text-caption);
+  line-height: 1.5;
+}
+
 /* ---------- Underline tabs ---------- */
 /* Views within one screen. Choosing a mode uses the segmented control. */
 :is(.workspace-tab-list, .mm-tool-tabs) > [data-slot="tabs-trigger"] {

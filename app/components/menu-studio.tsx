@@ -3,6 +3,7 @@ import WorkspaceTabs from "./workspace-tabs";
 import { useEffect, useEffectEvent, useRef, useState } from "react";
 import {
   BookOpen,
+  Camera,
   Check,
   ChevronDown,
   Download,
@@ -22,10 +23,13 @@ import {
   Undo2,
   Upload,
   X,
+  Zap,
 } from "lucide-react";
 import { api, dishCount, downloadBlob, type Row } from "@/lib/client";
 import {
   entryPrice,
+  menuPurposeDefaults,
+  menuPurposePatch,
   newMenuDocument,
   newMenuEntry,
   type DesignedMenu,
@@ -33,12 +37,25 @@ import {
   type MenuEntry,
   type MenuSection,
 } from "@/lib/menu-document";
-import { menuDesignCollection, menuDesignSpec } from "@/lib/menu-design-system";
-import { blockingChecks, menuPublishChecks } from "@/lib/menu-checks";
+import {
+  menuDesignCollection,
+  menuDesignSpec,
+  recommendMenuDesigns,
+} from "@/lib/menu-design-system";
+import {
+  attachAddonToDishAbove,
+  blockingChecks,
+  menuPublishChecks,
+} from "@/lib/menu-checks";
+import { addonLabel, inferMenuPurpose, isAddonName } from "@/lib/menu-paste";
+import { normalizeDietary } from "@/lib/dietary";
+import type { MenuContact } from "@/lib/restaurant-contact";
 import type { MenuPdfResult } from "@/lib/menu-pdf-v2";
 import { useMenuDocument, type SavedMenu } from "./use-menu-document";
 import MenuProof from "./menu-proof";
 import MenuDocumentView from "./menu-document-view";
+import MenuStats, { MenuStatsSummary, useMenuStats } from "./menu-stats";
+import MenuQuickUpdate, { type QuickChange } from "./menu-quick-update";
 import WorkspaceActionBar from "./workspace-action-bar";
 import {
   DropdownMenu,
@@ -95,6 +112,11 @@ export default function MenuStudio({
     [archivedMenus, setArchivedMenus] = useState<SavedMenu[]>([]),
     [newName, setNewName] = useState(""),
     [query, setQuery] = useState("");
+  const linking = useRef(false);
+  const [statsOpen, setStatsOpen] = useState(false);
+  const stats = useMenuStats(
+    `${record?.publishedAt || 0}:${store.menus.filter((m) => m.published).length}`,
+  );
   const seedHandled = useRef(""),
     inspectorRef = useRef<HTMLElement>(null),
     actionLock = useRef(false),
@@ -107,6 +129,15 @@ export default function MenuStudio({
       orderingUrl: state.restaurant.ordering_url,
     },
     menu: DesignedMenu = { ...draft, restaurant, documentId: record?.id };
+  // Guests see the restaurant's live contact details; the phone preview does too.
+  const contact: MenuContact = {
+    address: state.restaurant.address || "",
+    phone: state.restaurant.phone || "",
+    reservationUrl: state.restaurant.reservation_url || "",
+    orderingUrl: state.restaurant.ordering_url || "",
+    hours: state.restaurant.hours || [],
+    timezone: state.restaurant.timezone,
+  };
   const items = draft.sections.flatMap((s) => s.items),
     item = items.find((i) => i.id === selected),
     section = draft.sections.find(
@@ -121,6 +152,16 @@ export default function MenuStudio({
     }),
     issues = blockingChecks(checks),
     spec = menuDesignSpec(draft.design);
+  // Dishes guests would see without a photo, where My Dishes has none either.
+  const photographed = new Set(
+      (state.assets as Row[])
+        .filter((a) => a.dish_id && a.approved_at)
+        .map((a) => a.dish_id as string),
+    ),
+    needPhotos = items.filter(
+      (i) =>
+        i.visible && !i.photoId && !(i.dishId && photographed.has(i.dishId)),
+    );
   function tell(message: string) {
     setNotice(message);
     if (noticeTimer.current) clearTimeout(noticeTimer.current);
@@ -234,12 +275,23 @@ export default function MenuStudio({
     const added = sections.flatMap((s) => s.items),
       withPhotos = added.filter((i) => i.photoId).length,
       needsLook = added.filter((i) => !i.sourceReviewed).length;
+    // A new menu takes its type from its sections: breakfast, pastries and
+    // coffee make a café menu, not "Dinner".
+    const inferred =
+      !items.length && draft.purpose === "dinner"
+        ? inferMenuPurpose(sections.map((s) => s.name))
+        : null;
+    const typed =
+      inferred && inferred !== draft.purpose
+        ? menuPurposePatch(draft, inferred)
+        : null;
     change((before) => {
       const hadPhotos = before.sections.some((s) =>
         s.items.some((i) => i.photoId),
       );
-      return {
+      const next: MenuDocument = {
         ...before,
+        ...typed,
         importSourceId: importId || before.importSourceId,
         importSourceText: originalText ?? before.importSourceText,
         // Show the dishes' approved photos when they're the menu's first ones.
@@ -249,14 +301,22 @@ export default function MenuStudio({
             : before.layout,
         sections: [...before.sections, ...sections],
       };
+      // An untouched new menu starts in the design that best fits its type.
+      if (typed && before.design === "bistro")
+        next.design = recommendMenuDesigns(next)[0]?.id ?? before.design;
+      return next;
     });
     setDialog("");
     select(sections[0]?.items[0]?.id || "");
+    void linkToLibrary();
     tell(
       [
         `${dishCount(added.length)} added.`,
         withPhotos
           ? `${withPhotos === added.length ? "Their" : withPhotos} photos are on the menu.`
+          : "",
+        typed
+          ? `Set up as a ${menuPurposeDefaults(inferred!).name.toLowerCase()}; change the type in Details.`
           : "",
         needsLook
           ? `${needsLook} ${needsLook === 1 ? "needs" : "need"} a closer look before publishing.`
@@ -265,6 +325,90 @@ export default function MenuStudio({
         .filter(Boolean)
         .join(" "),
     );
+  }
+  function attachAddon(entryId: string) {
+    const entry = items.find((i) => i.id === entryId),
+      owner = draft.sections.find((s) => s.items.some((i) => i.id === entryId));
+    const above =
+      owner?.items[owner.items.findIndex((i) => i.id === entryId) - 1];
+    if (!entry || !above) return;
+    const label = addonLabel(entry.name);
+    change((before) => attachAddonToDishAbove(before, entryId, label));
+    if (selected === entryId) select(above.id);
+    tell(
+      `${label} is now an add-on for ${above.name}. Use Undo to reverse it.`,
+    );
+  }
+  function applyPurpose(purpose: MenuDocument["purpose"]) {
+    patch(menuPurposePatch(draft, purpose));
+    tell(
+      `Now a ${menuPurposeDefaults(purpose).name.toLowerCase()}. You can change the type in Details.`,
+    );
+  }
+  // Reviewed dishes join My Dishes, so they can have photos and follow dish
+  // edits. Links merge into the newest draft without an undo step.
+  async function linkToLibrary(ids?: string[]) {
+    const latest = store.latest(),
+      menuId = record?.id;
+    const entries = latest.sections.flatMap((s) =>
+      s.items
+        .filter(
+          (i) =>
+            !i.dishId &&
+            i.sourceReviewed &&
+            i.name.trim() &&
+            i.name.trim().length <= 100 &&
+            s.name.trim() &&
+            s.name.trim().length <= 100 &&
+            (!ids || ids.includes(i.id)),
+        )
+        .map((i) => ({
+          id: i.id,
+          name: i.name.trim(),
+          description: i.description,
+          category: s.name.trim(),
+          price: libraryPrice(i),
+          available: i.available,
+          dietary: i.dietary,
+        })),
+    );
+    if (!entries.length || !menuId || linking.current) return;
+    linking.current = true;
+    try {
+      const { links } = await api(`menus/${menuId}/library`, {
+        entries: entries.slice(0, 200),
+      });
+      store.change((before) => withLibraryLinks(before, links), false);
+      await refresh();
+    } catch (e) {
+      setError(
+        `Your dishes are on the menu, but they couldn’t be added to My Dishes. ${(e as Error).message}`,
+      );
+    } finally {
+      linking.current = false;
+    }
+  }
+  async function addPhotos() {
+    await act("Getting your dishes ready for photos", async () => {
+      await linkToLibrary();
+      const target = store
+        .latest()
+        .sections.flatMap((s) => s.items)
+        .find(
+          (i) =>
+            i.visible && !i.photoId && i.dishId && !photographed.has(i.dishId),
+        );
+      if (!target) {
+        tell(
+          items.some((i) => !i.sourceReviewed)
+            ? "Review your imported dishes first, then add their photos."
+            : "Every dish on this menu has a photo.",
+        );
+        return;
+      }
+      await store.saveNow();
+      onPhoto(target.dishId!);
+    });
   }
   function reorder<T>(values: T[], index: number, direction: number) {
     const next = [...values];
@@ -298,6 +442,7 @@ export default function MenuStudio({
             name: dish.name,
             description: dish.description,
             price: dish.price,
+            dietary: normalizeDietary(dish.dietary),
             photoId: seed.photoId || null,
             featured: !!seed.photoId,
             available: !!dish.available,
@@ -369,14 +514,18 @@ export default function MenuStudio({
     setHistory(result.history);
     setDialog("history");
   }
-  async function documentAction(action: string, extra: Row = {}) {
+  async function documentAction(
+    action: string,
+    extra: Row = {},
+    resetHistory = false,
+  ) {
     const latest = await store.flush();
     if (!latest) throw Error("The menu is still loading.");
     const result = await api(`menus/${latest.id}/${action}`, {
       revision: latest.revision,
       ...extra,
     });
-    if (result.draft) await store.accept(result as SavedMenu);
+    if (result.draft) await store.accept(result as SavedMenu, resetHistory);
     else if (action === "archive") {
       const rows = await store.refreshList();
       if (rows[0]) await store.select(rows[0].id);
@@ -385,6 +534,18 @@ export default function MenuStudio({
     } else await store.reload();
     await refresh();
     return result;
+  }
+  async function applyQuickUpdate(changes: QuickChange[], message: string) {
+    let confirmation: string | null = null;
+    await act("Updating your live menu", async () => {
+      // Live changes can't be undone from the editor, so its history resets.
+      const result = await documentAction("live", { changes }, true);
+      const others = (result.menus || []) as Row[];
+      confirmation = others.length
+        ? `${message} Also updated on ${others.map((m) => m.name).join(", ")}.`
+        : message;
+    });
+    return confirmation;
   }
   if (!record)
     return (
@@ -407,6 +568,11 @@ export default function MenuStudio({
         </div>
       </section>
     );
+  // Nothing new to publish: the live menu shows this draft.
+  const upToDate =
+    !!record.published &&
+    !store.hasUnsavedChanges &&
+    record.publishedRevision === record.revision;
   return (
     <MenuActionContext.Provider value={{ busy, error: error || store.error }}>
       <section
@@ -424,19 +590,32 @@ export default function MenuStudio({
               <h1>{draft.name || "Untitled menu"}</h1>
               <ChevronDown size={18} />
             </button>
-            <span className="md-save-status" role="status">
-              <i className={store.error ? "is-error" : ""} />
-              {store.status}
-              {record.published && (
-                <span>
-                  ·{" "}
-                  {!store.hasUnsavedChanges &&
-                  record.publishedRevision === record.revision
-                    ? "Published"
-                    : "Live menu has an older version"}
-                </span>
-              )}
-            </span>
+            <div className="md-status-row">
+              <span className="md-save-status" role="status">
+                {(!!items.length ||
+                  !!draft.sections.length ||
+                  !!record.published ||
+                  !!store.error) && (
+                  <>
+                    <i className={store.error ? "is-error" : ""} />
+                    {store.status}
+                  </>
+                )}
+                {record.published && (
+                  <span>
+                    ·{" "}
+                    {!store.hasUnsavedChanges &&
+                    record.publishedRevision === record.revision
+                      ? "Published"
+                      : "Live menu has an older version"}
+                  </span>
+                )}
+              </span>
+              <MenuStatsSummary
+                stats={stats}
+                onOpen={() => setStatsOpen(true)}
+              />
+            </div>
           </div>
           <WorkspaceActionBar className="md-header-actions">
             <DropdownMenu>
@@ -464,6 +643,12 @@ export default function MenuStudio({
                   onSelect={store.redo}
                 >
                   <Redo2 size={16} /> Redo change
+                </DropdownMenuItem>
+                <DropdownMenuItem
+                  disabled={!items.length || !!busy}
+                  onSelect={() => setDialog("export")}
+                >
+                  <Download size={16} /> Export PDF
                 </DropdownMenuItem>
                 {record.published && (
                   <>
@@ -497,6 +682,15 @@ export default function MenuStudio({
             </div>
             {record.published && (
               <button
+                className="md-button md-secondary md-quick-button"
+                disabled={!!busy}
+                onClick={() => setDialog("quick")}
+              >
+                <Zap size={16} /> Quick update
+              </button>
+            )}
+            {record.published && (
+              <button
                 className="md-button md-secondary md-share-button"
                 onClick={() => setDialog("share")}
               >
@@ -504,21 +698,40 @@ export default function MenuStudio({
               </button>
             )}
             <button
-              className="md-button md-secondary"
+              className="md-button md-secondary md-export-button"
               disabled={!items.length || !!busy}
               onClick={() => setDialog("export")}
             >
               <Download size={16} /> Export PDF
             </button>
             <button
-              className="md-button"
+              className={`md-button${upToDate ? " md-secondary" : ""}`}
               disabled={!items.length || !!busy}
+              title={
+                upToDate
+                  ? "Your live menu is up to date. Open to republish it."
+                  : undefined
+              }
               onClick={() => setDialog("publish")}
             >
-              {record.published ? "Publish changes" : "Publish menu"}
+              {upToDate ? (
+                <>
+                  <Check size={16} /> Published
+                </>
+              ) : record.published ? (
+                "Publish changes"
+              ) : (
+                "Publish menu"
+              )}
             </button>
           </WorkspaceActionBar>
         </header>
+        <MenuStats
+          stats={stats}
+          open={statsOpen}
+          setOpen={setStatsOpen}
+          onShare={record.published ? () => setDialog("share") : undefined}
+        />
         {(error || store.error) && (
           <div className="md-notice md-error" role="alert">
             <span>{error || store.error}</span>
@@ -572,7 +785,7 @@ export default function MenuStudio({
             aria-pressed={mobilePanel === "outline"}
             onClick={() => setMobilePanel("outline")}
           >
-            <List size={16} /> Dishes
+            <List size={16} /> On the menu
           </button>
           <button
             aria-pressed={mobilePanel === "preview"}
@@ -822,7 +1035,11 @@ export default function MenuStudio({
                 <div className="md-phone-stage">
                   <div className="md-phone-frame">
                     <div className="md-phone-speaker" />
-                    <MenuDocumentView menu={menu} preview onSelect={select} />
+                    <MenuDocumentView
+                      menu={{ ...menu, contact }}
+                      preview
+                      onSelect={select}
+                    />
                   </div>
                 </div>
               )}
@@ -847,6 +1064,18 @@ export default function MenuStudio({
                   <span>
                     <Check size={14} /> Content ready
                   </span>
+                )}
+                {needPhotos.length > 0 && (
+                  <button
+                    className="md-photo-prompt"
+                    disabled={!!busy}
+                    onClick={() => void addPhotos()}
+                  >
+                    <Camera size={14} aria-hidden="true" />
+                    {needPhotos.length}{" "}
+                    {needPhotos.length === 1 ? "dish has" : "dishes have"} no
+                    photo · Add photos
+                  </button>
                 )}
                 <span>
                   {proof
@@ -895,7 +1124,25 @@ export default function MenuStudio({
                     assets={state.assets || []}
                     menuId={record.id}
                     onLibrary={() => setDialog("dish-library")}
-                    change={(v) => editItem(item.id, v)}
+                    addonFor={
+                      isAddonName(item.name) && item.priceMode === "single"
+                        ? section.items[
+                            section.items.findIndex((i) => i.id === item.id) - 1
+                          ]?.name
+                        : undefined
+                    }
+                    attachAddon={() => attachAddon(item.id)}
+                    addToLibrary={() =>
+                      void act("Adding to My Dishes", () =>
+                        linkToLibrary([item.id]),
+                      )
+                    }
+                    change={(v) => {
+                      editItem(item.id, v);
+                      // A dish checked against the original joins My Dishes.
+                      if (v.sourceReviewed && !item.dishId)
+                        queueMicrotask(() => void linkToLibrary([item.id]));
+                    }}
                     onPhoto={() =>
                       void act("Saving menu", async () => {
                         await store.saveNow();
@@ -1023,7 +1270,10 @@ export default function MenuStudio({
           <MenuImportReview
             menu={draft}
             change={patch}
-            close={() => setDialog("")}
+            close={() => {
+              setDialog("");
+              void linkToLibrary();
+            }}
           />
         )}
         {dialog === "source" && (
@@ -1040,6 +1290,7 @@ export default function MenuStudio({
           <MenuDeliveryDialog
             mode={dialog}
             menu={menu}
+            contact={contact}
             record={record}
             checks={checks}
             restaurant={state.restaurant}
@@ -1057,6 +1308,8 @@ export default function MenuStudio({
                 })),
               }))
             }
+            attachAddon={attachAddon}
+            applyPurpose={applyPurpose}
             saveRestaurantName={async (name) => {
               await api("restaurant/name", { name });
               await refresh();
@@ -1072,6 +1325,14 @@ export default function MenuStudio({
               await store.saveNow();
             }}
             setProfile={(printProfile) => patch({ printProfile })}
+          />
+        )}
+        {dialog === "quick" && record.published && (
+          <MenuQuickUpdate
+            live={record.published}
+            busy={!!busy}
+            close={() => setDialog("")}
+            apply={applyQuickUpdate}
           />
         )}
         {dialog === "share" && (
@@ -1282,6 +1543,7 @@ export default function MenuStudio({
                           ? item.price / 100
                           : (existing?.price || 0) / 100,
                       available: item.available,
+                      dietary: item.dietary,
                       confirmed: true,
                     },
                   );
@@ -1440,6 +1702,50 @@ export default function MenuStudio({
   );
 }
 
+/** The single price My Dishes keeps for a menu dish ("from" for sizes). */
+function libraryPrice(item: MenuEntry) {
+  if (item.priceMode === "single") return item.price ?? 0;
+  if (item.priceMode === "variants" && item.variants.length)
+    return Math.min(...item.variants.map((v) => v.price));
+  return 0;
+}
+/** Menu dishes gain their My Dishes link, and any approved photo it has. */
+function withLibraryLinks(
+  menu: MenuDocument,
+  links: { entryId: string; dishId: string; photoId: string | null }[],
+): MenuDocument {
+  const byEntry = new Map(links.map((link) => [link.entryId, link]));
+  const hadPhotos = menu.sections.some((s) => s.items.some((i) => i.photoId));
+  let featured = menu.sections.reduce(
+      (n, s) => n + s.items.filter((i) => i.featured).length,
+      0,
+    ),
+    added = 0;
+  const sections = menu.sections.map((s) => ({
+    ...s,
+    items: s.items.map((i) => {
+      const link = byEntry.get(i.id);
+      if (!link || i.dishId) return i;
+      if (i.photoId || !link.photoId) return { ...i, dishId: link.dishId };
+      added++;
+      return {
+        ...i,
+        dishId: link.dishId,
+        photoId: link.photoId,
+        featured: i.featured || featured++ < 4,
+      };
+    }),
+  }));
+  return {
+    ...menu,
+    sections,
+    // Photos lead the menu when they're its first ones.
+    layout:
+      added && !hadPhotos && menu.layout === "classic"
+        ? "featured"
+        : menu.layout,
+  };
+}
 function MenuBulkPrices({
   menu,
   close,
