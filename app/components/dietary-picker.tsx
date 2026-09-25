@@ -3,7 +3,7 @@ import { useEffect, useId, useRef, useState } from "react";
 import {
   allergenTags,
   dietTags,
-  dietaryParts,
+  dietaryTag,
   normalizeDietary,
 } from "@/lib/dietary";
 
@@ -33,9 +33,16 @@ export default function DietaryPicker({
   /** The host's text-field class, so "Other notes" matches its other fields. */
   fieldClass?: string;
 }) {
+  // Saved values read as the menu reads them: a whole note that is exactly
+  // "V" or "gluten free" (written before tags existed) is that tag.
   const current = normalizeDietary(value),
-    { notes } = dietaryParts(current),
-    tags = current.filter((v) => !notes.includes(v));
+    notes = current.filter((v) => !dietaryTag(v)),
+    saved = current.filter((v) => dietaryTag(v));
+  // While "Other notes" has focus, the chips keep the tags they had when
+  // typing began and the note is stored exactly as typed, so a note starting
+  // "V", "GF" or "vegan" never selects a tag.
+  const [typingTags, setTypingTags] = useState<string[] | null>(null);
+  const tags = typingTags ?? saved;
   const [noteText, setNoteText] = useState(notes.join(", "));
   const editing = useRef(false),
     noteId = useId();
@@ -45,17 +52,16 @@ export default function DietaryPicker({
   }, [noteValue]);
   const toggle = (id: string) =>
     onChange(
-      normalizeDietary(
-        current.includes(id)
-          ? current.filter((v) => v !== id)
-          : [...current, id],
-      ),
+      normalizeDietary([
+        ...(tags.includes(id) ? tags.filter((v) => v !== id) : [...tags, id]),
+        ...notes,
+      ]),
     );
   const chip = (tag: { id: string; label: string }) => (
     <button
       type="button"
       key={tag.id}
-      aria-pressed={current.includes(tag.id)}
+      aria-pressed={tags.includes(tag.id)}
       disabled={disabled}
       onClick={() => toggle(tag.id)}
     >
@@ -76,7 +82,7 @@ export default function DietaryPicker({
         <details
           open={
             allergenTags.some(
-              (t) => !common.has(t.id) && current.includes(t.id),
+              (t) => !common.has(t.id) && tags.includes(t.id),
             ) || undefined
           }
         >
@@ -96,21 +102,26 @@ export default function DietaryPicker({
           placeholder="Contains alcohol, spicy"
           onFocus={() => {
             editing.current = true;
+            setTypingTags(saved);
           }}
           onBlur={() => {
             editing.current = false;
+            setTypingTags(null);
             setNoteText(noteValue);
           }}
           onChange={(e) => {
             setNoteText(e.target.value);
             onChange(
-              normalizeDietary([
-                ...tags,
-                ...e.target.value
-                  .split(",")
-                  .map((v) => v.trim())
-                  .filter(Boolean),
-              ]),
+              normalizeDietary(
+                [
+                  ...tags,
+                  ...e.target.value
+                    .split(",")
+                    .map((v) => v.trim())
+                    .filter(Boolean),
+                ],
+                { synonyms: false },
+              ),
             );
           }}
         />
