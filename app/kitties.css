@@ -1,0 +1,331 @@
+/* Kitties (app/components/kitty.tsx): small decorative cats in the empty and
+   waiting moments. Their fur is the one dark color and their eyes are the
+   logo's bright green, which the color plan keeps for dark surfaces, so they
+   stay inside the palette. What floats beside them on the light page (the
+   "z"s and the heart) is the evergreen used on light surfaces. They sit on
+   white or stone, never on artwork. See docs/KITTIES.md. */
+.kitty {
+  --kitty-fur: var(--green-ink);
+  --kitty-detail: #34463c;
+  --kitty-nose: #5b6e63;
+  --kitty-eye: var(--green-bright);
+  --kitty-shine: #ffffff;
+  --kitty-ledge: var(--gray-300);
+  --kitty-on-page: var(--green);
+  display: block;
+  flex: none;
+  width: auto;
+  height: 64px;
+  overflow: visible;
+}
+.kitty .kitty-fur {
+  fill: var(--kitty-fur);
+}
+.kitty .kitty-ear .kitty-fur {
+  stroke: var(--kitty-fur);
+  stroke-width: 3;
+  stroke-linejoin: round;
+}
+.kitty .kitty-inner-ear {
+  fill: var(--kitty-detail);
+  stroke: var(--kitty-detail);
+  stroke-width: 1.5;
+  stroke-linejoin: round;
+}
+.kitty .kitty-whisker,
+.kitty .kitty-tail {
+  fill: none;
+  stroke: var(--kitty-fur);
+  stroke-linecap: round;
+}
+.kitty .kitty-whisker {
+  stroke-width: 1;
+}
+.kitty .kitty-tail {
+  stroke-width: 5.5;
+}
+.kitty .kitty-iris {
+  fill: var(--kitty-eye);
+}
+.kitty .kitty-pupil {
+  fill: var(--kitty-fur);
+}
+.kitty .kitty-shine {
+  fill: var(--kitty-shine);
+}
+.kitty .kitty-nose {
+  fill: var(--kitty-nose);
+  stroke: var(--kitty-nose);
+  stroke-width: 0.8;
+  stroke-linejoin: round;
+}
+.kitty .kitty-mouth {
+  fill: none;
+  stroke: var(--kitty-nose);
+  stroke-width: 0.9;
+  stroke-linecap: round;
+}
+.kitty .kitty-closed-eyes,
+.kitty .kitty-happy-eyes {
+  fill: none;
+  stroke: var(--kitty-eye);
+  stroke-width: 1.8;
+  stroke-linecap: round;
+}
+.kitty .kitty-happy-eyes,
+.kitty .kitty-heart {
+  opacity: 0;
+}
+.kitty .kitty-heart {
+  fill: var(--kitty-on-page);
+}
+.kitty .kitty-detail-line,
+.kitty .kitty-toes {
+  fill: none;
+  stroke: var(--kitty-detail);
+  stroke-width: 1.1;
+  stroke-linecap: round;
+}
+.kitty .kitty-curled-tail,
+.kitty .kitty-curled-tail-edge {
+  fill: none;
+  stroke-linecap: round;
+}
+.kitty .kitty-curled-tail {
+  stroke: var(--kitty-fur);
+  stroke-width: 5;
+}
+/* A lighter rim lifts the tail off the body it curls around. */
+.kitty .kitty-curled-tail-edge {
+  stroke: var(--kitty-detail);
+  stroke-width: 7.4;
+}
+.kitty .kitty-ledge {
+  fill: var(--kitty-ledge);
+}
+.kitty .kitty-zzz {
+  fill: var(--kitty-on-page);
+  font: 700 8px var(--font-ui);
+}
+.kitty .kitty-zzz text:nth-child(2) {
+  font-size: 10px;
+}
+.kitty .kitty-zzz text:nth-child(3) {
+  font-size: 12px;
+}
+.kitty .kitty-box-front {
+  fill: var(--gray-300);
+}
+.kitty .kitty-box-inside {
+  fill: #bdb7aa;
+}
+.kitty .kitty-box-flap {
+  fill: var(--gray-200);
+  stroke: var(--gray-300);
+  stroke-width: 1.2;
+  stroke-linejoin: round;
+}
+.kitty .kitty-box-tape {
+  fill: var(--gray-200);
+}
+
+/* Where they live. */
+
+/* Public footer: asleep beside the sign-off at the end of every page. The
+   margins keep the line its usual height and rest the kitty on the text's
+   baseline. */
+.pw-footer-signoff {
+  display: flex;
+  align-self: flex-start;
+  align-items: flex-end;
+  gap: 10px;
+}
+.pw-footer-kitty {
+  height: 26px;
+  margin: -13px 0 5px;
+}
+
+/* Not-found and error pages: above the title. */
+.pw-status-kitty {
+  height: clamp(104px, 13vw, 132px);
+  margin-bottom: clamp(20px, 3vw, 28px);
+}
+.pw-status-kitty.kitty-sit {
+  height: clamp(88px, 11vw, 112px);
+}
+
+/* Photo Studio: perched on the progress track while a photo is created. Its
+   eyes follow the moving bar, on the bar's own timing. */
+.st-progress-kitty {
+  position: relative;
+  z-index: 1;
+  height: 40px;
+  margin: 12px 8px -2px auto;
+}
+.st-progress-kitty + .st-progress {
+  margin-top: 0;
+}
+
+/* My Dishes before the first dish, and Explore when a search finds nothing. */
+.mm-empty:has(> .mm-empty-kitty) {
+  justify-items: center;
+}
+.mm-empty-kitty {
+  height: 60px;
+}
+.ex-empty-kitty {
+  height: 52px;
+}
+
+/* A pointer resting on a kitty gets contented eyes and a heart. */
+@media (hover: hover) {
+  .kitty:hover .kitty-eyes {
+    opacity: 0;
+  }
+  .kitty:hover .kitty-happy-eyes,
+  .kitty:hover .kitty-heart {
+    opacity: 1;
+  }
+}
+
+/* Motion is decorative and only runs when the viewer allows it. */
+@media (prefers-reduced-motion: no-preference) {
+  .kitty .kitty-tail,
+  .kitty .kitty-eyes,
+  .kitty .kitty-ear,
+  .kitty .kitty-breath,
+  .kitty .kitty-zzz text,
+  .kitty .kitty-heart {
+    transform-box: fill-box;
+  }
+  .kitty .kitty-tail {
+    transform-origin: 0 100%;
+    animation: kitty-swish 3.2s ease-in-out infinite alternate;
+  }
+  .kitty .kitty-eyes {
+    transform-origin: center;
+    animation: kitty-blink 5.2s ease-in-out infinite;
+  }
+  .kitty .kitty-pupils {
+    animation: kitty-glance 7s ease-in-out infinite;
+  }
+  .kitty .kitty-ear-right {
+    transform-origin: 50% 75%;
+    animation: kitty-flick 8.5s ease-in-out infinite;
+  }
+  .kitty .kitty-breath {
+    transform-origin: 50% 100%;
+    animation: kitty-breathe 3.6s ease-in-out infinite alternate;
+  }
+  .kitty .kitty-zzz text {
+    opacity: 0;
+    transform-origin: center;
+    animation: kitty-doze 3.6s ease-in-out infinite;
+  }
+  .kitty .kitty-zzz text:nth-child(2) {
+    animation-delay: 1.2s;
+  }
+  .kitty .kitty-zzz text:nth-child(3) {
+    animation-delay: 2.4s;
+  }
+  .kitty .kitty-heart {
+    transform-origin: 50% 100%;
+  }
+  .st-progress-kitty .kitty-pupils {
+    animation: kitty-follow 1.6s var(--ease) infinite;
+  }
+}
+@media (hover: hover) and (prefers-reduced-motion: no-preference) {
+  .kitty:hover .kitty-heart {
+    animation: kitty-heart 1.6s var(--ease) infinite;
+  }
+}
+@keyframes kitty-swish {
+  from {
+    transform: rotate(-7deg);
+  }
+  to {
+    transform: rotate(9deg);
+  }
+}
+@keyframes kitty-blink {
+  0%,
+  90%,
+  96%,
+  100% {
+    transform: scaleY(1);
+  }
+  93% {
+    transform: scaleY(0.1);
+  }
+}
+@keyframes kitty-glance {
+  0%,
+  20% {
+    transform: translateX(0);
+  }
+  30%,
+  46% {
+    transform: translateX(-1.8px);
+  }
+  56%,
+  72% {
+    transform: translateX(1.8px);
+  }
+  82%,
+  100% {
+    transform: translateX(0);
+  }
+}
+/* Matches st-indeterminate in photo-studio.css. */
+@keyframes kitty-follow {
+  from {
+    transform: translateX(-2px);
+  }
+  to {
+    transform: translateX(1.2px);
+  }
+}
+@keyframes kitty-flick {
+  0%,
+  80%,
+  86%,
+  100% {
+    transform: rotate(0);
+  }
+  83% {
+    transform: rotate(12deg);
+  }
+}
+@keyframes kitty-breathe {
+  to {
+    transform: scaleY(1.035);
+  }
+}
+@keyframes kitty-doze {
+  0% {
+    opacity: 0;
+    transform: translate(-2px, 4px);
+  }
+  30%,
+  60% {
+    opacity: 1;
+  }
+  100% {
+    opacity: 0;
+    transform: translate(3px, -5px);
+  }
+}
+@keyframes kitty-heart {
+  from {
+    opacity: 0;
+    transform: translateY(3px) scale(0.6);
+  }
+  30% {
+    opacity: 1;
+  }
+  to {
+    opacity: 0;
+    transform: translateY(-7px) scale(1);
+  }
+}
