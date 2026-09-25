@@ -29,6 +29,7 @@ import {
   postCaption,
   postDefaults,
   postDetailError,
+  postDishNote,
   postFromPhoto,
   postPhotoError,
   updatePost,
@@ -162,6 +163,7 @@ export default function PostMaker({
       (a) => a.approved_at && !a.needs_correction,
     );
   const photoProblem = postPhotoError(b, state.assets);
+  const dishNote = postDishNote(b, state.dishes);
   const stale = items.filter((item) => {
     const d = state.dishes.find((d: Row) => d.id === item.dishId);
     return d && changedDishFacts(item.facts, d).length;
@@ -346,11 +348,12 @@ export default function PostMaker({
           warnings.set(w, [...(warnings.get(w) || []), label]);
       }
     const list = new Intl.ListFormat("en", { type: "conjunction" });
-    setProofIssues(
-      [...warnings].map(
+    setProofIssues([
+      ...(dishNote ? [dishNote] : []),
+      ...[...warnings].map(
         ([w, labels]) => `${list.format([...new Set(labels)])}: ${w}`,
       ),
-    );
+    ]);
     change({ reviewed: false });
     await save();
     setExporting(true);
@@ -430,6 +433,11 @@ export default function PostMaker({
           <button className="cx-link" onClick={() => setPicker(true)}>
             Choose a photo
           </button>
+        </div>
+      )}
+      {items.length > 0 && dishNote && (
+        <div className="mm-fact-notice">
+          <strong>{dishNote}</strong>
         </div>
       )}
       {!items.length ? (
@@ -1194,6 +1202,7 @@ export default function PostMaker({
                     <button onClick={() => choose(d)}>
                       <img src={`/api/assets/${photo.id}`} alt={d.name} />
                       <strong>{d.name}</strong>
+                      {!d.available && <small>Unavailable</small>}
                     </button>
                     {options.length > 1 && (
                       <select

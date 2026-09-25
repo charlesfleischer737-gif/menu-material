@@ -190,6 +190,18 @@ export function postPhotoError(draft: Row, assets: Row[]) {
     return `The ${of(reported)} ${reported.length > 1 ? "were" : "was"} reported as not matching the food. Choose another photo before sharing.`;
   return "";
 }
+/** A note naming dishes guests can't order now: unavailable or archived in My Dishes. */
+export function postDishNote(draft: Row, dishes: Row[]) {
+  const off: Row[] = (draft.items || []).filter((i: Row) => {
+    const d = dishes.find((d) => d.id === i.dishId);
+    return d && (!d.available || d.archived_at);
+  });
+  if (!off.length) return "";
+  const names = new Intl.ListFormat("en", { type: "conjunction" }).format(
+    off.map((i) => String(i.name)),
+  );
+  return `${names} ${off.length > 1 ? "are" : "is"} marked unavailable or archived in My Dishes. Check before sharing.`;
+}
 export function postDetailError(draft: Row, assets: Row[]) {
   if (!draft.items?.length) return "Choose an approved dish photo to start.";
   if (draft.items.length > 6) return "Choose up to six dish photos.";

@@ -8,6 +8,7 @@ import {
   postFromPhoto,
   captionPlaceholder,
   currentCaption,
+  postDishNote,
 } from "../lib/post-flow.ts";
 import { applyPostTemplate } from "../lib/post-templates.ts";
 
@@ -294,6 +295,16 @@ assert.equal(
   "A long list stays short enough for a headline",
 );
 
+// Dishes guests can't order now are named before sharing.
+assert.equal(
+  postDishNote(three, [
+    { id: "burger", available: 1 },
+    { id: "pasta", available: 0 },
+    { id: "burrata", available: 1, archived_at: "2026-09-20" },
+  ]),
+  "Tomato pasta and Burrata are marked unavailable or archived in My Dishes. Check before sharing.",
+);
+assert.equal(postDishNote(three, [{ id: "burger", available: 1 }]), "");
 // A signup placeholder never stays in the caption once the name is fixed.
 const unnamed = postFromPhoto(
   {},
