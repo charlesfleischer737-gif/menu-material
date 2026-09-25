@@ -36,7 +36,7 @@ globalThis.fetch = async (url, init = {}) => {
     // Description-only dishes are generated from the prompt alone.
     assert.equal(String(url), "https://api.openai.com/v1/images/generations");
     const body = JSON.parse(init.body);
-    assert.equal(body.quality, "high");
+    assert.equal(body.quality, "medium");
     assert.equal(body.output_compression, 95);
     const reply = () =>
       Response.json({
@@ -403,7 +403,7 @@ try {
   assert(timing.renderMs >= 30000 && timing.renderMs < 35000);
   assert.deepEqual(
     [timing.model, timing.quality, timing.size],
-    ["gpt-image-2.5-flare", "high", "1536x1536"],
+    ["gpt-image-2.5-flare", "medium", "1536x1536"],
   );
   checks++;
   assert.equal(

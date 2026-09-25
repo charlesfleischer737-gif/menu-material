@@ -550,7 +550,11 @@ try {
     "gpt-image-2.5-flare",
     "queued jobs retain their model",
   );
-  assert.equal(requests[0].quality, "high", "queued jobs retain their quality");
+  assert.equal(
+    requests[0].quality,
+    "medium",
+    "queued jobs retain their quality",
+  );
   assert.equal(requests[0].output_format, "jpeg");
   assert.equal(requests[0].output_compression, "95");
   assert.equal(requests[0].photos.length, 1);

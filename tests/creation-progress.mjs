@@ -69,6 +69,12 @@ assert.equal(
 );
 assert.equal(typicalRenderMs([1, 2, 3, 4, 5]), 10000);
 assert.equal(typicalRenderMs([4e5, 4e5, 4e5, 4e5, 4e5]), 150000);
+// Until five images finish, the default follows the quality.
+assert.equal(typicalRenderMs([20000], "medium"), 30000);
+assert.equal(typicalRenderMs([], "low"), 30000);
+assert.equal(typicalRenderMs([], "high"), TYPICAL_RENDER_MS);
+assert.equal(typicalRenderMs([], "max"), 90000);
+assert.equal(typicalRenderMs([], "auto"), TYPICAL_RENDER_MS);
 checks++;
 // Server times are read against the server's clock, not a wrong device clock.
 syncServerClock(Date.now() + 120000);
@@ -103,6 +109,13 @@ const job = (status = "queued", details = { rendering }) => ({
 const estimate = async (value) =>
   (await withRenderEstimates([value]))[0].estimate_ms;
 assert.equal(await estimate(job()), TYPICAL_RENDER_MS, "No history yet");
+assert.equal(
+  await estimate(
+    job("queued", { rendering: { ...rendering, quality: "medium" } }),
+  ),
+  30000,
+  "Without history, medium quality expects a quicker image",
+);
 for (const ms of [30000, 32000, 34000, 36000]) await recent(ms);
 for (const ms of [20000, 21000, 22000]) await recent(ms, { size: "1024x1536" });
 // Four matching sizes are too few alone, so all seven for this quality count.

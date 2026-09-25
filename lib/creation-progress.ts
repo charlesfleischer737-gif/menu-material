@@ -3,16 +3,26 @@
 // slows once that time has passed and never completes on its own: only the
 // saved result ends it.
 export const TYPICAL_RENDER_MS = 45000;
+// Until five images with a quality have finished. Outside benchmarks of this
+// model put low and medium within seconds of each other, and high about ten
+// seconds slower.
+const DEFAULT_RENDER_MS: Record<string, number> = {
+  low: 30000,
+  medium: 30000,
+  high: TYPICAL_RENDER_MS,
+  xhigh: 60000,
+  max: 90000,
+};
 const STARTED = 0.05,
   ON_TIME = 0.9,
   CEILING = 0.98;
 
 /** The time within which three in four recent images finished. */
-export function typicalRenderMs(samples: number[]) {
+export function typicalRenderMs(samples: number[], quality = "") {
   const times = samples
     .filter((ms) => Number.isFinite(ms) && ms > 0)
     .sort((a, b) => a - b);
-  if (times.length < 5) return TYPICAL_RENDER_MS;
+  if (times.length < 5) return DEFAULT_RENDER_MS[quality] ?? TYPICAL_RENDER_MS;
   const time = times[Math.ceil(times.length * 0.75) - 1];
   return Math.min(150000, Math.max(10000, Math.round(time)));
 }

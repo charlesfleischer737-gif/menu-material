@@ -50,7 +50,7 @@ function imageSettings(
           : "1024x1024",
     quality: z
       .enum(["low", "medium", "high", "xhigh", "max", "auto"])
-      .parse(config("OPENAI_IMAGE_QUALITY", "high")),
+      .parse(config("OPENAI_IMAGE_QUALITY", "medium")),
     output_format: "jpeg",
     output_compression: 95,
   };
@@ -768,6 +768,7 @@ async function renderEstimate(rendering: Row | undefined) {
   const sameSize = recent.filter((row) => row.size === rendering.size);
   return typicalRenderMs(
     (sameSize.length >= 5 ? sameSize : recent).map((row) => Number(row.ms)),
+    rendering.quality,
   );
 }
 /** Adds `estimate_ms`, a typical render time, to queued and running jobs. */
