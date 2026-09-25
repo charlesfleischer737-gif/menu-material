@@ -36,6 +36,7 @@ import {
   unavailablePhotoLook,
   emptyAdjustments,
   samplePhoto,
+  studioDishRequest,
   type PhotoFormat,
 } from "@/lib/studio";
 import { canvasBlob, drawPhoto, imageBitmap } from "@/lib/photo-export";
@@ -186,6 +187,13 @@ export default function PhotoStudio({
     ),
     resultId = b.resultId || output?.asset_id,
     asset = state.assets.find((a: Row) => a.id === resultId);
+  // My Dishes owns a saved dish's name; the studio only shows it.
+  const dish = state.dishes.find((d: Row) => d.id === b.dishId),
+    dishName: string = dish
+      ? dish.name === "Untitled dish"
+        ? ""
+        : dish.name
+      : b.name || "";
   const running = job && ["queued", "processing"].includes(job.status),
     sentTimes: number[] = state.outputs
       .filter(
@@ -415,6 +423,10 @@ export default function PhotoStudio({
     });
   }, [seed, ready, active, busy, referenceBusy]);
   useEffect(() => {
+    // Saved photos are titled with the dish’s current name.
+    if (ready && dish && b.name !== dishName) change({ name: dishName });
+  }, [ready, dish, dishName, b.name, change]);
+  useEffect(() => {
     if (b.jobId && output?.asset_id && !b.resultId) {
       change({ resultId: output.asset_id, step: 4 });
       setAccurate(false);
@@ -510,25 +522,12 @@ export default function PhotoStudio({
     onDestination("menu", "", "", { importId: imported.id });
   }
   // `fresh` starts a new dish, so a sample and a real photo never share one.
+  // An existing dish is only read: its name and description are My Dishes’.
   async function ensureDish(fresh?: { name: string; sample?: boolean }) {
-    const dishId = fresh ? "" : b.dishId;
-    const prior = state.dishes.find((d: Row) => d.id === dishId);
-    const payload = {
-      ...prior,
-      name: (fresh ? fresh.name : b.name).trim() || "Untitled dish",
-      description: fresh ? "" : b.description || "",
-      category: prior?.category || "Dishes",
-      price: (prior?.price || 0) / 100,
-      available: prior ? !!prior.available : true,
-      confirmed: true,
-      // Sample dishes stay out of guest menus.
-      ...(fresh?.sample ? { sample: true } : {}),
-      setting: resolvePhotoLook(b)
-        ? styleFor(b, state.restaurant).photoStyle
-        : prior?.setting || "",
-    };
-    const data = await api("dishes" + (dishId ? "/" + dishId : ""), payload);
-    if (!dishId) change({ dishId: data.id });
+    const request = studioDishRequest(b, state.restaurant, fresh);
+    if (!request) return b.dishId as string;
+    const data = await api("dishes", request);
+    change({ dishId: data.id });
     return data.id;
   }
   async function uploadPhoto(file: File, options: { sample?: boolean } = {}) {
@@ -592,7 +591,14 @@ export default function PhotoStudio({
       );
     if (b.mode === "photo" && !b.sourceId)
       throw Error("Add your dish photo first.");
-    if (b.mode === "description" && (!b.name.trim() || !b.description.trim()))
+    // An illustration of a saved dish follows its My Dishes description.
+    if (b.mode === "description" && dish && !dish.description?.trim())
+      throw Error("Add a description to this dish in My Dishes first.");
+    if (
+      b.mode === "description" &&
+      !dish &&
+      (!b.name.trim() || !b.description.trim())
+    )
       throw Error("Add a dish name and a short description first.");
     if (b.look === "reference" && !inspirationId)
       throw Error("Add a style reference, or choose one of our looks.");
@@ -658,7 +664,6 @@ export default function PhotoStudio({
       throw Error("Save your adjustments as a new version before downloading.");
     if (!confirmed && !asset?.approved_at)
       throw Error("Check that the photo represents the dish you serve.");
-    await ensureDish();
     await api(`assets/${resultId}/approve`, { accurate: true });
     change({ step: 4 });
     await save();
@@ -1114,7 +1119,7 @@ export default function PhotoStudio({
                       alt={
                         before
                           ? "Original photo"
-                          : `${shownLabel} of ${b.name || "your dish"}`
+                          : `${shownLabel} of ${dishName || "your dish"}`
                       }
                     />
                     {canvasLabel && (
@@ -1153,7 +1158,7 @@ export default function PhotoStudio({
                       >
                         <img
                           src={`/api/assets/${a.id}`}
-                          alt={`${a.kind === "source" ? "Original" : "Saved version"} of ${b.name || "your dish"}`}
+                          alt={`${a.kind === "source" ? "Original" : "Saved version"} of ${dishName || "your dish"}`}
                           loading="lazy"
                         />
                         <span>
@@ -1460,7 +1465,7 @@ export default function PhotoStudio({
           onOpenChange={setFinishOpen}
           assetId={resultId}
           dishId={b.dishId}
-          name={b.name || ""}
+          name={dishName}
           fromPhoto={resultFromPhoto}
           approved={!!asset?.approved_at}
           initialFormat={b.format}
@@ -1483,14 +1488,14 @@ export default function PhotoStudio({
           open={packOpen}
           onOpenChange={setPackOpen}
           assetId={resultId}
-          name={b.name || ""}
+          name={dishName}
           fromPhoto={resultFromPhoto}
           style={resultStyle}
         />
       )}
       <Dialog open={zoom} onOpenChange={setZoom}>
         <DialogContent className="cx-workspace-popover cx-zoom-dialog">
-          <DialogTitle>{b.name || "Your photo"} · full view</DialogTitle>
+          <DialogTitle>{dishName || "Your photo"} · full view</DialogTitle>
           <img
             src={before && source ? source : `/api/assets/${resultId}`}
             alt={before ? "Original photo" : "Photo under review"}

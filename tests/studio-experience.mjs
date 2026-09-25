@@ -14,7 +14,8 @@ assert.equal(
   "The deployed route must expose the library update method",
 );
 const { run, one, digest, id } = await import("../lib/server/core.ts");
-const { photoBrief, photoStyles, styleFor } = await import("../lib/studio.ts");
+const { photoBrief, photoStyles, styleFor, studioDishRequest } =
+  await import("../lib/studio.ts");
 const { findStyles, studioLookPatch, startingLooks, lookExpectations } =
   await import("../lib/studio-discovery.ts");
 const { emptyStudioLibrary, recipeFromDraft, applySavedLook } =
@@ -57,6 +58,46 @@ async function call(
   return body;
 }
 try {
+  // Photo Studio never renames or rewrites a saved dish (and so its live
+  // menu items); only a new dish takes the studio's name and description.
+  for (const brief of [
+    { ...photoBrief(), dishId: "saved-dish" },
+    {
+      ...photoBrief(),
+      dishId: "saved-dish",
+      mode: "description",
+      name: "Studio wording",
+      description: "On slate, 45° angle",
+    },
+  ])
+    assert.equal(studioDishRequest(brief, {}), null);
+  assert.deepEqual(studioDishRequest(photoBrief(), {}), {
+    name: "Untitled dish",
+    description: "",
+    confirmed: true,
+    setting: styleFor(photoBrief(), {}).photoStyle,
+  });
+  assert.equal(
+    studioDishRequest(
+      {
+        ...photoBrief(),
+        mode: "description",
+        name: " Roasted tomato pasta ",
+        description: "Penne, roasted tomatoes and basil",
+      },
+      {},
+    ).description,
+    "Penne, roasted tomatoes and basil",
+    "A new described dish keeps the owner's description",
+  );
+  const freshSample = studioDishRequest(
+    { ...photoBrief(), dishId: "saved-dish", name: "Margherita" },
+    {},
+    { name: "Sample burger", sample: true },
+  );
+  assert.equal(freshSample.name, "Sample burger");
+  assert.equal(freshSample.sample, true, "A sample always starts a new dish");
+  assert.equal(freshSample.description, "");
   const referenceBase = {
     ...photoBrief(),
     ...studioLookPatch(photoBrief(), "menu-wood"),

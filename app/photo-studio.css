@@ -217,6 +217,12 @@
   color: var(--st-muted);
   font-size: var(--text-footnote);
 }
+/* A saved dish's own description, read from My Dishes. */
+.st-describe .st-describe-dish {
+  color: var(--st-ink);
+  font-size: var(--text-callout);
+  white-space: pre-line;
+}
 .st-stage-foot {
   display: flex;
   flex-wrap: wrap;

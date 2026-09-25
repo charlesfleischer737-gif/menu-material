@@ -304,3 +304,28 @@ export function styleFor(
           : []),
   };
 }
+/**
+ * The dish Photo Studio saves for a photo: a new, confirmed dish, or nothing
+ * when the photo already belongs to one. My Dishes owns an existing dish's
+ * name and description, and live menus follow them, so the studio never
+ * rewrites them. `fresh` starts a new dish, so a sample and a real photo never
+ * share one.
+ */
+export function studioDishRequest(
+  brief: Parameters<typeof styleFor>[0],
+  restaurant: Parameters<typeof styleFor>[1],
+  fresh?: { name: string; sample?: boolean },
+) {
+  if (!fresh && brief.dishId) return null;
+  return {
+    name:
+      String(fresh ? fresh.name : brief.name || "").trim() || "Untitled dish",
+    description: fresh ? "" : String(brief.description || ""),
+    confirmed: true,
+    // Sample dishes stay out of guest menus.
+    ...(fresh?.sample ? { sample: true } : {}),
+    setting: resolvePhotoLook(brief)
+      ? styleFor(brief, restaurant).photoStyle
+      : "",
+  };
+}

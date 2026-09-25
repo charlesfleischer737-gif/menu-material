@@ -472,8 +472,16 @@ export function StudioWorkbench({
   }, [tileKeys]);
 
   const format = formats[b.format as PhotoFormat] || formats.menu;
+  // A saved dish is described in My Dishes; the studio never rewrites it.
+  const dish: Row | undefined = b.dishId
+    ? state.dishes?.find((entry: Row) => entry.id === b.dishId)
+    : undefined;
   const photoReady =
-    b.mode === "photo" ? !!source : !!b.name?.trim() && !!b.description?.trim();
+    b.mode === "photo"
+      ? !!source
+      : dish
+        ? !!dish.description?.trim()
+        : !!b.name?.trim() && !!b.description?.trim();
   const vesselConflict = b.family === "Drinks" && b.plate !== "keep";
   const inspirationBlock = inspirationStatusMessage(inspirationStatus);
   const canCreate =
@@ -496,7 +504,9 @@ export function StudioWorkbench({
         : !photoReady
           ? b.mode === "photo"
             ? "Add a photo to get started."
-            : "Add a dish name and description."
+            : dish
+              ? "Add a description to this dish in My Dishes."
+              : "Add a dish name and description."
           : b.look === "reference" && !referencePhoto
             ? "Add an inspiration photo to use this look."
             : !state.guest && !state.aiConnected
@@ -868,30 +878,47 @@ export function StudioWorkbench({
               ) : b.mode === "description" ? (
                 <div className="st-describe">
                   <span className="st-sheet-kicker">From a description</span>
-                  <h3>Describe your dish</h3>
-                  <label className="st-field">
-                    <span>Dish name</span>
-                    <input
-                      className="st-input"
-                      value={b.name}
-                      maxLength={100}
-                      onChange={(event) => update({ name: event.target.value })}
-                      placeholder="Roasted tomato pasta"
-                    />
-                  </label>
-                  <label className="st-field">
-                    <span>Ingredients, portion and presentation</span>
-                    <textarea
-                      className="st-input"
-                      value={b.description}
-                      maxLength={2000}
-                      rows={4}
-                      onChange={(event) =>
-                        update({ description: event.target.value })
-                      }
-                      placeholder="Describe the dish you actually serve."
-                    />
-                  </label>
+                  {dish ? (
+                    <>
+                      <h3>{dish.name}</h3>
+                      <p className="st-describe-dish">
+                        {dish.description?.trim() || "No description yet."}
+                      </p>
+                      <p>
+                        From My Dishes. Change the name or description there,
+                        and add styling notes in Details.
+                      </p>
+                    </>
+                  ) : (
+                    <>
+                      <h3>Describe your dish</h3>
+                      <label className="st-field">
+                        <span>Dish name</span>
+                        <input
+                          className="st-input"
+                          value={b.name}
+                          maxLength={100}
+                          onChange={(event) =>
+                            update({ name: event.target.value })
+                          }
+                          placeholder="Roasted tomato pasta"
+                        />
+                      </label>
+                      <label className="st-field">
+                        <span>Ingredients, portion and presentation</span>
+                        <textarea
+                          className="st-input"
+                          value={b.description}
+                          maxLength={2000}
+                          rows={4}
+                          onChange={(event) =>
+                            update({ description: event.target.value })
+                          }
+                          placeholder="Describe the dish you actually serve."
+                        />
+                      </label>
+                    </>
+                  )}
                   <p>
                     Creates an illustration. Check it against the real dish
                     before using it.
