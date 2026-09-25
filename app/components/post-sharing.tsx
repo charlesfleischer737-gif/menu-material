@@ -5,6 +5,7 @@ import { canvasBlob, renderPost } from "@/lib/creation-export";
 import { downloadBlob, type Row } from "@/lib/client";
 import {
   postFormatDetail,
+  postShape,
   postShareFormats,
   postVisualState,
 } from "@/lib/sharing";
@@ -65,8 +66,8 @@ export default function PostSharing({
       shape:
         selected === "story"
           ? "9:16"
-          : selected === "feed" && draft.feedShape === "3:4"
-            ? "3:4"
+          : selected === "feed"
+            ? postShape(draft)
             : "4:5",
       count: files.length,
       ...(draftId ? { draftId } : {}),

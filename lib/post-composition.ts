@@ -4,6 +4,7 @@ import { emptyAdjustments } from "./studio";
 import { brandTypeface } from "./restaurant-look";
 import { getPostTemplate } from "./post-templates";
 import { loadPostFonts } from "./post-fonts";
+import { postShape } from "./sharing";
 import {
   PostKit,
   analyzePhoto,
@@ -53,7 +54,7 @@ export function postSize(draft: Row, channel: string) {
     height:
       channel === "story"
         ? 1920
-        : channel === "feed" && draft.feedShape === "3:4"
+        : channel === "feed" && postShape(draft) === "3:4"
           ? 1440
           : 1350,
   };

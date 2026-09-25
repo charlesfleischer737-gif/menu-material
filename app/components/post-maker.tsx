@@ -45,6 +45,7 @@ import {
   recommendedDesigns,
 } from "@/lib/post-composition";
 import { campaignZip, renderPost } from "@/lib/creation-export";
+import { postShape } from "@/lib/sharing";
 import { emptyAdjustments } from "@/lib/studio";
 import { Dialog, DialogContent, DialogTitle } from "@/components/ui/dialog";
 import {
@@ -509,7 +510,7 @@ export default function PostMaker({
                 </span>
               </div>
               <div
-                className={`mm-main-canvas ${channel === "story" ? "is-story" : channel === "feed" && b.feedShape === "3:4" ? "is-tall" : ""}`}
+                className={`mm-main-canvas ${channel === "story" ? "is-story" : channel === "feed" && postShape(b) === "3:4" ? "is-tall" : ""}`}
               >
                 <PostCanvas
                   draft={b}
@@ -780,42 +781,44 @@ export default function PostMaker({
                       Your restaurant colors carry through each design. The
                       photo and layout adapt to each format.
                     </p>
-                    {b.compositionVersion !== 2 && (
+                    {b.compositionVersion !== 2 ? (
+                      // Older designs render at 4:5 only; the improved one offers 3:4.
                       <button
                         className="cx-btn cx-secondary"
                         onClick={() => applyDesign(b.template)}
                       >
                         Use the improved composition
                       </button>
-                    )}
-                    <div className="cx-field">
-                      <span id="post-shape-label">Post shape</span>
-                      <div
-                        className="mm-segments"
-                        role="group"
-                        aria-labelledby="post-shape-label"
-                      >
-                        {[
-                          ["4:5", "Portrait 4:5"],
-                          ["3:4", "Tall 3:4"],
-                        ].map(([value, label]) => (
-                          <button
-                            key={value}
-                            aria-pressed={(b.feedShape || "4:5") === value}
-                            onClick={() => {
-                              update({ feedShape: value });
-                              setChannel("feed");
-                            }}
-                          >
-                            {label}
-                          </button>
-                        ))}
+                    ) : (
+                      <div className="cx-field">
+                        <span id="post-shape-label">Post shape</span>
+                        <div
+                          className="mm-segments"
+                          role="group"
+                          aria-labelledby="post-shape-label"
+                        >
+                          {[
+                            ["4:5", "Portrait 4:5"],
+                            ["3:4", "Tall 3:4"],
+                          ].map(([value, label]) => (
+                            <button
+                              key={value}
+                              aria-pressed={(b.feedShape || "4:5") === value}
+                              onClick={() => {
+                                update({ feedShape: value });
+                                setChannel("feed");
+                              }}
+                            >
+                              {label}
+                            </button>
+                          ))}
+                        </div>
+                        <small>
+                          Tall 3:4 fills Instagram’s profile grid. Stories stay
+                          9:16 and carousels 4:5.
+                        </small>
                       </div>
-                      <small>
-                        Tall 3:4 fills Instagram’s profile grid. Stories stay
-                        9:16 and carousels 4:5.
-                      </small>
-                    </div>
+                    )}
                     <Field label="Text on the image">
                       <select
                         value={b.textMode || "minimal"}

@@ -179,6 +179,14 @@ for (const t of postTemplates) {
   writeFileSync(`${root}/post-${t.id}-tall.png`, c.toBuffer("image/png"));
   checks++;
 }
+// Older drafts render at 4:5 only, so they never claim to be 3:4.
+const { postSize } = await import("../lib/post-composition.ts");
+const { postFormatDetail } = await import("../lib/sharing.ts");
+const olderTall = { ...base, compositionVersion: 1, feedShape: "3:4" };
+assert.equal(postSize(olderTall, "feed").height, 1350);
+assert.equal(postFormatDetail(olderTall, "feed"), "1080 × 1350 · 4:5");
+assert.equal((await renderPost(canvas(), olderTall, restaurant)).height, 1350);
+checks++;
 // A dish word decides the design before the restaurant's cuisine does.
 const { recommendedDesigns } = await import("../lib/post-composition.ts");
 assert.equal(
