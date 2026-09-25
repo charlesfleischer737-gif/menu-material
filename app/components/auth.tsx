@@ -241,7 +241,7 @@ export default function Auth({
         {mode === "signup" && !resetting && (
           <p className="fine">
             5 free images, once per account.{" "}
-            {billingEnabled ? "Pro: $9.99/month." : "Pro is coming soon."}{" "}
+            {billingEnabled ? "Pro: $9/month." : "Pro is coming soon."}{" "}
             <a href="/pricing" target="_blank" rel="noreferrer">
               See plans
             </a>

@@ -21,8 +21,8 @@ export default function Pricing() {
     [
       "How does Pro work?",
       enabled
-        ? "Pro is $9.99 a month for 100 images each billing period. Unused images don’t roll over, and you can cancel future renewals from Plans in your workspace."
-        : "Pro will be $9.99 a month for 100 images each billing period, with payment and cancellation in Plans. Subscriptions aren’t open yet.",
+        ? "Pro is $9 a month for 50 images each billing period. Unused images don’t roll over, and you can cancel future renewals from Plans in your workspace."
+        : "Pro will be $9 a month for 50 images each billing period, with payment and cancellation in Plans. Subscriptions aren’t open yet.",
     ],
     [
       "What happens if I cancel?",
@@ -42,8 +42,8 @@ export default function Pricing() {
       title="A little budget. A lot of good-looking food."
       intro={
         enabled
-          ? "Start with 5 free images. Keep creating with Pro for $9.99 a month."
-          : "Start with 5 free images. Pro is coming soon at $9.99 a month."
+          ? "Start with 5 free images. Keep creating with Pro for $9 a month."
+          : "Start with 5 free images. Pro is coming soon at $9 a month."
       }
     >
       <PlanCards enabled={enabled} />

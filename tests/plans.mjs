@@ -20,7 +20,7 @@ let cookie = "",
   checkoutCreates = 0,
   customerCreates = 0;
 let subscriptions = [],
-  priceAmount = 999,
+  priceAmount = 900,
   checkoutStatus = "open",
   lostJobResponse = false,
   lostFinalSaveResponse = false;
@@ -62,7 +62,7 @@ globalThis.fetch = async (url, init = {}) => {
     "No live AI calls permitted",
   );
   stripeCalls++;
-  assert.equal(init.headers["Stripe-Version"], "2025-06-30.basil");
+  assert.equal(init.headers["Stripe-Version"], "2026-08-26.dahlia");
   const path = String(url).replace("https://api.stripe.com/v1/", "");
   const form = Object.fromEntries(new URLSearchParams(init.body));
   calls.push({ path, form, headers: init.headers });
@@ -155,7 +155,7 @@ function subscription(rid, start, end, number = 1) {
       id: "in_" + number,
       customer: "cus_1",
       status: "paid",
-      amount_paid: 999,
+      amount_paid: 900,
       billing_reason:
         number === 1 ? "subscription_create" : "subscription_cycle",
       lines: {
@@ -229,12 +229,13 @@ try {
     STRIPE_SECRET_KEY: "sk_test_fixture",
     STRIPE_WEBHOOK_SECRET: "whsec_fixture",
     STRIPE_PRO_PRICE_ID: "price_pro",
+    STRIPE_PORTAL_CONFIGURATION_ID: "bpc_fixture",
   });
-  priceAmount = 1999;
+  priceAmount = 999;
   await call("billing/checkout", {}, 503);
   assert.equal(checkoutCreates, 0);
   checks++;
-  priceAmount = 999;
+  priceAmount = 900;
   await call("billing/checkout", {
     price: "attacker_price",
     customer: "someone_else",
@@ -252,6 +253,17 @@ try {
   );
   assert.equal(checkout.form.customer, "cus_1");
   checks += 4;
+  assert.equal(checkout.form["payment_method_types[0]"], undefined);
+  assert.equal(checkout.form["adaptive_pricing[enabled]"], "false");
+  assert.equal(
+    checkout.form["subscription_data[billing_mode][type]"],
+    "flexible",
+  );
+  assert.match(
+    checkout.form.integration_identifier,
+    /^menu_material_pro_[a-z]{8}$/,
+  );
+  checks += 4;
   await notify("invoice.paid", {}, 400, false);
   await notify("invoice.paid", {}, 400, true, 301);
   let start = Math.floor(Date.now() / 1000) - 1,
@@ -265,14 +277,16 @@ try {
   await notify();
   state = await call("state");
   assert.equal(state.billing.plan, "pro");
-  assert.equal(state.remaining, 100);
+  assert.equal(state.remaining, 50);
   checks += 2;
   await call("billing/checkout", {}, 409);
   await call("billing/portal", {});
   assert.equal(calls.at(-1).form.customer, "cus_1");
+  assert.equal(calls.at(-1).form.configuration, "bpc_fixture");
+  checks++;
   checks++;
   const proJobs = await Promise.allSettled(
-    Array.from({ length: 51 }, (_, n) =>
+    Array.from({ length: 26 }, (_, n) =>
       enqueue(r, {
         dishId: dish.id,
         requestKey: id(),
@@ -281,7 +295,7 @@ try {
       }),
     ),
   );
-  assert.equal(proJobs.filter((x) => x.status === "fulfilled").length, 50);
+  assert.equal(proJobs.filter((x) => x.status === "fulfilled").length, 25);
   assert.equal(proJobs.find((x) => x.status === "rejected").reason.status, 402);
   checks += 2;
   await notify();
@@ -312,7 +326,7 @@ try {
   checks += 2;
   subscriptions = [subscription(rid, start, end, 2)];
   await notify();
-  assert.equal((await call("state")).remaining, 100);
+  assert.equal((await call("state")).remaining, 50);
   const old = await one(
     "SELECT id,job_id FROM outputs WHERE restaurant_id=? AND credit_period!='free' LIMIT 1",
     rid,
@@ -320,14 +334,14 @@ try {
   await run("UPDATE outputs SET status='failed' WHERE id=?", old.id);
   assert.equal(
     (await call("state")).remaining,
-    100,
+    50,
     "Old failures do not overfill a new month",
   );
   checks++;
   await retryFailed(r, old.job_id);
   assert.equal(
     (await call("state")).remaining,
-    99,
+    49,
     "Retrying old failed work reserves the current paid period",
   );
   checks++;
@@ -336,6 +350,22 @@ try {
       .credit_period,
     "sub_1:" + start,
   );
+  checks++;
+
+  subscriptions[0].cancel_at_period_end = false;
+  subscriptions[0].cancel_at = end;
+  await notify("customer.subscription.updated");
+  const scheduled = await call("state");
+  assert.equal(scheduled.billing.cancelAtPeriodEnd, true);
+  assert.equal(
+    scheduled.remaining,
+    49,
+    "Portal cancellation retains the paid allowance",
+  );
+  checks += 2;
+  subscriptions[0].cancel_at = null;
+  await notify("customer.subscription.updated");
+  assert.equal((await call("state")).billing.cancelAtPeriodEnd, false);
   checks++;
 
   await notify("customer.subscription.deleted", {

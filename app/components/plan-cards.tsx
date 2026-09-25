@@ -62,10 +62,10 @@ export default function PlanCards({
         </div>
         <p className="pw-plan-tagline">Keep good food in the spotlight.</p>
         <p className="pw-plan-price">
-          $9.99<span>/month</span>
+          $9<span>/month</span>
         </p>
         <p className="pw-plan-allowance">
-          <strong>100 images</strong> every month.
+          <strong>50 images</strong> every month.
         </p>
         <Features
           items={[
@@ -80,11 +80,11 @@ export default function PlanCards({
           {enabled ? (
             onUpgrade ? (
               <button className="cx-btn" disabled={busy} onClick={onUpgrade}>
-                {busy ? "Opening secure checkout…" : "Get Pro — $9.99/month"}
+                {busy ? "Opening secure checkout…" : "Get Pro — $9/month"}
               </button>
             ) : (
               <Link className="cx-btn" href="/?upgrade=1">
-                Get Pro — $9.99/month
+                Get Pro — $9/month
               </Link>
             )
           ) : (
