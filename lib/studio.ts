@@ -380,3 +380,40 @@ export function studioDishRequest(
       : "",
   };
 }
+/**
+ * A Photo Studio draft without photos removed in My Dishes, and what to tell
+ * the owner, or null when the draft uses none of them. A removed result
+ * returns to the original; a removed original leaves any saved result, or
+ * an empty photo slot.
+ */
+export function withoutRemovedPhotos(
+  brief: { sourceId?: string; resultId?: string },
+  removed: string[],
+): { patch: Record<string, unknown>; notice: string } | null {
+  const sourceGone = !!brief.sourceId && removed.includes(brief.sourceId),
+    resultGone = !!brief.resultId && removed.includes(brief.resultId);
+  if (!sourceGone && !resultGone) return null;
+  const original = !!brief.sourceId && !sourceGone,
+    result = !!brief.resultId && !resultGone;
+  return {
+    patch: {
+      ...(sourceGone
+        ? {
+            sourceId: "",
+            analysisSourceId: "",
+            analysisStatus: "none",
+            analysisSubject: "",
+            analysisAdvice: "",
+            recommendationFamily: "",
+          }
+        : {}),
+      ...(resultGone ? { resultId: "", jobId: "" } : {}),
+      ...(!result ? { step: 1 } : {}),
+    },
+    notice: result
+      ? "Your original photo was removed in My Dishes. Your saved photo is still here."
+      : original
+        ? "This photo was removed in My Dishes. Your original is still here."
+        : "This photo was removed in My Dishes.",
+  };
+}

@@ -43,6 +43,7 @@ import {
   adjustedPhotoSize,
   formatNames,
   formatShapes,
+  withoutRemovedPhotos,
   type PhotoFormat,
 } from "@/lib/studio";
 import {
@@ -484,6 +485,42 @@ export default function PhotoStudio({
       setAccurate(false);
     }
   }, [output?.asset_id, b.jobId]);
+  // A photo removed in My Dishes can't be opened, downloaded or restyled.
+  // Once the server confirms it is gone (a new upload or version can arrive
+  // a moment before the page reloads), take it out of the draft and say so.
+  const missingPhotos = [b.mode === "photo" ? b.sourceId : "", b.resultId]
+    .filter((id) => id && !state.assets.some((a: Row) => a.id === id))
+    .join();
+  useEffect(() => {
+    if (!ready || !active || !missingPhotos) return;
+    let current = true;
+    void Promise.all(
+      missingPhotos.split(",").map((id) =>
+        api(`assets/${id}/context`).then(
+          () => "",
+          (error) => ((error as { status?: number }).status === 404 ? id : ""),
+        ),
+      ),
+    ).then((gone) => {
+      const draft = read();
+      const removed = withoutRemovedPhotos(
+        {
+          sourceId: draft.mode === "photo" ? draft.sourceId : "",
+          resultId: draft.resultId,
+        },
+        gone.filter(Boolean),
+      );
+      if (!current || !removed) return;
+      change(removed.patch);
+      setAdjust("");
+      setBefore(false);
+      setCompare(false);
+      setNotice(removed.notice);
+    });
+    return () => {
+      current = false;
+    };
+  }, [ready, active, missingPhotos]);
   // When the photo being made is ready or stops, say so to screen readers
   // and move focus to what replaced the waiting screen.
   const watchedJob = useRef({ id: "", running: false });

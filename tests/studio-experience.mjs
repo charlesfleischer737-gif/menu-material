@@ -20,6 +20,7 @@ const {
   styleFor,
   studioDishRequest,
   adjustedPhotoSize,
+  withoutRemovedPhotos,
 } = await import("../lib/studio.ts");
 const { findStyles, studioLookPatch, startingLooks, lookExpectations } =
   await import("../lib/studio-discovery.ts");
@@ -104,6 +105,31 @@ try {
   assert.equal(freshSample.name, "Sample burger");
   assert.equal(freshSample.sample, true, "A sample always starts a new dish");
   assert.equal(freshSample.description, "");
+  // A photo removed in My Dishes leaves the studio draft, with a notice,
+  // instead of failing later with "Image not found".
+  assert.equal(
+    withoutRemovedPhotos({ sourceId: "a", resultId: "b" }, ["other"]),
+    null,
+  );
+  assert.deepEqual(
+    withoutRemovedPhotos({ sourceId: "a", resultId: "b" }, ["b"]).patch,
+    { resultId: "", jobId: "", step: 1 },
+    "A removed result returns to the original",
+  );
+  const originalRemoved = withoutRemovedPhotos(
+    { sourceId: "a", resultId: "b" },
+    ["a"],
+  );
+  assert.equal(originalRemoved.patch.sourceId, "");
+  assert.equal("step" in originalRemoved.patch, false, "The result stays");
+  assert.match(originalRemoved.notice, /saved photo is still here/);
+  const bothRemoved = withoutRemovedPhotos({ sourceId: "a", resultId: "b" }, [
+    "a",
+    "b",
+  ]);
+  assert.equal(bothRemoved.patch.step, 1);
+  assert.equal(bothRemoved.patch.resultId, "");
+  assert.equal(bothRemoved.patch.sourceId, "");
   // Quick adjustments save only the crop's real pixels. A 1.6× wide crop of
   // a 1536 px square has 960 × 540 pixels of detail, below DoorDash's
   // minimum, and must not be enlarged into a version that passes it.
