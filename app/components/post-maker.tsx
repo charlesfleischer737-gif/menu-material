@@ -82,6 +82,8 @@ const initial = (restaurant: Row, version = 1) => ({
   textPlacement: "auto",
   channels: ["feed", "story"],
   feedShape: "4:5",
+  // A carousel opens on its offer; without a cover, the first slide carries it.
+  carouselCover: true,
   layouts: Object.fromEntries(
     ["feed", "story", "carousel"].map((k) => [
       k,
@@ -763,8 +765,9 @@ export default function PostMaker({
                           />
                         </Field>
                         <p className="mm-muted">
-                          Each dish gets its own slide. Select a slide to edit
-                          its headline and framing.
+                          Each dish gets its own slide. Without a cover, the
+                          first slide shows the price, date and call to action.
+                          Select a slide to edit its headline and framing.
                         </p>
                       </details>
                     )}

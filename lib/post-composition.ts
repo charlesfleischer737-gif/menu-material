@@ -198,11 +198,13 @@ export async function renderComposedPost(
     photoOnly = mode === "photo" && !closingSlide,
     showBrand = draft.showBrand ?? t.showBrand;
   const warnings: string[] = [];
+  // The offer leads a carousel: on its cover, or on the first dish without one.
+  const lead =
+    !card ||
+    card.kind === "cover" ||
+    (card.kind === "dish" && !draft.carouselCover && card.itemIndex === 0);
   const price =
-    draft.showPrice &&
-    draft.price !== "" &&
-    draft.price != null &&
-    (channel !== "carousel" || card?.kind === "cover")
+    draft.showPrice && draft.price !== "" && draft.price != null && lead
       ? money(Math.round(Number(draft.price) * 100), restaurant.currency)
       : "";
   let detail =
@@ -215,7 +217,7 @@ export async function renderComposedPost(
     );
     detail = "";
   }
-  const withFacts = !photoOnly && card?.kind !== "dish";
+  const withFacts = !photoOnly && (card?.kind !== "dish" || lead);
   const urls = items.map((i) => i.photoUrl || `/api/assets/${i.photoId}`);
   const logoId = restaurant.logo_id || restaurant.logoId;
   const held: string[] = [];
@@ -268,10 +270,7 @@ export async function renderComposedPost(
       headline: photoOnly
         ? ""
         : String(card?.title ?? draft.title ?? items[0].name ?? ""),
-      kicker:
-        photoOnly || card?.kind === "dish" || closingSlide
-          ? ""
-          : String(draft.kicker || ""),
+      kicker: photoOnly || !lead ? "" : String(draft.kicker || ""),
       price: withFacts && !closingSlide ? price : "",
       validity: withFacts ? String(draft.validity || "") : "",
       cta: withFacts ? String(draft.cta || "") : "",
@@ -279,6 +278,7 @@ export async function renderComposedPost(
       itemsLine:
         withFacts &&
         !closingSlide &&
+        card?.kind !== "dish" &&
         (items.length > 1 || items.some((i) => (i.quantity || 1) > 1))
           ? items.map((i) => `${i.quantity || 1} × ${i.name}`).join("  ·  ")
           : "",

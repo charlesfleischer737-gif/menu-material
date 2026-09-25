@@ -282,6 +282,29 @@ for (const n of [1, 2]) {
   );
   checks++;
 }
+// Without a cover, the first slide carries the price, date and call to action.
+const uncovered = {
+  ...carousel,
+  carouselCover: false,
+  carouselClosing: "",
+  cta: "Book a table",
+};
+assert.equal(postSlideCount(uncovered, "carousel"), 2);
+const [opening, next] = [
+  await renderPost(canvas(), uncovered, restaurant, "carousel", 0),
+  await renderPost(canvas(), uncovered, restaurant, "carousel", 1),
+];
+assert(
+  opening.renderedText.some(
+    (t) =>
+      t.includes("$18.50") &&
+      t.includes(base.validity) &&
+      t.includes("Book a table"),
+  ),
+  "The first slide shows the offer when there is no cover",
+);
+assert(!next.renderedText.some((t) => t.includes("$18.50")));
+checks += 2;
 console.log(
   `PASS: ${checks} new composition/export cases, phone-size type and Story safety, independent carousel framing. Artifacts: ${root}`,
 );
