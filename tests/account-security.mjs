@@ -1,4 +1,5 @@
 import assert from "node:assert/strict";
+import { scryptSync } from "node:crypto";
 import { mkdtempSync, rmSync } from "node:fs";
 import { tmpdir } from "node:os";
 import { join } from "node:path";
@@ -13,6 +14,7 @@ let offset = 0;
 Date.now = () => realNow() + offset;
 const { handle } = await import("../lib/server/api.ts");
 const { caller } = await import("../lib/server/safeguards.ts");
+const { one, run } = await import("../lib/server/core.ts");
 
 const webhooks = [];
 globalThis.fetch = async (url, init = {}) => {
@@ -197,8 +199,43 @@ try {
   );
   checks++;
 
+  // 9. Passwords are stored with their scrypt parameters; older hashes still
+  // sign in and are upgraded then.
+  const stored = async (email) =>
+    (await one("SELECT password FROM users WHERE email=?", email)).password;
+  const fresh = (await stored("owner@example.test")).split("$");
+  assert.deepEqual(fresh.slice(0, 4), ["scrypt", "16384", "8", "5"]);
+  assert.equal(fresh.length, 6);
+  assert.match(fresh[5], /^[0-9a-f]{128}$/);
+  checks++;
+  const legacySalt = "legacy-salt-value";
+  await run(
+    "UPDATE users SET password=? WHERE email=?",
+    `${legacySalt}:${scryptSync(password, legacySalt, 64).toString("hex")}`,
+    "newcomer@example.test",
+  );
+  offset += 16 * 60000; // past the earlier sign-in slowdown for this email
+  await expect("auth/login", 401, {
+    body: { email: "newcomer@example.test", password: "not the password" },
+    ip: "192.0.2.30",
+  });
+  assert.match(await stored("newcomer@example.test"), /^legacy-salt-value:/);
+  await expect("auth/login", 200, {
+    body: { email: "newcomer@example.test", password },
+    ip: "192.0.2.30",
+  });
+  assert.match(await stored("newcomer@example.test"), /^scrypt\$16384\$8\$5\$/);
+  await expect("auth/login", 200, {
+    body: { email: "newcomer@example.test", password },
+    ip: "192.0.2.31",
+  });
+  await expect("auth/login", 401, {
+    body: { email: "nobody@example.test", password },
+    ip: "192.0.2.31",
+  });
+
   console.log(
-    `PASS: ${checks} account security checks: per-network limits on the IPv6 /64 with no site-wide lockout, and a per-account sign-in slowdown.`,
+    `PASS: ${checks} account security checks: per-network limits on the IPv6 /64 with no site-wide lockout, a per-account sign-in slowdown, versioned password hashes;`,
   );
 } finally {
   rmSync(root, { recursive: true, force: true });

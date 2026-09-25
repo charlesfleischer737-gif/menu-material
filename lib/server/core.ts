@@ -28,16 +28,58 @@ export const id = () => crypto.randomUUID();
 export const token = () => randomBytes(32).toString("base64url");
 export const digest = (s: string) =>
   createHash("sha256").update(s).digest("hex");
+// Stored as scrypt$N$r$p$salt$hash. N=2^14, r=8, p=5 is OWASP's 16 MiB
+// scrypt setting, within a Worker's memory; raising p adds work, not memory.
+// Older "salt:hash" values used Node's defaults (p=1) and are upgraded at the
+// next sign-in.
+const scrypt = { N: 16384, r: 8, p: 5 };
+const currentPasswordFormat = `scrypt$${scrypt.N}$${scrypt.r}$${scrypt.p}$`;
+function passwordParts(hash: string) {
+  const [scheme, N, r, p, salt, h] = hash.split("$");
+  if (scheme === "scrypt") {
+    const params = { N: Number(N), r: Number(r), p: Number(p) };
+    return {
+      // Unexpected parameters cannot match, rather than cost unbounded work.
+      ...(params.N >= 1024 &&
+      (params.N & (params.N - 1)) === 0 &&
+      params.r >= 1 &&
+      params.N * params.r <= 262144 &&
+      params.p >= 1 &&
+      params.p <= 16
+        ? params
+        : scrypt),
+      salt,
+      h: h || "",
+    };
+  }
+  const [legacySalt, legacyHash] = hash.split(":");
+  return { N: 16384, r: 8, p: 1, salt: legacySalt, h: legacyHash || "" };
+}
 export function hashPassword(p: string) {
   const salt = token();
-  return salt + ":" + scryptSync(p, salt, 64).toString("hex");
+  return (
+    currentPasswordFormat +
+    salt +
+    "$" +
+    scryptSync(p, salt, 64, { ...scrypt, maxmem: 64 * 1024 * 1024 }).toString(
+      "hex",
+    )
+  );
 }
-export function checkPassword(p: string, hash: string) {
-  const [salt, h] = hash.split(":");
+export function checkPassword(p: string, hash?: string | null) {
+  // Unknown accounts pay for a current-strength hash too.
+  const { salt, h, ...params } = passwordParts(
+    hash || currentPasswordFormat + "dummy$",
+  );
   const expected = Buffer.from(h || "00".repeat(64), "hex");
-  const actual = scryptSync(p, salt || "dummy", 64);
+  const actual = scryptSync(p, salt || "dummy", 64, {
+    ...params,
+    maxmem: 64 * 1024 * 1024,
+  });
   return expected.length === actual.length && timingSafeEqual(expected, actual);
 }
+export const passwordNeedsUpgrade = (hash: string) =>
+  !hash.startsWith(currentPasswordFormat);
 export class AppError extends Error {
   constructor(
     public status: number,

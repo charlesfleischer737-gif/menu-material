@@ -62,6 +62,7 @@ import {
   now,
   one,
   owner,
+  passwordNeedsUpgrade,
   remaining,
   response,
   run,
@@ -749,12 +750,19 @@ export async function handle(req: Request) {
         await loginLimit(req, email);
         const u = await one("SELECT * FROM users WHERE email=?", email);
         assert(
-          checkPassword(password, u?.password || "dummy:" + "00".repeat(64)) &&
-            u,
+          checkPassword(password, u?.password) && u,
           401,
           "Email or password is incorrect.",
         );
         await loginSucceeded(email);
+        if (passwordNeedsUpgrade(u.password))
+          // Unless a reset changed it meanwhile.
+          await run(
+            "UPDATE users SET password=? WHERE id=? AND password=?",
+            hashPassword(password),
+            u.id,
+            u.password,
+          );
         return await createSession(req, u.id);
       }
       if (p[1] === "bootstrap" && method === "POST") {
