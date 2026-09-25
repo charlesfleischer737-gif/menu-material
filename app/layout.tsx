@@ -1,7 +1,7 @@
 import type { Metadata } from "next";
-import { config } from "@/lib/server/core";
 import ErrorReporter from "./components/error-reporter";
 import ScrollMemory from "./components/scroll-memory";
+import { shareImage, siteName, siteOrigin } from "./site-metadata";
 // Imported here rather than from CSS so the build bundles the font files.
 import "@fontsource-variable/inter/opsz.css";
 import "./globals.css";
@@ -26,17 +26,12 @@ import "./photo-studio.css";
 import "./kitties.css";
 // One control family (buttons, segmented choices); loaded last.
 import "./controls.css";
+// Defaults for every page. Public pages add their own canonical address and
+// link-preview text with pageMetadata() from ./site-metadata.
 export async function generateMetadata(): Promise<Metadata> {
-  const origin = config("APP_ORIGIN");
-  const images = origin
-    ? [
-        {
-          url: new URL("/menu-material-burger.png", origin).href,
-          alt: "Menu Material — illustrative AI food photography edit",
-        },
-      ]
-    : [];
   return {
+    // Makes canonical, og:url and og:image URLs absolute.
+    metadataBase: new URL(await siteOrigin()),
     title: "Menu Material — Food photos worth ordering from.",
     description:
       "Turn real dish photos into professional images and matching posts for Toast, delivery apps, your website, and Instagram. Start with 5 free images.",
@@ -46,16 +41,18 @@ export async function generateMetadata(): Promise<Metadata> {
       apple: "/apple-touch-icon.png?v=menu-material-2",
     },
     openGraph: {
+      type: "website",
+      siteName,
       title: "Menu Material — Food photos worth ordering from.",
       description:
         "Better food photos for menus, delivery apps, and social media. Made from your actual dish.",
-      images,
+      images: [shareImage],
     },
     twitter: {
       card: "summary_large_image",
       title: "Menu Material",
       description: "Food photos worth ordering from.",
-      images: images.map((i) => i.url),
+      images: [{ url: shareImage.url, alt: shareImage.alt }],
     },
   };
 }

@@ -1,9 +1,11 @@
 import PublicInformation from "../components/public-information";
-export const metadata = {
+import { pageMetadata } from "../site-metadata";
+export const metadata = pageMetadata({
   title: "Photo & account privacy · Menu Material",
   description:
     "How Menu Material handles private photos, drafts, public menus and AI processing.",
-};
+  path: "/privacy",
+});
 export default function Privacy() {
   return (
     <PublicInformation
