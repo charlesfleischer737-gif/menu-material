@@ -250,6 +250,31 @@ try {
   const state = await call("state");
   const rid = state.restaurant.id;
   assert.equal(state.restaurant.name, "Your restaurant");
+  {
+    // Menu links and QR codes use the site's public address, not whichever
+    // address the owner is working from; local development uses its own.
+    const { menuLinkOrigin } = await import("../lib/server/menu-sharing.ts");
+    const { env } = await import("../lib/local-runtime.ts");
+    assert.equal(state.menuOrigin, "http://localhost");
+    const saved = { local: env.LOCAL_DEVELOPMENT, origin: env.APP_ORIGIN };
+    delete env.LOCAL_DEVELOPMENT;
+    try {
+      env.APP_ORIGIN = "https://menus.example.com/";
+      assert.equal(
+        menuLinkOrigin("https://preview.example.dev"),
+        "https://menus.example.com",
+      );
+      env.APP_ORIGIN = "not an address";
+      assert.equal(
+        menuLinkOrigin("https://preview.example.dev"),
+        "https://preview.example.dev",
+      );
+    } finally {
+      env.LOCAL_DEVELOPMENT = saved.local;
+      env.APP_ORIGIN = saved.origin;
+    }
+    checks += 3;
+  }
   const dish = await call("dishes", {
     name: "Smash Burger",
     description: "Two patties",

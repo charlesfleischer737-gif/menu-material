@@ -12,7 +12,7 @@ import {
 } from "./studio-release";
 import { billingRoute, billingSummary, billingEnabled } from "./billing";
 import { validateImageDimensions } from "./image-validation";
-import { checkMenuSharing } from "./menu-sharing";
+import { checkMenuSharing, menuLinkOrigin } from "./menu-sharing";
 import {
   changeMenuAddress,
   menuAddressAvailable,
@@ -933,6 +933,8 @@ async function route(req: Request) {
         billing: await billingSummary(r.id),
         aiConnected: !!config("OPENAI_API_KEY"),
         local: config("LOCAL_DEVELOPMENT") === "true",
+        // For menu links and QR codes made in the browser.
+        menuOrigin: menuLinkOrigin(new URL(req.url).origin),
         workerHealthy: (await workerStatus()).healthy,
         dishes: (
           await all(

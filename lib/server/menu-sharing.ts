@@ -1,17 +1,25 @@
 import { assert, config, response, type Row } from "./core";
 
+// Menu links and QR codes use the site's public address (APP_ORIGIN), even
+// when the owner works from another address; local development uses the
+// address in use.
+export function menuLinkOrigin(requestOrigin: string) {
+  if (config("LOCAL_DEVELOPMENT") !== "true")
+    try {
+      return new URL(config("APP_ORIGIN", requestOrigin)).origin;
+    } catch {
+      // An unreadable APP_ORIGIN: use the request's address.
+    }
+  return new URL(requestOrigin).origin;
+}
+
 export async function checkMenuSharing(req: Request, restaurant: Row) {
   assert(
     restaurant.published,
     400,
     "Publish your menu before checking its guest link.",
   );
-  const requestOrigin = new URL(req.url).origin;
-  const origin = new URL(
-    config("LOCAL_DEVELOPMENT") === "true"
-      ? requestOrigin
-      : config("APP_ORIGIN", requestOrigin),
-  ).origin;
+  const origin = menuLinkOrigin(new URL(req.url).origin);
   const url = `${origin}/m/${encodeURIComponent(restaurant.slug)}`;
   let accessible = false;
   try {

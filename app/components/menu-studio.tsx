@@ -1384,6 +1384,7 @@ export default function MenuStudio({
           <MenuShareDialog
             record={record}
             restaurant={state.restaurant}
+            origin={state.menuOrigin}
             fallbackName={
               store.menus.find((m) => m.published && m.id !== record.id)?.draft
                 .name

@@ -1362,12 +1362,15 @@ export function MenuDeliveryDialog({
 export function MenuShareDialog({
   record,
   restaurant,
+  origin,
   close,
   action,
   fallbackName,
 }: {
   record: SavedMenu;
   restaurant: Row;
+  /** The site's public address, for links and QR codes. */
+  origin?: string;
   close: () => void;
   action: (action: string) => Promise<void>;
   /** The live menu the main QR code shows while this one is offline. */
@@ -1392,7 +1395,7 @@ export function MenuShareDialog({
       ...(main ? {} : { menu: record.id }),
       src: placement,
     });
-    const link = `${location.origin}/m/${encodeURIComponent(restaurant.slug)}?${query}`;
+    const link = `${origin || location.origin}/m/${encodeURIComponent(restaurant.slug)}?${query}`;
     void import("qrcode")
       .then(({ default: QR }) =>
         QR.toDataURL(link, {
@@ -1433,7 +1436,7 @@ export function MenuShareDialog({
     return () => {
       active = false;
     };
-  }, [restaurant.slug, record.id, main, placement]);
+  }, [origin, restaurant.slug, record.id, main, placement]);
   async function run(fn: () => Promise<void>) {
     setBusy(true);
     setError("");
