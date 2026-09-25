@@ -40,7 +40,8 @@ function documentRow(row: Row) {
     published: row.published ? JSON.parse(row.published) : null,
     publishedRevision: row.published_revision,
     publishedAt: row.published_at,
-    isPrimary: !!row.is_primary,
+    // -1 marks a main menu that is offline; it's main again once republished.
+    isPrimary: Number(row.is_primary) > 0,
     updatedAt: row.updated_at,
     archivedAt: row.archived_at,
   };
@@ -191,6 +192,25 @@ async function publication(r: Row, documentId: string, draft: MenuDocument) {
     },
   };
 }
+/** The menu address shows only specials: a stand-in with no dishes. */
+const specialsOnly = (published: string | null) =>
+  !!published && !JSON.parse(published).sections?.length;
+/** A stand-in with no dishes, so live specials stay open to guests. */
+function specialsPage(r: Row, snapshot: string | null) {
+  return JSON.stringify({
+    restaurant: snapshot
+      ? JSON.parse(snapshot).restaurant
+      : {
+          name: r.name,
+          cuisine: r.cuisine,
+          currency: r.currency,
+          logoId: null,
+          orderingUrl: r.ordering_url,
+          style: publicBrandStyle(JSON.parse(r.style || "{}")),
+        },
+    sections: [],
+  });
+}
 export async function publicMenuDocuments(rid: string) {
   return (
     await all(
@@ -201,7 +221,7 @@ export async function publicMenuDocuments(rid: string) {
     id: r.id,
     name:
       JSON.parse(r.published).title || JSON.parse(r.published).name || "Menu",
-    isPrimary: !!r.is_primary,
+    isPrimary: Number(r.is_primary) > 0,
   }));
 }
 export async function publicDocumentSnapshot(rid: string, mid: string) {
@@ -313,11 +333,12 @@ async function linkEntriesToLibrary(r: Row, row: Row, input: unknown) {
     .parse(input);
   await limit("menu-library:" + r.id, 60, 3600);
   const dishes = await all(
-    "SELECT id,name,category,preferred_photo_id FROM dishes WHERE restaurant_id=? AND archived_at IS NULL AND sample=0 ORDER BY created_at",
+    "SELECT id,name,category,preferred_photo_id,dietary FROM dishes WHERE restaurant_id=? AND archived_at IS NULL AND sample=0 ORDER BY created_at",
     r.id,
   );
+  // Photos the owner reported as inaccurate never join a menu on their own.
   const photos = await all(
-    "SELECT id,dish_id FROM assets WHERE restaurant_id=? AND dish_id IS NOT NULL AND approved_at IS NOT NULL AND deleted_at IS NULL ORDER BY created_at DESC",
+    "SELECT id,dish_id FROM assets WHERE restaurant_id=? AND dish_id IS NOT NULL AND approved_at IS NOT NULL AND needs_correction=0 AND deleted_at IS NULL ORDER BY created_at DESC",
     r.id,
   );
   const photoFor = (dish: Row) =>
@@ -325,14 +346,17 @@ async function linkEntriesToLibrary(r: Row, row: Row, input: unknown) {
       photos.find((a) => a.id === dish.preferred_photo_id) ||
       photos.find((a) => a.dish_id === dish.id)
     )?.id || null;
+  // Each link carries the dish's dietary and allergen tags, so a menu item
+  // without tags of its own can show them.
   const links: {
     entryId: string;
     dishId: string;
     photoId: string | null;
+    dietary: string[];
     created: boolean;
   }[] = [];
   const inserts = [],
-    created = new Map<string, string>(),
+    created = new Map<string, { id: string; dietary: string[] }>(),
     t = now();
   for (const entry of b.entries) {
     const key = matchKey(entry.name);
@@ -345,6 +369,7 @@ async function linkEntriesToLibrary(r: Row, row: Row, input: unknown) {
         entryId: entry.id,
         dishId: match.id,
         photoId: photoFor(match),
+        dietary: normalizeDietary(match.dietary),
         created: false,
       });
       continue;
@@ -352,8 +377,9 @@ async function linkEntriesToLibrary(r: Row, row: Row, input: unknown) {
     if (created.has(key)) {
       links.push({
         entryId: entry.id,
-        dishId: created.get(key)!,
+        dishId: created.get(key)!.id,
         photoId: null,
+        dietary: created.get(key)!.dietary,
         created: false,
       });
       continue;
@@ -361,19 +387,23 @@ async function linkEntriesToLibrary(r: Row, row: Row, input: unknown) {
     // A retried request finds the dish it already created for this entry.
     const reusable = z.string().uuid().safeParse(entry.id).success;
     const retry = reusable
-      ? await one("SELECT id,restaurant_id FROM dishes WHERE id=?", entry.id)
+      ? await one(
+          "SELECT id,restaurant_id,dietary FROM dishes WHERE id=?",
+          entry.id,
+        )
       : null;
     if (retry && retry.restaurant_id === r.id) {
       links.push({
         entryId: entry.id,
         dishId: retry.id,
         photoId: null,
+        dietary: normalizeDietary(retry.dietary),
         created: false,
       });
       continue;
     }
     const did = retry || !reusable ? id() : entry.id;
-    created.set(key, did);
+    created.set(key, { id: did, dietary: normalizeDietary(entry.dietary) });
     inserts.push(
       db()
         .prepare(
@@ -396,6 +426,7 @@ async function linkEntriesToLibrary(r: Row, row: Row, input: unknown) {
       entryId: entry.id,
       dishId: did,
       photoId: null,
+      dietary: normalizeDietary(entry.dietary),
       created: true,
     });
   }
@@ -446,7 +477,7 @@ const guestActions = [
  * What guests did with the restaurant's published menus in the last 7 days,
  * against the 7 days before: visits (once per guest session and menu), taps
  * on order/reserve/call/directions, where they found the menu, and the dish
- * most guests scrolled to.
+ * most guests had on screen (the top of a menu is always seen).
  */
 async function menuStats(r: Row) {
   const day = 24 * 60 * 60 * 1000,
@@ -958,7 +989,11 @@ export async function menuDocumentsRoute(req: Request, p: string[], r: Row) {
     const draft = menuDocumentSchema.parse(JSON.parse(row.draft));
     // Check before choosing an address, so a blocked publish changes nothing.
     await assertMenuReady(r, draft);
-    await firstPublicationAddress(r, b.address || undefined);
+    // A special published before any menu leaves a stand-in with no dishes;
+    // the first real menu still chooses the address (old links redirect).
+    const addressed = specialsOnly(r.published) ? { ...r, published: null } : r;
+    await firstPublicationAddress(addressed, b.address || undefined);
+    r.slug = addressed.slug;
     const content = await publication(r, row.id, draft),
       serialized = JSON.stringify(content),
       t = now(),
@@ -974,10 +1009,13 @@ export async function menuDocumentsRoute(req: Request, p: string[], r: Row) {
           "INSERT INTO menu_publication_history (id,menu_id,restaurant_id,snapshot,revision,created_at) SELECT ?,id,restaurant_id,published,revision,? FROM menu_documents WHERE id=? AND published_at=? AND revision=?",
         )
         .bind(hid, t, row.id, t, b.revision),
-      // Resolve the main menu inside the transaction, after any concurrent choice.
+      // Resolve the main menu inside the transaction, after any concurrent
+      // choice. A main menu taken offline (-1) becomes main again; one
+      // published while no menu is live (at most a specials-only page with
+      // no dishes) leaves that memory in place.
       db()
         .prepare(
-          "UPDATE menu_documents SET is_primary=CASE WHEN id=? THEN 1 ELSE 0 END WHERE restaurant_id=? AND EXISTS(SELECT 1 FROM menu_documents WHERE id=? AND published_at=? AND revision=? AND (is_primary=1 OR (SELECT published FROM restaurants WHERE id=?) IS NULL))",
+          "UPDATE menu_documents SET is_primary=CASE WHEN id=? THEN 1 WHEN is_primary=-1 THEN -1 ELSE 0 END WHERE restaurant_id=? AND EXISTS(SELECT 1 FROM menu_documents WHERE id=? AND published_at=? AND revision=? AND (is_primary<>0 OR (SELECT COALESCE(json_array_length(published,'$.sections'),0) FROM restaurants WHERE id=?)=0))",
         )
         .bind(row.id, r.id, row.id, t, b.revision, r.id),
       db()
@@ -1069,17 +1107,32 @@ export async function menuDocumentsRoute(req: Request, p: string[], r: Row) {
           "UPDATE menu_documents SET published=NULL,published_revision=NULL,published_at=NULL,archived_at=?,revision=revision+1,updated_at=? WHERE id=? AND restaurant_id=? AND revision=? AND archived_at IS NULL RETURNING id",
         )
         .bind(p[2] === "archive" ? t : null, t, row.id, r.id, b.revision),
-      // Derive the fallback from transaction-time state, retaining any other published primary.
+      // Derive the fallback from transaction-time state, retaining any other
+      // published primary. With no menu left live, a special that's still on
+      // keeps the menu address open as a specials-only page.
       db()
         .prepare(
-          `UPDATE restaurants SET published=(SELECT published FROM menu_documents WHERE restaurant_id=? AND published IS NOT NULL AND archived_at IS NULL ORDER BY is_primary DESC,updated_at DESC,id LIMIT 1),published_at=? WHERE id=? AND ${offlineGuard}`,
+          `UPDATE restaurants SET published=COALESCE((SELECT published FROM menu_documents WHERE restaurant_id=? AND published IS NOT NULL AND archived_at IS NULL ORDER BY is_primary DESC,updated_at DESC,id LIMIT 1),CASE WHEN EXISTS(SELECT 1 FROM promotions WHERE restaurant_id=? AND published IS NOT NULL AND sold_out=0 AND ends_at>?) THEN CASE WHEN COALESCE(json_array_length(published,'$.sections'),-1)=0 THEN published ELSE ? END END),published_at=? WHERE id=? AND ${offlineGuard}`,
         )
-        .bind(r.id, t, r.id, row.id, r.id, b.revision + 1),
+        .bind(
+          r.id,
+          r.id,
+          t,
+          specialsPage(r, row.published),
+          t,
+          r.id,
+          row.id,
+          r.id,
+          b.revision + 1,
+        ),
+      // A main menu taken offline is remembered (-1) and becomes main again
+      // when it's republished, unless the owner chooses another main menu
+      // first. Only the owner's own choice is remembered, not a fallback.
       db()
         .prepare(
-          `UPDATE menu_documents SET is_primary=CASE WHEN published IS NOT NULL AND published=(SELECT published FROM restaurants WHERE id=?) AND archived_at IS NULL THEN 1 ELSE 0 END WHERE restaurant_id=? AND ${offlineGuard}`,
+          `UPDATE menu_documents SET is_primary=CASE WHEN published IS NOT NULL AND published=(SELECT published FROM restaurants WHERE id=?) AND archived_at IS NULL THEN 1 WHEN archived_at IS NOT NULL THEN 0 WHEN is_primary=-1 THEN -1 WHEN id=? AND is_primary=1 AND NOT EXISTS(SELECT 1 FROM menu_documents WHERE restaurant_id=? AND is_primary=-1) THEN -1 ELSE 0 END WHERE restaurant_id=? AND ${offlineGuard}`,
         )
-        .bind(r.id, r.id, row.id, r.id, b.revision + 1),
+        .bind(r.id, row.id, r.id, r.id, row.id, r.id, b.revision + 1),
     ]);
     assert(
       result[0].results.length,
@@ -1113,6 +1166,10 @@ export async function syncDishToMenus(rid: string, before: Row, after: Row) {
     JSON.stringify(previous.dietary) === JSON.stringify(current.dietary)
   )
     return [];
+  // Publishing refuses a price of 0, so guests never get one this way: drafts
+  // take it (and their checks flag it), while live copies keep their price.
+  const withheld = previous.price !== current.price && !current.price,
+    liveFacts = withheld ? { ...current, price: previous.price } : current;
   const updated: { id: string; name: string; live: boolean }[] = [];
   const rows = await all(
     "SELECT * FROM menu_documents WHERE restaurant_id=? AND archived_at IS NULL",
@@ -1124,9 +1181,14 @@ export async function syncDishToMenus(rid: string, before: Row, after: Row) {
       const nextDraft = applyDishUpdate(draft, previous, current);
       const published = row.published ? JSON.parse(row.published) : null;
       const nextPublished = published
-        ? applyDishUpdate(published as MenuDocument, previous, current)
+        ? applyDishUpdate(published as MenuDocument, previous, liveFacts)
         : null;
       if (!nextDraft.changed && !nextPublished?.changed) continue;
+      // A withheld price leaves the live copy behind this draft.
+      const inStep =
+        !withheld ||
+        JSON.stringify(applyDishUpdate(draft, previous, liveFacts).menu) ===
+          JSON.stringify(nextDraft.menu);
       const statements = [];
       if (nextDraft.changed)
         statements.push(
@@ -1137,7 +1199,7 @@ export async function syncDishToMenus(rid: string, before: Row, after: Row) {
             )
             .bind(
               JSON.stringify(menuDocumentSchema.parse(nextDraft.menu)),
-              nextPublished?.changed ? 1 : 0,
+              nextPublished?.changed && inStep ? 1 : 0,
               now(),
               row.id,
               rid,

@@ -73,9 +73,11 @@ export default async function PublicMenu({
   const query = await searchParams,
     requested = query?.menu;
   const result = await loadMenu(slug, requested).catch(() => null);
+  // A load error isn't a page search engines should keep.
   if (!result)
     return (
       <main className="unavailable">
+        <meta name="robots" content="noindex" />
         <h1>The menu is taking a moment.</h1>
         <p>Please refresh in a little while.</p>
       </main>
@@ -90,14 +92,9 @@ export default async function PublicMenu({
     ).toString();
     permanentRedirect(`/m/${result.slug}${kept ? `?${kept}` : ""}`);
   }
-  if (result.kind === "missing") notFound();
-  if (result.kind === "menu-missing")
-    return (
-      <main className="unavailable">
-        <h1>This menu isn’t available right now.</h1>
-        <a href={`/m/${slug}`}>View the current menu</a>
-      </main>
-    );
+  // An unknown or offline menu is a real 404 (not indexed), like a missing
+  // restaurant.
+  if (result.kind === "missing" || result.kind === "menu-missing") notFound();
   const origin = config("APP_ORIGIN"),
     url = origin ? new URL(`/m/${slug}`, origin).href : undefined,
     image = origin ? menuPreviewImage(result.menu, slug, origin) : null;

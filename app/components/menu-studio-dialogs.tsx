@@ -30,7 +30,12 @@ import {
   menuDesignSpec,
   recommendMenuDesigns,
 } from "@/lib/menu-design-system";
-import { attachAddons, parsePastedMenu } from "@/lib/menu-paste";
+import {
+  attachAddons,
+  courseCount,
+  courseIndex,
+  parsePastedMenu,
+} from "@/lib/menu-paste";
 import { normalizeDietary } from "@/lib/dietary";
 import {
   menuPlacementIds,
@@ -40,7 +45,7 @@ import {
   type MenuPlacement,
 } from "@/lib/menu-placements";
 import { preferredPhoto } from "@/lib/dish-library";
-import type { MenuCheck } from "@/lib/menu-checks";
+import { restaurantSettingsChanged, type MenuCheck } from "@/lib/menu-checks";
 import {
   isPlaceholderRestaurantName,
   menuAddressProblem,
@@ -153,29 +158,6 @@ export function MenuDesignPicker({
   );
 }
 
-const sectionOrder = [
-  ["breakfast", "brunch", "morning"],
-  ["bakery", "pastr", "bread"],
-  ["snack", "small plate", "share", "appetizer", "starter", "antipast"],
-  ["soup", "salad"],
-  [
-    "main",
-    "entrée",
-    "entree",
-    "plate",
-    "pasta",
-    "pizza",
-    "burger",
-    "sandwich",
-    "taco",
-    "bowl",
-  ],
-  ["side"],
-  ["dessert", "sweet"],
-  ["kid"],
-  ["coffee", "tea", "drink", "beverage", "juice", "smoothie"],
-  ["cocktail", "wine", "beer", "bar"],
-];
 export function MenuSourceDialog({
   mode,
   setMode,
@@ -262,11 +244,8 @@ export function MenuSourceDialog({
     }
     // Courses in the order guests read them; unknown sections keep their place.
     const course = (name: string) => {
-      const key = name.toLowerCase();
-      const index = sectionOrder.findIndex((words) =>
-        words.some((word) => key.includes(word)),
-      );
-      return index < 0 ? sectionOrder.length / 2 : index;
+      const index = courseIndex(name);
+      return index < 0 ? courseCount / 2 : index;
     };
     return imported
       ? sections
@@ -335,7 +314,7 @@ export function MenuSourceDialog({
       title={review ? "Review imported dishes" : "Add dishes"}
       description={
         review
-          ? "Nothing goes live yet. Dishes the reader was unsure about are marked so you can check them against the original."
+          ? "Nothing goes live yet. After adding, check each dish against your original; dishes the reader was unsure about are marked."
           : "Start with what you have. Every dish stays editable."
       }
       close={close}
@@ -405,21 +384,9 @@ export function MenuSourceDialog({
             <button
               className="md-button"
               onClick={() =>
-                append(
-                  review.map((s) => ({
-                    ...s,
-                    items: s.items.map((i) => ({
-                      ...i,
-                      // Automatic check: anything the reader was unsure about,
-                      // or a missing price, stays marked for a closer look.
-                      sourceReviewed:
-                        !i.sourceUncertain.length &&
-                        (i.priceMode !== "single" || i.price != null),
-                    })),
-                  })),
-                  importId || null,
-                  importId ? "" : text,
-                )
+                // Every dish stays marked until the owner checks it against
+                // the original; only checked dishes join My Dishes.
+                append(review, importId || null, importId ? "" : text)
               }
             >
               <Plus size={16} /> Add{" "}
@@ -598,7 +565,9 @@ export function MenuSourceDialog({
                 className="md-button"
                 disabled={!text.trim()}
                 onClick={() => {
-                  const parsed = parsePastedMenu(text);
+                  const parsed = parsePastedMenu(text, {
+                    currency: state.restaurant.currency,
+                  });
                   if (!parsed.length)
                     setError("Add some dish names and prices first.");
                   else {
@@ -719,6 +688,12 @@ export function MenuImportReview({
   const remaining = menu.sections
     .flatMap((s) => s.items)
     .filter((i) => !i.sourceReviewed).length;
+  // Dishes read with confidence and a price, for the owner to confirm at once.
+  const clear = (i: MenuDocument["sections"][number]["items"][number]) =>
+    !i.sourceReviewed &&
+    !i.sourceUncertain.length &&
+    (i.priceMode !== "single" || i.price != null);
+  const confident = menu.sections.flatMap((s) => s.items).filter(clear).length;
   const edit = (
     id: string,
     patch: Partial<MenuDocument["sections"][number]["items"][number]>,
@@ -732,7 +707,7 @@ export function MenuImportReview({
   return (
     <MenuDialog
       title="Review imported dishes"
-      description="Compare each marked dish with your original and correct anything that needs it. Everything else was read with confidence."
+      description="Compare each dish with your original and correct anything that needs it. Dishes the reader was unsure about are marked."
       close={close}
       wide
     >
@@ -834,9 +809,27 @@ export function MenuImportReview({
         <button className="md-button" onClick={close}>
           Done
         </button>
+        {confident > 0 && (
+          <button
+            className="md-button md-secondary"
+            onClick={() =>
+              change({
+                sections: menu.sections.map((s) => ({
+                  ...s,
+                  items: s.items.map((i) =>
+                    clear(i) ? { ...i, sourceReviewed: true } : i,
+                  ),
+                })),
+              })
+            }
+          >
+            <Check size={16} /> Confirm the {dishCount(confident)} the reader
+            was sure of
+          </button>
+        )}
         <p className="md-help">
           {remaining
-            ? `${remaining} ${remaining === 1 ? "dish" : "dishes"} still marked for a closer look.`
+            ? `${remaining} ${remaining === 1 ? "dish" : "dishes"} still to check.`
             : "Every imported dish is ready."}
         </p>
       </div>
@@ -844,7 +837,11 @@ export function MenuImportReview({
   );
 }
 
-function publicationChanges(before: Row | null, menu: DesignedMenu) {
+function publicationChanges(
+  before: Row | null,
+  menu: DesignedMenu,
+  restaurant: Row,
+) {
   if (!before)
     return [
       "Your first published version. Guests will see the dishes and details shown here.",
@@ -906,6 +903,8 @@ function publicationChanges(before: Row | null, menu: DesignedMenu) {
     ].some((key) => before[key] !== menu[key as keyof DesignedMenu])
   )
     notes.push("Menu design or guest notes updated");
+  if (restaurantSettingsChanged(before, restaurant))
+    notes.push("Your restaurant’s name, logo, colors or currency updated");
   if (!notes.length)
     notes.push("Republish the current menu and restaurant details.");
   return notes;
@@ -1060,17 +1059,18 @@ export function MenuDeliveryDialog({
   const isPrint = mode === "export",
     blocking = checks.filter((c) => c.level === "block"),
     warnings = checks.filter((c) => c.level === "warn"),
-    // The first publication chooses the menu address that QR codes will use.
+    // The first publication chooses the menu address that QR codes will use
+    // (a special published first leaves a stand-in with no dishes).
     choosingAddress =
       !isPrint &&
       !record.published &&
-      !restaurant.published &&
+      !restaurant.published?.sections?.length &&
       isAutomaticAddress(restaurant) &&
       !isPlaceholderRestaurantName(restaurant.name),
     addressProblem = choosingAddress ? menuAddressProblem(address) : "",
     changes = useMemo(
-      () => publicationChanges(record.published, menu),
-      [record.published, menu],
+      () => publicationChanges(record.published, menu, restaurant),
+      [record.published, menu, restaurant],
     );
   useEffect(() => {
     if (!choosingAddress) return;
@@ -1219,7 +1219,7 @@ export function MenuDeliveryDialog({
             )}
             <small>
               Checked: restaurant name, dish names, prices, sample dishes,
-              duplicates and descriptions.
+              reported photos, duplicates and descriptions.
             </small>
           </div>
           {isPrint ? (
@@ -1354,11 +1354,14 @@ export function MenuShareDialog({
   restaurant,
   close,
   action,
+  fallbackName,
 }: {
   record: SavedMenu;
   restaurant: Row;
   close: () => void;
   action: (action: string) => Promise<void>;
+  /** The live menu the main QR code shows while this one is offline. */
+  fallbackName?: string;
 }) {
   const [qr, setQr] = useState(""),
     [url, setUrl] = useState(""),
@@ -1586,6 +1589,15 @@ export function MenuShareDialog({
           Take this menu offline while keeping its saved draft and publication
           history.
         </p>
+        {offline && record.isPrimary && (
+          <p className="md-help">
+            <strong>This is your main menu.</strong>{" "}
+            {fallbackName
+              ? `While it’s offline, your main QR code and menu link show ${fallbackName}.`
+              : "While it’s offline, your main QR code and menu link won’t show a menu."}{" "}
+            Publish it again to make it your main menu again.
+          </p>
+        )}
         {offline ? (
           <div className="md-dialog-actions">
             <button

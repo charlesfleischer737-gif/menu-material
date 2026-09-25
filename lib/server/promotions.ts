@@ -18,6 +18,10 @@ import {
 import { defaultStyle, localToInstant, promotionStatus } from "../promotions";
 import { publicBrandStyle } from "../restaurant-look";
 import { photoStyles } from "../photo-styles";
+import {
+  isPlaceholderRestaurantName,
+  restaurantNameMessage,
+} from "../restaurant-identity";
 import { publicMenuDocuments } from "./menu-documents";
 
 export const styleSchema = z.object({
@@ -360,6 +364,7 @@ export async function promotionRoute(req: Request, p: string[], r: Row) {
       return response({ ok: true });
     }
     if (p[2] === "publish") {
+      assert(!isPlaceholderRestaurantName(r.name), 400, restaurantNameMessage);
       assert(
         saved.approved_hash === hash,
         400,
