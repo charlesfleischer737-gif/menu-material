@@ -12,9 +12,17 @@ export async function renderPost(
   restaurant: Row,
   channel = "feed",
   slide = 0,
+  options: { scale?: number } = {},
 ) {
   if (draft.compositionVersion === 2)
-    return renderComposedPost(canvas, draft, restaurant, channel, slide);
+    return renderComposedPost(
+      canvas,
+      draft,
+      restaurant,
+      channel,
+      slide,
+      options,
+    );
   await loadPostFonts();
   const W = 1080,
     H = channel === "story" ? 1920 : 1350,

@@ -103,8 +103,11 @@ const fields = {
     "portrait",
     "feed",
     "post",
+    "carousel",
   ]),
   method: z.enum(["share", "download"]),
+  design: z.string().regex(/^[a-z]{2,20}$/),
+  shape: z.enum(["4:5", "3:4", "9:16"]),
   controls: z
     .string()
     .refine((value) =>
@@ -149,6 +152,9 @@ const allowed: Record<string, string[]> = {
     "tool",
     "channel",
     "method",
+    "design",
+    "shape",
+    "count",
   ],
   export_prepared: ["destination", "width", "height", "count", "exportKey"],
   export_download_started: ["destination", "count", "exportKey"],

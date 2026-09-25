@@ -122,8 +122,16 @@ for (const [index, t] of postTemplates.entries())
         `${t.id}: text cannot leave the canvas`,
       );
       if (channel === "story") {
-        assert(box.y >= 174);
-        assert(box.y + box.height <= 1920 - 174);
+        // Clear of the profile row, the reply bar and the screen edges.
+        assert(box.y >= 270, `${t.id}: Story text below the profile row`);
+        assert(
+          box.y + box.height <= 1540,
+          `${t.id}: Story text above the reply bar`,
+        );
+        assert(
+          box.x >= 64 && box.x + box.width <= 1080 - 64,
+          `${t.id}: Story side margin ${JSON.stringify(box)}`,
+        );
       }
     }
     writeFileSync(
@@ -141,6 +149,32 @@ for (const [index, t] of postTemplates.entries())
     checks++;
   }
 writeFileSync(`${root}/post-designs.jpg`, sheet.toBuffer("image/jpeg"));
+// The taller 3:4 post keeps text inside the grid crop.
+for (const t of postTemplates) {
+  const c = canvas(),
+    result = await renderPost(
+      c,
+      { ...base, ...applyPostTemplate(base, t.id), feedShape: "3:4" },
+      restaurant,
+      "feed",
+    );
+  assert.equal(c.height, 1440);
+  assert.equal(result.height, 1440);
+  for (const box of result.textBoxes)
+    assert(box.y >= 60 && box.y + box.height <= 1440 - 60, `${t.id}: 3:4 text`);
+  writeFileSync(`${root}/post-${t.id}-tall.png`, c.toBuffer("image/png"));
+  checks++;
+}
+// A dish word decides the design before the restaurant's cuisine does.
+const { recommendedDesigns } = await import("../lib/post-composition.ts");
+assert.equal(
+  recommendedDesigns(
+    { occasion: "showcase", items: [{ name: "The house burger" }] },
+    { cuisine: "Seasonal neighborhood cooking" },
+  )[0],
+  "launch",
+);
+checks++;
 const longBrand = {
   ...restaurant,
   name: "The Orchard Kitchen and Neighborhood Dining Room",

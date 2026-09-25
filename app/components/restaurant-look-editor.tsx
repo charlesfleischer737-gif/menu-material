@@ -135,6 +135,7 @@ export default function RestaurantLookEditor({
       ];
   const post = {
     ...brandPostFields(style),
+    compositionVersion: 2,
     template: "chef",
     title: dish?.name || "From our kitchen",
     description: "",

@@ -2,6 +2,8 @@
 
 Review date: September 24, 2026. Source: `main` at `200f960`. This builds on the [September 24 site audit](SITE_AUDIT_2026-09-24.md). Its Post Maker notes (3:4 posts, Story safe zones, richer captions, starting from any photo, folding Campaigns in) are included here rather than repeated.
 
+**Update, September 25, 2026:** Phase 1 is in. See [Phase 1 status](#phase-1-status-september-25-2026) for what shipped, what's partly done, and before-and-after images.
+
 ## Bottom line
 
 **Will restaurants use it?** Some will, now and then. Today it's a pleasant way to make a tidy post for a special. It isn't yet something an owner would open every week, because:
@@ -248,6 +250,51 @@ How Post Maker answers the features owners know from Instagram and Canva:
 | 9 | Multi-photo layouts designed for each count: a hero with two smaller photos, a three-across strip, and later overlapping cut-outs. The closing slide shows the name, address and "Book" or "Order" instead of repeating a photo. | `:16-40`, `:354-429` | Covers for 2–6 dishes have no empty cells |
 | 10 | Faster previews: wait 150 ms after typing stops; render thumbnails at 324 px directly; reuse decoded photos | `post-canvas.tsx`; photo loading at `:431-434` | Typing a headline stays smooth on a mid-range phone |
 | 11 | Designs as data: describe each design's layout (areas, anchors, type styles, safe zones) as data, so new designs and variations don't need new branches in a 650-line function | `lib/post-composition.ts` | A new design is a data entry plus a contact-sheet review |
+
+### Phase 1 status (September 25, 2026)
+
+Every new post uses the new renderer. Drafts saved before the composition upgrade keep their old layout until the owner taps "Use the improved composition", as before.
+
+| # | Change | Status | What shipped |
+|---|---|---|---|
+| 1 | Story safe zone | Done | Text and logos stay between 270 px and 1540 px on Stories, and 72 px from the sides in every format. The side margin keeps 4:5 text inside the centered 3:4 grid crop. `tests/workspace-exports.mjs` fails on any Story text outside the zone. `tests/exports.mjs` keeps its looser bounds because it covers legacy drafts. |
+| 2 | 3:4 posts | Done | Design → Post shape: Portrait 4:5 (default) or Tall 3:4 (1080 × 1440). Stories stay 9:16 and carousels 4:5. |
+| 3 | Extend instead of cropping | Done for plain backdrops | Plain backdrops are extended from the photo's own edge rows, blurred and feathered, so the whole dish shows. A busy photo that would lose too much is shown whole on a deep, blurred copy tinted with the dish's color. Photos whose dish runs close to the frame edges still crop in full-bleed designs. Those account for the 19 notes in 180 test renders (15 at 3:4 or 9:16), down from 32 of 40 before. |
+| 4 | Warn only when it matters | Done | Only two warnings remain: the dish itself is cut, or the photo will look soft. When a note is showing, review says "Ready to share. The note above is optional." instead of "Automatic checks passed". A fresh post opens with no warning. |
+| 5 | Type system | Done | Six new OFL faces: Instrument Serif roman and italic, Anton, Fraunces in two soft cuts, and Bricolage Grotesque. Other changes: tracked capitals, balanced line breaks, "·" separators, and a letter-spaced restaurant name at 36 px. The price is its own element: a seal on Daily special, the hero on Table for two. |
+| 6 | Colors from the photo | Done | Extensions use the photo's own backdrop. Light paper follows a light backdrop. In season is tinted from the dish. Textures are cropped to cover, never stretched. |
+| 7 | No dark overlays over food | Done; no test yet | Words go in the photo's quiet space. Ink is chosen by measured contrast, with only as much shade as legibility needs. A long headline lowers or shrinks a dish on a plain backdrop instead of covering it. No automated check yet measures overlay darkness over the dish. |
+| 8 | Logo | Done | Transparent logos are shown as they are, tinted to the text color when contrast is low. Opaque logos sit on a rounded card. |
+| 9 | Multi-photo layouts | Done | Layouts for two to six photos: a hero with a strip, a strip, or a grid, with no empty cells. The closing slide is type only: the name, the closing line and the call to action. |
+| 10 | Faster previews | Done; phone not measured | Previews wait 150 ms after typing stops. Thumbnails draw at 324 px. Decoded photos are shared by the preview, thumbnails and exports. Not yet timed on a mid-range phone. |
+| 11 | Designs as data | Partly | Each design is now a short function in `lib/post-designs.ts` over a shared kit (`lib/post-kit.ts`), replacing branches in one long function. The kit handles layout, safe zones, contrast and photo placement. A fully declarative format is still to do. |
+
+Phase 0 status: export events now carry the post ID, design, shape, channel and file count. The five-owner concept test still needs to be run with people.
+
+Also fixed along the way:
+
+- The first design is picked from the dish's own name before the restaurant's cuisine, so a burger at a "seasonal" restaurant opens on Menu drop.
+- Photo analysis now treats a table's light falloff and soft shadows as backdrop, not food.
+
+![Phase 1: all ten designs as Posts with the Photo Studio burger](post-maker-review-2026-09-24/phase1-designs-studio-photo.jpg)
+
+*Phase 1: the same burger as in §3. The burger is whole in every design, and seven headline faces replace the one shared serif.*
+
+![Phase 1: all ten designs with the unedited phone photo](post-maker-review-2026-09-24/phase1-designs-phone-photo.jpg)
+
+*The unedited phone photo from §3. The type and color are better, but the clutter and the orange light remain, and full-bleed designs still crop it tightly. At 3:4 and 9:16, where the crop would cut the cake, the whole photo sits on a deep, blurred copy of itself. Phase 2's "Make this photo for the post" is still the real fix for photos like this.*
+
+![Phase 1 Stories with Instagram's covered areas marked in red](post-maker-review-2026-09-24/phase1-story-safe-zones.jpg)
+
+*Stories: every word and logo now sits between the white lines. The photo alone fills the areas Instagram covers.*
+
+![Nightcap with a normal and a 90-character headline, and two 3:4 posts](post-maker-review-2026-09-24/phase1-nightcap-and-3x4.jpg)
+
+*Nightcap sets its gold type in the photo's own space instead of under a 90% overlay (compare §5). A 90-character headline shrinks the dish rather than covering it. Right: the new 3:4 shape.*
+
+![Phase 1 carousel and two-dish offer](post-maker-review-2026-09-24/phase1-multi-photo.jpg)
+
+*Multi-photo: a three-dish cover with no empty cell, a type-only closing slide, and a two-dish offer with a line listing the items.*
 
 ### Phase 2: made for this post (4–6 weeks). This is the differentiator.
 

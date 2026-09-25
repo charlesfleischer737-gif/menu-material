@@ -82,7 +82,7 @@ Published menus read a snapshot; updates to shared dish records do not change a 
 
 Anonymous customer access requires **public** access at the hosting boundary; the app still enforces invitation-only workspace authentication. The sharing panel checks the published JSON endpoint without owner credentials and confirms whether guests can open it. It offers a stable link, high-resolution QR download, a branded 4 × 6 inch table-card PDF, native link sharing, and an explicit take-offline action. Table cards use the published restaurant look. Public menu responses exclude private photographic prompts, reference IDs and restaurant brand notes.
 
-Post Maker prepares reviewed PNG files before the Share tap to preserve mobile share-sheet activation. Choose a post, Story or carousel, copy the caption, then share files or download individual images. Unsupported sharing falls back to saving. HEIC uploads try the device decoder first and then the bundled converter; originals are retained. Physical iPhone/Android camera capture, HEIC variants and Instagram handoff remain device-validation tasks.
+Post Maker prepares reviewed PNG files before the Share tap to preserve mobile share-sheet activation. Choose a post (4:5 or tall 3:4), Story or carousel, copy the caption, then share files or download individual images. Story text and logos stay clear of Instagram's own controls. Unsupported sharing falls back to saving. HEIC uploads try the device decoder first and then the bundled converter; originals are retained. Physical iPhone/Android camera capture, HEIC variants and Instagram handoff remain device-validation tasks.
 
 ## Checks
 
