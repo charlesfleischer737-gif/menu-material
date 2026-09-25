@@ -4,7 +4,7 @@ Review date: September 25, 2026. Source: `63d31f7` (main after #12, "Show photo 
 
 ## Fix status — added after the fixes
 
-The fixes are on branch `claude/relaxed-feynman-7i5npi`, not yet merged into main. The rest of this document describes the site as reviewed, before these fixes.
+The fixes were merged into main in #14. The rest of this document describes the site as reviewed, before these fixes.
 
 **In short:** nearly every finding is fixed. The main gaps left in code are the stylesheet split, resized guest-menu photos and the remaining lint errors. The rest needs you: payments, an email provider, Terms and a support address, CAPTCHA keys, and a few product decisions.
 
