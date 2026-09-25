@@ -451,8 +451,9 @@ export default function ExploreGallery({
               <div>
                 <dt>Good to know</dt>
                 <dd>
-                  These looks change the scene, never your food. Add promotional
-                  words later in Post Maker.
+                  These looks are designed to change the scene and keep your
+                  food as served. Check each result before sharing, and add
+                  promotional words later in Post Maker.
                 </dd>
               </div>
             )}
@@ -662,7 +663,8 @@ export default function ExploreGallery({
                   )}
                   <p className="ex-fidelity">
                     <ShieldCheck size={16} aria-hidden="true" />
-                    Your food and portion stay the same.
+                    Designed to keep your food and portion as served — check
+                    each result before sharing.
                   </p>
                   {more.length > 0 && (
                     <section className="ex-more" aria-labelledby="ex-more">

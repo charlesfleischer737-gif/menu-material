@@ -469,6 +469,18 @@ reply(
   );
 }
 
+// Looks aim to keep the food as served; AI results can still change it (the
+// guidelines and "Report a food change" say so), so no screen promises it.
+for (const name of ["explore-gallery.tsx", "studio-style-library.tsx"]) {
+  const source = readFileSync(
+    new URL(`../app/components/${name}`, import.meta.url),
+    "utf8",
+  ).replace(/\s+/g, " ");
+  for (const promise of ["never your food", "stay the same", "stays your food"])
+    ok(!source.includes(promise), `${name} doesn't promise "${promise}"`);
+  ok(source.includes("check each result before sharing"));
+}
+
 console.log(
-  `PASS: ${checks} dish and upload checks: dietary notes typed one character at a time, photo types refused before anything is created, and upload errors.`,
+  `PASS: ${checks} dish and upload checks: dietary notes typed one character at a time, photo types refused before anything is created, upload errors, and looks described as intent.`,
 );
