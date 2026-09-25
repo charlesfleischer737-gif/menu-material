@@ -1,5 +1,5 @@
 "use client";
-import { useEffect, useState } from "react";
+import { useEffect, useRef, useState } from "react";
 import { Button } from "@/components/ui/button";
 import {
   Dialog,
@@ -36,7 +36,9 @@ export default function Auth({
     [error, setError] = useState(""),
     [busy, setBusy] = useState(false),
     [website, setWebsite] = useState(""),
-    [resetting, setResetting] = useState(false);
+    [resetting, setResetting] = useState(false),
+    [signInInstead, setSignInInstead] = useState(false);
+  const passwordInput = useRef<HTMLInputElement>(null);
   useEffect(() => {
     if (open && !new URLSearchParams(location.search).get("invite")) {
       setMode(initialMode);
@@ -84,6 +86,12 @@ export default function Auth({
       setResetting(false);
     } catch (e) {
       setError((e as Error).message);
+      // The email already has an account: offer to sign in with it.
+      setSignInInstead(
+        mode === "signup" &&
+          !resetting &&
+          (e as { status?: number }).status === 409,
+      );
     } finally {
       setBusy(false);
     }
@@ -188,6 +196,7 @@ export default function Auth({
             {resetting ? "New password" : "Password"}
             {mode === "signup" && <small>At least 12 characters.</small>}
             <input
+              ref={passwordInput}
               required
               minLength={mode === "signup" ? 12 : 1}
               disabled={busy}
@@ -229,6 +238,22 @@ export default function Auth({
             <p className="error" role="alert">
               {error}
             </p>
+          )}
+          {error && signInInstead && (
+            <Button
+              type="button"
+              variant="outline"
+              className="wide"
+              disabled={busy}
+              onClick={() => {
+                // The typed email stays; only the mode changes.
+                setMode("login");
+                setError("");
+                passwordInput.current?.focus();
+              }}
+            >
+              Sign in instead
+            </Button>
           )}
           <Button className="wide auth-submit" disabled={busy}>
             {busy
