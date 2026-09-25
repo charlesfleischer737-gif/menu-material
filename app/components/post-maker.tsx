@@ -345,9 +345,10 @@ export default function PostMaker({
         for (const w of result.warnings)
           warnings.set(w, [...(warnings.get(w) || []), label]);
       }
+    const list = new Intl.ListFormat("en", { type: "conjunction" });
     setProofIssues(
       [...warnings].map(
-        ([w, labels]) => `${[...new Set(labels)].join(" and ")}: ${w}`,
+        ([w, labels]) => `${list.format([...new Set(labels)])}: ${w}`,
       ),
     );
     change({ reviewed: false });

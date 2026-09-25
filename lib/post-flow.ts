@@ -181,7 +181,7 @@ export function postPhotoError(draft: Row, assets: Row[]) {
         !a.deleted_at,
     );
   const of = (list: Row[]) =>
-    `${list.length > 1 ? "photos" : "photo"} of ${list.map((i) => i.name).join(" and ")}`;
+    `${list.length > 1 ? "photos" : "photo"} of ${new Intl.ListFormat("en", { type: "conjunction" }).format(list.map((i) => String(i.name)))}`;
   const missing = items.filter((i) => !photo(i));
   if (missing.length)
     return `The ${of(missing)} ${missing.length > 1 ? "are" : "is"} no longer available. Choose another approved photo, or remove the dish.`;

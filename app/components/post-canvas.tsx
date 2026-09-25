@@ -80,26 +80,34 @@ export function PostCanvas({
       clearTimeout(timer);
     };
   }, [renderKey, factor, size.width, size.height]);
+  const format =
+    channel === "story"
+      ? "Story"
+      : channel === "carousel"
+        ? `Carousel slide ${slide + 1}`
+        : "Post";
   return (
     <div
       className="cx-post-canvas"
       style={{ aspectRatio: size.width / size.height }}
     >
+      {/* A design thumbnail sits in a button that already names the design. */}
       <canvas
         ref={ref}
         style={{ visibility: error ? "hidden" : "visible" }}
         role="img"
+        aria-hidden={thumbnail || undefined}
         aria-label={
           example
-            ? `Example Instagram ${channel} design`
-            : `${channel} design preview using your approved photo`
+            ? `Example Instagram ${format.toLowerCase()} design`
+            : `${format} preview using your approved photo`
         }
       />
       {loading && !framed && (
         <span className="cx-canvas-status">Preparing preview…</span>
       )}
       {error && (
-        <p role="alert" className="cx-canvas-status">
+        <p role={thumbnail ? undefined : "alert"} className="cx-canvas-status">
           {error}
         </p>
       )}

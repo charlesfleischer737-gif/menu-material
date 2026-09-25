@@ -323,6 +323,11 @@ assert.match(
   "A deleted photo names its dish",
 );
 assert.match(
+  postDetailError(three, []),
+  /The photos of The house burger, Tomato pasta, and Burrata are no longer available/,
+  "Several dishes are listed with commas",
+);
+assert.match(
   postDetailError(base, [{ ...assets[0], needs_correction: 1 }]),
   /The photo of Tomato pasta was reported as not matching the food/,
   "A photo reported with “Something changed in my food” can’t be shared",
