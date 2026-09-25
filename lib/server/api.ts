@@ -1212,7 +1212,13 @@ export async function handle(req: Request) {
       return response({ ok: true });
     }
     if (p[0] === "dishes" && method === "POST") {
-      const b = dishSchema.parse(await body(req));
+      const input = await body(req);
+      const b = dishSchema.parse(input);
+      // The menu builder saves one menu's edit to My Dishes without
+      // touching other menus or anything guests see.
+      const { syncMenus } = z
+        .object({ syncMenus: z.boolean().default(true) })
+        .parse(input);
       const did = p[1] || b.creationId || id();
       let before: Row | null = null;
       if (p[1]) {
@@ -1272,7 +1278,8 @@ export async function handle(req: Request) {
       );
       assert(saved, 404, "Dish not found.");
       // Menus showing the dish's previous details follow the edit.
-      const menus = before ? await syncDishToMenus(r.id, before, saved) : [];
+      const menus =
+        before && syncMenus ? await syncDishToMenus(r.id, before, saved) : [];
       return response({ id: did, revision: saved.revision, menus });
     }
     if (p[0] === "assets") {

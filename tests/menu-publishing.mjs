@@ -318,6 +318,87 @@ try {
     available: !!row.available,
     confirmed: true,
   });
+
+  // "Update My Dishes" in the menu builder never publishes a draft edit: the
+  // dish library changes, while other menus and every live copy keep theirs.
+  const burgerDish = await call("dishes", {
+    name: "Burger",
+    description: "Cheddar, pickles",
+    price: 12,
+    confirmed: true,
+  });
+  const burgerEntry = () =>
+    newMenuEntry({
+      dishId: burgerDish.id,
+      name: "Burger",
+      description: "Cheddar, pickles",
+      price: 1200,
+    });
+  const burgerMenus = [];
+  for (const name of ["Dinner", "Lunch"]) {
+    const saved = await call("menus", {
+      id: crypto.randomUUID(),
+      draft: newMenuDocument({
+        name,
+        title: name,
+        sections: [section([burgerEntry()], "Burgers")],
+      }),
+    });
+    burgerMenus.push(
+      await call(`menus/${saved.id}/publish`, { revision: saved.revision }),
+    );
+  }
+  const [dinnerMenu, lunchMenu] = burgerMenus;
+  const dinnerDraft = await call(
+    `menus/${dinnerMenu.id}`,
+    {
+      revision: dinnerMenu.revision,
+      draft: {
+        ...dinnerMenu.draft,
+        sections: [
+          {
+            ...dinnerMenu.draft.sections[0],
+            items: [{ ...dinnerMenu.draft.sections[0].items[0], price: 1400 }],
+          },
+        ],
+      },
+    },
+    200,
+    "PUT",
+  );
+  const builderSave = await call(`dishes/${burgerDish.id}`, {
+    name: "Burger",
+    description: "Cheddar, pickles",
+    category: "Burgers",
+    price: 14,
+    confirmed: true,
+    syncMenus: false,
+  });
+  assert.deepEqual(builderSave.menus, [], "no other menu is touched");
+  assert.equal(
+    (await one("SELECT price FROM dishes WHERE id=?", burgerDish.id)).price,
+    1400,
+    "My Dishes has the new price",
+  );
+  const dinnerAfter = await call(`menus/${dinnerMenu.id}`),
+    lunchAfter = await call(`menus/${lunchMenu.id}`);
+  const burgerPrice = (menu) => menu.sections[0].items[0].price;
+  assert.equal(burgerPrice(dinnerAfter.published), 1200, "draft stays private");
+  assert.equal(burgerPrice(lunchAfter.published), 1200, "other live menus too");
+  assert.equal(burgerPrice(lunchAfter.draft), 1200, "other drafts keep theirs");
+  assert.equal(burgerPrice(dinnerAfter.draft), 1400);
+  assert.equal(
+    dinnerAfter.revision,
+    dinnerDraft.revision,
+    "the edited menu's draft is left to the editor",
+  );
+  const slugNow = (await one("SELECT slug FROM restaurants WHERE id=?", rid))
+    .slug;
+  assert.equal(
+    burgerPrice((await call(`public/${slugNow}?menu=${dinnerMenu.id}`)).menu),
+    1200,
+    "guests still see the published price",
+  );
   console.log(
     `PASS: ${checks} menu publishing checks: placeholder names, sample dishes, zero prices, automatic checks without an I-checked box, first-publication menu address, address changes with redirects, and dish edits reaching draft and live menus.`,
   );

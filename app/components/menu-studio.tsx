@@ -1494,7 +1494,7 @@ export default function MenuStudio({
         {dialog === "dish-library" && item && section && (
           <MenuDialog
             title={item.dishId ? "Update My Dishes" : "Save to My Dishes"}
-            description="Review the details to keep in your dish library. Other saved menus keep their own prices and wording."
+            description="Keep these details in your dish library for new menus. Your other menus and your live menu don’t change; guests see this edit when you publish this menu."
             close={() => setDialog("")}
           >
             <h3>{item.name || "Untitled dish"}</h3>
@@ -1545,6 +1545,9 @@ export default function MenuStudio({
                       available: item.available,
                       dietary: item.dietary,
                       confirmed: true,
+                      // This menu already has the edit; other menus and
+                      // live menus keep theirs.
+                      syncMenus: false,
                     },
                   );
                   editItem(item.id, { dishId: result.id });
@@ -1552,7 +1555,9 @@ export default function MenuStudio({
                   await refresh();
                   setDialog("");
                   tell(
-                    "Dish library updated. You can now use its photos on this menu.",
+                    item.dishId
+                      ? "My Dishes updated. Your other menus and live menus are unchanged."
+                      : "Saved to My Dishes. You can now use its photos on this menu.",
                   );
                 })
               }
