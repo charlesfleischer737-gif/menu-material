@@ -206,6 +206,17 @@ function storedStyle(raw: string) {
     ? parsed.data
     : styleSchema.parse(validParts(styleSchema, saved));
 }
+// The owner's browser time zone, so "open now" is right from the start.
+// Anything that isn't a valid IANA zone keeps the default.
+function signupTimezone(value: unknown) {
+  if (typeof value !== "string" || !value || value.length > 80) return null;
+  try {
+    return new Intl.DateTimeFormat("en", { timeZone: value }).resolvedOptions()
+      .timeZone;
+  } catch {
+    return null;
+  }
+}
 async function signup(req: Request, b: Row) {
   const email = emailSchema.parse(b.email),
     password = passwordSchema.parse(b.password),
@@ -281,7 +292,8 @@ async function signup(req: Request, b: Row) {
       .min(1)
       .max(100)
       .parse(b.restaurant || "My restaurant");
-  const t = now();
+  const t = now(),
+    timezone = signupTimezone(b.timezone);
   await db().batch([
     db()
       .prepare(
@@ -316,6 +328,9 @@ async function signup(req: Request, b: Row) {
         "UPDATE invites SET used_by=? WHERE hash=? AND used_by IS NULL AND EXISTS(SELECT 1 FROM users WHERE id=?)",
       )
       .bind(userId, hash, userId),
+    db()
+      .prepare("UPDATE restaurants SET timezone=? WHERE id=? AND ? IS NOT NULL")
+      .bind(timezone, rid, timezone),
   ]);
   assert(
     await one("SELECT id FROM users WHERE id=?", userId),

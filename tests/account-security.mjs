@@ -1006,8 +1006,44 @@ try {
   assert(!(await kept(joeRid)).includes("joes-pizza-7"), "never live");
   checks++;
 
+  // 14. A new restaurant takes the time zone the owner's browser sent;
+  // anything that isn't a valid IANA zone keeps the default.
+  const zoneOf = async (email, restaurant, ip, timezone) =>
+    (
+      await expect("state", 200, {
+        cookie: (await signup(email, restaurant, ip, { timezone })).cookie,
+        ip,
+      })
+    ).json.restaurant.timezone;
+  assert.equal(
+    await zoneOf(
+      "tokyo@example.test",
+      "Sakura Ramen",
+      "192.0.2.80",
+      "Asia/Tokyo",
+    ),
+    "Asia/Tokyo",
+  );
+  assert.equal(
+    await zoneOf("utc@example.test", "Zero Diner", "192.0.2.81", "utc"),
+    "UTC",
+  );
+  assert.equal(
+    await zoneOf(
+      "mars@example.test",
+      "Olympus Diner",
+      "192.0.2.82",
+      "Mars/Olympus_Mons",
+    ),
+    "America/New_York",
+  );
+  assert.equal(
+    await zoneOf("none@example.test", "Plain Diner", "192.0.2.83", undefined),
+    "America/New_York",
+  );
+
   console.log(
-    `PASS: ${checks} account security checks: per-network limits on the IPv6 /64 with no site-wide lockout, a per-account sign-in slowdown, versioned password hashes, sliding sessions, revocable reset and setup links, the Pro waitlist, once-only free images, ID validation, lenient saved looks, staff link scope and limits, WebP and AVIF uploads, transparent logos, cacheable public images, admin takedown, menu-address squatting;`,
+    `PASS: ${checks} account security checks: per-network limits on the IPv6 /64 with no site-wide lockout, a per-account sign-in slowdown, versioned password hashes, sliding sessions, revocable reset and setup links, the Pro waitlist, once-only free images, ID validation, lenient saved looks, staff link scope and limits, WebP and AVIF uploads, transparent logos, cacheable public images, admin takedown, menu-address squatting, signup time zones;`,
   );
 } finally {
   rmSync(root, { recursive: true, force: true });

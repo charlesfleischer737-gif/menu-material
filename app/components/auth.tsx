@@ -73,6 +73,8 @@ export default function Auth({
         invite,
         restaurant,
         website,
+        // A new restaurant's hours ("open now") use the owner's time zone.
+        timezone: Intl.DateTimeFormat().resolvedOptions().timeZone,
       });
       await onDone();
       setOpen(false);
