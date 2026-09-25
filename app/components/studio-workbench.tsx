@@ -662,7 +662,7 @@ export function StudioWorkbench({
       menuDocument: false,
     });
   }
-  function accept(files: FileList | null) {
+  function accept(files: ArrayLike<File> | null) {
     if (!files?.length || busy) return;
     if (files.length > 1)
       setNotice(`Using ${files[0].name}. Add one dish photo at a time.`);
@@ -670,6 +670,56 @@ export function StudioWorkbench({
     setUndo(null);
     uploadPhoto(files[0]);
   }
+  // A photo dropped anywhere on the page, or pasted, becomes the dish photo.
+  // A dropped file never opens in the tab instead, even while one can't be
+  // used (a dialog is open, or creation is paused).
+  const acceptFiles = useRef(accept);
+  const canAccept = !creationPaused;
+  useEffect(() => {
+    acceptFiles.current = canAccept ? accept : () => {};
+  });
+  useEffect(() => {
+    const files = (event: DragEvent | ClipboardEvent) =>
+      "dataTransfer" in event
+        ? event.dataTransfer
+        : (event as ClipboardEvent).clipboardData;
+    const dialogOpen = () =>
+      !!document.querySelector('[role="dialog"][data-state="open"]');
+    const over = (event: DragEvent) => {
+      if (files(event)?.types.includes("Files")) event.preventDefault();
+    };
+    const drop = (event: DragEvent) => {
+      const transfer = files(event);
+      if (!transfer?.types.includes("Files")) return;
+      event.preventDefault();
+      setDragging(false);
+      if (!dialogOpen()) acceptFiles.current(transfer.files);
+    };
+    const paste = (event: ClipboardEvent) => {
+      const clipboard = files(event);
+      const image = [...(clipboard?.files || [])].find((file) =>
+        file.type.startsWith("image/"),
+      );
+      if (!image || dialogOpen()) return;
+      // Text pasted into a field stays text.
+      const target = event.target instanceof Element ? event.target : null;
+      if (
+        target?.closest("input, textarea, [contenteditable='true']") &&
+        clipboard?.types.includes("text/plain")
+      )
+        return;
+      event.preventDefault();
+      acceptFiles.current([image]);
+    };
+    window.addEventListener("dragover", over);
+    window.addEventListener("drop", drop);
+    window.addEventListener("paste", paste);
+    return () => {
+      window.removeEventListener("dragover", over);
+      window.removeEventListener("drop", drop);
+      window.removeEventListener("paste", paste);
+    };
+  }, []);
   async function trySample() {
     if (busy) return;
     setSampleLoading(true);
@@ -832,11 +882,8 @@ export function StudioWorkbench({
                 if (!event.currentTarget.contains(event.relatedTarget as Node))
                   setDragging(false);
               }}
-              onDrop={(event) => {
-                event.preventDefault();
-                setDragging(false);
-                if (b.mode === "photo") accept(event.dataTransfer.files);
-              }}
+              // The page-wide drop handler takes the photo.
+              onDrop={() => setDragging(false)}
             >
               {source && b.mode === "photo" ? (
                 <>
@@ -928,7 +975,7 @@ export function StudioWorkbench({
                   </b>
                   <span id="st-dropzone-hint">
                     <span className="st-when-pointer">
-                      Drop it here, or click to choose a file.
+                      Drop or paste it here, or click to choose a file.
                     </span>
                     <span className="st-when-touch">
                       Tap to take a photo or choose one.

@@ -4,7 +4,13 @@ import {
   workspacePreferenceKey,
 } from "@/lib/workspace-navigation";
 import { draftStatus } from "@/lib/workspace-status";
-import { useEffect, useRef, useState, type CSSProperties } from "react";
+import {
+  useEffect,
+  useRef,
+  useState,
+  type CSSProperties,
+  type DragEvent,
+} from "react";
 import {
   Camera,
   Check,
@@ -99,6 +105,10 @@ import {
   useCreationDraft,
   useStepFocus,
 } from "./creation-shared";
+// A file dragged over or dropped on the page must not open in the tab.
+function keepPage(event: DragEvent<HTMLElement>) {
+  if (event.dataTransfer.types.includes("Files")) event.preventDefault();
+}
 export default function PhotoStudio({
   active = true,
   state,
@@ -1015,6 +1025,10 @@ export default function PhotoStudio({
       className="cx-tool cx-feature-page cx-guided-studio st-page"
       ref={root}
       data-action-layout
+      // Choosing a photo happens at step 1, which takes dropped and pasted
+      // photos; elsewhere a dropped file must not replace the page.
+      onDragOver={b.step >= 4 ? keepPage : undefined}
+      onDrop={b.step >= 4 ? keepPage : undefined}
     >
       <header className="st-header">
         <div className="st-header-copy">
