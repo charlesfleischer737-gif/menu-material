@@ -1,5 +1,6 @@
 import { money, type Row } from "./client";
 import { dishSnapshot } from "./dish-library";
+import { isPlaceholderRestaurantName } from "./restaurant-identity";
 export function postFromPhoto(
   base: Row,
   dish: Row,
@@ -134,6 +135,24 @@ export function updatePost(draft: Row, patch: Row, restaurant: Row) {
       : next;
   }
   return next;
+}
+/** An automatic caption rewritten for the restaurant as it is now, such as after a rename. */
+export function currentCaption(draft: Row, restaurant: Row) {
+  return draft.captionMode === "auto" && draft.items?.length
+    ? { caption: postCaption(draft, restaurant) }
+    : {};
+}
+/** A signup placeholder, such as "Your restaurant", still standing in for the name. */
+export function captionPlaceholder(caption: string) {
+  for (const line of String(caption || "").split("\n")) {
+    const words = line.trim().replace(/[.!]+$/, "");
+    if (words.length >= 2 && isPlaceholderRestaurantName(words)) return words;
+  }
+  return (
+    /\b(?:Your restaurant|[Uu]ntitled restaurant|[Ll]ocal pilot)\b/.exec(
+      caption,
+    )?.[0] || ""
+  );
 }
 /** The dishes, quantities and prices a caption could mention, in any order. */
 function dishFacts(draft: Row) {

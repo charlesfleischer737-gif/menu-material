@@ -24,6 +24,8 @@ import {
   changedDishFacts,
 } from "@/lib/dish-library";
 import {
+  captionPlaceholder,
+  currentCaption,
   postCaption,
   postDefaults,
   postDetailError,
@@ -129,8 +131,14 @@ export default function PostMaker({
   const items: Row[] = b.items || [];
   // Automatic checks before sharing; they replace an "I checked" box.
   const namePlaceholder = isPlaceholderRestaurantName(state.restaurant.name);
+  const captionName = captionPlaceholder(b.caption || "");
   const postChecks = [
     ...(namePlaceholder ? [restaurantNameMessage] : []),
+    ...(captionName && !namePlaceholder
+      ? [
+          `Your caption still says “${captionName}”. Change it to your restaurant’s name.`,
+        ]
+      : []),
     ...(b.showPrice && (b.price === "" || Number(b.price) <= 0)
       ? ["Add the price, or turn off Show price."]
       : []),
@@ -210,6 +218,11 @@ export default function PostMaker({
       onSeedUsed();
     });
   }, [ready, seed]);
+  // An automatic caption follows the restaurant, such as a name that
+  // replaced "Your restaurant".
+  useEffect(() => {
+    if (ready) change(currentCaption(store.read(), state.restaurant));
+  }, [ready, store.id, state.restaurant.name, state.restaurant.currency]);
   function choose(d: Row) {
     if (items.length >= 6 && !items.some((i) => i.dishId === d.id)) {
       action.setError("Choose up to six photos. Remove one to add another.");

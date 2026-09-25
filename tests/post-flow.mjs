@@ -6,6 +6,8 @@ import {
   updatePost,
   postDetailError,
   postFromPhoto,
+  captionPlaceholder,
+  currentCaption,
 } from "../lib/post-flow.ts";
 
 const restaurant = { name: "The Orchard Kitchen", currency: "USD" };
@@ -290,6 +292,28 @@ assert.equal(
   "The house burger & 3 more",
   "A long list stays short enough for a headline",
 );
+
+// A signup placeholder never stays in the caption once the name is fixed.
+const unnamed = postFromPhoto(
+  {},
+  burgerDish,
+  { id: "approved-burger" },
+  { name: "Your restaurant", currency: "USD" },
+);
+assert.equal(captionPlaceholder(unnamed.caption), "Your restaurant");
+const renamed = { ...unnamed, ...currentCaption(unnamed, restaurant) };
+assert.match(renamed.caption, /\nThe Orchard Kitchen$/);
+assert.equal(captionPlaceholder(renamed.caption), "");
+assert.deepEqual(
+  currentCaption({ ...unnamed, captionMode: "custom" }, restaurant),
+  {},
+  "The owner’s own caption is never rewritten",
+);
+assert.equal(
+  captionPlaceholder("Join us at Your restaurant tonight!"),
+  "Your restaurant",
+);
+assert.equal(captionPlaceholder("Make us your restaurant of choice."), "");
 
 assert.equal(postDetailError(base, assets), "");
 assert.match(postDetailError(base, []), /no longer available/);
