@@ -890,8 +890,36 @@ try {
   );
   checks++;
 
+  // 15. A saved style naming a photo style since removed still creates images.
+  const retired = await restaurant("retired-style");
+  await run(
+    "UPDATE restaurants SET style=? WHERE id=?",
+    JSON.stringify({
+      photoPreset: "retired-look",
+      tone: "Playful",
+      photoStyle: "Warm wood and soft window light",
+      referenceIds: ["not-a-uuid"],
+    }),
+    retired.rid,
+  );
+  const retiredJob = await enqueue(
+    await one("SELECT * FROM restaurants WHERE id=?", retired.rid),
+    { dishId: retired.dishId, requestKey: id() },
+  );
+  const retiredStyle = JSON.parse(retiredJob.details).style;
+  assert.deepEqual(
+    [
+      retiredStyle.photoPreset,
+      retiredStyle.tone,
+      retiredStyle.photoStyle,
+      retiredStyle.referenceIds,
+    ],
+    ["", "Playful", "Warm wood and soft window light", []],
+  );
+  checks++;
+
   console.log(
-    `PASS: ${checks} AI budget and job checks: settled spend, free daily cap, paid-plan image budget, stuck-job repair, provider retries and refusals, independent image settling, uncertain spend, legacy deadlines on an index, storage before calls, budget holds and description prompts. Provider calls and webhooks are fixtures.`,
+    `PASS: ${checks} AI budget and job checks: settled spend, free daily cap, paid-plan image budget, stuck-job repair, provider retries and refusals, independent image settling, uncertain spend, legacy deadlines on an index, storage before calls, budget holds, description prompts and lenient saved styles. Provider calls and webhooks are fixtures.`,
   );
 } finally {
   console.error = originalError;

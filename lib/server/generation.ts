@@ -147,6 +147,18 @@ Requested adjustment: ${JSON.stringify(revision)}
 FINISH
 Appetizing editorial food photography with believable texture, natural highlights and realistic depth. No plastic textures, excessive gloss, impossible geometry or illustration. Do not add promotional text, prices, watermarks, new logos or invented branded packaging. Preserve existing branding visible on the original drink vessel as required above. Before finishing, ensure the setting and light clearly express the chosen style, the food is still the same serving, explicit food serving ware is realized unless an owner control or subject compatibility requires retaining it, and any drink retains its original vessel and visible branding. Produce the image only.`;
 }
+// A saved style can name a photo style since removed from the catalog. Values
+// that no longer validate fall back to their defaults instead of failing.
+function savedStyle(value: unknown) {
+  const parsed = styleSchema.safeParse(value);
+  if (parsed.success) return parsed.data;
+  const kept: Row =
+    value && typeof value === "object" && !Array.isArray(value)
+      ? { ...value }
+      : {};
+  for (const issue of parsed.error.issues) delete kept[String(issue.path[0])];
+  return styleSchema.safeParse(kept).data ?? styleSchema.parse({});
+}
 // Room for one image's private and public copies, with margin.
 const IMAGE_STORAGE_BYTES = 8 * 1024 * 1024;
 // Throws the storage-full error unless the workspace has room for this many
@@ -289,7 +301,7 @@ export async function enqueue(
     : null;
   assert(!input.parentId || parent, 404, "Revision image not found.");
   const revision = String(input.revision || "").slice(0, 1000);
-  const style = styleSchema.parse(input.style || JSON.parse(r.style || "{}"));
+  const style = savedStyle(input.style || JSON.parse(r.style || "{}"));
   assert(
     source || d.description.trim(),
     400,
