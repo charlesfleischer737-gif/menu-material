@@ -61,6 +61,8 @@ globalThis.fetch = async (url) => {
     return new Response(readFileSync("public/studio/styles/menu-stone.webp"), {
       headers: { "Content-Type": "image/webp" },
     });
+  if (path.startsWith("/api/assets/deleted-"))
+    return new Response("Image not found.", { status: 404 });
   if (path.startsWith("/api/assets/"))
     return new Response(path.includes("pasta") ? pasta : jpg, {
       headers: { "Content-Type": "image/jpeg" },
@@ -212,6 +214,23 @@ await assert.rejects(
   /too long to read comfortably/,
 );
 checks++;
+// A deleted photo names its dish; a logo that can't be opened is left out.
+await assert.rejects(
+  () =>
+    renderPost(
+      canvas(),
+      { ...base, items: [{ ...base.items[0], photoId: "deleted-pasta" }] },
+      restaurant,
+    ),
+  /The photo of Tomato basil pappardelle is no longer available/,
+);
+const noLogo = await renderPost(
+  canvas(),
+  { ...base, template: "chef", showBrand: true, textMode: "minimal" },
+  { ...restaurant, logo_id: "deleted-logo" },
+);
+assert(noLogo.renderedText.includes(restaurant.name));
+checks += 2;
 const carousel = {
   ...base,
   template: "chef",

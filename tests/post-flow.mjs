@@ -316,7 +316,16 @@ assert.equal(
 assert.equal(captionPlaceholder("Make us your restaurant of choice."), "");
 
 assert.equal(postDetailError(base, assets), "");
-assert.match(postDetailError(base, []), /no longer available/);
+assert.match(
+  postDetailError(base, []),
+  /The photo of Tomato pasta is no longer available/,
+  "A deleted photo names its dish",
+);
+assert.match(
+  postDetailError(base, [{ ...assets[0], needs_correction: 1 }]),
+  /The photo of Tomato pasta was reported as not matching the food/,
+  "A photo reported with “Something changed in my food” can’t be shared",
+);
 assert.match(
   postDetailError(base, [{ ...assets[0], dish_id: "another-dish" }]),
   /no longer available/,

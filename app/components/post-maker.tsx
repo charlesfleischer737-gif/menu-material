@@ -30,6 +30,7 @@ import {
   postDefaults,
   postDetailError,
   postFromPhoto,
+  postPhotoError,
   updatePost,
 } from "@/lib/post-flow";
 import { postTemplates, applyPostTemplate } from "@/lib/post-templates";
@@ -148,6 +149,12 @@ export default function PostMaker({
     .filter((d: Row) => !d.archived_at)
     .map((d: Row) => ({ ...d, photo: preferredPhoto(d, state.assets) }))
     .filter((d: Row) => d.photo?.approved_at);
+  // Approved versions, leaving out any reported as "Something changed in my food".
+  const photoChoices = (d: Row) =>
+    dishPhotos(d, state.assets).filter(
+      (a) => a.approved_at && !a.needs_correction,
+    );
+  const photoProblem = postPhotoError(b, state.assets);
   const stale = items.filter((item) => {
     const d = state.dishes.find((d: Row) => d.id === item.dishId);
     return d && changedDishFacts(item.facts, d).length;
@@ -191,7 +198,10 @@ export default function PostMaker({
         const d = state.dishes.find((d: Row) => d.id === seed.dishId),
           a = state.assets.find(
             (a: Row) =>
-              a.id === seed.photoId && a.approved_at && a.dish_id === d?.id,
+              a.id === seed.photoId &&
+              a.approved_at &&
+              !a.needs_correction &&
+              a.dish_id === d?.id,
           );
         if (d && a) {
           const draft = {
@@ -228,10 +238,7 @@ export default function PostMaker({
       action.setError("Choose up to six photos. Remove one to add another.");
       return;
     }
-    const a =
-      dishPhotos(d, state.assets).find(
-        (a) => a.id === versions[d.id] && a.approved_at,
-      ) || d.photo;
+    const a = photoChoices(d).find((a) => a.id === versions[d.id]) || d.photo;
     const existing = items.findIndex((i) => i.dishId === d.id);
     if (existing >= 0) {
       updateItem(existing, { photoId: a.id });
@@ -404,6 +411,14 @@ export default function PostMaker({
           </p>
           <button className="cx-link" onClick={refreshFacts}>
             Use latest dish details
+          </button>
+        </div>
+      )}
+      {items.length > 0 && photoProblem && (
+        <div className="mm-fact-notice">
+          <strong>{photoProblem}</strong>
+          <button className="cx-link" onClick={() => setPicker(true)}>
+            Choose a photo
           </button>
         </div>
       )}
@@ -1123,13 +1138,9 @@ export default function PostMaker({
                   .includes(query.toLowerCase()),
               )
               .map((d) => {
+                const options = photoChoices(d);
                 const photo =
-                  dishPhotos(d, state.assets).find(
-                    (a) => a.id === versions[d.id] && a.approved_at,
-                  ) || d.photo;
-                const options = dishPhotos(d, state.assets).filter(
-                  (a) => a.approved_at,
-                );
+                  options.find((a) => a.id === versions[d.id]) || d.photo;
                 return (
                   <div key={d.id}>
                     <button onClick={() => choose(d)}>

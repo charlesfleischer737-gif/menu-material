@@ -333,7 +333,13 @@ export async function renderPost(
   try {
     for (const item of items)
       images.push(
-        await imageBitmap(item.photoUrl || "/api/assets/" + item.photoId),
+        await imageBitmap(item.photoUrl || "/api/assets/" + item.photoId).catch(
+          () => {
+            throw Error(
+              `The photo of ${item.name} could not be opened. Please try again.`,
+            );
+          },
+        ),
       );
     fill(color);
     // Full-frame photography is the starting point for every composition.
@@ -496,8 +502,14 @@ export async function renderPost(
       shade("bottom", H * 0.17, 0.45);
       signature("#ffffff", bottom - 40);
     }
-    if (restaurant.logo_id && showBrand) {
-      const logo = await imageBitmap("/api/assets/" + restaurant.logo_id);
+    // A logo that can't be opened, say one just deleted, is left out.
+    const logo =
+      restaurant.logo_id && showBrand
+        ? await imageBitmap("/api/assets/" + restaurant.logo_id).catch(
+            () => null,
+          )
+        : null;
+    if (logo)
       try {
         const s = Math.min(56 / logo.width, 56 / logo.height);
         round(934, top - 6, 74, 74, 10, "#ffffff");
@@ -511,7 +523,6 @@ export async function renderPost(
       } finally {
         logo.close();
       }
-    }
     return {
       renderedText,
       textBoxes,

@@ -118,8 +118,7 @@ async function acquirePhoto(url: string) {
   let entry = photoCache.get(url);
   if (!entry) {
     const promise = fetch(url).then(async (res) => {
-      if (!res.ok)
-        throw Error("This photo could not be opened. Please try again.");
+      if (!res.ok) throw Object.assign(Error(url), { status: res.status });
       return createImageBitmap(await res.blob());
     });
     entry = { promise, users: 0, last: 0 };
@@ -222,15 +221,28 @@ export async function renderComposedPost(
   const held: string[] = [];
   try {
     const images: ImageBitmap[] = [];
-    for (const url of urls) {
-      images.push(await acquirePhoto(url));
+    for (const [n, url] of urls.entries()) {
+      try {
+        images.push(await acquirePhoto(url));
+      } catch (error) {
+        throw Error(
+          (error as { status?: number }).status === 404
+            ? `The photo of ${items[n].name} is no longer available. Choose another photo, or remove the dish.`
+            : `The photo of ${items[n].name} could not be opened. Please try again.`,
+        );
+      }
       held.push(url);
     }
     let logo: Logo | null = null;
     if (logoId && showBrand) {
       const url = `/api/assets/${logoId}`;
-      logo = describeLogo(await acquirePhoto(url));
-      held.push(url);
+      try {
+        const im = await acquirePhoto(url);
+        held.push(url);
+        logo = describeLogo(im);
+      } catch {
+        // A logo that can't be opened, say one just deleted, leaves the name alone.
+      }
     }
     const safe = postSafeArea(W, H, channel);
     const kit = new PostKit(canvas, W, H, options.scale || 1, safe);

@@ -166,22 +166,35 @@ function dishFacts(draft: Row) {
     draft.price ?? "",
   ]);
 }
+/**
+ * Names the dishes whose photo can't be shared: deleted or no longer approved,
+ * or reported with "Something changed in my food".
+ */
+export function postPhotoError(draft: Row, assets: Row[]) {
+  const items: Row[] = draft.items || [];
+  const photo = (i: Row) =>
+    assets.find(
+      (a) =>
+        a.id === i.photoId &&
+        a.dish_id === i.dishId &&
+        a.approved_at &&
+        !a.deleted_at,
+    );
+  const of = (list: Row[]) =>
+    `${list.length > 1 ? "photos" : "photo"} of ${list.map((i) => i.name).join(" and ")}`;
+  const missing = items.filter((i) => !photo(i));
+  if (missing.length)
+    return `The ${of(missing)} ${missing.length > 1 ? "are" : "is"} no longer available. Choose another approved photo, or remove the dish.`;
+  const reported = items.filter((i) => photo(i)!.needs_correction);
+  if (reported.length)
+    return `The ${of(reported)} ${reported.length > 1 ? "were" : "was"} reported as not matching the food. Choose another photo before sharing.`;
+  return "";
+}
 export function postDetailError(draft: Row, assets: Row[]) {
   if (!draft.items?.length) return "Choose an approved dish photo to start.";
   if (draft.items.length > 6) return "Choose up to six dish photos.";
-  if (
-    draft.items.some(
-      (i: Row) =>
-        !assets.some(
-          (a) =>
-            a.id === i.photoId &&
-            a.dish_id === i.dishId &&
-            a.approved_at &&
-            !a.deleted_at,
-        ),
-    )
-  )
-    return "A selected photo is no longer available. Choose another approved photo.";
+  const photos = postPhotoError(draft, assets);
+  if (photos) return photos;
   if (
     draft.items.some(
       (i: Row) =>
