@@ -53,6 +53,23 @@ async function call(path, data, expected = 200, method) {
     cookie = res.headers.get("set-cookie").split(";")[0];
   return value;
 }
+// A guest's phone: no workspace session, optionally from a given address.
+async function guestCall(path, data, expected = 200, ip) {
+  const res = await handle(
+    new Request("http://localhost/api/" + path, {
+      method: "POST",
+      headers: {
+        "Content-Type": "application/json",
+        ...(ip ? { "cf-connecting-ip": ip } : {}),
+      },
+      body: JSON.stringify(data),
+    }),
+  );
+  const value = await res.json();
+  assert.equal(res.status, expected, `${path}: ${JSON.stringify(value)}`);
+  checks++;
+  return value;
+}
 const section = (items, name = "Mains") => ({
   id: crypto.randomUUID(),
   name,
@@ -561,43 +578,39 @@ Ramen 1,200`);
   );
   // Guest actions are counted with the menu and the QR code's placement.
   const session = crypto.randomUUID();
-  await call(`public/${slug}/events`, {
+  await guestCall(`public/${slug}/events`, {
     kind: "call_click",
     session,
     src: "table",
   });
-  await call(`public/${slug}/events`, {
+  await guestCall(`public/${slug}/events`, {
     kind: "menu_visit",
     session,
     src: "table",
   });
-  await call(
+  await guestCall(
     `public/${slug}/events`,
     { kind: "menu_visit", session, src: "billboard" },
     400,
   );
-  const visitRow = await one(
-    "SELECT details FROM events WHERE kind='menu_visit' ORDER BY created_at DESC LIMIT 1",
-  );
-  assert.deepEqual(JSON.parse(visitRow.details), {
-    menu: guest.menu.documentId,
-    src: "table",
-  });
 
   // Menu stats: last 7 days against the 7 before, by placement and menu.
-  await call(`public/${slug}/events`, {
+  await guestCall(`public/${slug}/events`, {
     kind: "dish_view",
     session,
     entityId: toast.id,
   });
   const other = crypto.randomUUID();
-  await call(`public/${slug}/events`, { kind: "menu_visit", session: other });
-  await call(`public/${slug}/events`, {
+  await guestCall(`public/${slug}/events`, {
+    kind: "menu_visit",
+    session: other,
+  });
+  await guestCall(`public/${slug}/events`, {
     kind: "dish_view",
     session: other,
-    entityId: toast.id,
+    entityIds: [toast.id],
   });
-  await call(`public/${slug}/events`, {
+  await guestCall(`public/${slug}/events`, {
     kind: "ordering_click",
     session: other,
   });
@@ -626,6 +639,51 @@ Ramen 1,200`);
   assert.deepEqual(
     stats.menus.map((m) => [m.id, m.views]),
     [[guest.menu.documentId, 2]],
+  );
+
+  // Dish views arrive a few at a time, each dish once per guest.
+  const dishViews = async () =>
+    (await one("SELECT count(*) AS n FROM events WHERE kind='dish_view'")).n;
+  const viewsBefore = await dishViews(),
+    scroller = crypto.randomUUID();
+  const batch = {
+    kind: "dish_view",
+    session: scroller,
+    entityIds: [toast.id, flaky.id, sized.id, toast.id],
+  };
+  await guestCall(`public/${slug}/events`, batch);
+  assert.equal(await dishViews(), viewsBefore + 3);
+  await guestCall(`public/${slug}/events`, batch);
+  assert.equal(await dishViews(), viewsBefore + 3, "a resend isn't counted");
+  await guestCall(
+    `public/${slug}/events`,
+    { ...batch, entityIds: [toast.id, crypto.randomUUID()] },
+    404,
+  );
+  await guestCall(
+    `public/${slug}/events`,
+    { kind: "dish_view", session: scroller },
+    404,
+  );
+  // A dining room scrolling on the restaurant's Wi-Fi (one address) still
+  // has its visits counted: dish views have their own allowance.
+  const venue = "198.51.100.7";
+  for (let n = 0; n < 301; n++)
+    await guestCall(
+      `public/${slug}/events`,
+      {
+        kind: "dish_view",
+        session: crypto.randomUUID(),
+        entityIds: [toast.id],
+      },
+      200,
+      venue,
+    );
+  await guestCall(
+    `public/${slug}/events`,
+    { kind: "menu_visit", session: crypto.randomUUID(), src: "table" },
+    200,
+    venue,
   );
 
   // Quick update: sold out and prices go live without publishing other edits.

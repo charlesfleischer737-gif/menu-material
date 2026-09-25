@@ -5,7 +5,7 @@ import { menuHero, menuAppearance } from "@/lib/menu-design";
 import { scheduleLabel } from "@/lib/promotions";
 import { money, Row } from "@/lib/client";
 import { brandTypeface, readableBrandInk } from "@/lib/restaurant-look";
-import MenuDocumentView from "./menu-document-view";
+import MenuDocumentView, { useDishViews } from "./menu-document-view";
 import CustomerMenuSwitcher from "./customer-menu-switcher";
 import { ChevronLeft, ChevronRight } from "lucide-react";
 import type { DesignedMenu } from "@/lib/menu-document";
@@ -169,12 +169,12 @@ function LegacyMenuView({
     };
   }, [menu.sections, search, preview]);
   const track = useCallback(
-    (kind: string, entityId?: string) => {
+    (kind: string, entityIds?: string[]) => {
       if (preview || !slug || !session.current) return;
       void fetch(`/api/public/${slug}/events`, {
         method: "POST",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ kind, entityId, session: session.current }),
+        body: JSON.stringify({ kind, entityIds, session: session.current }),
         keepalive: true,
       }).catch(() => {});
     },
@@ -231,23 +231,11 @@ function LegacyMenuView({
       document.removeEventListener("visibilitychange", visible);
     };
   }, [slug, preview, track, menu.version]);
-  useEffect(() => {
-    if (preview || !slug || !article.current) return;
-    const observer = new IntersectionObserver(
-      (entries) => {
-        for (const entry of entries)
-          if (entry.isIntersecting) {
-            track("dish_view", (entry.target as HTMLElement).dataset.dish);
-            observer.unobserve(entry.target);
-          }
-      },
-      { threshold: 0.5 },
-    );
-    article.current
-      .querySelectorAll("[data-dish]")
-      .forEach((el) => observer.observe(el));
-    return () => observer.disconnect();
-  }, [menu, preview, slug, track]);
+  useDishViews(
+    article,
+    "dish",
+    !preview && slug ? (ids) => track("dish_view", ids) : null,
+  );
   if (unavailable)
     return (
       <main className="unavailable">

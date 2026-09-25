@@ -65,6 +65,70 @@ function DishDietary({ values }: { values: string[] }) {
     </>
   );
 }
+/**
+ * Reports each dish a guest scrolls to once per page load, a few at a time.
+ * Live refreshes, searches and filters re-render dishes without reporting
+ * them again, so an open tab doesn't use up the restaurant's allowance.
+ */
+export function useDishViews(
+  root: React.RefObject<HTMLElement | null>,
+  attribute: "entry" | "dish",
+  send: ((ids: string[]) => void) | null,
+) {
+  const seen = useRef(new Set<string>()),
+    watching = useRef<IntersectionObserver | null>(null),
+    sender = useRef(send);
+  useEffect(() => {
+    sender.current = send;
+  });
+  const enabled = !!send;
+  useEffect(() => {
+    if (!enabled) return;
+    const queued: string[] = [];
+    let timer = 0;
+    const flush = () => {
+      clearTimeout(timer);
+      timer = 0;
+      if (queued.length) sender.current?.(queued.splice(0));
+    };
+    const observer = new IntersectionObserver(
+      (entries) => {
+        for (const e of entries) {
+          if (!e.isIntersecting) continue;
+          observer.unobserve(e.target);
+          const id = (e.target as HTMLElement).dataset[attribute];
+          if (!id || seen.current.has(id)) continue;
+          seen.current.add(id);
+          queued.push(id);
+          if (!timer) timer = window.setTimeout(flush, 2000);
+        }
+      },
+      { threshold: 0.5 },
+    );
+    watching.current = observer;
+    const hidden = () => {
+      if (document.visibilityState === "hidden") flush();
+    };
+    document.addEventListener("visibilitychange", hidden);
+    return () => {
+      flush();
+      observer.disconnect();
+      watching.current = null;
+      document.removeEventListener("visibilitychange", hidden);
+    };
+  }, [enabled, attribute]);
+  // Watch dishes as they render: first, after a refresh, search or filter.
+  useEffect(() => {
+    const observer = watching.current;
+    if (!observer) return;
+    root.current
+      ?.querySelectorAll<HTMLElement>(`[data-${attribute}]`)
+      .forEach((el) => {
+        if (!seen.current.has(el.dataset[attribute] || ""))
+          observer.observe(el);
+      });
+  });
+}
 type GuestMenu = DesignedMenu & {
   contact?: MenuContact;
   menus?: { id: string; name: string }[];
@@ -110,7 +174,7 @@ export default function MenuDocumentView({
   const asset = (id: string) =>
     slug && !preview ? `/api/public/${slug}/assets/${id}` : `/api/assets/${id}`;
   const track = useCallback(
-    (kind: string, entityId?: string) => {
+    (kind: string, entityIds?: string[]) => {
       if (preview || !slug || !session.current) return;
       void fetch(
         `/api/public/${slug}/events${menu.documentId ? `?menu=${menu.documentId}` : ""}`,
@@ -119,7 +183,7 @@ export default function MenuDocumentView({
           headers: { "Content-Type": "application/json" },
           body: JSON.stringify({
             kind,
-            entityId,
+            entityIds,
             session: session.current,
             ...(placement.current ? { src: placement.current } : {}),
           }),
@@ -283,23 +347,11 @@ export default function MenuDocumentView({
       document.removeEventListener("visibilitychange", refresh);
     };
   }, [slug, initial.documentId, preview, track]);
-  useEffect(() => {
-    if (preview || !slug || !root.current) return;
-    const observer = new IntersectionObserver(
-      (entries) => {
-        for (const e of entries)
-          if (e.isIntersecting) {
-            track("dish_view", (e.target as HTMLElement).dataset.entry);
-            observer.unobserve(e.target);
-          }
-      },
-      { threshold: 0.5 },
-    );
-    root.current
-      .querySelectorAll("[data-entry]")
-      .forEach((el) => observer.observe(el));
-    return () => observer.disconnect();
-  }, [live, preview, slug, track]);
+  useDishViews(
+    root,
+    "entry",
+    !preview && slug ? (ids) => track("dish_view", ids) : null,
+  );
   if (unavailable)
     return (
       <main className="unavailable">

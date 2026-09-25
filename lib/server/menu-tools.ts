@@ -727,6 +727,8 @@ export async function publicEvent(
         "reserve_click",
       ]),
       entityId: z.string().uuid().optional(),
+      // Dish views arrive a few at a time: the dishes a guest scrolled to.
+      entityIds: z.array(z.string().uuid()).min(1).max(50).optional(),
       session: z.string().uuid(),
       // Where a guest found the menu: the QR code's placement or a link.
       src: z.enum(menuPlacementIds).optional(),
@@ -738,8 +740,13 @@ export async function publicEvent(
     .concat(
       menu.specials.flatMap((s: Row) => s.items).map((x: Row) => x.dishId),
     );
+  const viewed = [...new Set(b.entityIds || (b.entityId ? [b.entityId] : []))];
   if (b.kind === "dish_view")
-    assert(dishes.includes(b.entityId), 404, "Dish not found.");
+    assert(
+      viewed.length && viewed.every((dish) => dishes.includes(dish)),
+      404,
+      "Dish not found.",
+    );
   if (b.kind === "ordering_click")
     assert(
       menu.contact?.orderingUrl || menu.restaurant.orderingUrl,
@@ -751,23 +758,35 @@ export async function publicEvent(
     assert(menu.contact?.address, 400, "No address.");
   if (b.kind === "reserve_click")
     assert(menu.contact?.reservationUrl, 400, "No reservation link.");
+  // Dish views have their own allowance, so a dining room of guests
+  // scrolling on the restaurant's Wi-Fi never crowds out visits and taps.
+  const ip = req.headers.get("cf-connecting-ip"),
+    group = b.kind === "dish_view" ? "views" : "guests";
   await limit(
-    "public-event:" + r.id + ":" + req.headers.get("cf-connecting-ip"),
-    300,
+    `public-event:${group}:${r.id}:${ip}`,
+    group === "views" ? 1200 : 300,
     3600,
   );
-  const menuId = menu.documentId || null;
-  const eid = digest(
-    [r.id, b.kind, b.entityId || "", b.session, menuId || ""].join(":"),
-  );
-  await run(
-    "INSERT OR IGNORE INTO events (id,restaurant_id,kind,entity_id,details,created_at) VALUES (?,?,?,?,?,?)",
-    eid,
-    r.id,
-    b.kind,
-    b.entityId || null,
-    JSON.stringify({ menu: menuId, src: b.src || null }),
-    now(),
+  const menuId = menu.documentId || null,
+    details = JSON.stringify({ menu: menuId, src: b.src || null }),
+    t = now();
+  await db().batch(
+    (b.kind === "dish_view" ? viewed : [null]).map((entityId) =>
+      db()
+        .prepare(
+          "INSERT OR IGNORE INTO events (id,restaurant_id,kind,entity_id,details,created_at) VALUES (?,?,?,?,?,?)",
+        )
+        .bind(
+          digest(
+            [r.id, b.kind, entityId || "", b.session, menuId || ""].join(":"),
+          ),
+          r.id,
+          b.kind,
+          entityId,
+          details,
+          t,
+        ),
+    ),
   );
   return response({ ok: true });
 }
