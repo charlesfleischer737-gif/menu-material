@@ -243,6 +243,19 @@ try {
     { ...timing, details: { draftId, milliseconds: 15000 } },
     400,
   );
+  // A new, empty studio draft isn't saved yet: the page records the open
+  // without it, since an unsaved draft is "unavailable work" to the server.
+  await call(
+    "creation-events",
+    { ...opened, details: { draftId: id(), guest: false } },
+    400,
+  );
+  await call("creation-events", {
+    kind: "studio_opened",
+    details: { guest: false },
+    eventKey: id(),
+  });
+  await run("DELETE FROM events WHERE kind='studio_opened'");
   await call("creation-events", opened);
   await call("creation-events", opened);
   assert.equal(

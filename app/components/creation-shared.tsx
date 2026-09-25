@@ -74,7 +74,10 @@ export function useCreationDraft(
     [ready, setReady] = useState(false),
     [status, setStatus] = useState("Opening saved work…"),
     [loadError, setLoadError] = useState(""),
-    [saveError, setSaveError] = useState("");
+    [saveError, setSaveError] = useState(""),
+    // The draft's id once it exists on the server. Activity is recorded
+    // against saved work only: the server rejects unknown drafts.
+    [storedId, setStoredId] = useState("");
   const meta = useRef({ id: "", revision: 0 }),
     latest = useRef(draft),
     saved = useRef(""),
@@ -145,6 +148,7 @@ export function useCreationDraft(
       } catch {}
       latest.current = value;
       setDraft(value);
+      setStoredId(meta.current.revision > 0 ? meta.current.id : "");
       setReady(true);
       if (row) rememberPreference(preferenceKey, meta.current.id);
       setStatus(
@@ -172,6 +176,7 @@ export function useCreationDraft(
   const save = useCallback(async () => {
     if (saving.current) return saving.current;
     const run = async () => {
+      let wrote = false;
       while (
         meta.current.id &&
         JSON.stringify(latest.current) !== saved.current
@@ -185,12 +190,22 @@ export function useCreationDraft(
         });
         meta.current.revision = data.revision;
         saved.current = content;
+        wrote = true;
+        setStoredId(meta.current.id);
         rememberPreference(preferenceKey, meta.current.id);
         window.dispatchEvent(new Event("menu-material:draft-saved"));
       }
       forgetBackup();
       setSaveError("");
-      setStatus(draftStatus.saved);
+      // "Draft saved" reports a save: nothing written and nothing pending
+      // (such as opening an empty tool) leaves the status as it was.
+      setStatus((current) =>
+        wrote ||
+        current === draftStatus.saving ||
+        current === draftStatus.failed
+          ? draftStatus.saved
+          : current,
+      );
     };
     const pending = run();
     saving.current = pending;
@@ -253,6 +268,7 @@ export function useCreationDraft(
     latest.current = value;
     saved.current = row ? JSON.stringify(value) : "";
     setDraft(value);
+    setStoredId(row ? meta.current.id : "");
     setStatus(draftStatus.saving);
     backup();
     await save();
@@ -269,6 +285,7 @@ export function useCreationDraft(
     if (saving.current) await saving.current.catch(() => {});
     meta.current = { id: crypto.randomUUID(), revision: 0 };
     saved.current = "";
+    setStoredId("");
     backup();
     await save();
     setDraft({ ...latest.current });
@@ -290,6 +307,7 @@ export function useCreationDraft(
     saved.current = JSON.stringify(latest.current);
     forgetBackup();
     setDraft(latest.current);
+    setStoredId("");
     setSaveError("");
     setStatus("Ready when you are");
     rememberPreference(preferenceKey, "");
@@ -303,6 +321,8 @@ export function useCreationDraft(
     ready,
     status,
     id: meta.current.id,
+    storedId,
+    stored: () => meta.current.revision > 0,
     read: () => latest.current,
     loadError,
     saveError,

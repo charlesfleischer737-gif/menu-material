@@ -24,12 +24,22 @@ export async function api(
           ? body
           : JSON.stringify(body),
   });
+  // The session has lapsed: tell the page, which asks the person to sign in
+  // again in place. Sign-in itself (a wrong password is also a 401) and the
+  // initial state check handle their own answers.
+  if (res.status === 401 && path !== "state" && !path.startsWith("auth/"))
+    window.dispatchEvent(
+      new CustomEvent("menu-material:signed-out", { detail: { path } }),
+    );
   const data = (await res.json().catch(() => null)) as Row | null;
   if (!res.ok)
     throw Object.assign(
       new Error(
         data?.error ||
-          "The service couldn’t complete that action. Please try again.",
+          // The host refuses an oversized upload before the app sees it.
+          (res.status === 413 && body instanceof FormData
+            ? "This photo is too large to upload. Choose one under 20 MB."
+            : "The service couldn’t complete that action. Please try again."),
       ),
       {
         status: res.status,
@@ -46,16 +56,16 @@ export async function api(
   return data;
 }
 export async function normalizePhoto(file: File): Promise<Blob> {
-  if (!file.size)
-    throw Error("This photo is empty. Please choose another photo.");
-  if (file.size > 20 * 1024 * 1024)
-    throw Error("Please choose a photo smaller than 20 MB.");
+  // Refuse a file the upload won't accept before anything (a dish, a draft)
+  // is made for it; browsers can open more formats than the server keeps.
+  const problem = await photoFileError(file);
+  if (problem) throw Error(problem);
   let bitmap: ImageBitmap;
   try {
     // Let devices with native HEIC support keep orientation and avoid conversion.
     bitmap = await createImageBitmap(file, { imageOrientation: "from-image" });
   } catch {
-    if (/\.hei[cf]$/i.test(file.name) || /hei[cf]/i.test(file.type)) {
+    if ((await filePhotoFormat(file)) === "heic") {
       try {
         const { default: heic2any } = await import("heic2any");
         const result = await heic2any({
@@ -69,12 +79,12 @@ export async function normalizePhoto(file: File): Promise<Blob> {
         );
       } catch {
         throw Error(
-          "This HEIC photo couldn’t be opened. Choose a JPEG version, or use Take a photo.",
+          "This HEIC photo couldn’t be opened. Choose a JPEG version instead.",
         );
       }
     } else
       throw Error(
-        "This photo couldn’t be opened. Choose a JPG, PNG or HEIC photo and try again.",
+        `This photo couldn’t be opened. It may be damaged. ${choosePhoto}`,
       );
   }
   if (bitmap.width * bitmap.height > 80_000_000) {
@@ -100,6 +110,52 @@ export async function normalizePhoto(file: File): Promise<Blob> {
     ),
   );
 }
+/** File pickers for photos: the formats photo uploads accept. */
+export const photoAccept =
+  "image/jpeg,image/png,image/webp,image/heic,image/heif,.heic,.heif";
+const choosePhoto = "Choose a JPEG, PNG, HEIC or WebP photo.";
+type PhotoFileType = "jpeg" | "png" | "webp" | "heic" | "gif" | "avif";
+/**
+ * The format a file's first bytes declare (its name and reported type can be
+ * wrong), or null when they aren't a known photo format.
+ */
+export function photoFormat(bytes: Uint8Array): PhotoFileType | null {
+  const text = (from: number, to: number) =>
+    String.fromCharCode(...bytes.subarray(from, to));
+  if (bytes[0] === 0xff && bytes[1] === 0xd8 && bytes[2] === 0xff)
+    return "jpeg";
+  if (text(0, 8) === "\x89PNG\r\n\x1a\n") return "png";
+  if (text(0, 4) === "RIFF" && text(8, 12) === "WEBP") return "webp";
+  if (text(0, 6) === "GIF87a" || text(0, 6) === "GIF89a") return "gif";
+  if (bytes.length >= 12 && text(4, 8) === "ftyp") {
+    // HEIC and AVIF share one container; its brands (the major brand, then
+    // compatible ones) say which. AVIF often lists HEIF's "mif1" too.
+    const end = Math.min(
+      bytes.length,
+      new DataView(bytes.buffer, bytes.byteOffset, 4).getUint32(0),
+    );
+    const brands = [text(8, 12)];
+    for (let at = 16; at + 4 <= end; at += 4) brands.push(text(at, at + 4));
+    if (brands.some((brand) => brand === "avif" || brand === "avis"))
+      return "avif";
+    if (brands.some((brand) => /^(heic|heix|hevc|mif1|msf1)$/.test(brand)))
+      return "heic";
+  }
+  return null;
+}
+async function filePhotoFormat(file: Blob) {
+  return photoFormat(new Uint8Array(await file.slice(0, 64).arrayBuffer()));
+}
+/** Why a file can't be uploaded as a photo, or "" when it can. */
+export async function photoFileError(file: File) {
+  if (!file.size) return "This photo is empty. Please choose another photo.";
+  if (file.size > 20 * 1024 * 1024)
+    return "Please choose a photo smaller than 20 MB.";
+  const format = await filePhotoFormat(file);
+  if (format === "gif" || format === "avif")
+    return `${format.toUpperCase()} files can’t be uploaded. ${choosePhoto}`;
+  return format ? "" : `This file type can’t be uploaded. ${choosePhoto}`;
+}
 export function downloadBlob(blob: Blob, name: string) {
   const url = URL.createObjectURL(blob);
   const a = document.createElement("a");
@@ -112,9 +168,11 @@ export function downloadBlob(blob: Blob, name: string) {
   setTimeout(() => URL.revokeObjectURL(url), 60000);
 }
 export function money(price: number, currency = "USD") {
+  // The narrow symbol reads as local guests expect: "$18.50", not "CA$18.50".
   return new Intl.NumberFormat(undefined, {
     style: "currency",
     currency,
+    currencyDisplay: "narrowSymbol",
   }).format(price / 100);
 }
 

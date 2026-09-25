@@ -33,9 +33,14 @@ export async function restoreCorrectionCredit(
       manual,
       period: changed.credited_period,
     });
+  return holdForReview(originalJobId);
+}
+
+/** Leave an unrestored report for the team to review. */
+export async function holdForReview(originalJobId: string) {
   await run(
     "UPDATE photo_corrections SET status='review',updated_at=? WHERE original_job_id=? AND credited_at IS NULL",
-    t,
+    now(),
     originalJobId,
   );
   return one(
@@ -51,9 +56,15 @@ export async function settleCorrection(jobId: string) {
   );
   if (!row || row.credited_at || ["review", "resolved"].includes(row.status))
     return;
-  if (row.job_status === "failed")
-    await restoreCorrectionCredit(row.original_job_id);
-  else if (row.job_status === "completed")
+  if (row.job_status === "failed") {
+    // Only the service failing gives an image back, not a cancellation.
+    const cancelled = await one(
+      "SELECT 1 AS found FROM outputs WHERE job_id=? AND error LIKE 'Cancelled before creation%' LIMIT 1",
+      jobId,
+    );
+    if (cancelled) await holdForReview(row.original_job_id);
+    else await restoreCorrectionCredit(row.original_job_id);
+  } else if (row.job_status === "completed")
     await run(
       "UPDATE photo_corrections SET status='ready',updated_at=? WHERE original_job_id=? AND status IN ('reported','queued')",
       now(),
@@ -99,6 +110,6 @@ export function correctionView(row: Row, resultId?: string) {
     message: messages[row.status] || messages.review,
     resolution: row.resolution,
     policy:
-      "One complimentary correction per original image request. If it fails, we restore 1 image. Up to 3 automatic restorations per restaurant in 30 days; further reports receive team review.",
+      "One complimentary correction per original image request. If it can’t be made, we restore 1 image. If it’s still inaccurate, Pro restores 1 image automatically, up to 3 times per restaurant in 30 days; other reports receive team review.",
   };
 }

@@ -1,6 +1,10 @@
 "use client";
-import Link from "next/link";
+import type { ReactNode } from "react";
 import { Check } from "lucide-react";
+/* eslint-disable @next/next/no-html-link-for-pages --
+   Plain links on purpose: next/link's client navigation throws in the vinext
+   production build ("navigateClientSide is not a function"), so a <Link>
+   click there does nothing. These are separate server-rendered pages anyway. */
 
 function Features({ items }: { items: string[] }) {
   return (
@@ -20,11 +24,14 @@ export default function PlanCards({
   onUpgrade,
   onFree,
   busy = false,
+  comingSoon,
 }: {
   enabled?: boolean;
   onUpgrade?: () => void;
   onFree?: () => void;
   busy?: boolean;
+  /** Replaces the Pro card's "open soon" note while billing is off. */
+  comingSoon?: ReactNode;
 }) {
   return (
     <div className="pw-plan-grid">
@@ -49,9 +56,9 @@ export default function PlanCards({
               Continue free
             </button>
           ) : (
-            <Link className="cx-btn" href="/#studio">
+            <a className="cx-btn" href="/#studio">
               Try it free
-            </Link>
+            </a>
           )}
         </div>
       </article>
@@ -83,14 +90,16 @@ export default function PlanCards({
                 {busy ? "Opening secure checkout…" : "Get Pro — $9.99/month"}
               </button>
             ) : (
-              <Link className="cx-btn" href="/?upgrade=1">
+              <a className="cx-btn" href="/?upgrade=1">
                 Get Pro — $9.99/month
-              </Link>
+              </a>
             )
           ) : (
-            <p className="pw-plan-soon">
-              Subscriptions open soon. Start with 5 free images today.
-            </p>
+            (comingSoon ?? (
+              <p className="pw-plan-soon">
+                Subscriptions open soon. Start with 5 free images today.
+              </p>
+            ))
           )}
         </div>
       </article>

@@ -10,7 +10,8 @@ const {
 } = await import("../lib/channel-rules.ts");
 const { photoStyles, photoBackdrops } = await import("../lib/photo-styles.ts");
 const { looks, formats, catalogProfiles } = await import("../lib/studio.ts");
-const { exportDimensions } = await import("../lib/photo-export.ts");
+const { exportDimensions, downloadFormats, eventDestination } =
+  await import("../lib/photo-export.ts");
 const { photoLineage } = await import("../lib/photo-destinations.ts");
 const {
   packEntries,
@@ -117,7 +118,23 @@ ok(
 ok(fileCheck(channelRules.google, 1.2 * MB).status === "pass");
 ok(fileCheck(channelRules.uber, 11 * MB).status === "fail");
 ok(destinationChannel("feed") === channelRules.instagram);
+ok(destinationChannel("feed-3x4") === channelRules.instagram);
 ok(destinationChannel("story") === channelRules.instagram);
+// Instagram's 3:4 post downloads at the size its rules list.
+ok(
+  channelRules.instagram.sizes.some(
+    (s) =>
+      s.label.includes("3:4") &&
+      s.width === downloadFormats["feed-3x4"].width &&
+      s.height === downloadFormats["feed-3x4"].height,
+  ),
+);
+ok(downloadFormats["feed-3x4"].ratio === 3 / 4);
+ok(
+  eventDestination("feed-3x4") === "feed" &&
+    eventDestination("uber") === "uber",
+  "activity events keep to the destinations they know",
+);
 ok(
   destinationChannel("menu") === null && destinationChannel("master") === null,
 );
@@ -209,6 +226,13 @@ ok(
     source: { width: 2400, height: 1800 },
   }).length === 0,
 );
+ok(
+  downloadWarnings("feed-3x4", {
+    style: colorful,
+    source: { width: 600, height: 800 },
+  }).length === 0,
+  "3:4 has Instagram's (lack of) warnings",
+);
 const tooSmall = downloadWarnings("doordash", {
   style: lookProfile("keep"),
   source: { width: 1125, height: 750 },
@@ -236,7 +260,7 @@ for (const [w, h] of [
   [999, 1777],
   [4032, 3024],
 ]) {
-  for (const target of Object.values(formats)) {
+  for (const target of Object.values(downloadFormats)) {
     for (const fit of [false, true]) {
       const size = exportDimensions(target, { width: w, height: h }, { fit });
       ok(
@@ -268,7 +292,7 @@ ok(
 // Pack planning.
 ok(
   packEntries.map((e) => e.id).join() ===
-    "doordash,uber,google,instagram-post,instagram-story,website",
+    "doordash,uber,google,instagram-post,instagram-post-3x4,instagram-story,website",
 );
 ok(
   packFit(
@@ -316,12 +340,25 @@ ok(
     item("instagram-post").height === 1350,
 );
 ok(
+  item("instagram-post-3x4").width === 1080 &&
+    item("instagram-post-3x4").height === 1440 &&
+    item("instagram-post-3x4").fit,
+  "a landscape photo is kept whole in a 3:4 post",
+);
+const portrait = planPhotoPack({ ...source, width: 600, height: 800 });
+ok(
+  item("instagram-post-3x4", portrait).width === 600 &&
+    item("instagram-post-3x4", portrait).height === 800 &&
+    !item("instagram-post-3x4", portrait).fit,
+  "3:4 is never enlarged past the photo",
+);
+ok(
   !item("doordash").fit && !item("uber").fit && !item("google").fit,
   "no letterboxing for delivery or Google",
 );
 for (const i of plan) {
   ok(
-    /^corner-house-smash-burger-(doordash|uber-eats|google|instagram-post|instagram-story|website)-\d+x\d+\.jpg$/.test(
+    /^corner-house-smash-burger-(doordash|uber-eats|google|instagram-post|instagram-post-3x4|instagram-story|website)-\d+x\d+\.jpg$/.test(
       i.filename,
     ),
     i.filename,
@@ -379,7 +416,12 @@ for (const id of ["doordash", "uber", "google"]) {
   ok(!item(id, illustration).included);
   ok(item(id, illustration).skipped.includes("created from a description"));
 }
-for (const id of ["instagram-post", "instagram-story", "website"])
+for (const id of [
+  "instagram-post",
+  "instagram-post-3x4",
+  "instagram-story",
+  "website",
+])
   ok(item(id, illustration).included);
 const readme = packReadme(
   source.name,

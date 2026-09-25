@@ -128,6 +128,57 @@ for (const style of photoStyles) {
   );
   checks += 3;
 }
+// Explore tiles: every style photo has a 640 px copy and, when it is wider
+// than 1000 px, a 960 px copy (scripts/prepare-web-images.mjs), each close to
+// its source and smaller than it; the srcset (lib/style-images.ts) declares
+// every candidate at its real width.
+const { styleImageSrcSet, thousandPixelStyles } =
+  await import("../lib/style-images.ts");
+const styleIds = photoStyles.map((style) =>
+  style.image.replace(/^\/studio\/styles\/|\.webp$/g, ""),
+);
+for (const id of thousandPixelStyles) assert(styleIds.includes(id), id);
+checks++;
+for (const style of photoStyles) {
+  const id = style.image.replace(/^\/studio\/styles\/|\.webp$/g, "");
+  const source = "public" + style.image;
+  const { width } = await sharp(source).metadata();
+  assert.equal(width, thousandPixelStyles.has(id) ? 1000 : 1254, source);
+  checks++;
+  for (const variant of width > 1000 ? [640, 960] : [640]) {
+    const path = `public/studio/styles/${variant}/${id}.webp`;
+    const reference = await sharp(source)
+      .resize({ width: variant, kernel: "lanczos3" })
+      .removeAlpha()
+      .raw()
+      .toBuffer({ resolveWithObject: true });
+    const decoded = await sharp(path)
+      .removeAlpha()
+      .raw()
+      .toBuffer({ resolveWithObject: true });
+    assert.deepEqual(
+      [decoded.info.width, decoded.info.height],
+      [reference.info.width, reference.info.height],
+      path,
+    );
+    const fidelity = psnr(reference.data, decoded.data);
+    assert(
+      fidelity >= 34,
+      `${path} drifts from its source (${fidelity.toFixed(1)} dB)`,
+    );
+    assert((await stat(path)).size < (await stat(source)).size, path);
+    checks += 3;
+  }
+  for (const candidate of styleImageSrcSet(style.image).split(", ")) {
+    const [url, descriptor] = candidate.split(" ");
+    assert.equal(
+      `${(await sharp("public" + url).metadata()).width}w`,
+      descriptor,
+      `${url} in the Explore srcset`,
+    );
+    checks++;
+  }
+}
 // The homepage showcase keeps its own copy of the names it shows, so the
 // catalog's prompts stay out of the homepage bundle. It must name real,
 // current styles and count the whole library correctly.
@@ -145,5 +196,5 @@ for (const { id, name } of showcaseStyles) {
   checks++;
 }
 console.log(
-  `PASS: ${checks} display-asset checks: homepage photos match their sources at every display size (PSNR), stay within weight budgets and are smaller than their sources; every style tile has a smaller 400 px preview; the homepage showcase names current catalog styles. Full-resolution originals and export settings are untouched.`,
+  `PASS: ${checks} display-asset checks: homepage photos match their sources at every display size (PSNR), stay within weight budgets and are smaller than their sources; every style tile has a smaller 400 px preview; Explore tiles have 640 and 960 px copies listed at their real widths; the homepage showcase names current catalog styles. Full-resolution originals and export settings are untouched.`,
 );

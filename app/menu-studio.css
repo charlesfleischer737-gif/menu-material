@@ -1005,7 +1005,7 @@
   max-width: 340px;
   font-size: var(--text-subhead);
   line-height: 1.9;
-  color: var(--gray-500);
+  color: var(--gray-600);
 }
 .md-start-actions {
   display: flex;
@@ -1708,7 +1708,7 @@
 }
 .md-share-qr p {
   font-size: var(--text-footnote);
-  color: var(--gray-500);
+  color: var(--gray-600);
   line-height: 1.75;
   margin: 8px 0;
 }
@@ -2094,6 +2094,21 @@
   max-height: 290px;
   border-radius: 3px;
 }
+/* A photo shown whole sits on a blurred copy of itself, not grey bars. */
+.mm-menu-photo > img.mm-menu-photo-backdrop {
+  position: absolute;
+  inset: 0;
+  object-fit: cover;
+  filter: blur(24px) saturate(1.15) brightness(0.9);
+  transform: scale(1.15);
+}
+.mm-menu-photo > .mm-menu-photo-backdrop + img {
+  position: relative;
+}
+/* The classic masthead photo fades into the page instead. */
+.menu-hero-photo .mm-menu-photo-backdrop {
+  display: none;
+}
 .md-guest-hero > span {
   display: block;
   margin-top: 7px;
@@ -2283,6 +2298,10 @@
   margin: 0;
   font-variant-numeric: tabular-nums;
 }
+.md-guest-zone {
+  font-size: 0.8125rem;
+  color: var(--md-muted);
+}
 .md-menu-switcher {
   display: flex;
   flex-wrap: wrap;
@@ -2421,6 +2440,9 @@
   font-size: 0.8125rem;
   color: var(--md-accent);
   margin-top: 7px;
+}
+.md-guest-item > p.md-guest-dietary + p.md-guest-contains {
+  margin-top: 2px;
 }
 .md-guest-item > p.md-guest-unavailable {
   font-size: 0.8125rem;
@@ -3847,10 +3869,18 @@
     16px/1.5 "Post Sans",
     sans-serif;
 }
+.customer-menu-switcher form {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  flex: 1 1 100%;
+  min-width: 0;
+}
 .customer-menu-switcher label {
   display: flex;
   align-items: center;
   gap: 12px;
+  flex: 1;
   min-width: 0;
 }
 .customer-menu-switcher label > span {
@@ -3868,7 +3898,19 @@
   color: var(--md-ink, var(--foreground));
   font: inherit;
 }
-.customer-menu-switcher select:focus-visible {
+.customer-menu-switcher button {
+  flex: none;
+  min-height: 44px;
+  padding: 8px 16px;
+  border: 1px solid currentColor;
+  border-radius: 8px;
+  background: transparent;
+  color: inherit;
+  font: inherit;
+  cursor: pointer;
+}
+.customer-menu-switcher select:focus-visible,
+.customer-menu-switcher button:focus-visible {
   outline: 2px solid currentColor;
   outline-offset: 3px;
 }

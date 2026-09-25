@@ -1,5 +1,12 @@
 "use client";
-import { useCallback, useEffect, useId, useRef, useState } from "react";
+import {
+  useCallback,
+  useEffect,
+  useId,
+  useRef,
+  useState,
+  useSyncExternalStore,
+} from "react";
 import type { Row } from "@/lib/client";
 import { scheduleLabel } from "@/lib/promotions";
 import {
@@ -19,7 +26,7 @@ import {
   containsText,
   dietTags,
   dietaryParts,
-  normalizeDietary,
+  suitsDiet,
 } from "@/lib/dietary";
 import CustomerMenuSwitcher from "./customer-menu-switcher";
 import {
@@ -35,17 +42,233 @@ import {
   directionsHref,
   formatTime,
   openingStatus,
+  sameClock,
   telephoneHref,
+  zoneName,
   type MenuContact,
 } from "@/lib/restaurant-contact";
 import { isMenuPlacement } from "@/lib/menu-placements";
 
-/** "Vegetarian · Gluten-free · Contains milk, egg" */
+/** "Vegetarian · Gluten-free · Contains: milk, egg", for search. */
 function guestDietary(values: string[]) {
   const { diets, allergens, notes } = dietaryParts(values);
   return [...diets.map((tag) => tag.label), containsText(allergens), ...notes]
     .filter(Boolean)
     .join(" · ");
+}
+/**
+ * A dish's tags as guests read them: what it suits (with the owner's own
+ * notes), then its allergens on a line of their own, "Contains: milk, egg".
+ */
+function DishDietary({ values }: { values: string[] }) {
+  const { diets, allergens, notes } = dietaryParts(values);
+  const suits = [...diets.map((tag) => tag.label), ...notes].join(" · ");
+  return (
+    <>
+      {suits && <p className="md-guest-dietary">{suits}</p>}
+      {!!allergens.length && (
+        <p className="md-guest-dietary md-guest-contains">
+          {containsText(allergens)}
+        </p>
+      )}
+    </>
+  );
+}
+/**
+ * Reports each dish a guest scrolls to once per page load, a few at a time.
+ * Live refreshes, searches and filters re-render dishes without reporting
+ * them again, so an open tab doesn't use up the restaurant's allowance.
+ */
+export function useDishViews(
+  root: React.RefObject<HTMLElement | null>,
+  attribute: "entry" | "dish",
+  send: ((ids: string[]) => void) | null,
+) {
+  const seen = useRef(new Set<string>()),
+    watching = useRef<IntersectionObserver | null>(null),
+    sender = useRef(send);
+  useEffect(() => {
+    sender.current = send;
+  });
+  const enabled = !!send;
+  useEffect(() => {
+    if (!enabled) return;
+    const queued: string[] = [];
+    let timer = 0;
+    const flush = () => {
+      clearTimeout(timer);
+      timer = 0;
+      if (queued.length) sender.current?.(queued.splice(0));
+    };
+    const observer = new IntersectionObserver(
+      (entries) => {
+        for (const e of entries) {
+          if (!e.isIntersecting) continue;
+          observer.unobserve(e.target);
+          const id = (e.target as HTMLElement).dataset[attribute];
+          if (!id || seen.current.has(id)) continue;
+          seen.current.add(id);
+          queued.push(id);
+          if (!timer) timer = window.setTimeout(flush, 2000);
+        }
+      },
+      { threshold: 0.5 },
+    );
+    watching.current = observer;
+    const hidden = () => {
+      if (document.visibilityState === "hidden") flush();
+    };
+    document.addEventListener("visibilitychange", hidden);
+    return () => {
+      flush();
+      observer.disconnect();
+      watching.current = null;
+      document.removeEventListener("visibilitychange", hidden);
+    };
+  }, [enabled, attribute]);
+  // Watch dishes as they render: first, after a refresh, search or filter.
+  useEffect(() => {
+    const observer = watching.current;
+    if (!observer) return;
+    root.current
+      ?.querySelectorAll<HTMLElement>(`[data-${attribute}]`)
+      .forEach((el) => {
+        if (!seen.current.has(el.dataset[attribute] || ""))
+          observer.observe(el);
+      });
+  });
+}
+/**
+ * The time by the server's clock, so a wrong device clock can't show "Open
+ * now" or a special wrongly. It's read again every `every` ms, or else when
+ * the next of `ends` passes; only the component using it re-renders.
+ */
+function useServerTime(
+  serverNow: number | undefined,
+  every: number | null,
+  ends: number[] = [],
+) {
+  const [time, setTime] = useState(serverNow || 0);
+  const nextEnds = ends.join();
+  useEffect(() => {
+    const local = Date.now(),
+      server = serverNow || local;
+    let timer = 0;
+    const update = () => {
+      const now = server + Date.now() - local;
+      setTime(now);
+      const next = Math.min(
+        ...nextEnds
+          .split(",")
+          .map(Number)
+          .filter((end) => end > now),
+      );
+      const wait = every ?? (Number.isFinite(next) ? next - now + 100 : null);
+      if (wait != null)
+        timer = window.setTimeout(update, Math.min(wait, 864e5));
+    };
+    timer = window.setTimeout(update, 0);
+    return () => clearTimeout(timer);
+  }, [serverNow, every, nextEnds]);
+  return time;
+}
+/** "Open now · until 9 PM", kept current without re-rendering the menu. */
+function OpeningStatus({
+  contact,
+  serverNow,
+}: {
+  contact: MenuContact;
+  serverNow?: number;
+}) {
+  const time = useServerTime(serverNow, 30000),
+    status = openingStatus(contact.hours, contact.timezone, time),
+    zone = useZoneNote(contact.timezone, time);
+  if (!status) return null;
+  return (
+    <p className={`md-guest-status ${status.open ? "is-open" : ""}`}>
+      {status.label}
+      {zone && ` (${zone})`}
+    </p>
+  );
+}
+// The guest's own timezone is only known in the browser, after hydration.
+const unchanging = () => () => {};
+const deviceZone = () => Intl.DateTimeFormat().resolvedOptions().timeZone;
+/**
+ * "New York time" when the guest's device is on another clock, so hours
+ * read from elsewhere aren't mistaken for the guest's local times.
+ */
+function useZoneNote(timeZone: string, now: number) {
+  const viewer = useSyncExternalStore(unchanging, deviceZone, () => "");
+  return viewer && now && !sameClock(timeZone, viewer, now)
+    ? zoneName(timeZone)
+    : "";
+}
+/** Under the hours: "Times are New York time.", for guests elsewhere. */
+function HoursZone({
+  timeZone,
+  serverNow,
+}: {
+  timeZone: string;
+  serverNow?: number;
+}) {
+  const zone = useZoneNote(timeZone, useServerTime(serverNow, null));
+  return zone ? <p className="md-guest-zone">Times are {zone}.</p> : null;
+}
+/** The live specials, each taken down when it ends. */
+function GuestSpecials({
+  menu,
+  specials,
+  asset,
+}: {
+  menu: GuestMenu;
+  specials: Row[];
+  asset: (id: string) => string;
+}) {
+  const time = useServerTime(
+    menu.serverNow,
+    null,
+    specials.map((s) => s.endsAt).filter(Boolean),
+  );
+  const current = specials.filter((s) => !s.endsAt || s.endsAt > time);
+  if (!current.length) return null;
+  return (
+    <div className="md-guest-specials">
+      {current.map((s) => (
+        <section key={s.id}>
+          <span>Special offer</span>
+          <div>
+            <h2>{s.title}</h2>
+            <strong>
+              {menuPrice(
+                s.price,
+                menu.restaurant.currency,
+                menu.priceFormat,
+                menu.language,
+              )}
+            </strong>
+          </div>
+          <p>{s.description}</p>
+          <div className="md-special-photos">
+            {s.items.map((i: Row) => (
+              <figure data-entry={i.dishId} key={i.dishId}>
+                <img
+                  src={asset(i.photoId)}
+                  alt={i.name}
+                  loading="lazy"
+                  decoding="async"
+                />
+                <figcaption>
+                  {i.quantity} × {i.name}
+                </figcaption>
+              </figure>
+            ))}
+          </div>
+          <small>{scheduleLabel(s.startsAt, s.endsAt, s.timezone)}</small>
+        </section>
+      ))}
+    </div>
+  );
 }
 type GuestMenu = DesignedMenu & {
   contact?: MenuContact;
@@ -71,8 +294,7 @@ export default function MenuDocumentView({
     [sectionsOverflow, setSectionsOverflow] = useState(false),
     [sectionsAtEnd, setSectionsAtEnd] = useState(false),
     [unavailable, setUnavailable] = useState(false),
-    [diets, setDiets] = useState<string[]>([]),
-    [time, setTime] = useState(initial.serverNow || 0);
+    [diets, setDiets] = useState<string[]>([]);
   const root = useRef<HTMLElement>(null),
     sectionLinks = useRef<HTMLDivElement>(null),
     session = useRef(""),
@@ -92,7 +314,7 @@ export default function MenuDocumentView({
   const asset = (id: string) =>
     slug && !preview ? `/api/public/${slug}/assets/${id}` : `/api/assets/${id}`;
   const track = useCallback(
-    (kind: string, entityId?: string) => {
+    (kind: string, entityIds?: string[]) => {
       if (preview || !slug || !session.current) return;
       void fetch(
         `/api/public/${slug}/events${menu.documentId ? `?menu=${menu.documentId}` : ""}`,
@@ -101,7 +323,7 @@ export default function MenuDocumentView({
           headers: { "Content-Type": "application/json" },
           body: JSON.stringify({
             kind,
-            entityId,
+            entityIds,
             session: session.current,
             ...(placement.current ? { src: placement.current } : {}),
           }),
@@ -192,22 +414,7 @@ export default function MenuDocumentView({
       window.removeEventListener("resize", schedule);
     };
   }, [menu.sections, preview, query]);
-  const hasHours = menu.contact?.hours?.length === 7,
-    hasSpecials = !preview && !!live.specials?.length,
-    serverNow = preview ? 0 : live.serverNow;
-  useEffect(() => {
-    if (!hasSpecials && !hasHours) return;
-    // Server time keeps "Open now" and specials right on a wrong device clock.
-    const local = Date.now(),
-      server = serverNow || local;
-    const tick = () => setTime(server + Date.now() - local);
-    const first = setTimeout(tick, 0);
-    const timer = setInterval(tick, hasSpecials ? 1000 : 30000);
-    return () => {
-      clearTimeout(first);
-      clearInterval(timer);
-    };
-  }, [hasSpecials, hasHours, serverNow]);
+  const hasHours = menu.contact?.hours?.length === 7;
   useEffect(() => {
     if (preview || !slug) return;
     try {
@@ -265,23 +472,11 @@ export default function MenuDocumentView({
       document.removeEventListener("visibilitychange", refresh);
     };
   }, [slug, initial.documentId, preview, track]);
-  useEffect(() => {
-    if (preview || !slug || !root.current) return;
-    const observer = new IntersectionObserver(
-      (entries) => {
-        for (const e of entries)
-          if (e.isIntersecting) {
-            track("dish_view", (e.target as HTMLElement).dataset.entry);
-            observer.unobserve(e.target);
-          }
-      },
-      { threshold: 0.5 },
-    );
-    root.current
-      .querySelectorAll("[data-entry]")
-      .forEach((el) => observer.observe(el));
-    return () => observer.disconnect();
-  }, [live, preview, slug, track]);
+  useDishViews(
+    root,
+    "entry",
+    !preview && slug ? (ids) => track("dish_view", ids) : null,
+  );
   if (unavailable)
     return (
       <main className="unavailable">
@@ -290,11 +485,10 @@ export default function MenuDocumentView({
         {slug && <a href={`/m/${slug}`}>View the restaurant’s current menu</a>}
       </main>
     );
-  // Guests can narrow to dishes the restaurant marked suitable for them.
+  // Guests can narrow to dishes the restaurant marked suitable for them
+  // (vegan dishes count as vegetarian and dairy-free).
   const offeredDiets = dietTags.filter((tag) =>
-    sections.some((s) =>
-      s.items.some((i) => normalizeDietary(i.dietary).includes(tag.id)),
-    ),
+    sections.some((s) => s.items.some((i) => suitsDiet(i.dietary, tag.id))),
   );
   const chosenDiets = diets.filter((id) =>
     offeredDiets.some((tag) => tag.id === id),
@@ -304,7 +498,7 @@ export default function MenuDocumentView({
       ...s,
       items: s.items.filter(
         (i) =>
-          chosenDiets.every((id) => normalizeDietary(i.dietary).includes(id)) &&
+          chosenDiets.every((id) => suitsDiet(i.dietary, id)) &&
           `${s.name} ${i.name} ${i.description} ${guestDietary(i.dietary)}`
             .toLocaleLowerCase(menu.language)
             .includes(query.toLocaleLowerCase(menu.language)),
@@ -313,10 +507,11 @@ export default function MenuDocumentView({
     .filter((s) => s.items.length);
   const resultCount = filtered.reduce((n, s) => n + s.items.length, 0);
   const narrowed = !!query || chosenDiets.length > 0;
+  // Wherever the menu shows diet or allergen details, remind guests to tell
+  // the restaurant, unless the owner's own footer already does.
   const allergyNote =
-    sections.some((s) =>
-      s.items.some((i) => dietaryParts(i.dietary).allergens.length),
-    ) && !/allerg/i.test(menu.footer);
+    sections.some((s) => s.items.some((i) => i.dietary.length)) &&
+    !/allerg/i.test(menu.footer);
   const searchInput = (
     <input
       type="search"
@@ -345,10 +540,7 @@ export default function MenuDocumentView({
     </select>
   );
   const contact = menu.contact,
-    orderingUrl = contact ? contact.orderingUrl : menu.restaurant.orderingUrl,
-    status = contact
-      ? openingStatus(contact.hours, contact.timezone, time, menu.language)
-      : null;
+    orderingUrl = contact ? contact.orderingUrl : menu.restaurant.orderingUrl;
   const actions = [
     orderingUrl && {
       kind: "ordering_click",
@@ -448,12 +640,13 @@ export default function MenuDocumentView({
             )}
           </div>
         )}
-        {(status || !!actions.length) && (
+        {((contact && hasHours) || !!actions.length) && (
           <div className="md-guest-visit-bar">
-            {status && (
-              <p className={`md-guest-status ${status.open ? "is-open" : ""}`}>
-                {status.label}
-              </p>
+            {contact && hasHours && (
+              <OpeningStatus
+                contact={contact}
+                serverNow={preview ? undefined : menu.serverNow}
+              />
             )}
             {!!actions.length && (
               <div className="md-guest-actions">
@@ -531,9 +724,7 @@ export default function MenuDocumentView({
                     // Show the section even if a dietary filter hides it.
                     if (
                       !s.items.some((i) =>
-                        chosenDiets.every((id) =>
-                          normalizeDietary(i.dietary).includes(id),
-                        ),
+                        chosenDiets.every((id) => suitsDiet(i.dietary, id)),
                       )
                     )
                       setDiets([]);
@@ -590,43 +781,7 @@ export default function MenuDocumentView({
         sections.reduce((n, s) => n + s.items.length, 0) > 12
       ) && dietFilter}
       {!preview && !!menu.specials?.length && (
-        <div className="md-guest-specials">
-          {menu.specials
-            .filter((s) => !s.endsAt || s.endsAt > time)
-            .map((s) => (
-              <section key={s.id}>
-                <span>Special offer</span>
-                <div>
-                  <h2>{s.title}</h2>
-                  <strong>
-                    {menuPrice(
-                      s.price,
-                      menu.restaurant.currency,
-                      menu.priceFormat,
-                      menu.language,
-                    )}
-                  </strong>
-                </div>
-                <p>{s.description}</p>
-                <div className="md-special-photos">
-                  {s.items.map((i: Row) => (
-                    <figure data-entry={i.dishId} key={i.dishId}>
-                      <img
-                        src={asset(i.photoId)}
-                        alt={i.name}
-                        loading="lazy"
-                        decoding="async"
-                      />
-                      <figcaption>
-                        {i.quantity} × {i.name}
-                      </figcaption>
-                    </figure>
-                  ))}
-                </div>
-                <small>{scheduleLabel(s.startsAt, s.endsAt, s.timezone)}</small>
-              </section>
-            ))}
-        </div>
+        <GuestSpecials menu={menu} specials={menu.specials} asset={asset} />
       )}
       <div className="md-guest-sections" id={`${menuId}-items`}>
         {filtered.map((section) => (
@@ -704,9 +859,7 @@ export default function MenuDocumentView({
                     </dl>
                   )}
                   {!!item.dietary.length && (
-                    <p className="md-guest-dietary">
-                      {guestDietary(item.dietary)}
-                    </p>
+                    <DishDietary values={item.dietary} />
                   )}
                   {!item.available && (
                     <p className="md-guest-unavailable">
@@ -773,16 +926,23 @@ export default function MenuDocumentView({
                 const h = visit.hours.find((x) => x.day === day);
                 return (
                   <div key={day}>
-                    <dt>{dayName(day, menu.language)}</dt>
+                    {/* English, like the labels around it. */}
+                    <dt>{dayName(day)}</dt>
                     <dd>
                       {!h || h.closed
                         ? "Closed"
-                        : `${formatTime(h.open, menu.language)} – ${formatTime(h.close, menu.language)}`}
+                        : `${formatTime(h.open)} – ${formatTime(h.close)}`}
                     </dd>
                   </div>
                 );
               })}
             </dl>
+          )}
+          {hasHours && (
+            <HoursZone
+              timeZone={visit.timezone}
+              serverNow={preview ? undefined : menu.serverNow}
+            />
           )}
         </section>
       )}

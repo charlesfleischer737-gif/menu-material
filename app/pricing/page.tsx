@@ -1,12 +1,14 @@
 import PublicInformation from "../components/public-information";
 import PlanCards from "../components/plan-cards";
 import { billingEnabled } from "@/lib/server/billing";
+import { pageMetadata } from "../site-metadata";
 export const dynamic = "force-dynamic";
-export const metadata = {
+export const metadata = pageMetadata({
   title: "Free & Pro plans · Menu Material",
   description:
     "Explore Menu Material plans for restaurant photography. Start with 5 free images.",
-};
+  path: "/pricing",
+});
 export default function Pricing() {
   const enabled = billingEnabled();
   const questions: [string, string][] = [

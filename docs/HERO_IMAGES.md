@@ -1,6 +1,6 @@
 # Exclusive hero food photography
 
-Six original images created with built-in imagegen in one parallel batch, without references, variants or retries. These images are used only by the homepage hero bubbles; the use-case gallery and feature photography keep their existing assets.
+Six original images created with built-in imagegen in one parallel batch, without references, variants or retries. They were made for the homepage hero bubbles, which the current homepage no longer shows, so the 512 px copies now live in `docs/images/` instead of being served from `public/homepage/`; the use-case gallery and feature photography keep their existing assets.
 
 Originals are 1254 × 1254 pixels. Site assets are 512 × 512 WebP images. Full-resolution copies are retained locally in `outputs/hero-food-originals/`. The old six reused bubble thumbnails were removed.
 
@@ -8,7 +8,7 @@ Originals are 1254 × 1254 pixels. Site assets are 512 × 512 WebP images. Full-
 
 ### Sushi
 
-Saved site image: `public/homepage/hero-sushi.webp`
+Saved image: `docs/images/hero-sushi.webp`
 
 Local original: `outputs/hero-food-originals/sushi.png`
 
@@ -28,7 +28,7 @@ Constraints: original single photograph; no text, logos, watermarks, hands, cutl
 
 ### Pizza
 
-Saved site image: `public/homepage/hero-pizza.webp`
+Saved image: `docs/images/hero-pizza.webp`
 
 Local original: `outputs/hero-food-originals/pizza.png`
 
@@ -49,7 +49,7 @@ Constraints: original single photograph; no text, logos, watermarks, hands, cutl
 
 ### Cheesecake
 
-Saved site image: `public/homepage/hero-cheesecake.webp`
+Saved image: `docs/images/hero-cheesecake.webp`
 
 Local original: `outputs/hero-food-originals/cheesecake.png`
 
@@ -69,7 +69,7 @@ Constraints: original single photograph; no text, logos, watermarks, hands, cutl
 
 ### Burrata
 
-Saved site image: `public/homepage/hero-burrata.webp`
+Saved image: `docs/images/hero-burrata.webp`
 
 Local original: `outputs/hero-food-originals/burrata.png`
 
@@ -89,7 +89,7 @@ Constraints: original single photograph; no text, logos, watermarks, hands, cutl
 
 ### Gelato
 
-Saved site image: `public/homepage/hero-gelato.webp`
+Saved image: `docs/images/hero-gelato.webp`
 
 Local original: `outputs/hero-food-originals/gelato.png`
 
@@ -109,7 +109,7 @@ Constraints: original single photograph; no text, logos, watermarks, hands, cutl
 
 ### Gyoza
 
-Saved site image: `public/homepage/hero-gyoza.webp`
+Saved image: `docs/images/hero-gyoza.webp`
 
 Local original: `outputs/hero-food-originals/gyoza.png`
 

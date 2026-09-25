@@ -11,8 +11,10 @@ import {
   type Row,
 } from "./core";
 import { enqueue } from "./generation";
+import { imageEntitlement } from "./entitlements";
 import {
   correctionView,
+  holdForReview,
   originalPhotoJob,
   restoreCorrectionCredit,
   settleCorrection,
@@ -122,7 +124,9 @@ export async function photoCorrectionsRoute(req: Request, p: string[], r: Row) {
         },
         `${rootId}:${input.reason}`,
       );
-      // Reporting the correction itself is the one-shot allowance recovery path.
+      // Reporting the correction itself is the one-shot allowance recovery
+      // path on Pro. Free images are once per account, so on the free plan
+      // the report goes to the team instead of restoring an image.
       if (parentCorrection && !parentCorrection.credited_at) {
         await run(
           "UPDATE photo_corrections SET detail=substr(detail,1,500)||?,updated_at=? WHERE original_job_id=? AND credited_at IS NULL",
@@ -130,7 +134,10 @@ export async function photoCorrectionsRoute(req: Request, p: string[], r: Row) {
           now(),
           rootId,
         );
-        row = await restoreCorrectionCredit(rootId);
+        row =
+          (await imageEntitlement(r.id)).plan === "free"
+            ? await holdForReview(rootId)
+            : await restoreCorrectionCredit(rootId);
       }
     } else if (p[2] === "create") {
       assert(row, 400, "Tell us what changed in the food first.");

@@ -49,6 +49,12 @@ export const restaurants = sqliteTable("restaurants", {
   hours: text().notNull().default("[]"),
   logoId: text("logo_id"),
   slug: text().notNull().unique(),
+  // When the current menu address was chosen, to tell whether guests could
+  // have saved it (0: chosen while a menu was live, or before this was kept).
+  slugSince: integer("slug_since").notNull().default(0),
+  // Set by an administrator: public menu pages and specials stay offline and
+  // cannot be republished until an administrator restores them.
+  publicSuspended: integer("public_suspended").notNull().default(0),
   currency: text().notNull().default("USD"),
   allowance: integer().notNull().default(20),
   paused: integer().notNull().default(0),

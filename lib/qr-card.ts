@@ -1,6 +1,17 @@
 import { brandTypeface, readableBrandInk } from "./restaurant-look";
 import type { Row } from "./client";
 
+/**
+ * The address printed under the code. A specific menu keeps its ?menu= part,
+ * so typing it opens that menu rather than the main one; the placement tag
+ * is only for the scanned link's stats.
+ */
+export function printedMenuAddress(url: string) {
+  const link = new URL(url),
+    menu = link.searchParams.get("menu");
+  return link.host + link.pathname + (menu ? `?menu=${menu}` : "");
+}
+
 /** A 4 × 6 inch vector-text card; the QR retains its white quiet zone. */
 export async function menuQrCard(restaurant: Row, url: string, qr: string) {
   const { PDFDocument, rgb } = await import("pdf-lib");
@@ -105,8 +116,7 @@ export async function menuQrCard(restaurant: Row, url: string, qr: string) {
   page.drawImage(image, { x: 54, y: 98, width: 180, height: 180 });
   center("Scan to explore our menu", 78, 13);
   center("Open your camera and point it at the code.", 59, 8);
-  const link = new URL(url);
-  const address = link.host + link.pathname;
+  const address = printedMenuAddress(url);
   const addressGlyphs = new Set(body.getCharacterSet());
   if ([...address].some((c) => !addressGlyphs.has(c.codePointAt(0)!)))
     throw Error(

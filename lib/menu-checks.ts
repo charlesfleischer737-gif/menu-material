@@ -11,6 +11,8 @@ import {
   isPlaceholderRestaurantName,
   restaurantNameMessage,
 } from "./restaurant-identity";
+import { publicBrandStyle } from "./restaurant-look";
+import type { Row } from "./client";
 
 export type MenuCheck = {
   id: string;
@@ -55,7 +57,12 @@ export function menuPublishChecks(
     "sections" | "showUnavailable" | "title" | "fixedPrice"
   > &
     Partial<Pick<MenuDocument, "purpose">>,
-  context: { restaurantName: string; sampleDishIds?: Iterable<string> },
+  context: {
+    restaurantName: string;
+    sampleDishIds?: Iterable<string>;
+    /** Photos the owner reported as inaccurate. */
+    correctionPhotoIds?: Iterable<string>;
+  },
 ): MenuCheck[] {
   const checks: MenuCheck[] = [];
   if (isPlaceholderRestaurantName(context.restaurantName))
@@ -73,7 +80,8 @@ export function menuPublishChecks(
       ...issue,
     }),
   );
-  const samples = new Set(context.sampleDishIds || []);
+  const samples = new Set(context.sampleDishIds || []),
+    reported = new Set(context.correctionPhotoIds || []);
   const names = new Map<string, number>();
   const undescribed: { id: string; name: string; sectionId: string }[] = [];
   const soldOut: string[] = [];
@@ -111,6 +119,15 @@ export function menuPublishChecks(
           entryId: item.id,
           sectionId: section.id,
           fix: "remove",
+        });
+      if (item.photoId && reported.has(item.photoId))
+        checks.push({
+          id: `photo-reported:${item.id}`,
+          level: "warn",
+          message: `${label} has a photo you reported as inaccurate. Choose another photo or remove it.`,
+          entryId: item.id,
+          sectionId: section.id,
+          fix: "edit",
         });
       if (item.priceMode === "single" && item.price === 0)
         checks.push({
@@ -212,6 +229,32 @@ export function attachAddonToDishAbove<T extends { sections: MenuSection[] }>(
 export const blockingChecks = (checks: MenuCheck[]) =>
   checks.filter((check) => check.level === "block");
 
+/**
+ * A published menu keeps the restaurant's name, logo, colors, currency,
+ * cuisine and ordering link from when it was published. True when the
+ * owner's settings have changed since, so publishing again would show them.
+ */
+export function restaurantSettingsChanged(
+  published: Row | null | undefined,
+  restaurant: Row,
+) {
+  const shown = published?.restaurant;
+  if (!shown) return false;
+  const look = shown.style || {},
+    style = publicBrandStyle(restaurant.style || {});
+  return (
+    shown.name !== restaurant.name ||
+    shown.currency !== restaurant.currency ||
+    (shown.cuisine || "") !== (restaurant.cuisine || "") ||
+    (shown.orderingUrl || "") !== (restaurant.ordering_url || "") ||
+    (shown.logoId || null) !==
+      ((published.showLogo !== false && restaurant.logo_id) || null) ||
+    look.primary !== style.primary ||
+    look.accent !== style.accent ||
+    look.typography !== style.typography
+  );
+}
+
 export type DishFacts = {
   id: string;
   name: string;
@@ -235,9 +278,60 @@ const sameTags = (a: unknown, b: unknown) =>
   JSON.stringify(normalizeDietary(a)) === JSON.stringify(normalizeDietary(b));
 
 /**
+ * Menu dishes gain their My Dishes link, any approved photo it has, and its
+ * dietary and allergen tags when the menu dish has none of its own.
+ */
+export function withLibraryLinks(
+  menu: MenuDocument,
+  links: {
+    entryId: string;
+    dishId: string;
+    photoId: string | null;
+    dietary?: string[];
+  }[],
+): MenuDocument {
+  const byEntry = new Map(links.map((link) => [link.entryId, link]));
+  const hadPhotos = menu.sections.some((s) => s.items.some((i) => i.photoId));
+  let featured = menu.sections.reduce(
+      (n, s) => n + s.items.filter((i) => i.featured).length,
+      0,
+    ),
+    added = 0;
+  const sections = menu.sections.map((s) => ({
+    ...s,
+    items: s.items.map((i) => {
+      const link = byEntry.get(i.id);
+      if (!link || i.dishId) return i;
+      const linked = {
+        ...i,
+        dishId: link.dishId,
+        dietary: i.dietary.length ? i.dietary : normalizeDietary(link.dietary),
+      };
+      if (i.photoId || !link.photoId) return linked;
+      added++;
+      return {
+        ...linked,
+        photoId: link.photoId,
+        featured: i.featured || featured++ < 4,
+      };
+    }),
+  }));
+  return {
+    ...menu,
+    sections,
+    // Photos lead the menu when they're its first ones.
+    layout:
+      added && !hadPhotos && menu.layout === "classic"
+        ? "featured"
+        : menu.layout,
+  };
+}
+
+/**
  * Carry a My Dishes edit into a menu. Only details that still match the dish's
  * previous value follow the dish; anything tailored on this menu (a brunch
- * price, a shorter description) stays as the owner set it.
+ * price, a shorter description) stays as the owner set it. A menu dish with
+ * no tags (imports start with none) counts as not set, so tag edits reach it.
  */
 export function applyDishUpdate<T extends { sections: MenuSection[] }>(
   menu: T,
@@ -270,7 +364,8 @@ export function applyDishUpdate<T extends { sections: MenuSection[] }>(
         next.available = after.available;
       if (
         !sameTags(before.dietary, after.dietary) &&
-        sameTags(item.dietary, before.dietary)
+        (sameTags(item.dietary, before.dietary) ||
+          !normalizeDietary(item.dietary).length)
       )
         next.dietary = normalizeDietary(after.dietary);
       if (JSON.stringify(next) === JSON.stringify(item)) return item;

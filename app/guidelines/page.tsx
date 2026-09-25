@@ -1,9 +1,11 @@
 import PublicInformation from "../components/public-information";
-export const metadata = {
+import { pageMetadata } from "../site-metadata";
+export const metadata = pageMetadata({
   title: "Usage guidelines · Menu Material",
   description:
     "Use your own photos, review AI changes and publish accurate restaurant information.",
-};
+  path: "/guidelines",
+});
 export default function Guidelines() {
   return (
     <PublicInformation

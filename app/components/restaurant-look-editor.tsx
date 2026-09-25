@@ -333,7 +333,8 @@ export default function RestaurantLookEditor({
         <label className="mm-voice-setting">
           Writing voice
           <input
-            value={style.tone || "Warm and welcoming"}
+            value={style.tone ?? ""}
+            placeholder="Warm and welcoming"
             maxLength={150}
             onChange={(e) => change({ tone: e.target.value })}
           />

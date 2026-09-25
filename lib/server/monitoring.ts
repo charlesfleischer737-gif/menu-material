@@ -271,7 +271,10 @@ async function deliverError(
   const settings = monitoringSettings();
   // 503s are deliberate "not connected" gates or outages readiness already
   // reports, so repeated clicks on a disabled feature cannot fake a burst.
-  if (record.kind !== "client" && record.status !== 503) {
+  // A 4xx, such as the image provider refusing a request, is no server error.
+  const refused =
+    !!record.status && record.status >= 400 && record.status < 500;
+  if (record.kind !== "client" && record.status !== 503 && !refused) {
     const withinBurst = await allowed(
       "monitor:server-errors",
       settings.errorBurstCount - 1,
@@ -287,8 +290,19 @@ async function deliverError(
   const repeatSeconds = settings.repeatMs / 1000;
   if (!(await allowed(`monitor:error:${record.fingerprint}`, 1, repeatSeconds)))
     return;
-  // A hard ceiling across all fingerprints keeps a storm from flooding the channel.
-  if (!(await allowed("monitor:error-webhook", 30, 3600))) return;
+  // A hard ceiling across all fingerprints keeps a storm from flooding the
+  // channel. Browser reports, which anyone can send, have their own smaller
+  // share, so they never use up the room kept for server and job errors.
+  if (
+    !(await allowed(
+      record.kind === "client"
+        ? "monitor:client-error-webhook"
+        : "monitor:error-webhook",
+      record.kind === "client" ? 5 : 30,
+      3600,
+    ))
+  )
+    return;
   const source =
     record.kind === "client"
       ? "Browser"
@@ -309,6 +323,14 @@ async function deliverError(
       .join("\n"),
   );
 }
+// Messages can quote whatever a visitor or an upstream service wrote. In the
+// team's chat they must not ping anyone or show working links.
+function chatSafe(message: string) {
+  return message
+    .replace(/\b([a-z][a-z\d+.-]*):\/\//gi, "$1[:]//")
+    .replace(/\bwww\./gi, "www[.]")
+    .replace(/@(everyone|here|channel)\b/gi, "@\u200b$1");
+}
 async function send(kind: "alert" | "error", message: string) {
   const url = webhook(kind);
   if (!url) return false;
@@ -316,16 +338,29 @@ async function send(kind: "alert" | "error", message: string) {
   try {
     host = new URL(config("APP_ORIGIN")).host;
   } catch {}
-  const body = `[Menu Material${host ? ` · ${host}` : ""}] ${message}`.slice(
-    0,
-    1900,
-  );
+  const prefix = `[Menu Material${host ? ` · ${host}` : ""}] `,
+    safe = chatSafe(message);
   try {
     const res = await fetch(url, {
       method: "POST",
       headers: { "Content-Type": "application/json" },
-      // `text` for Slack-compatible hooks, `content` for Discord.
-      body: JSON.stringify({ text: body, content: body }),
+      body: JSON.stringify({
+        // Slack-compatible hooks read `text`: escaping &, < and > also turns
+        // <!channel>, <@user> and <link|label> into plain text.
+        text: (
+          prefix +
+          safe
+            .replace(/&/g, "&amp;")
+            .replace(/</g, "&lt;")
+            .replace(/>/g, "&gt;")
+        ).slice(0, 1900),
+        // Discord reads `content`; <@…> and <#…> stay inert, and no mention
+        // of any kind may notify.
+        content: (prefix + safe.replace(/</g, "<\u200b")).slice(0, 1900),
+        allowed_mentions: { parse: [] },
+        unfurl_links: false,
+        unfurl_media: false,
+      }),
       signal: AbortSignal.timeout(5000),
     });
     if (!res.ok) log("warn", "webhook_failed", { kind, status: res.status });
@@ -337,7 +372,8 @@ async function send(kind: "alert" | "error", message: string) {
 }
 
 // Condition alerts: one row per condition in app_settings, holding the time it
-// last notified. A conditional upsert lets exactly one caller claim each send.
+// last notified, or "retry:<time>" after a failed delivery. A conditional
+// upsert lets exactly one caller claim each send.
 const alertKey = (condition: string) => `monitor:alert:${condition}`;
 async function raiseAlert(
   condition: string,
@@ -347,9 +383,10 @@ async function raiseAlert(
   let stored = true;
   try {
     const claim = await run(
-      "INSERT INTO app_settings (key,value) VALUES (?,?) ON CONFLICT(key) DO UPDATE SET value=excluded.value WHERE CAST(app_settings.value AS INTEGER)<?",
+      "INSERT INTO app_settings (key,value) VALUES (?,?) ON CONFLICT(key) DO UPDATE SET value=excluded.value WHERE CASE WHEN app_settings.value LIKE 'retry:%' THEN CAST(substr(app_settings.value,7) AS INTEGER)<=? ELSE CAST(app_settings.value AS INTEGER)<? END",
       alertKey(condition),
       String(now()),
+      now(),
       notBefore,
     );
     if (!claim.meta.changes) return false;
@@ -361,10 +398,11 @@ async function raiseAlert(
   }
   log("warn", "alert", { condition, message });
   if (webhook("alert") && !(await send("alert", message)) && stored)
-    // Retry a failed delivery in about five minutes rather than a full window.
+    // Retry a failed delivery in about five minutes, rather than a full
+    // window or, for once-a-day alerts, the next day.
     await run(
       "UPDATE app_settings SET value=? WHERE key=?",
-      String(now() - monitoringSettings().repeatMs + 5 * 60000),
+      `retry:${now() + 5 * 60000}`,
       alertKey(condition),
     ).catch(() => {});
   return true;
@@ -670,6 +708,12 @@ const clientErrorSchema = z.object({
   digest: z.string().max(100).optional(),
 });
 export async function clientErrorRoute(req: Request) {
+  // Only this site's own pages report errors, and browsers mark those.
+  if (
+    req.headers.get("origin") !== new URL(req.url).origin &&
+    req.headers.get("sec-fetch-site") !== "same-origin"
+  )
+    throw new AppError(403, "Please submit from this site.");
   await publicLimit(req, "client-error", 20, 900);
   const bytes = await limitedBytes(req, 8 * 1024);
   let raw: unknown;

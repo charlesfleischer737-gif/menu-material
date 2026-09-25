@@ -168,51 +168,84 @@ export default function GuestStudio({
     window.addEventListener("beforeunload", warn);
     return () => window.removeEventListener("beforeunload", warn);
   }, []);
-  const continueCreation = useCallback(async () => {
-    if (lock.current) return;
-    lock.current = true;
-    transferring.current = true;
-    setBusy("Creating your photo");
-    setError("");
-    try {
-      transfer.current ||= {
-        id: crypto.randomUUID(),
-        revision: 0,
-        requestKey: crypto.randomUUID(),
-      };
-      await transferGuestPhoto(
-        latest.current.draft,
-        latest.current.photo,
-        latest.current.reference,
-        state,
-        transfer.current,
-        async () => {
-          await persistLocal(true).catch(() => {
-            setStorageNotice(
-              "Keep this tab open while your photo is saved to your account.",
-            );
-          });
-        },
+  // Signed in, the work moves to the account: with Create pressed the image
+  // is made; otherwise the draft continues in the workspace Photo Studio.
+  const transferWork = useCallback(
+    async (create: boolean) => {
+      if (lock.current) return;
+      const { draft, photo } = latest.current;
+      if (
+        !create &&
+        !photo &&
+        !(
+          draft.mode === "description" &&
+          (draft.name?.trim() || draft.description?.trim())
+        )
+      ) {
+        // Nothing to bring along: open the workspace.
+        await onFinish().catch((e) => setError((e as Error).message));
+        return;
+      }
+      lock.current = true;
+      transferring.current = true;
+      setBusy(
+        create ? "Creating your photo" : "Saving your photo to your account",
       );
-      await saving.current.catch(() => {});
-      await clearGuestDraft(localId.current).catch(() => {});
-      void api("jobs/tick", {}).catch(() => {});
-      await onFinish();
-    } catch (e) {
-      setError((e as Error).message);
-    } finally {
-      lock.current = false;
-      transferring.current = false;
-      setBusy("");
-      setSavedSome(!!transfer.current?.dishId);
-    }
-  }, [state, onFinish]);
+      setError("");
+      try {
+        transfer.current ||= {
+          id: crypto.randomUUID(),
+          revision: 0,
+          requestKey: crypto.randomUUID(),
+        };
+        await transferGuestPhoto(
+          latest.current.draft,
+          latest.current.photo,
+          latest.current.reference,
+          state,
+          transfer.current,
+          async () => {
+            await persistLocal(create).catch(() => {
+              setStorageNotice(
+                "Keep this tab open while your photo is saved to your account.",
+              );
+            });
+          },
+          { create },
+        );
+        await saving.current.catch(() => {});
+        await clearGuestDraft(localId.current).catch(() => {});
+        if (create) void api("jobs/tick", {}).catch(() => {});
+        await onFinish();
+      } catch (e) {
+        setError((e as Error).message);
+      } finally {
+        lock.current = false;
+        transferring.current = false;
+        setBusy("");
+        setSavedSome(!!transfer.current?.dishId);
+      }
+    },
+    [state, onFinish],
+  );
+  const continueCreation = useCallback(
+    () => transferWork(true),
+    [transferWork],
+  );
+  // Signing in from here hands the work over, so the page is never half
+  // signed in. A studio opened already signed in (to recover a draft after
+  // signup) leaves that to the owner.
+  const openedAs = useRef(state.user?.id || "");
   useEffect(() => {
-    if (state.user && requested && autoStarted.current !== state.user.id) {
-      autoStarted.current = state.user.id;
-      queueMicrotask(() => void continueCreation());
-    }
-  }, [state.user, requested, continueCreation]);
+    if (
+      !state.user ||
+      state.user.id === openedAs.current ||
+      autoStarted.current === state.user.id
+    )
+      return;
+    autoStarted.current = state.user.id;
+    queueMicrotask(() => void transferWork(requested));
+  }, [state.user, requested, transferWork]);
   function update(patch: Row) {
     setDraft((d) => ({ ...d, ...patch, styleChosen: true }));
     if (!transfer.current?.dishId) transfer.current = null;
@@ -249,6 +282,10 @@ export default function GuestStudio({
         url = URL.createObjectURL(normalized);
       urls.current.push(url);
       const next = { file, normalized, url };
+      // A dish saved by an earlier attempt keeps its sample status, so a
+      // sample and a real photo never share one: start a new dish.
+      if ((options.sample || draft.sample) && transfer.current?.dishId)
+        transfer.current = null;
       setPhoto(next);
       update({
         ...(options.sample || draft.sample
@@ -303,13 +340,21 @@ export default function GuestStudio({
               </button>
             )}
             <span className="cx-guest-free">
-              <Sparkles size={15} />5 free images
+              <Sparkles size={15} />
+              {state.user
+                ? `${state.remaining} ${state.remaining === 1 ? "image" : "images"} left`
+                : "5 free images"}
             </span>
           </nav>
         </div>
       </header>
       <main id="creation-main" className="cx-main cx-feature-main">
-        <section className="cx-tool cx-feature-page cx-guided-studio">
+        {/* data-action-layout: on phones the fixed Create bar reserves its
+            height, so it never covers Details or Format. */}
+        <section
+          className="cx-tool cx-feature-page cx-guided-studio"
+          data-action-layout
+        >
           <header className="st-header">
             <div className="st-header-copy">
               <h1>Photo Studio</h1>
@@ -333,9 +378,11 @@ export default function GuestStudio({
                 <button
                   className="cx-link"
                   disabled={!!busy}
-                  onClick={() => void continueCreation()}
+                  onClick={() => void transferWork(requested)}
                 >
-                  Retry creating my image
+                  {requested
+                    ? "Retry creating my image"
+                    : "Retry saving my photo"}
                 </button>
               )}
               {state.user && savedSome && (
@@ -378,9 +425,11 @@ export default function GuestStudio({
           )}
           <StudioWorkbench
             draft={draft}
+            // Still the guest studio once signed in: workspace-only tools
+            // (My Dishes, quick edits) belong to the workspace.
             state={{
               ...state,
-              guest: !state.user,
+              guest: true,
               remaining: state.user ? state.remaining : 5,
               aiConnected: state.user ? state.aiConnected : true,
             }}

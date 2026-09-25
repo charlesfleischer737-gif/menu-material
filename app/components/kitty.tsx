@@ -125,16 +125,12 @@ const poses: Record<KittyPose, { viewBox: string; art: ReactNode }> = {
     viewBox: "0 0 92 56",
     art: (
       <>
+        {/* Drawn, not <text>, so the "z"s never join the page's text (copy,
+            reader modes, innerText) the way aria-hidden alone can't prevent. */}
         <g className="kitty-zzz">
-          <text x="52" y="22">
-            z
-          </text>
-          <text x="59" y="15">
-            z
-          </text>
-          <text x="67" y="7">
-            z
-          </text>
+          <path d="M52.6 18.2 H55.6 L52.6 21.4 H55.6" />
+          <path d="M59.75 10.25 H63.45 L59.75 14.25 H63.45" />
+          <path d="M67.9 1.3 H72.3 L67.9 6.1 H72.3" />
         </g>
         <g className="kitty-breath">
           <path

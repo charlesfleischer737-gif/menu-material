@@ -112,6 +112,22 @@ export function makeCanvas(w: number, h: number) {
   c.height = Math.max(1, Math.round(h));
   return c;
 }
+/** A canvas's 2D context; a phone out of canvas memory returns none. */
+export function context2d(
+  c: HTMLCanvasElement,
+  settings?: CanvasRenderingContext2DSettings,
+) {
+  const ctx = c.getContext("2d", settings);
+  if (!ctx)
+    throw Error(
+      "This device ran out of memory for the image. Close other tabs or apps and try again.",
+    );
+  return ctx;
+}
+/** Frees scratch canvases' pixels now; phones otherwise hold them until collected. */
+export function release(...canvases: HTMLCanvasElement[]) {
+  for (const c of canvases) c.width = c.height = 0;
+}
 type Paintable = CanvasImageSource & { width: number; height: number };
 
 /* ---------- photo analysis ---------- */
@@ -144,12 +160,13 @@ export function analyzePhoto(im: Paintable): PhotoAnalysis {
         ? long
         : Math.max(8, Math.round((long * im.height) / im.width));
   const c = makeCanvas(sw, sh),
-    ctx = c.getContext("2d", { willReadFrequently: true })!;
+    ctx = context2d(c, { willReadFrequently: true });
   // Averaged, not sampled: a noisy thumbnail would read smooth light falloff as detail.
   ctx.imageSmoothingEnabled = true;
   ctx.imageSmoothingQuality = "high";
   ctx.drawImage(im, 0, 0, sw, sh);
   const d = ctx.getImageData(0, 0, sw, sh).data;
+  release(c);
   const px = (x: number, y: number): RGB => {
     const i = (y * sw + x) * 4;
     return [d[i], d[i + 1], d[i + 2]];
@@ -354,6 +371,8 @@ export type Placement = {
   /** Share of the dish's bounds that stays inside the frame. */
   subjectVisible: number;
   subject: Box | null;
+  /** The food itself, without pale plates and cloths, when the backdrop shows it. */
+  core: Box | null;
 };
 export function isManual(e: Framing) {
   if (e.autoFrame === false) return true;
@@ -379,6 +398,8 @@ export function placePhoto(
     minCover?: number;
     /** Shows a dish on a plain backdrop smaller, the backdrop extended all round. */
     shrink?: number;
+    /** Where a photo shown whole goes, such as a Story's band clear of the bars and words. */
+    band?: { top: number; bottom: number };
   } = {},
 ): Placement {
   const iw = a.width,
@@ -426,6 +447,7 @@ export function placePhoto(
       extend,
       subjectVisible: visible,
       subject,
+      core,
     };
   };
   if (isManual(e)) {
@@ -535,12 +557,15 @@ export function placePhoto(
       });
   }
   if (kept < (options.minCover ?? 0)) {
-    const s = Math.min(box.w / iw, box.h / ih);
+    const top = Math.max(box.y, options.band?.top ?? box.y),
+      room =
+        Math.min(box.y + box.h, options.band?.bottom ?? box.y + box.h) - top;
+    const s = Math.min(box.w / iw, room / ih);
     return finish(
       "contain",
       s,
       box.x + (box.w - iw * s) * (options.anchor?.x ?? 0.5),
-      box.y + (box.h - ih * s) * (options.anchor?.y ?? 0.5),
+      top + (room - ih * s) * (options.anchor?.y ?? 0.5),
       false,
     );
   }
@@ -668,6 +693,23 @@ export function tooLong(value: string) {
     `“${quote}” is too long to read comfortably. Shorten it or move details to the caption.`,
   );
 }
+// Chinese, Japanese, Thai and their neighbours don't space their words, so a
+// run of them breaks between the words the platform's segmenter finds.
+const spaceless =
+  /[\p{Script=Han}\p{Script=Hiragana}\p{Script=Katakana}\p{Script=Thai}\p{Script=Lao}\p{Script=Khmer}\p{Script=Myanmar}]/u;
+const segmenter =
+  typeof Intl !== "undefined" && "Segmenter" in Intl
+    ? new Intl.Segmenter(undefined, { granularity: "word" })
+    : null;
+function parts(word: string) {
+  if (!segmenter || !spaceless.test(word)) return [word];
+  const out: string[] = [];
+  // Punctuation stays with the word before it.
+  for (const { segment, isWordLike } of segmenter.segment(word))
+    if (out.length && !isWordLike) out[out.length - 1] += segment;
+    else out.push(segment);
+  return out;
+}
 function wrap(
   text: string,
   width: number,
@@ -677,27 +719,28 @@ function wrap(
   const lines: string[] = [];
   for (const paragraph of text.split("\n")) {
     let line = "";
-    for (const word of paragraph.split(/\s+/).filter(Boolean)) {
-      const candidate = line ? line + " " + word : word;
-      if (measure(candidate) <= width) {
-        line = candidate;
-        continue;
-      }
-      if (line) lines.push(line);
-      line = "";
-      if (measure(word) <= width) {
-        line = word;
-        continue;
-      }
-      if (!breakWords) return null;
-      for (const char of word) {
-        if (line && measure(line + char) > width) {
-          lines.push(line);
-          line = "";
+    for (const word of paragraph.split(/\s+/).filter(Boolean))
+      for (const [n, part] of parts(word).entries()) {
+        const candidate = line ? line + (n ? "" : " ") + part : part;
+        if (measure(candidate) <= width) {
+          line = candidate;
+          continue;
         }
-        line += char;
+        if (line) lines.push(line);
+        line = "";
+        if (measure(part) <= width) {
+          line = part;
+          continue;
+        }
+        if (!breakWords) return null;
+        for (const char of part) {
+          if (line && measure(line + char) > width) {
+            lines.push(line);
+            line = "";
+          }
+          line += char;
+        }
       }
-    }
     if (line) lines.push(line);
   }
   return lines;
@@ -705,10 +748,16 @@ function wrap(
 
 /* ---------- the kit ---------- */
 export type Scrim = "top" | "bottom" | "soft" | "band";
+/** A scrim is solid this far past the words, then fades out over `scrimFade`. */
+const scrimPad = 40,
+  scrimFade = 220,
+  scrimBlur = 26;
 export class PostKit {
   readonly ctx: CanvasRenderingContext2D;
   readonly textBoxes: Row[] = [];
   readonly photoBoxes: Row[] = [];
+  /** Where the food sits in each photo drawn, so words can keep their shade off it. */
+  readonly dishBoxes: Box[] = [];
   readonly renderedText: string[] = [];
   readonly warnings: string[] = [];
   private tracking: boolean;
@@ -721,7 +770,7 @@ export class PostKit {
   ) {
     canvas.width = Math.round(W * scale);
     canvas.height = Math.round(H * scale);
-    this.ctx = canvas.getContext("2d")!;
+    this.ctx = context2d(canvas);
     this.ctx.setTransform(scale, 0, 0, scale, 0, 0);
     this.ctx.imageSmoothingEnabled = true;
     this.ctx.imageSmoothingQuality = "high";
@@ -1030,6 +1079,29 @@ export class PostKit {
     scrim: Scrim = "soft",
     shade = { dark: "#0d0b09", light: "#fbf8f1" },
   ) {
+    return this.settle(blocks, candidates, scrim, shade)!;
+  }
+  /**
+   * Like ink(), but the shade laid over the food (dishBoxes) stays at or under
+   * `limit`. Returns null, drawing nothing, when no ink reads within it;
+   * `draw: false` only asks.
+   */
+  inkOffFood(
+    blocks: { box: Box; size: number }[],
+    candidates: string[],
+    scrim: Scrim,
+    limit = 0.6,
+    draw = true,
+  ) {
+    return this.settle(blocks, candidates, scrim, undefined, { limit, draw });
+  }
+  private settle(
+    blocks: { box: Box; size: number }[],
+    candidates: string[],
+    scrim: Scrim,
+    shade = { dark: "#0d0b09", light: "#fbf8f1" },
+    food?: { limit: number; draw: boolean },
+  ): string | null {
     const need = (size: number) => ((size * 320) / 1080 >= 24 ? 3 : 4.5) * 1.1;
     const check = () =>
       blocks.map((b) => ({ need: need(b.size), e: this.extremes(b.box) }));
@@ -1076,23 +1148,52 @@ export class PostKit {
     // A pale haze over food looks cheap: light shading has to earn its place.
     const cost = (a: { alpha: number; color: string }) =>
       a.color === shade.light ? a.alpha * 1.6 + 0.08 : a.alpha;
-    let choice = { ink: candidates[0], alpha: 2, color: shade.dark };
+    const boxes = blocks.map((b) => b.box);
+    // The share of the scrim that would fall on the food, where that is limited.
+    const reach = food
+      ? Math.max(0, ...this.dishBoxes.map((d) => this.reach(boxes, scrim, d)))
+      : 0;
+    let choice: { ink: string; alpha: number; color: string } | null = null;
     for (const ink of candidates) {
       const a = alphaFor(ink, state);
-      if (choice.alpha > 1.5 || cost(a) < cost(choice)) choice = { ink, ...a };
+      if (food && Math.min(1, a.alpha + 0.02) * reach > food.limit) continue;
+      if (!choice || cost(a) < cost(choice)) choice = { ink, ...a };
     }
+    if (!choice || (food && !food.draw)) return choice?.ink ?? null;
+    let laid = 0;
     for (let round = 0; round < 4 && choice.alpha > 0; round++) {
-      this.scrim(
-        blocks.map((b) => b.box),
-        choice.color,
-        Math.min(1, choice.alpha + 0.02),
-        scrim,
-      );
+      let alpha = Math.min(1, choice.alpha + 0.02);
+      if (food && reach)
+        alpha = Math.min(alpha, (1 - (1 - food.limit) / (1 - laid)) / reach);
+      if (alpha <= 0) break;
+      this.scrim(boxes, choice.color, alpha, scrim);
+      laid = 1 - (1 - laid) * (1 - alpha * reach);
       state = check();
       if (worst(choice.ink, state) >= 1) break;
       choice = { ...choice, ...alphaFor(choice.ink, state) };
     }
     return choice.ink;
+  }
+  /** The share of a scrim's alpha that reaches the most shaded point of `target`. */
+  private reach(boxes: Box[], mode: Scrim, target: Box) {
+    const y0 = Math.min(...boxes.map((b) => b.y)),
+      y1 = Math.max(...boxes.map((b) => b.y + b.h));
+    const past = (d: number) => Math.min(1, Math.max(0, 1 - d / scrimFade)),
+      above = y0 - scrimPad - (target.y + target.h),
+      below = target.y - (y1 + scrimPad);
+    if (mode === "top") return past(below);
+    if (mode === "bottom") return past(above);
+    if (mode === "band") return past(Math.max(above, below));
+    // A soft scrim is a blurred card around the words.
+    const x0 = Math.min(...boxes.map((b) => b.x)),
+      x1 = Math.max(...boxes.map((b) => b.x + b.w)),
+      p = scrimBlur * 3;
+    return target.x < x1 + p &&
+      target.x + target.w > x0 - p &&
+      target.y < y1 + p &&
+      target.y + target.h > y0 - p
+      ? 1
+      : 0;
   }
   scrim(boxes: Box[], color: string, alpha: number, mode: Scrim) {
     const x0 = Math.min(...boxes.map((b) => b.x)),
@@ -1100,8 +1201,8 @@ export class PostKit {
       x1 = Math.max(...boxes.map((b) => b.x + b.w)),
       y1 = Math.max(...boxes.map((b) => b.y + b.h));
     const ctx = this.ctx,
-      pad = 40,
-      fade = 220;
+      pad = scrimPad,
+      fade = scrimFade;
     ctx.save();
     if (mode === "top") {
       const end = y1 + pad;
@@ -1137,7 +1238,7 @@ export class PostKit {
         { x: 0, y: a - fade, w: this.W, h: total },
       );
     } else {
-      const sigma = 26,
+      const sigma = scrimBlur,
         p = sigma * 3;
       ctx.filter = `blur(${this.px(sigma)}px)`;
       ctx.fillStyle = rgba(color, alpha);
@@ -1152,7 +1253,7 @@ export class PostKit {
   grain(amount = 0.05, seed = 7) {
     const size = 256,
       tile = makeCanvas(size, size),
-      tc = tile.getContext("2d")!;
+      tc = context2d(tile);
     const data = tc.createImageData(size, size);
     let s = seed >>> 0;
     const random = () => {
@@ -1175,6 +1276,7 @@ export class PostKit {
     ctx.fillStyle = ctx.createPattern(tile, "repeat")!;
     ctx.fillRect(0, 0, this.canvas.width, this.canvas.height);
     ctx.restore();
+    release(tile);
   }
   vignette(strength = 0.25, color = "#000000") {
     const g = this.ctx.createRadialGradient(
@@ -1208,16 +1310,31 @@ export class PostKit {
       minKept?: number;
       minCover?: number;
       shrink?: number;
+      band?: { top: number; bottom: number };
       fade?: { top?: number; bottom?: number };
       backdrop?: string;
       quiet?: boolean;
     } = {},
   ): Placement {
     const p = placePhoto(a, box, framing, o);
+    // The food's visible bounds; a busy photo, which can't show them, by its detail.
+    const food = p.core || {
+      x: p.x + (a.centroid.x - 0.25) * p.w,
+      y: p.y + (a.centroid.y - 0.25) * p.h,
+      w: p.w / 2,
+      h: p.h / 2,
+    };
+    const fx = Math.max(food.x, box.x),
+      fy = Math.max(food.y, box.y),
+      fw = Math.min(food.x + food.w, box.x + box.w) - fx,
+      fh = Math.min(food.y + food.h, box.y + box.h) - fy;
+    if (fw > 0 && fh > 0) this.dishBoxes.push({ x: fx, y: fy, w: fw, h: fh });
     const s = this.scale,
       ctx = this.ctx;
     const layer = makeCanvas(box.w * s, box.h * s),
-      lc = layer.getContext("2d")!;
+      lc = context2d(layer);
+    // Scratch canvases are freed when the photo is placed.
+    const scratch = [layer];
     lc.imageSmoothingEnabled = true;
     lc.imageSmoothingQuality = "high";
     lc.setTransform(s, 0, 0, s, -box.x * s, -box.y * s);
@@ -1235,7 +1352,8 @@ export class PostKit {
       if (p.mode === "extend" || plainAll) {
         // Smear the photo's own edge rows outward, then soften them into a backdrop.
         const smear = makeCanvas(box.w * s, box.h * s),
-          sc = smear.getContext("2d")!;
+          sc = context2d(smear);
+        scratch.push(smear);
         sc.setTransform(s, 0, 0, s, -box.x * s, -box.y * s);
         sc.fillStyle = rgbToHex(a.backdrop);
         sc.fillRect(box.x, box.y, box.w, box.h);
@@ -1292,7 +1410,8 @@ export class PostKit {
       }
       // The photo itself, feathered only where it meets the extension.
       const ph = makeCanvas(p.w * s, p.h * s),
-        pc = ph.getContext("2d")!;
+        pc = context2d(ph);
+      scratch.push(ph);
       pc.imageSmoothingEnabled = true;
       pc.imageSmoothingQuality = "high";
       pc.filter = filter;
@@ -1304,10 +1423,10 @@ export class PostKit {
         left: p.x - box.x,
         right: box.x + box.w - p.x - p.w,
       };
-      const feather = (edge: Edge) => {
+      const feather = (edge: Edge, most = 150) => {
         const f =
           Math.min(
-            150,
+            most,
             (edge === "top" || edge === "bottom" ? p.h : p.w) * 0.22,
             Math.max(28, room[edge] * 1.2),
           ) * s;
@@ -1330,8 +1449,15 @@ export class PostKit {
           if (p.extend[e]) feather(e);
         });
       else if (plainAll)
-        (["top", "bottom", "left", "right"] as Edge[]).forEach(feather);
-      if (p.mode === "contain" && !plainAll) {
+        (["top", "bottom", "left", "right"] as Edge[]).forEach((e) =>
+          feather(e),
+        );
+      // A whole photo set in a band softens into its own copy where they meet.
+      else if (o.band)
+        (["top", "bottom", "left", "right"] as Edge[]).forEach((e) => {
+          if (room[e] > 0.5) feather(e, 56);
+        });
+      if (p.mode === "contain" && !plainAll && !o.band) {
         lc.save();
         lc.shadowColor = "rgba(0,0,0,0.5)";
         lc.shadowBlur = this.px(56);
@@ -1373,6 +1499,7 @@ export class PostKit {
     ctx.clip();
     ctx.drawImage(layer, box.x, box.y, box.w, box.h);
     ctx.restore();
+    release(...scratch);
     if (o.keyline) {
       const g = o.keyline.gap;
       ctx.save();

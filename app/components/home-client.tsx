@@ -12,19 +12,32 @@ import Landing from "./menu-material-landing";
 import Brand from "./brand";
 import WorkspacePlaceholder from "./workspace-placeholder";
 import { api, type Row } from "@/lib/client";
+import { loadFresh, reloadOnPreloadError } from "@/lib/chunk-reload";
 import { watchJobs } from "@/lib/job-progress";
 import { rememberScroll } from "@/lib/scroll-memory";
-const GuestStudio = lazy(() => import("./guest-studio"));
-const PlanDialog = lazy(() => import("./plan-dialog"));
-const CoreWorkspace = lazy(() => import("./core-workspace"));
+// loadFresh reloads the page when a tab from before a deploy asks for a
+// screen's file that the deploy removed.
+const GuestStudio = lazy(() => loadFresh(() => import("./guest-studio")));
+const PlanDialog = lazy(() => loadFresh(() => import("./plan-dialog")));
+const loadCoreWorkspace = () => import("./core-workspace");
+const CoreWorkspace = lazy(() => loadFresh(loadCoreWorkspace));
 const SettingsPanel = lazy(() =>
-  import("./account-panels").then((m) => ({
+  loadFresh(() => import("./account-panels")).then((m) => ({
     default: m.SettingsPanel,
   })),
 );
 const Admin = lazy(() =>
-  import("./account-panels").then((m) => ({ default: m.Admin })),
+  loadFresh(() => import("./account-panels")).then((m) => ({
+    default: m.Admin,
+  })),
 );
+// Drops a one-time query parameter from the address once it has been handled.
+function forgetParam(name: string) {
+  const url = new URL(location.href);
+  if (!url.searchParams.has(name)) return;
+  url.searchParams.delete(name);
+  history.replaceState(history.state, "", url.pathname + url.search + url.hash);
+}
 function Opening({ title, message }: { title: string; message: string }) {
   return (
     <main className="initial-loading">
@@ -61,8 +74,25 @@ export default function HomeClient({ hasSession }: { hasSession: boolean }) {
     [busy, setBusy] = useState(""),
     [error, setError] = useState("");
   const actionBusy = useRef(false);
+  // For a lapsed session: whether someone was signed in, whether they are
+  // signing out on purpose, and whether sign-in has been offered already.
+  const signedInRef = useRef(false),
+    signingOut = useRef(false),
+    signInOffered = useRef(false);
   const refresh = useCallback(async () => {
     const data = await api("state");
+    // A lapsed session reads as signed out. Keep the open workspace and any
+    // unsaved work, and ask for sign-in instead.
+    if (!data.user && signedInRef.current && !signingOut.current) {
+      window.dispatchEvent(
+        new CustomEvent("menu-material:signed-out", {
+          detail: { path: "state" },
+        }),
+      );
+      return;
+    }
+    signedInRef.current = !!data.user;
+    if (data.user) signInOffered.current = false;
     setState(data);
     setLoaded(true);
     setSessionCheck("done");
@@ -82,9 +112,16 @@ export default function HomeClient({ hasSession }: { hasSession: boolean }) {
       }),
     [refresh, hasSession],
   );
+  // With a session cookie the workspace is the likely destination: download
+  // its code alongside /api/state rather than after it answers.
+  useEffect(() => {
+    if (hasSession) loadCoreWorkspace().catch(() => {});
+  }, [hasSession]);
   useEffect(() => {
     void load();
   }, [load]);
+  // Any other code-split file that fails to load after a deploy.
+  useEffect(() => reloadOnPreloadError(), []);
   useEffect(() => {
     if (state.user?.id) void api("events", { kind: "visit" }).catch(() => {});
   }, [state.user?.id]);
@@ -111,9 +148,21 @@ export default function HomeClient({ hasSession }: { hasSession: boolean }) {
         })
         .catch(() => {});
     }
+    // Log in links (/?login) work before JavaScript loads and from the
+    // information pages.
+    if (loaded && new URLSearchParams(location.search).has("login")) {
+      if (!state.user) {
+        setAuthMode("login");
+        setAuth(true);
+      }
+      forgetParam("login");
+    }
     if (loaded && new URLSearchParams(location.search).has("upgrade")) {
-      if (state.user) setPlans(true);
-      else {
+      if (state.user) {
+        setPlans(true);
+        // Handled; a reload shouldn't reopen Plans.
+        forgetParam("upgrade");
+      } else {
         setAuthMode("signup");
         setAuth(true);
       }
@@ -134,6 +183,27 @@ export default function HomeClient({ hasSession }: { hasSession: boolean }) {
     const open = () => setPlans(true);
     window.addEventListener("menu-material:plans", open);
     return () => window.removeEventListener("menu-material:plans", open);
+  }, []);
+  // lib/client.ts reports a 401: the session ended while the workspace was
+  // open. Offer sign-in over the current screen, which stays as it is.
+  useEffect(() => {
+    const signedOut = (event: Event) => {
+      if (!signedInRef.current) return;
+      const path = (event as CustomEvent<{ path?: string }>).detail?.path;
+      // Background checks (job progress, visit counts) offer it once; the
+      // person's own actions offer it every time.
+      if (
+        signInOffered.current &&
+        /^(jobs\/|events|creation-events)/.test(path || "")
+      )
+        return;
+      signInOffered.current = true;
+      setAuthMode("login");
+      setAuth(true);
+    };
+    window.addEventListener("menu-material:signed-out", signedOut);
+    return () =>
+      window.removeEventListener("menu-material:signed-out", signedOut);
   }, []);
   useEffect(() => {
     if (state.user && new URLSearchParams(location.search).has("billing"))
@@ -245,16 +315,18 @@ export default function HomeClient({ hasSession }: { hasSession: boolean }) {
             onPlans={() => setPlans(true)}
             onLogout={() =>
               act("Signing out", async () => {
-                await api("auth/logout", {});
-                const { clearExportImages } =
-                  await import("@/lib/offer-export");
-                clearExportImages();
-                history.replaceState(
-                  null,
-                  "",
-                  location.pathname + location.search,
-                );
-                await refresh();
+                signingOut.current = true;
+                try {
+                  await api("auth/logout", {});
+                  const { clearExportImages } =
+                    await import("@/lib/offer-export");
+                  clearExportImages();
+                  // Leave no workspace view or one-time query behind.
+                  history.replaceState(null, "", location.pathname);
+                  await refresh();
+                } finally {
+                  signingOut.current = false;
+                }
               })
             }
             adminContent={
@@ -276,7 +348,16 @@ export default function HomeClient({ hasSession }: { hasSession: boolean }) {
         </Suspense>
       )}
       {error && (
-        <div className="landing-error error" role="alert">
+        <div
+          className="landing-error error"
+          role="alert"
+          // The banner can show over an open dialog; using it must not count
+          // as a click outside that closes the dialog. React and the dialog
+          // both listen on the document, and React's listener runs first.
+          onPointerDown={(event) =>
+            event.nativeEvent.stopImmediatePropagation()
+          }
+        >
           {error}
           <button onClick={() => setError("")} aria-label="Dismiss error">
             ×
@@ -289,7 +370,7 @@ export default function HomeClient({ hasSession }: { hasSession: boolean }) {
         local={!!state.local}
         ownerSetup={!!state.ownerSetup}
         initialMode={authMode}
-        billingEnabled={!!state.billing?.enabled}
+        billingEnabled={!!(state.billing?.enabled ?? state.billingEnabled)}
         onDone={async () => {
           if (new URLSearchParams(location.search).has("upgrade"))
             setPlans(true);

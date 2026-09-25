@@ -1,5 +1,6 @@
 "use client";
 import { useEffect } from "react";
+import { isChunkLoadError, reloadForNewVersion } from "@/lib/chunk-reload";
 import { reportClientError } from "./components/error-reporter";
 
 // Last-resort boundary when the root layout itself fails. It replaces the
@@ -11,9 +12,13 @@ export default function GlobalError({
   error: Error & { digest?: string };
   reset: () => void;
 }) {
+  // A file went missing after a deploy: reload (once by itself) rather than
+  // retry the failed load.
+  const stale = isChunkLoadError(error);
   useEffect(() => {
     reportClientError(error, "boundary");
-  }, [error]);
+    if (stale) reloadForNewVersion();
+  }, [error, stale]);
   const button = {
     minHeight: 48,
     padding: "0 22px",
@@ -42,14 +47,15 @@ export default function GlobalError({
         <main style={{ maxWidth: 560, padding: "48px 22px" }}>
           <p style={{ margin: 0, fontWeight: 700 }}>Menu Material</p>
           <h1 style={{ fontSize: 36, lineHeight: 1.1, margin: "24px 0 12px" }}>
-            Something went wrong.
+            {stale ? "A new version is available." : "Something went wrong."}
           </h1>
           <p
             role="alert"
             style={{ fontSize: 19, lineHeight: 1.4, color: "#6e6e73" }}
           >
-            The site ran into a problem. Your saved work is safe. Try again, or
-            go back to the home page.
+            {stale
+              ? "Menu Material was updated while this page was open. Reload to continue. Your saved work is safe."
+              : "The site ran into a problem. Your saved work is safe. Try again, or go back to the home page."}
           </p>
           <div
             style={{
@@ -61,7 +67,7 @@ export default function GlobalError({
           >
             <button
               type="button"
-              onClick={() => reset()}
+              onClick={() => (stale ? location.reload() : reset())}
               style={{
                 ...button,
                 border: 0,
@@ -69,7 +75,7 @@ export default function GlobalError({
                 color: "#fff",
               }}
             >
-              Try again
+              {stale ? "Reload" : "Try again"}
             </button>
             {/* The root layout failed, so do not rely on client routing. */}
             {/* eslint-disable-next-line @next/next/no-html-link-for-pages */}

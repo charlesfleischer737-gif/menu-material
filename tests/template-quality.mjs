@@ -5,7 +5,8 @@ import { mkdirSync, writeFileSync } from "node:fs";
 import { createCanvas } from "@napi-rs/canvas";
 import { renderPost } from "../lib/creation-export.ts";
 import { postTemplates, postTemplateExample } from "../lib/post-templates.ts";
-const root = "/private/tmp/menu-template-art-direction";
+const root =
+  (await import("node:os")).tmpdir() + "/menu-template-art-direction";
 mkdirSync(root, { recursive: true });
 const sheet = createCanvas(1500, 880),
   sc = sheet.getContext("2d");

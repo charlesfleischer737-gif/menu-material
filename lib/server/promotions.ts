@@ -18,6 +18,10 @@ import {
 import { defaultStyle, localToInstant, promotionStatus } from "../promotions";
 import { publicBrandStyle } from "../restaurant-look";
 import { photoStyles } from "../photo-styles";
+import {
+  isPlaceholderRestaurantName,
+  restaurantNameMessage,
+} from "../restaurant-identity";
 import { publicMenuDocuments } from "./menu-documents";
 
 export const styleSchema = z.object({
@@ -317,6 +321,8 @@ export async function promotionRoute(req: Request, p: string[], r: Row) {
       400,
       "Add a title and at least one dish.",
     );
+    // A draft may wait for its price; guests never see a special at $0.00.
+    assert(draft.price > 0, 400, "Add the offer price before approving.");
     let startsAt: number, endsAt: number;
     try {
       startsAt = localToInstant(
@@ -360,6 +366,7 @@ export async function promotionRoute(req: Request, p: string[], r: Row) {
       return response({ ok: true });
     }
     if (p[2] === "publish") {
+      assert(!isPlaceholderRestaurantName(r.name), 400, restaurantNameMessage);
       assert(
         saved.approved_hash === hash,
         400,

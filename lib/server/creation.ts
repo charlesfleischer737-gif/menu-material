@@ -285,6 +285,10 @@ export async function creationRoute(req: Request, p: string[], r: Row) {
           .max(8),
         style: styleSchema,
         recipe: lookRecipeSchema.optional(),
+        // The set is made in the shape of the photo it copies.
+        format: z
+          .enum(["menu", "toast", "feed", "story", "doordash", "uber", "print"])
+          .default("menu"),
       })
       .parse(raw);
     assert(
@@ -307,7 +311,7 @@ export async function creationRoute(req: Request, p: string[], r: Row) {
     const settings = {
       style: b.style,
       controls: {
-        format: "menu",
+        format: b.format,
         ...(b.recipe
           ? {
               surface: b.recipe.surface,
