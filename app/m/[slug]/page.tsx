@@ -3,7 +3,7 @@ import { publicMenu } from "@/lib/server/promotions";
 import MenuView from "@/app/components/menu-view";
 import { publicDocumentSnapshot } from "@/lib/server/menu-documents";
 import { resolveMenuAddress } from "@/lib/server/menu-address";
-import { config } from "@/lib/server/core";
+import { siteOrigin } from "@/app/site-metadata";
 import {
   jsonLd,
   menuPreviewImage,
@@ -26,19 +26,19 @@ export async function generateMetadata({
     };
   const published = JSON.parse(r.published),
     name = published.restaurant.name,
-    origin = config("APP_ORIGIN");
+    origin = await siteOrigin();
   // Link previews show a dish (or the logo) and point at the menu's address.
-  const image = origin ? menuPreviewImage(published, slug, origin) : null,
-    url = origin ? new URL(`/m/${slug}`, origin).href : undefined,
+  const image = menuPreviewImage(published, slug, origin),
+    url = new URL(`/m/${slug}`, origin).href,
     description = `View the current menu from ${name}${r.address ? `, ${r.address}` : ""}.`;
   return {
     title: name + " — Menu",
     description,
-    ...(url ? { alternates: { canonical: url } } : {}),
+    alternates: { canonical: url },
     openGraph: {
       title: name + " — Menu",
       description,
-      ...(url ? { url } : {}),
+      url,
       images: image ? [{ url: image.url, alt: image.alt }] : [],
     },
     twitter: {
@@ -95,9 +95,9 @@ export default async function PublicMenu({
   // An unknown or offline menu is a real 404 (not indexed), like a missing
   // restaurant.
   if (result.kind === "missing" || result.kind === "menu-missing") notFound();
-  const origin = config("APP_ORIGIN"),
-    url = origin ? new URL(`/m/${slug}`, origin).href : undefined,
-    image = origin ? menuPreviewImage(result.menu, slug, origin) : null;
+  const origin = await siteOrigin(),
+    url = new URL(`/m/${slug}`, origin).href,
+    image = menuPreviewImage(result.menu, slug, origin);
   // One root element: the view renders the structured data itself, so the
   // server and browser trees (and the ids React generates) match.
   return (
