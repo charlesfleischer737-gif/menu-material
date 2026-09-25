@@ -587,6 +587,7 @@ function AdminRestaurant({
     [minutes, setMinutes] = useState(15);
   const settings = useAdminOperation(act, busy);
   const support = useAdminOperation(act, busy);
+  const takedown = useAdminOperation(act, busy);
   return (
     <div className="admin-restaurant">
       <div>
@@ -719,6 +720,47 @@ function AdminRestaurant({
         </Button>
       </div>
       <AdminOperationStatus feedback={support.feedback} />
+      <div className="support-entry">
+        <p>
+          {r.public_suspended
+            ? "Public menu pages and specials are offline. The owner can’t publish until you restore them."
+            : `Public menu pages are at /m/${r.slug}.`}
+        </p>
+        <Button
+          variant="outline"
+          disabled={!!busy}
+          aria-label={`${r.public_suspended ? "Restore" : "Take offline"} public menu pages for ${r.name}`}
+          onClick={() => {
+            if (
+              !r.public_suspended &&
+              !window.confirm(
+                `Take ${r.name}’s public menu pages and specials offline? Guests will see “not found” until you restore them.`,
+              )
+            )
+              return;
+            takedown.run(
+              r.public_suspended
+                ? "Restoring public pages"
+                : "Taking public pages offline",
+              r.public_suspended
+                ? "Public pages restored."
+                : "Public pages are offline.",
+              async () => {
+                await api("admin/takedown", {
+                  id: r.id,
+                  offline: !r.public_suspended,
+                });
+                await refresh();
+              },
+            );
+          }}
+        >
+          {r.public_suspended
+            ? "Restore public pages"
+            : "Take public pages offline"}
+        </Button>
+      </div>
+      <AdminOperationStatus feedback={takedown.feedback} />
     </div>
   );
 }

@@ -17,6 +17,7 @@ const { caller } = await import("../lib/server/safeguards.ts");
 const { bucket, digest, one, run } = await import("../lib/server/core.ts");
 const { validateImageDimensions } =
   await import("../lib/server/image-validation.ts");
+const { resolveMenuAddress } = await import("../lib/server/menu-address.ts");
 
 const photo = readFileSync("public/pasta.jpg");
 let imageCalls = 0,
@@ -821,8 +822,58 @@ try {
   logoFile = await expect(`assets/${jpegLogo}`, 200, freeOpts);
   assert.equal(logoFile.res.headers.get("content-type"), "image/jpeg");
 
+  // 13. An administrator can take a restaurant's public pages offline (the
+  // guest menu, its images, visits and specials) and nothing can be
+  // republished until they restore them.
+  const guest = { ip: "192.0.2.63" };
+  await expect(`public/${slug}`, 200, guest);
+  await expect("admin/takedown", 403, {
+    body: { id: freeRid, offline: true },
+    ...freeOpts,
+  });
+  await expect("admin/takedown", 200, {
+    body: { id: freeRid, offline: true },
+    cookie: adminCookie,
+  });
+  await expect(`public/${slug}`, 404, guest);
+  await expect(`public/${slug}/assets/${logo}`, 404, guest);
+  await expect(`public/${slug}/events`, 404, {
+    body: { kind: "menu_visit", session: crypto.randomUUID() },
+    ...guest,
+  });
+  assert.deepEqual(await resolveMenuAddress(slug), {
+    restaurant: null,
+    redirectTo: null,
+  });
+  const blocked = await expect("menu/publish", 403, { body: {}, ...freeOpts });
+  assert.match(blocked.json.error, /taken your public menu pages offline/);
+  for (const path of ["menus", "promotions"])
+    await expect(`${path}/${crypto.randomUUID()}/publish`, 403, {
+      body: {},
+      ...freeOpts,
+    });
+  const adminRow = (
+    await expect("admin", 200, { cookie: adminCookie })
+  ).json.restaurants.find((row) => row.id === freeRid);
+  assert.equal(adminRow.public_suspended, 1);
+  assert.equal(adminRow.slug, slug);
+  assert.equal(
+    (await expect("state", 200, freeOpts)).json.restaurant.public_suspended,
+    1,
+  );
+  await expect("admin/takedown", 200, {
+    body: { id: freeRid, offline: false },
+    cookie: adminCookie,
+  });
+  await expect(`public/${slug}`, 200, guest);
+  await expect("menu/publish", 200, { body: {}, ...freeOpts });
+  await expect("admin/takedown", 404, {
+    body: { id: crypto.randomUUID(), offline: true },
+    cookie: adminCookie,
+  });
+
   console.log(
-    `PASS: ${checks} account security checks: per-network limits on the IPv6 /64 with no site-wide lockout, a per-account sign-in slowdown, versioned password hashes, sliding sessions, revocable reset and setup links, the Pro waitlist, once-only free images, ID validation, lenient saved looks, staff link scope and limits, WebP and AVIF uploads, transparent logos, cacheable public images;`,
+    `PASS: ${checks} account security checks: per-network limits on the IPv6 /64 with no site-wide lockout, a per-account sign-in slowdown, versioned password hashes, sliding sessions, revocable reset and setup links, the Pro waitlist, once-only free images, ID validation, lenient saved looks, staff link scope and limits, WebP and AVIF uploads, transparent logos, cacheable public images, admin takedown;`,
   );
 } finally {
   rmSync(root, { recursive: true, force: true });

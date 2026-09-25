@@ -94,15 +94,21 @@ export async function firstPublicationAddress(r: Row, requested?: string) {
   return changeMenuAddress(r, await suggestMenuAddress(r.name, r.id));
 }
 
-/** Find a restaurant by its current or an earlier menu address. */
+/**
+ * Find a restaurant by its current or an earlier menu address. Public pages
+ * an administrator took offline are not found.
+ */
 export async function resolveMenuAddress(slug: string) {
   const current = await one("SELECT * FROM restaurants WHERE slug=?", slug);
-  if (current) return { restaurant: current, redirectTo: null };
+  if (current)
+    return current.public_suspended
+      ? { restaurant: null, redirectTo: null }
+      : { restaurant: current, redirectTo: null };
   const moved = await one(
     "SELECT r.* FROM slug_redirects s JOIN restaurants r ON r.id=s.restaurant_id WHERE s.slug=?",
     slug,
   );
-  return moved
+  return moved && !moved.public_suspended
     ? { restaurant: moved, redirectTo: moved.slug as string }
     : { restaurant: null, redirectTo: null };
 }

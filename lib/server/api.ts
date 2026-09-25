@@ -984,7 +984,7 @@ async function route(req: Request) {
       if (method === "GET")
         return response({
           restaurants: await all(
-            "SELECT r.id,r.name,r.allowance,r.paused,r.daily_budget_cents,r.created_at,u.email,(SELECT count(*) FROM outputs WHERE restaurant_id=r.id AND status='completed') AS completed,(SELECT count(*) FROM outputs WHERE restaurant_id=r.id AND status NOT IN ('completed','failed')) AS reserved,(SELECT count(*) FROM outputs WHERE restaurant_id=r.id AND status='failed') AS failed,(SELECT sum(cost_estimate) FROM outputs WHERE restaurant_id=r.id) AS cost_estimate,(SELECT count(*) FROM assets WHERE restaurant_id=r.id AND approved_at IS NOT NULL AND kind='generated') AS approved,(SELECT sum(CAST(json_extract(details,'$.minutes') AS INTEGER)) FROM events WHERE restaurant_id=r.id AND kind='support_time') AS support_minutes FROM restaurants r JOIN users u ON u.id=r.user_id ORDER BY r.created_at DESC",
+            "SELECT r.id,r.name,r.slug,r.public_suspended,r.allowance,r.paused,r.daily_budget_cents,r.created_at,u.email,(SELECT count(*) FROM outputs WHERE restaurant_id=r.id AND status='completed') AS completed,(SELECT count(*) FROM outputs WHERE restaurant_id=r.id AND status NOT IN ('completed','failed')) AS reserved,(SELECT count(*) FROM outputs WHERE restaurant_id=r.id AND status='failed') AS failed,(SELECT sum(cost_estimate) FROM outputs WHERE restaurant_id=r.id) AS cost_estimate,(SELECT count(*) FROM assets WHERE restaurant_id=r.id AND approved_at IS NOT NULL AND kind='generated') AS approved,(SELECT sum(CAST(json_extract(details,'$.minutes') AS INTEGER)) FROM events WHERE restaurant_id=r.id AND kind='support_time') AS support_minutes FROM restaurants r JOIN users u ON u.id=r.user_id ORDER BY r.created_at DESC",
           ),
           controls: await aiControls(),
           studioRelease: await studioReleaseControls(),
@@ -1147,6 +1147,24 @@ async function route(req: Request) {
         });
         return response({ ok: true });
       }
+      if (p[1] === "takedown") {
+        // Public menu pages and specials go offline (and stay unpublishable)
+        // until an administrator restores them; nothing is deleted.
+        const input = z
+          .object({ id: z.string().uuid(), offline: z.boolean() })
+          .parse(b);
+        const changed = await run(
+          "UPDATE restaurants SET public_suspended=? WHERE id=?",
+          input.offline ? 1 : 0,
+          input.id,
+        );
+        assert(changed.meta.changes, 404, "Restaurant not found.");
+        await event(
+          input.id,
+          input.offline ? "public_pages_taken_down" : "public_pages_restored",
+        );
+        return response({ ok: true });
+      }
       if (p[1] === "support") {
         await event(
           z.string().uuid().parse(b.restaurantId),
@@ -1171,6 +1189,17 @@ async function route(req: Request) {
       return response({ ok: true });
     }
     const { r } = await owner(req);
+    if (
+      r.public_suspended &&
+      method === "POST" &&
+      ((p[0] === "menu" && p[1] === "publish") ||
+        (["menus", "promotions"].includes(p[0]) &&
+          ["publish", "primary", "live"].includes(p[2])))
+    )
+      throw new AppError(
+        403,
+        "An administrator has taken your public menu pages offline, so nothing can be published. Contact support to restore them.",
+      );
     if (p[0] === "studio-references" && !p[1] && method === "POST") {
       const input = studioReferenceRequest.parse(await body(req));
       return response(
