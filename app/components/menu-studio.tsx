@@ -46,6 +46,7 @@ import {
   attachAddonToDishAbove,
   blockingChecks,
   menuPublishChecks,
+  withLibraryLinks,
 } from "@/lib/menu-checks";
 import { addonLabel, inferMenuPurpose, isAddonName } from "@/lib/menu-paste";
 import { normalizeDietary } from "@/lib/dietary";
@@ -1713,43 +1714,6 @@ function libraryPrice(item: MenuEntry) {
   if (item.priceMode === "variants" && item.variants.length)
     return Math.min(...item.variants.map((v) => v.price));
   return 0;
-}
-/** Menu dishes gain their My Dishes link, and any approved photo it has. */
-function withLibraryLinks(
-  menu: MenuDocument,
-  links: { entryId: string; dishId: string; photoId: string | null }[],
-): MenuDocument {
-  const byEntry = new Map(links.map((link) => [link.entryId, link]));
-  const hadPhotos = menu.sections.some((s) => s.items.some((i) => i.photoId));
-  let featured = menu.sections.reduce(
-      (n, s) => n + s.items.filter((i) => i.featured).length,
-      0,
-    ),
-    added = 0;
-  const sections = menu.sections.map((s) => ({
-    ...s,
-    items: s.items.map((i) => {
-      const link = byEntry.get(i.id);
-      if (!link || i.dishId) return i;
-      if (i.photoId || !link.photoId) return { ...i, dishId: link.dishId };
-      added++;
-      return {
-        ...i,
-        dishId: link.dishId,
-        photoId: link.photoId,
-        featured: i.featured || featured++ < 4,
-      };
-    }),
-  }));
-  return {
-    ...menu,
-    sections,
-    // Photos lead the menu when they're its first ones.
-    layout:
-      added && !hadPhotos && menu.layout === "classic"
-        ? "featured"
-        : menu.layout,
-  };
 }
 function MenuBulkPrices({
   menu,

@@ -9,8 +9,13 @@ const { handle } = await import("../lib/server/api.ts");
 const { one } = await import("../lib/server/core.ts");
 const { newMenuDocument, newMenuEntry } =
   await import("../lib/menu-document.ts");
-const { menuPublishChecks, blockingChecks, applyDishUpdate, dishFacts } =
-  await import("../lib/menu-checks.ts");
+const {
+  menuPublishChecks,
+  blockingChecks,
+  applyDishUpdate,
+  dishFacts,
+  withLibraryLinks,
+} = await import("../lib/menu-checks.ts");
 const { isPlaceholderRestaurantName, slugify, menuAddressProblem } =
   await import("../lib/restaurant-identity.ts");
 let cookie = "",
@@ -465,6 +470,149 @@ try {
   assert.equal(
     fries((await call(`public/${slugNow}?menu=${friesSaved.id}`)).menu).price,
     500,
+  );
+
+  // Allergen tags in My Dishes reach imported menu dishes linked to them.
+  const satayDish = await call("dishes", {
+    name: "Satay Skewers",
+    description: "Peanut sauce",
+    category: "Small plates",
+    price: 9,
+    confirmed: true,
+    dietary: ["contains-peanuts"],
+  });
+  const pastedSatay = newMenuEntry({
+    name: "Satay skewers",
+    description: "Peanut sauce",
+    price: 900,
+  });
+  const pastedMenu = await call("menus", {
+    id: crypto.randomUUID(),
+    draft: newMenuDocument({
+      name: "Pasted",
+      title: "Pasted",
+      sections: [section([pastedSatay], "Small plates")],
+    }),
+  });
+  const { links: satayLinks } = await call(`menus/${pastedMenu.id}/library`, {
+    entries: [
+      {
+        id: pastedSatay.id,
+        name: "Satay skewers",
+        description: "Peanut sauce",
+        category: "Small plates",
+        price: 900,
+        available: true,
+        dietary: [],
+      },
+    ],
+  });
+  assert.equal(satayLinks[0].dishId, satayDish.id, "linked by name");
+  assert.deepEqual(satayLinks[0].dietary, ["contains-peanuts"]);
+  const linkedDraft = withLibraryLinks(pastedMenu.draft, satayLinks);
+  assert.equal(linkedDraft.sections[0].items[0].dishId, satayDish.id);
+  assert.deepEqual(
+    linkedDraft.sections[0].items[0].dietary,
+    ["contains-peanuts"],
+    "a linked dish without tags takes the dish's allergens",
+  );
+  assert.deepEqual(
+    withLibraryLinks(
+      {
+        ...pastedMenu.draft,
+        sections: [
+          {
+            ...pastedMenu.draft.sections[0],
+            items: [{ ...pastedSatay, dietary: ["Spicy"] }],
+          },
+        ],
+      },
+      satayLinks,
+    ).sections[0].items[0].dietary,
+    ["Spicy"],
+    "tags set on the menu stay",
+  );
+  const pastedSaved = await call(
+    `menus/${pastedMenu.id}`,
+    { revision: pastedMenu.revision, draft: linkedDraft },
+    200,
+    "PUT",
+  );
+  const pastedLive = await call(`menus/${pastedMenu.id}/publish`, {
+    revision: pastedSaved.revision,
+  });
+  assert.deepEqual(pastedLive.published.sections[0].items[0].dietary, [
+    "contains-peanuts",
+  ]);
+  // A dish linked before tags were copied (none of its own) follows tag edits.
+  const olderMenu = await call("menus", {
+    id: crypto.randomUUID(),
+    draft: newMenuDocument({
+      name: "Older",
+      title: "Older",
+      sections: [
+        section(
+          [
+            newMenuEntry({
+              dishId: satayDish.id,
+              name: "Satay skewers",
+              description: "Peanut sauce",
+              price: 900,
+            }),
+          ],
+          "Small plates",
+        ),
+      ],
+    }),
+  });
+  await call(`menus/${olderMenu.id}/publish`, {
+    revision: olderMenu.revision,
+  });
+  const sesame = await call(`dishes/${satayDish.id}`, {
+    name: "Satay Skewers",
+    description: "Peanut sauce",
+    category: "Small plates",
+    price: 9,
+    confirmed: true,
+    dietary: ["contains-peanuts", "contains-sesame"],
+  });
+  assert.deepEqual(
+    sesame.menus.map((m) => [m.id, m.live]).sort(),
+    [
+      [olderMenu.id, true],
+      [pastedMenu.id, true],
+    ].sort(),
+  );
+  for (const id of [pastedMenu.id, olderMenu.id]) {
+    const menu = await call(`menus/${id}`);
+    for (const copy of [menu.draft, menu.published])
+      assert.deepEqual(copy.sections[0].items[0].dietary, [
+        "contains-peanuts",
+        "contains-sesame",
+      ]);
+  }
+  const untagged = dishFacts({
+    id: satayDish.id,
+    name: "Satay",
+    description: "",
+    price: 900,
+    available: 1,
+    dietary: '["contains-peanuts"]',
+  });
+  assert.deepEqual(
+    applyDishUpdate(
+      newMenuDocument({
+        sections: [
+          section([
+            newMenuEntry({ dishId: satayDish.id, name: "Satay", price: 900 }),
+          ]),
+        ],
+      }),
+      untagged,
+      { ...untagged, dietary: ["contains-peanuts", "contains-sesame"] },
+    ).menu.sections[0].items[0].dietary,
+    ["contains-peanuts", "contains-sesame"],
+    "an empty tag list counts as not set",
   );
   console.log(
     `PASS: ${checks} menu publishing checks: placeholder names, sample dishes, zero prices, automatic checks without an I-checked box, first-publication menu address, address changes with redirects, and dish edits reaching draft and live menus.`,

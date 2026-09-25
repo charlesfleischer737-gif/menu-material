@@ -235,9 +235,60 @@ const sameTags = (a: unknown, b: unknown) =>
   JSON.stringify(normalizeDietary(a)) === JSON.stringify(normalizeDietary(b));
 
 /**
+ * Menu dishes gain their My Dishes link, any approved photo it has, and its
+ * dietary and allergen tags when the menu dish has none of its own.
+ */
+export function withLibraryLinks(
+  menu: MenuDocument,
+  links: {
+    entryId: string;
+    dishId: string;
+    photoId: string | null;
+    dietary?: string[];
+  }[],
+): MenuDocument {
+  const byEntry = new Map(links.map((link) => [link.entryId, link]));
+  const hadPhotos = menu.sections.some((s) => s.items.some((i) => i.photoId));
+  let featured = menu.sections.reduce(
+      (n, s) => n + s.items.filter((i) => i.featured).length,
+      0,
+    ),
+    added = 0;
+  const sections = menu.sections.map((s) => ({
+    ...s,
+    items: s.items.map((i) => {
+      const link = byEntry.get(i.id);
+      if (!link || i.dishId) return i;
+      const linked = {
+        ...i,
+        dishId: link.dishId,
+        dietary: i.dietary.length ? i.dietary : normalizeDietary(link.dietary),
+      };
+      if (i.photoId || !link.photoId) return linked;
+      added++;
+      return {
+        ...linked,
+        photoId: link.photoId,
+        featured: i.featured || featured++ < 4,
+      };
+    }),
+  }));
+  return {
+    ...menu,
+    sections,
+    // Photos lead the menu when they're its first ones.
+    layout:
+      added && !hadPhotos && menu.layout === "classic"
+        ? "featured"
+        : menu.layout,
+  };
+}
+
+/**
  * Carry a My Dishes edit into a menu. Only details that still match the dish's
  * previous value follow the dish; anything tailored on this menu (a brunch
- * price, a shorter description) stays as the owner set it.
+ * price, a shorter description) stays as the owner set it. A menu dish with
+ * no tags (imports start with none) counts as not set, so tag edits reach it.
  */
 export function applyDishUpdate<T extends { sections: MenuSection[] }>(
   menu: T,
@@ -270,7 +321,8 @@ export function applyDishUpdate<T extends { sections: MenuSection[] }>(
         next.available = after.available;
       if (
         !sameTags(before.dietary, after.dietary) &&
-        sameTags(item.dietary, before.dietary)
+        (sameTags(item.dietary, before.dietary) ||
+          !normalizeDietary(item.dietary).length)
       )
         next.dietary = normalizeDietary(after.dietary);
       if (JSON.stringify(next) === JSON.stringify(item)) return item;

@@ -313,7 +313,7 @@ async function linkEntriesToLibrary(r: Row, row: Row, input: unknown) {
     .parse(input);
   await limit("menu-library:" + r.id, 60, 3600);
   const dishes = await all(
-    "SELECT id,name,category,preferred_photo_id FROM dishes WHERE restaurant_id=? AND archived_at IS NULL AND sample=0 ORDER BY created_at",
+    "SELECT id,name,category,preferred_photo_id,dietary FROM dishes WHERE restaurant_id=? AND archived_at IS NULL AND sample=0 ORDER BY created_at",
     r.id,
   );
   const photos = await all(
@@ -325,14 +325,17 @@ async function linkEntriesToLibrary(r: Row, row: Row, input: unknown) {
       photos.find((a) => a.id === dish.preferred_photo_id) ||
       photos.find((a) => a.dish_id === dish.id)
     )?.id || null;
+  // Each link carries the dish's dietary and allergen tags, so a menu item
+  // without tags of its own can show them.
   const links: {
     entryId: string;
     dishId: string;
     photoId: string | null;
+    dietary: string[];
     created: boolean;
   }[] = [];
   const inserts = [],
-    created = new Map<string, string>(),
+    created = new Map<string, { id: string; dietary: string[] }>(),
     t = now();
   for (const entry of b.entries) {
     const key = matchKey(entry.name);
@@ -345,6 +348,7 @@ async function linkEntriesToLibrary(r: Row, row: Row, input: unknown) {
         entryId: entry.id,
         dishId: match.id,
         photoId: photoFor(match),
+        dietary: normalizeDietary(match.dietary),
         created: false,
       });
       continue;
@@ -352,8 +356,9 @@ async function linkEntriesToLibrary(r: Row, row: Row, input: unknown) {
     if (created.has(key)) {
       links.push({
         entryId: entry.id,
-        dishId: created.get(key)!,
+        dishId: created.get(key)!.id,
         photoId: null,
+        dietary: created.get(key)!.dietary,
         created: false,
       });
       continue;
@@ -361,19 +366,23 @@ async function linkEntriesToLibrary(r: Row, row: Row, input: unknown) {
     // A retried request finds the dish it already created for this entry.
     const reusable = z.string().uuid().safeParse(entry.id).success;
     const retry = reusable
-      ? await one("SELECT id,restaurant_id FROM dishes WHERE id=?", entry.id)
+      ? await one(
+          "SELECT id,restaurant_id,dietary FROM dishes WHERE id=?",
+          entry.id,
+        )
       : null;
     if (retry && retry.restaurant_id === r.id) {
       links.push({
         entryId: entry.id,
         dishId: retry.id,
         photoId: null,
+        dietary: normalizeDietary(retry.dietary),
         created: false,
       });
       continue;
     }
     const did = retry || !reusable ? id() : entry.id;
-    created.set(key, did);
+    created.set(key, { id: did, dietary: normalizeDietary(entry.dietary) });
     inserts.push(
       db()
         .prepare(
@@ -396,6 +405,7 @@ async function linkEntriesToLibrary(r: Row, row: Row, input: unknown) {
       entryId: entry.id,
       dishId: did,
       photoId: null,
+      dietary: normalizeDietary(entry.dietary),
       created: true,
     });
   }
