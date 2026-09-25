@@ -3,7 +3,7 @@ import { entitlementSql } from "./entitlements";
 import { settleCorrection } from "./correction-policy";
 import { z } from "zod";
 import { checkStudioGeneration } from "./studio-release";
-import { reportError } from "./monitoring";
+import { keepAlive, reportError } from "./monitoring";
 import { PIPELINE_VERSION, looks } from "../studio";
 import { styleSchema } from "./promotions";
 import {
@@ -270,7 +270,6 @@ export async function enqueue(
     controls,
     pipelineVersion: PIPELINE_VERSION,
     model: rendering.model,
-    orchestratorModel: config("OPENAI_ORCHESTRATOR_MODEL", "gpt-6-astra"),
     rendering,
     candidateCount: count,
     name: captured.name,
@@ -511,6 +510,7 @@ export async function provider(
   method = "GET",
   body?: unknown,
   charge?: AiCharge,
+  timeoutMs = 25000,
 ) {
   assert(
     method !== "POST" || charge,
@@ -518,16 +518,23 @@ export async function provider(
     "AI creation is missing its budget context.",
   );
   const spendKey = method === "POST" && charge ? await reserveAi(charge) : null;
+  // Multipart photo uploads let fetch set their own content type and boundary.
+  const multipart = body instanceof FormData;
   let res: Response;
   try {
     res = await fetch("https://api.openai.com/v1/" + path, {
       method,
       headers: {
         Authorization: `Bearer ${config("OPENAI_API_KEY")}`,
-        "Content-Type": "application/json",
+        ...(multipart ? {} : { "Content-Type": "application/json" }),
       },
-      body: body === undefined ? undefined : JSON.stringify(body),
-      signal: AbortSignal.timeout(25000),
+      body:
+        body === undefined
+          ? undefined
+          : multipart
+            ? body
+            : JSON.stringify(body),
+      signal: AbortSignal.timeout(timeoutMs),
     });
   } catch (error) {
     if (spendKey) await finishAi(spendKey, "uncertain");
@@ -546,14 +553,24 @@ export async function provider(
         : "The image service could not complete this request.",
     );
     (error as any).providerRejected = res.status >= 400 && res.status < 500;
+    // The provider's stated reason, such as an unsupported size, for error reports.
+    Object.assign(error, {
+      providerMessage: await res
+        .json()
+        .then((data) => String((data as Row)?.error?.message || ""))
+        .catch(() => ""),
+    });
     throw error;
   }
   const result = (await res.json()) as Row;
   if (spendKey) await finishAi(spendKey, "submitted", result.usage);
   return result;
 }
+// Image calls hold their connection for the whole render. Complex images can
+// take about two minutes, so this leaves headroom before giving up.
+const IMAGE_TIMEOUT_MS = 150000;
 async function inputImages(job: Row) {
-  const list = [];
+  const list: { role: string; blob: Blob; name: string }[] = [];
   const details = JSON.parse(job.details);
   await requireStudioReferences(
     job.restaurant_id,
@@ -586,22 +603,25 @@ async function inputImages(job: Row) {
       400,
       "This image needs resizing. Please upload it again.",
     );
-    if (details.generationPrompts)
-      list.push({
-        type: "input_text",
-        text:
-          assetId === job.source_id
-            ? "ORIGINAL DISH PHOTO: the only source of truth for food identity, portion and branding."
-            : assetId === job.parent_id
-              ? "PREVIOUS RESULT: change only the requested styling. Restore food from the original when needed."
-              : "STYLE INSPIRATION ONLY: use setting, light and color. Never copy this image's food, text, branding or people.",
-      });
+    const mime = a.working_key ? "image/jpeg" : a.mime;
     list.push({
-      type: "input_image",
-      image_url: `data:${a.working_key ? "image/jpeg" : a.mime};base64,${Buffer.from(bytes).toString("base64")}`,
+      role:
+        assetId === job.source_id
+          ? "ORIGINAL DISH PHOTO: the only source of truth for food identity, portion and branding."
+          : assetId === job.parent_id
+            ? "PREVIOUS RESULT: change only the requested styling. Restore food from the original when needed."
+            : "STYLE INSPIRATION ONLY: use setting, light and color. Never copy this image's food, text, branding or people.",
+      blob: new Blob([bytes], { type: mime }),
+      name: `${assetId}.${mime === "image/png" ? "png" : mime === "image/webp" ? "webp" : "jpg"}`,
     });
   }
   return list;
+}
+// An edit takes one prompt for all its photos, so each role is named by position.
+function photoGuide(images: { role: string }[]) {
+  return images.length
+    ? `INPUT IMAGES\n${images.map((image, index) => `Image ${index + 1}: ${image.role}`).join("\n")}`
+    : "";
 }
 export async function updateJob(jobId: string) {
   const states = await all(
@@ -651,93 +671,99 @@ export async function updateJob(jobId: string) {
     }
   }
 }
+// Store a returned image. Resolves false, having saved nothing, only when
+// storage is full; an invalid image is settled as failed.
+async function saveImage(o: Row, result: string, usage: unknown) {
+  const aId = o.id;
+  const bytes = Buffer.from(result, "base64");
+  // Recognize older PNG results as well as new JPEG results during recovery.
+  const png = bytes
+    .subarray(0, 8)
+    .equals(Buffer.from([137, 80, 78, 71, 13, 10, 26, 10]));
+  const jpeg =
+    bytes.length >= 4 &&
+    bytes[0] === 255 &&
+    bytes[1] === 216 &&
+    bytes[2] === 255;
+  if ((!png && !jpeg) || bytes.length > 20 * 1024 * 1024) {
+    await run(
+      "UPDATE outputs SET status='failed',error=?,usage=?,lease_until=0 WHERE id=? AND status NOT IN ('completed','failed')",
+      "The service returned an invalid image. This image was not counted.",
+      JSON.stringify(usage ?? {}),
+      o.id,
+    );
+    return true;
+  }
+  const mime = png ? "image/png" : "image/jpeg";
+  const key = `private/${o.restaurant_id}/generated/${aId}.${png ? "png" : "jpg"}`;
+  if (!(await one("SELECT id FROM storage_reservations WHERE id=?", aId))) {
+    try {
+      await reserveStorage(o.restaurant_id, aId, 2 * bytes.byteLength);
+    } catch (error) {
+      if (error instanceof AppError && error.status === 413) return false;
+      throw error;
+    }
+  }
+  await bucket().put(key, bytes, {
+    httpMetadata: { contentType: mime },
+  });
+  const job = await one("SELECT * FROM jobs WHERE id=?", o.job_id);
+  assert(job, 404, "Generation not found.");
+  await db().batch([
+    db()
+      .prepare(
+        "INSERT OR IGNORE INTO assets (id,restaurant_id,dish_id,kind,key,mime,name,created_at) SELECT ?,?,?,'generated',?,?,?,? WHERE EXISTS(SELECT 1 FROM outputs WHERE id=? AND status!='completed' AND status!='failed')",
+      )
+      .bind(
+        aId,
+        o.restaurant_id,
+        job.dish_id,
+        key,
+        mime,
+        "Studio photo",
+        now(),
+        o.id,
+      ),
+    db()
+      .prepare(
+        "UPDATE outputs SET status='completed',asset_id=?,usage=?,cost_estimate=?,lease_until=0,error=NULL WHERE id=? AND status NOT IN ('completed','failed')",
+      )
+      .bind(
+        aId,
+        JSON.stringify(usage ?? {}),
+        config("IMAGE_COST_ESTIMATE_USD")
+          ? Number(config("IMAGE_COST_ESTIMATE_USD"))
+          : null,
+        o.id,
+      ),
+  ]);
+  await event(
+    o.restaurant_id,
+    "image_completed",
+    aId,
+    {
+      jobId: o.job_id,
+      waitMs: now() - job.created_at,
+    },
+    o.id,
+  ).catch(() => {});
+  return true;
+}
+// Jobs submitted before direct image calls ran as background responses and
+// are still retrieved by their response ID.
 async function settle(o: Row, res: Row) {
   const generated = res.output?.find(
     (x: Row) => x.type === "image_generation_call" && x.result,
   );
   if (res.status === "completed" && generated) {
-    const aId = o.id;
-    const bytes = Buffer.from(generated.result, "base64");
-    // Recognize older PNG results as well as new JPEG results during recovery.
-    const png = bytes
-      .subarray(0, 8)
-      .equals(Buffer.from([137, 80, 78, 71, 13, 10, 26, 10]));
-    const jpeg =
-      bytes.length >= 4 &&
-      bytes[0] === 255 &&
-      bytes[1] === 216 &&
-      bytes[2] === 255;
-    if ((!png && !jpeg) || bytes.length > 20 * 1024 * 1024) {
+    if (!(await saveImage(o, generated.result, res.usage)))
       await run(
-        "UPDATE outputs SET status='failed',error=?,usage=?,lease_until=0 WHERE id=? AND status NOT IN ('completed','failed')",
-        "The service returned an invalid image. This image was not counted.",
-        JSON.stringify(res.usage ?? {}),
+        "UPDATE outputs SET error=?,lease_until=?,next_poll_at=? WHERE id=? AND status NOT IN ('completed','failed')",
+        "Your image is ready, but storage is full. Remove unneeded photos so it can be saved.",
+        now() + 60000,
+        now() + 60000,
         o.id,
       );
-      return;
-    }
-    const mime = png ? "image/png" : "image/jpeg";
-    const key = `private/${o.restaurant_id}/generated/${aId}.${png ? "png" : "jpg"}`;
-    if (!(await one("SELECT id FROM storage_reservations WHERE id=?", aId))) {
-      try {
-        await reserveStorage(o.restaurant_id, aId, 2 * bytes.byteLength);
-      } catch (error) {
-        if (error instanceof AppError && error.status === 413) {
-          await run(
-            "UPDATE outputs SET error=?,lease_until=?,next_poll_at=? WHERE id=? AND status NOT IN ('completed','failed')",
-            "Your image is ready, but storage is full. Remove unneeded photos so it can be saved.",
-            now() + 60000,
-            now() + 60000,
-            o.id,
-          );
-          return;
-        }
-        throw error;
-      }
-    }
-    await bucket().put(key, bytes, {
-      httpMetadata: { contentType: mime },
-    });
-    const job = await one("SELECT * FROM jobs WHERE id=?", o.job_id);
-    assert(job, 404, "Generation not found.");
-    await db().batch([
-      db()
-        .prepare(
-          "INSERT OR IGNORE INTO assets (id,restaurant_id,dish_id,kind,key,mime,name,created_at) SELECT ?,?,?,'generated',?,?,?,? WHERE EXISTS(SELECT 1 FROM outputs WHERE id=? AND status!='completed' AND status!='failed')",
-        )
-        .bind(
-          aId,
-          o.restaurant_id,
-          job.dish_id,
-          key,
-          mime,
-          "Studio photo",
-          now(),
-          o.id,
-        ),
-      db()
-        .prepare(
-          "UPDATE outputs SET status='completed',asset_id=?,usage=?,cost_estimate=?,lease_until=0,error=NULL WHERE id=? AND status NOT IN ('completed','failed')",
-        )
-        .bind(
-          aId,
-          JSON.stringify(res.usage ?? {}),
-          config("IMAGE_COST_ESTIMATE_USD")
-            ? Number(config("IMAGE_COST_ESTIMATE_USD"))
-            : null,
-          o.id,
-        ),
-    ]);
-    await event(
-      o.restaurant_id,
-      "image_completed",
-      aId,
-      {
-        jobId: o.job_id,
-        waitMs: now() - job.created_at,
-      },
-      o.id,
-    ).catch(() => {});
   } else if (
     ["failed", "cancelled", "incomplete", "completed"].includes(res.status)
   ) {
@@ -749,14 +775,19 @@ async function settle(o: Row, res: Row) {
       JSON.stringify(res.usage ?? {}),
       o.id,
     );
-  } else
+  } else {
+    // Most images finish within two minutes, so check every two seconds until
+    // then; a slower one is checked less often, at most every 30 seconds.
+    const elapsed = now() - Number(o.submitted_at || o.created_at);
     await run(
       "UPDATE outputs SET status='processing',lease_until=0,next_poll_at=?,poll_count=poll_count+1,error=NULL WHERE id=? AND status NOT IN ('completed','failed')",
-      now() + Math.min(30000, 3000 + Number(o.poll_count || 0) * 2000),
+      now() +
+        (elapsed < 120000 ? 2000 : Math.min(30000, Math.round(elapsed / 10))),
       o.id,
     );
+  }
 }
-export async function tick(restaurantId?: string) {
+export async function tick(restaurantId?: string, { startNew = true } = {}) {
   if (!config("OPENAI_API_KEY")) return;
   const controls = await aiControls();
   const scope = restaurantId ? " AND restaurant_id=?" : "";
@@ -783,7 +814,7 @@ export async function tick(restaurantId?: string) {
     now(),
     ...scopeArgs,
   );
-  if (!controls.paused) {
+  if (!controls.paused && startNew) {
     const queued = await all(
       `SELECT o.* FROM outputs o JOIN restaurants r ON r.id=o.restaurant_id
        WHERE o.status='queued' AND o.lease_until<? AND o.next_poll_at<=? AND r.paused=0
@@ -826,20 +857,13 @@ export async function tick(restaurantId?: string) {
         );
         await settle(o, res);
       } else if (o.status === "submitting" || o.status === "uncertain") {
-        // A lost response may still be running remotely. Never automatically bill a second attempt.
-        if (now() - (o.submitted_at || o.created_at) > 30 * 60000)
-          await run(
-            "UPDATE outputs SET status='failed',error='The image could not be recovered. It was not counted; please try again.',lease_until=0 WHERE id=? AND lease_token=?",
-            o.id,
-            lease,
-          );
-        else
-          await run(
-            "UPDATE outputs SET status='uncertain',error='Checking an interrupted request. If it cannot be recovered, the image will not be counted.',lease_until=? WHERE id=? AND lease_token=?",
-            now() + 60000,
-            o.id,
-            lease,
-          );
+        // The call outlived its lease, so its connection is gone and there is
+        // no response ID to retrieve. Never automatically bill a second attempt.
+        await run(
+          "UPDATE outputs SET status='failed',error='The image could not be recovered. It was not counted; please try again.',lease_until=0 WHERE id=? AND lease_token=?",
+          o.id,
+          lease,
+        );
       } else {
         const job = await one("SELECT * FROM jobs WHERE id=?", o.job_id);
         assert(job, 404, "Generation not found.");
@@ -868,63 +892,67 @@ export async function tick(restaurantId?: string) {
           output_compression: undefined,
         };
         const images = await inputImages(job);
+        const request: Row = {
+          ...Object.fromEntries(
+            Object.entries(rendering).filter(([, value]) => value != null),
+          ),
+          prompt: [
+            photoGuide(images),
+            details.generationPrompts?.[o.slot] ||
+              imagePrompt(details, job.prompt, o.slot),
+          ]
+            .filter(Boolean)
+            .join("\n\n"),
+        };
+        // The lease outlasts the call, so no other tick treats a render in
+        // progress as abandoned.
         await run(
-          "UPDATE outputs SET status='submitting',submitted_at=?,attempts=attempts+1 WHERE id=? AND lease_token=?",
+          "UPDATE outputs SET status='submitting',submitted_at=?,attempts=attempts+1,lease_until=? WHERE id=? AND lease_token=?",
           now(),
+          now() + IMAGE_TIMEOUT_MS + 60000,
           o.id,
           lease,
         );
+        await updateJob(o.job_id);
+        let body: FormData | Row = request;
+        if (images.length) {
+          body = new FormData();
+          for (const [key, value] of Object.entries(request))
+            body.set(key, String(value));
+          for (const image of images)
+            body.append(
+              images.length > 1 ? "image[]" : "image",
+              image.blob,
+              image.name,
+            );
+        }
         const res = await provider(
-          "responses",
+          images.length ? "images/edits" : "images/generations",
           "POST",
-          {
-            model:
-              details.orchestratorModel ||
-              config("OPENAI_ORCHESTRATOR_MODEL", "gpt-6-astra"),
-            background: true,
-            store: true,
-            input: [
-              {
-                role: "user",
-                content: [
-                  {
-                    type: "input_text",
-                    text:
-                      details.generationPrompts?.[o.slot] ||
-                      imagePrompt(details, job.prompt, o.slot),
-                  },
-                  ...images,
-                ],
-              },
-            ],
-            tools: [
-              {
-                type: "image_generation",
-                ...rendering,
-                action: images.length ? "edit" : "generate",
-              },
-            ],
-            tool_choice: { type: "image_generation" },
-          },
+          body,
           {
             restaurantId: o.restaurant_id,
             kind: "image",
             key: o.id + ":" + (Number(o.attempts || 0) + 1),
           },
+          IMAGE_TIMEOUT_MS,
         );
-        assert(
-          typeof res.id === "string",
-          502,
-          "The image service did not return a tracking ID.",
-        );
-        await run(
-          "UPDATE outputs SET response_id=?,status='processing',submitted_at=?,lease_until=0 WHERE id=? AND lease_token=?",
-          res.id,
-          now(),
-          o.id,
-          lease,
-        );
-        await settle(o, res);
+        const result = res.data?.[0]?.b64_json;
+        // Unlike a background response, a direct result cannot be fetched
+        // again, so an image that cannot be stored now is lost.
+        const failure =
+          typeof result !== "string"
+            ? "No image was returned. This image was not counted."
+            : (await saveImage(o, result, res.usage))
+              ? ""
+              : "Your image was created, but storage is full, so it couldn't be saved. It was not counted. Remove unneeded photos, then try again.";
+        if (failure)
+          await run(
+            "UPDATE outputs SET status='failed',error=?,usage=?,lease_until=0 WHERE id=? AND status NOT IN ('completed','failed')",
+            failure,
+            JSON.stringify(res.usage ?? {}),
+            o.id,
+          );
       }
     } catch (e) {
       const current = await one("SELECT * FROM outputs WHERE id=?", o.id);
@@ -965,10 +993,10 @@ export async function tick(restaurantId?: string) {
           lease,
         );
       else
+        // A direct call has no response ID, so an interrupted one cannot be resumed.
         await run(
-          "UPDATE outputs SET status='uncertain',lease_until=?,error=? WHERE id=? AND lease_token=?",
-          now() + 60000,
-          "The provider response was interrupted. Your request is being recovered.",
+          "UPDATE outputs SET status='failed',error=?,lease_until=0 WHERE id=? AND lease_token=?",
+          "Image creation was interrupted. This image was not counted; please try again.",
           o.id,
           lease,
         );
@@ -977,7 +1005,12 @@ export async function tick(restaurantId?: string) {
         route: o.response_id ? "job/retrieval" : "job/dispatch",
         status: e instanceof AppError ? e.status : undefined,
         restaurantId: o.restaurant_id,
-        detail: { jobId: o.job_id, outputId: o.id },
+        detail: {
+          jobId: o.job_id,
+          outputId: o.id,
+          providerError: (e as { providerMessage?: string } | null)
+            ?.providerMessage,
+        },
       });
     } finally {
       await updateJob(o.job_id);
@@ -991,8 +1024,34 @@ export async function tick(restaurantId?: string) {
       if (row) await processOutput(row);
     }
   }
-  // New work has its own lane; large image responses are recovered two at a time.
-  await Promise.all([drain(recovery), drain(recovery), drain(dispatch)]);
+  // Large image responses are recovered two at a time. Each new image holds its
+  // connection for the whole render, so new images start together.
+  await keepAlive(
+    Promise.all([
+      drain(recovery),
+      drain(recovery),
+      ...dispatch.map(processOutput),
+    ]),
+  );
+}
+// A restaurant's unfinished work, small enough for an open page to check
+// every few seconds. Finished work drops out, which tells the page to reload.
+export async function jobStatus(restaurantId: string) {
+  const [jobs, outputs, batchItems] = await Promise.all([
+    all(
+      "SELECT id,status FROM jobs WHERE restaurant_id=? AND status IN ('queued','processing') ORDER BY id",
+      restaurantId,
+    ),
+    all(
+      "SELECT id,job_id,status,error FROM outputs WHERE restaurant_id=? AND status NOT IN ('completed','failed') ORDER BY id",
+      restaurantId,
+    ),
+    all(
+      "SELECT id,status FROM batch_items WHERE restaurant_id=? AND status='queued' ORDER BY id",
+      restaurantId,
+    ),
+  ]);
+  return { jobs, outputs, batchItems };
 }
 export async function generateCaption(
   r: Row,

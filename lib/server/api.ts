@@ -68,7 +68,13 @@ import {
   token,
   viewer,
 } from "./core";
-import { enqueue, updateJob, generateCaption, tick } from "./generation";
+import {
+  enqueue,
+  updateJob,
+  generateCaption,
+  jobStatus,
+  tick,
+} from "./generation";
 import {
   checkAlertsInBackground,
   clientErrorRoute,
@@ -1430,10 +1436,14 @@ export async function handle(req: Request) {
         return response({ ok: true });
       }
     }
+    if (p[0] === "jobs" && p[1] === "status" && method === "GET")
+      return response(await jobStatus(r.id));
     if (p[0] === "jobs" && method === "POST") {
       if (p[1] === "tick") {
         await advanceBatches(r.id);
-        await tick(r.id);
+        // Each image call lasts its whole render. A running worker makes those
+        // calls, so closing this page cannot cut one off.
+        await tick(r.id, { startNew: !(await workerStatus()).healthy });
         checkAlertsInBackground();
         return response({ ok: true });
       }

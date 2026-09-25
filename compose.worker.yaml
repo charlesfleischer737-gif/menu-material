@@ -4,6 +4,8 @@ services:
       context: .
       dockerfile: Dockerfile.worker
     restart: unless-stopped
+    # Image calls last their whole render; let running ones finish on stop.
+    stop_grace_period: 4m
     environment:
       APP_ORIGIN: ${APP_ORIGIN:?Set the deployed Menu Material HTTPS origin}
       JOB_RUNNER_SECRET: ${JOB_RUNNER_SECRET:?Set the same secret on the site and runner}

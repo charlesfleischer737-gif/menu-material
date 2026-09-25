@@ -10,7 +10,7 @@ const realNow = Date.now;
 let offset = 0;
 Date.now = () => realNow() + offset;
 const { handle } = await import("../lib/server/api.ts");
-const { all, one, run, bucket, id } = await import("../lib/server/core.ts");
+const { one, run, bucket, id, digest } = await import("../lib/server/core.ts");
 const { reserveAi, reserveStorage, limitedBytes } =
   await import("../lib/server/safeguards.ts");
 const { tick, provider } = await import("../lib/server/generation.ts");
@@ -21,45 +21,50 @@ let cookie = "",
   checks = 0,
   submitted = 0,
   retrieved = 0;
-const responses = new Map();
 const image = readFileSync("public/pasta.jpg");
-let rejectNext = false;
+let rejectNext = false,
+  holdImages = false;
+const held = [];
 globalThis.fetch = async (url, init = {}) => {
   assert(String(url).startsWith("https://api.openai.com/v1/"));
-  if (init.method === "POST") {
-    if (rejectNext) {
-      rejectNext = false;
-      return Response.json({}, { status: 400 });
-    }
-    const body = JSON.parse(init.body);
-    if (!body.tools)
-      return Response.json({
-        output: [
-          { content: [{ type: "output_text", text: "Fixture caption" }] },
-        ],
-      });
-    submitted++;
-    assert.equal(body.tools[0].quality, "high");
-    assert.equal(body.tools[0].output_compression, 95);
-    const responseId = "launch-response-" + submitted;
-    responses.set(responseId, false);
-    return Response.json({ id: responseId, status: "queued" });
+  if (init.method === "POST" && rejectNext) {
+    rejectNext = false;
+    return Response.json({}, { status: 400 });
   }
+  if (String(url).startsWith("https://api.openai.com/v1/images/")) {
+    submitted++;
+    // Description-only dishes are generated from the prompt alone.
+    assert.equal(String(url), "https://api.openai.com/v1/images/generations");
+    const body = JSON.parse(init.body);
+    assert.equal(body.quality, "high");
+    assert.equal(body.output_compression, 95);
+    const reply = () =>
+      Response.json({
+        data: [{ b64_json: image.toString("base64") }],
+        usage: { output_tokens: 1 },
+      });
+    // A held call stays open, like a render in progress, until released.
+    return holdImages
+      ? new Promise((resolve) => held.push(() => resolve(reply())))
+      : reply();
+  }
+  if (init.method === "POST")
+    return Response.json({
+      output: [{ content: [{ type: "output_text", text: "Fixture caption" }] }],
+    });
+  // Earlier background responses are still retrieved by ID.
   retrieved++;
-  const responseId = String(url).split("/").at(-1);
-  return Response.json(
-    responses.get(responseId)
-      ? {
-          id: responseId,
-          status: "completed",
-          output: [
-            { type: "image_generation_call", result: image.toString("base64") },
-          ],
-          usage: { output_tokens: 1 },
-        }
-      : { id: responseId, status: "in_progress" },
-  );
+  return Response.json({
+    id: String(url).split("/").at(-1),
+    status: "in_progress",
+  });
 };
+// Let held calls reach the fixture without real sleeps.
+async function until(ready) {
+  for (let n = 0; n < 1000 && !ready(); n++)
+    await new Promise((resolve) => setImmediate(resolve));
+  assert(ready(), "The fixture was not reached");
+}
 async function call(path, data, expected = 200, options = {}) {
   const headers = { cookie, ...options.headers };
   if (data !== undefined && !(data instanceof FormData))
@@ -237,43 +242,47 @@ try {
   const a = await restaurant("queue-a"),
     b = await restaurant("queue-b"),
     c = await restaurant("queue-c");
+  // Image calls last their whole render, so these ticks stay open until released.
+  holdImages = true;
   const a1 = await enqueue(a, "a1"),
     a2 = await enqueue(a, "a2");
-  await Promise.all([tick(), tick(), tick()]);
-  assert.equal(submitted, 2);
+  const rendering = [Promise.all([tick(), tick(), tick()])];
+  await until(() => submitted === 2);
   checks++;
   const b1 = await enqueue(b, "b1"),
     c1 = await enqueue(c, "c1");
   // The oldest two remain in progress; another restaurant can start immediately.
-  offset += 6000;
-  await tick();
-  assert.equal(submitted, 4);
+  rendering.push(tick());
+  await until(() => submitted === 4);
   checks++;
   assert.equal(
     (await one("SELECT status FROM jobs WHERE id=?", c1.id)).status,
     "processing",
+    "A job shows as in progress while its image renders",
   );
   checks++;
-  const before = retrieved;
-  await tick();
-  assert.equal(retrieved, before);
-  checks++;
   const a3 = await enqueue(a, "a3");
+  await tick();
+  assert.equal(submitted, 4, "A restaurant runs at most two images at once");
+  checks++;
   await run("UPDATE restaurants SET paused=1 WHERE id=?", a.rid);
-  for (const row of await all(
-    "SELECT response_id FROM outputs WHERE restaurant_id=? AND response_id IS NOT NULL",
-    a.rid,
-  ))
-    responses.set(row.response_id, true);
-  offset += 31000;
+  holdImages = false;
+  for (const release of held.splice(0)) release();
+  await Promise.all(rendering);
   await tick();
   assert.equal(
     (await one("SELECT status FROM jobs WHERE id=?", a1.id)).status,
     "completed",
+    "An image already rendering is saved even after a pause",
   );
   checks++;
   assert.equal(
     (await one("SELECT status FROM jobs WHERE id=?", a2.id)).status,
+    "completed",
+  );
+  checks++;
+  assert.equal(
+    (await one("SELECT status FROM jobs WHERE id=?", b1.id)).status,
     "completed",
   );
   checks++;
@@ -332,15 +341,90 @@ try {
   );
   checks++;
   await call(`jobs/${a3.id}/cancel`, {}, 404);
-  // Known response IDs have a deadline and restore the parent job status too.
+  // With a healthy worker the page never starts an image itself, so leaving
+  // the page cannot cut a render off.
+  const ownerSession = id();
+  await run(
+    "INSERT INTO sessions (hash,user_id,expires_at) VALUES (?,?,?)",
+    digest(ownerSession),
+    c.r.user_id,
+    Date.now() + 3600000,
+  );
+  cookie = "menu_material_session=" + ownerSession;
+  const workerJob = await call(
+    "jobs",
+    { dishId: c.dishId, requestKey: id(), revision: "Worker render" },
+    202,
+  );
+  const beforeWorker = submitted;
+  await call("jobs/tick", {});
+  assert.equal(submitted, beforeWorker, "The page leaves new images alone");
+  checks++;
+  // The page's status check lists only its own restaurant's unfinished work;
+  // restaurant a's queued image stays private.
+  const progress = await call("jobs/status");
+  assert.deepEqual(progress.jobs, [{ id: workerJob.id, status: "queued" }]);
+  checks++;
+  assert.deepEqual(
+    progress.outputs.map((o) => [o.job_id, o.status]),
+    [[workerJob.id, "queued"]],
+  );
+  checks++;
+  await call("internal/tick", {}, 200, {
+    headers: { authorization: "Bearer fixture-runner-secret" },
+  });
+  assert.equal(submitted, beforeWorker + 1, "The worker starts them");
+  checks++;
+  assert.equal(
+    (await one("SELECT status FROM jobs WHERE id=?", workerJob.id)).status,
+    "completed",
+  );
+  checks++;
+  assert.deepEqual(
+    await call("jobs/status"),
+    { jobs: [], outputs: [], batchItems: [] },
+    "Finished work drops out of the status check",
+  );
+  checks++;
+  cookie = "";
+  await call("jobs/status", undefined, 401);
+  cookie = adminCookie;
+  // Earlier background responses are still polled by ID: every two seconds
+  // at first, less often after two minutes. Their deadline restores the
+  // parent job status too.
+  const earlier = await enqueue(b, "earlier");
+  await run(
+    "UPDATE outputs SET status='processing',response_id='launch-earlier',submitted_at=?,next_poll_at=0,lease_until=0 WHERE job_id=?",
+    Date.now(),
+    earlier.id,
+  );
+  const before = retrieved;
+  await tick();
+  await tick();
+  assert.equal(retrieved, before + 1, "One check at a time");
+  checks++;
+  offset += 2000;
+  await tick();
+  assert.equal(retrieved, before + 2, "Checked again after two seconds");
+  checks++;
+  await run(
+    "UPDATE outputs SET submitted_at=?,next_poll_at=0 WHERE job_id=?",
+    Date.now() - 5 * 60000,
+    earlier.id,
+  );
+  await tick();
+  offset += 2000;
+  await tick();
+  assert.equal(retrieved, before + 3, "A slow response is checked less often");
+  checks++;
   await run(
     "UPDATE outputs SET submitted_at=?,next_poll_at=0,lease_until=0 WHERE job_id=?",
     Date.now() - 61 * 60000,
-    b1.id,
+    earlier.id,
   );
   await tick();
   assert.equal(
-    (await one("SELECT status FROM jobs WHERE id=?", b1.id)).status,
+    (await one("SELECT status FROM jobs WHERE id=?", earlier.id)).status,
     "failed",
   );
   checks++;

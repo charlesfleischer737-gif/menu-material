@@ -24,53 +24,50 @@ let cookie = "",
 const requests = [];
 globalThis.fetch = async (url, init = {}) => {
   assert(String(url).startsWith("https://api.openai.com/v1/"));
-  if (init.method === "POST") {
-    const b = JSON.parse(init.body);
-    requests.push(b);
-    if (!b.tools)
-      return Response.json({
-        output: [
+  if (String(url).startsWith("https://api.openai.com/v1/images/")) {
+    calls++;
+    requests.push({ image: true, form: init.body });
+    // During the partial phase every other image is rejected.
+    return mode === "partial" && calls % 2
+      ? Response.json(
+          { error: { message: "Fixture rejection" } },
+          { status: 400 },
+        )
+      : Response.json({
+          data: [{ b64_json: png.toString("base64") }],
+          usage: { input_tokens: 5 },
+        });
+  }
+  assert.equal(init.method, "POST");
+  requests.push(JSON.parse(init.body));
+  return Response.json({
+    output: [
+      {
+        content: [
           {
-            content: [
-              {
-                type: "output_text",
-                text: JSON.stringify({
-                  items: [
-                    {
-                      category: "Mains",
-                      name: "Menu pasta",
-                      description: "Tomato pasta",
-                      price: 12.5,
-                    },
-                    {
-                      category: "Drinks",
-                      name: "Iced tea",
-                      description: "",
-                      price: null,
-                    },
-                  ],
-                }),
-              },
-            ],
+            type: "output_text",
+            text: JSON.stringify({
+              items: [
+                {
+                  category: "Mains",
+                  name: "Menu pasta",
+                  description: "Tomato pasta",
+                  price: 12.5,
+                },
+                {
+                  category: "Drinks",
+                  name: "Iced tea",
+                  description: "",
+                  price: null,
+                },
+              ],
+            }),
           },
         ],
-        usage: { input_tokens: 10 },
-      });
-    calls++;
-    return Response.json({ id: "test_" + calls, status: "queued" });
-  }
-  const num = Number(String(url).split("_").at(-1));
-  return Response.json(
-    mode === "partial" && num % 2
-      ? { status: "failed" }
-      : {
-          status: "completed",
-          output: [
-            { type: "image_generation_call", result: png.toString("base64") },
-          ],
-          usage: { input_tokens: 5 },
-        },
-  );
+      },
+    ],
+    usage: { input_tokens: 10 },
+  });
 };
 async function call(path, b, expected = 200, opts = {}) {
   if (path === "jobs/tick") clockAdvance += 31000;
@@ -443,23 +440,14 @@ try {
   assert(outs.some((o) => o.asset_id === success));
   assert.equal(calls - callsBeforeRetry, 1, "only failed slot resubmitted");
   assert(
-    requests.some((q) => {
-      const content = q.tools && q.input?.[0]?.content;
-      return (
-        Array.isArray(content) &&
-        content.filter((part) => part.type === "input_image").length === 2 &&
-        content.some(
-          (part) =>
-            part.type === "input_text" &&
-            part.text.startsWith("ORIGINAL DISH PHOTO:"),
-        ) &&
-        content.some(
-          (part) =>
-            part.type === "input_text" &&
-            part.text.startsWith("STYLE INSPIRATION ONLY:"),
-        )
-      );
-    }),
+    requests.some(
+      (q) =>
+        q.image &&
+        q.form.getAll("image[]").length === 2 &&
+        /^INPUT IMAGES\nImage 1: ORIGINAL DISH PHOTO:.*\nImage 2: STYLE INSPIRATION ONLY:/.test(
+          q.form.get("prompt"),
+        ),
+    ),
     "original and style reference sent with distinct food and style roles",
   );
   const job = fresh.jobs.find((j) => j.id === item.job_id);

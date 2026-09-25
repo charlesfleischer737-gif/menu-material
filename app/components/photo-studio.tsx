@@ -623,6 +623,10 @@ export default function PhotoStudio({
       if (inspirationIds.length) inspirationAvailability.retry();
       throw error;
     });
+    // Start the image now; saving the draft and reloading run alongside it.
+    void api("jobs/tick", {})
+      .then(refresh)
+      .catch(() => {});
     change({
       jobId: j.id,
       resultId: "",
@@ -640,9 +644,6 @@ export default function PhotoStudio({
       setNotice(
         "This matching photo was already saved. No additional image was used.",
       );
-    void api("jobs/tick", {})
-      .then(refresh)
-      .catch(() => {});
   }
   async function approve(confirmed = accurate) {
     if (adjust === "quick")

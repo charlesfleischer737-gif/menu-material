@@ -12,6 +12,7 @@ import Landing from "./menu-material-landing";
 import Brand from "./brand";
 import WorkspacePlaceholder from "./workspace-placeholder";
 import { api, type Row } from "@/lib/client";
+import { watchJobs } from "@/lib/job-progress";
 import { rememberScroll } from "@/lib/scroll-memory";
 const GuestStudio = lazy(() => import("./guest-studio"));
 const PlanDialog = lazy(() => import("./plan-dialog"));
@@ -59,8 +60,7 @@ export default function HomeClient({ hasSession }: { hasSession: boolean }) {
     [plans, setPlans] = useState(false),
     [busy, setBusy] = useState(""),
     [error, setError] = useState("");
-  const actionBusy = useRef(false),
-    tickBusy = useRef(false);
+  const actionBusy = useRef(false);
   const refresh = useCallback(async () => {
     const data = await api("state");
     setState(data);
@@ -139,28 +139,19 @@ export default function HomeClient({ hasSession }: { hasSession: boolean }) {
     if (state.user && new URLSearchParams(location.search).has("billing"))
       setPlans(true);
   }, [state.user?.id]);
+  const working = !!(
+    state.user &&
+    (state.batchItems?.some((b: Row) => b.status === "queued") ||
+      state.jobs?.some((j: Row) => ["queued", "processing"].includes(j.status)))
+  );
   useEffect(() => {
-    if (!state.user) return;
-    const timer = setInterval(async () => {
-      if (tickBusy.current || document.hidden) return;
-      tickBusy.current = true;
-      try {
-        if (
-          state.batchItems?.some((b: Row) => b.status === "queued") ||
-          state.jobs.some((j: Row) =>
-            ["queued", "processing"].includes(j.status),
-          )
-        ) {
-          await api("jobs/tick", {});
-          await refresh();
-        }
-      } catch {
-      } finally {
-        tickBusy.current = false;
-      }
-    }, 2000);
-    return () => clearInterval(timer);
-  }, [state.user, state.jobs, state.batchItems, refresh]);
+    if (!working) return;
+    return watchJobs({
+      advance: () => api("jobs/tick", {}),
+      status: () => api("jobs/status"),
+      reload: refresh,
+    });
+  }, [working, refresh]);
   async function act(label: string, fn: () => Promise<void>) {
     if (actionBusy.current) return;
     actionBusy.current = true;
