@@ -16,7 +16,7 @@ const { publicMenu } = await import("../lib/server/promotions.ts");
 const { localToInstant, localTime, defaultStyle } =
   await import("../lib/promotions.ts");
 const jpg = readFileSync("public/pasta.jpg"),
-  png = readFileSync("public/og.png");
+  png = readFileSync("public/apple-touch-icon.png");
 let cookie = "",
   checks = 0,
   calls = 0,
