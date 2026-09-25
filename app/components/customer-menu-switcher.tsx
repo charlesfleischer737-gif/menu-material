@@ -11,29 +11,29 @@ export default function CustomerMenuSwitcher({
   slug: string;
   className?: string;
 }) {
+  // Choosing a menu doesn't leave the page; "Open" does (WCAG 3.2.2).
   return (
     <nav
       className={`customer-menu-switcher ${className}`}
       aria-label="Our menus"
     >
-      <label>
-        <span>Menu</span>
-        <select
-          aria-label="Choose a menu"
-          value={currentId || menus[0]?.id || ""}
-          onChange={(event) => {
-            window.location.assign(
-              `/m/${encodeURIComponent(slug)}?menu=${encodeURIComponent(event.target.value)}`,
-            );
-          }}
-        >
-          {menus.map((menu) => (
-            <option key={menu.id} value={menu.id}>
-              {menu.name}
-            </option>
-          ))}
-        </select>
-      </label>
+      <form action={`/m/${encodeURIComponent(slug)}`} method="get">
+        <label>
+          <span>Menu</span>
+          <select
+            name="menu"
+            aria-label="Choose a menu"
+            defaultValue={currentId || menus[0]?.id || ""}
+          >
+            {menus.map((menu) => (
+              <option key={menu.id} value={menu.id}>
+                {menu.name}
+              </option>
+            ))}
+          </select>
+        </label>
+        <button type="submit">Open</button>
+      </form>
     </nav>
   );
 }

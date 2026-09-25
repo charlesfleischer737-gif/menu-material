@@ -821,7 +821,7 @@ body:has(> :is(.md-guest, .customer-menu, .unavailable)) {
 }
 .unavailable p {
   margin-top: 20px;
-  color: #888883;
+  color: var(--gray-600);
   line-height: 1.7;
 }
 .admin-panel {

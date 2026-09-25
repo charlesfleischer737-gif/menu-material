@@ -993,7 +993,7 @@ export default function MenuStudio({
                 </button>
               </div>
             </aside>
-            <main className="md-stage">
+            <section className="md-stage" aria-label="Menu preview">
               <div className="md-stage-toolbar">
                 <button
                   className="md-text-button md-focus-toggle"
@@ -1108,7 +1108,7 @@ export default function MenuStudio({
                   </button>
                 )}
               </div>
-            </main>
+            </section>
             <aside
               ref={inspectorRef}
               tabIndex={-1}

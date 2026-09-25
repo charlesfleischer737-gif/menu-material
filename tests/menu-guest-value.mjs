@@ -6,7 +6,8 @@ const root = mkdtempSync(join(tmpdir(), "menu-guest-value-"));
 process.env.MENU_MATERIAL_DATA_DIR = root;
 process.env.APP_ORIGIN = "http://localhost";
 const { handle } = await import("../lib/server/api.ts");
-const { one } = await import("../lib/server/core.ts");
+const { one, all, digest } = await import("../lib/server/core.ts");
+const { housekeeping } = await import("../lib/server/safeguards.ts");
 const { newMenuDocument, newMenuEntry, menuPurposePatch, uncertainFields } =
   await import("../lib/menu-document.ts");
 const {
@@ -23,11 +24,24 @@ const {
   applyDishUpdate,
   dishFacts,
 } = await import("../lib/menu-checks.ts");
-const { normalizeDietary, printedDietary, dietaryKey, dietaryParts } =
-  await import("../lib/dietary.ts");
+const {
+  normalizeDietary,
+  printedDietary,
+  dietaryKey,
+  dietaryParts,
+  containsText,
+  suitsDiet,
+} = await import("../lib/dietary.ts");
 const { composeMenu } = await import("../lib/menu-layout.ts");
-const { openingStatus, telephoneHref, directionsHref } =
-  await import("../lib/restaurant-contact.ts");
+const {
+  openingStatus,
+  telephoneHref,
+  directionsHref,
+  dayName,
+  formatTime,
+  zoneName,
+  sameClock,
+} = await import("../lib/restaurant-contact.ts");
 const { menuStructuredData, menuPreviewImage, jsonLd } =
   await import("../lib/menu-structured-data.ts");
 let cookie = "",
@@ -45,6 +59,23 @@ async function call(path, data, expected = 200, method) {
   checks++;
   if (res.headers.get("set-cookie"))
     cookie = res.headers.get("set-cookie").split(";")[0];
+  return value;
+}
+// A guest's phone: no workspace session, optionally from a given address.
+async function guestCall(path, data, expected = 200, ip) {
+  const res = await handle(
+    new Request("http://localhost/api/" + path, {
+      method: "POST",
+      headers: {
+        "Content-Type": "application/json",
+        ...(ip ? { "cf-connecting-ip": ip } : {}),
+      },
+      body: JSON.stringify(data),
+    }),
+  );
+  const value = await res.json();
+  assert.equal(res.status, expected, `${path}: ${JSON.stringify(value)}`);
+  checks++;
   return value;
 }
 const section = (items, name = "Mains") => ({
@@ -328,8 +359,25 @@ Ramen 1,200`);
   assert.deepEqual(normalizeDietary("not json"), []);
   assert.equal(
     printedDietary(["vegetarian", "contains-milk", "contains-egg", "Spicy"]),
-    "V · Contains milk, egg · Spicy",
+    "V · Contains: milk, egg · Spicy",
   );
+  // Allergens are labeled as such, in one consistent case.
+  assert.equal(
+    containsText(dietaryParts(["contains-gluten", "contains-soy"]).allergens),
+    "Contains: gluten, soy",
+  );
+  assert.equal(containsText([]), "");
+  // A vegan dish suits vegetarians and dairy-free diets too…
+  assert(suitsDiet(["vegan"], "vegan"));
+  assert(suitsDiet(["vegan"], "vegetarian"), "vegan counts as vegetarian");
+  assert(suitsDiet('["vegan"]', "dairy-free"), "vegan counts as dairy-free");
+  assert(!suitsDiet(["vegan"], "gluten-free"));
+  assert(!suitsDiet(["vegetarian"], "vegan"));
+  assert(suitsDiet(["dairy-free"], "dairy-free"));
+  // …unless an allergen tag says otherwise.
+  assert(!suitsDiet(["vegan", "contains-milk"], "dairy-free"));
+  assert(!suitsDiet(["vegan", "contains-fish"], "vegetarian"));
+  assert(!suitsDiet(["Vegan option on request"], "vegetarian"), "notes");
   assert.equal(
     dietaryKey([{ dietary: ["vegan"] }, { dietary: ["contains-sesame"] }]),
     "VG vegan. Please tell us about any allergies before you order.",
@@ -361,7 +409,7 @@ Ramen 1,200`);
   const texts = layout.pages[0].elements.filter((e) => e.kind === "text");
   assert.equal(
     texts.find((t) => t.role === "dietary").text,
-    "VG · GF · Contains sesame",
+    "VG · GF · Contains: sesame",
   );
   assert.equal(
     texts
@@ -486,6 +534,28 @@ Ramen 1,200`);
   assert.equal(at("2026-09-27T05:00:00Z"), "Open now · until 2 AM"); // Sun 1:00
   assert.equal(at("2026-09-27T16:00:00Z"), "Closed · opens tomorrow at 9 AM"); // Sunday, closed all day
   assert.equal(openingStatus([], "America/New_York", Date.now()), null);
+  // The labels are English, so their days and times are too, whatever the
+  // menu's language ("opens Monday at 9 AM", never "opens lunes at 9").
+  const mondaysOnly = week.map((h) => ({ ...h, closed: h.day !== 1 }));
+  assert.equal(
+    openingStatus(
+      mondaysOnly,
+      "America/New_York",
+      Date.parse("2026-09-25T16:00:00Z"), // Friday noon
+    )?.label.replace(/\s/g, " "),
+    "Closed · opens Monday at 9 AM",
+  );
+  assert.deepEqual(
+    [dayName(2), formatTime("21:00").replace(/\s/g, " "), formatTime("09:30")],
+    ["Tuesday", "9 PM", "9:30 AM"].map((s) => s.replace(/\s/g, " ")),
+  );
+  // Guests on another clock are told which one the hours use.
+  assert.equal(zoneName("America/New_York"), "New York time");
+  assert.equal(zoneName("America/Argentina/Buenos_Aires"), "Buenos Aires time");
+  const friday = Date.parse("2026-09-25T16:00:00Z");
+  assert(sameClock("America/New_York", "America/Detroit", friday));
+  assert(!sameClock("America/New_York", "Europe/Madrid", friday));
+  assert(sameClock("America/New_York", "Not/A_Zone", friday), "unknown zone");
   assert.equal(telephoneHref("(555) 123-4567"), "tel:5551234567");
   assert.match(
     directionsHref("Juniper", "12 Market St"),
@@ -538,21 +608,35 @@ Ramen 1,200`);
   );
   // Guest actions are counted with the menu and the QR code's placement.
   const session = crypto.randomUUID();
-  await call(`public/${slug}/events`, {
+  await guestCall(`public/${slug}/events`, {
     kind: "call_click",
     session,
     src: "table",
   });
-  await call(`public/${slug}/events`, {
+  await guestCall(`public/${slug}/events`, {
     kind: "menu_visit",
     session,
     src: "table",
   });
-  await call(
+  await guestCall(
     `public/${slug}/events`,
     { kind: "menu_visit", session, src: "billboard" },
     400,
   );
+  // The owner opening their own menu isn't counted as a guest.
+  const guestVisits = async () =>
+    (await one("SELECT count(*) AS n FROM events WHERE kind='menu_visit'")).n;
+  const visitsBefore = await guestVisits();
+  assert.equal(
+    (
+      await call(`public/${slug}/events`, {
+        kind: "menu_visit",
+        session: crypto.randomUUID(),
+      })
+    ).counted,
+    false,
+  );
+  assert.equal(await guestVisits(), visitsBefore, "owner visits aren't kept");
   const visitRow = await one(
     "SELECT details FROM events WHERE kind='menu_visit' ORDER BY created_at DESC LIMIT 1",
   );
@@ -562,19 +646,22 @@ Ramen 1,200`);
   });
 
   // Menu stats: last 7 days against the 7 before, by placement and menu.
-  await call(`public/${slug}/events`, {
+  await guestCall(`public/${slug}/events`, {
     kind: "dish_view",
     session,
     entityId: toast.id,
   });
   const other = crypto.randomUUID();
-  await call(`public/${slug}/events`, { kind: "menu_visit", session: other });
-  await call(`public/${slug}/events`, {
+  await guestCall(`public/${slug}/events`, {
+    kind: "menu_visit",
+    session: other,
+  });
+  await guestCall(`public/${slug}/events`, {
     kind: "dish_view",
     session: other,
-    entityId: toast.id,
+    entityIds: [toast.id],
   });
-  await call(`public/${slug}/events`, {
+  await guestCall(`public/${slug}/events`, {
     kind: "ordering_click",
     session: other,
   });
@@ -603,6 +690,94 @@ Ramen 1,200`);
   assert.deepEqual(
     stats.menus.map((m) => [m.id, m.views]),
     [[guest.menu.documentId, 2]],
+  );
+
+  // Dish views arrive a few at a time, each dish once per guest.
+  const dishViews = async () =>
+    (await one("SELECT count(*) AS n FROM events WHERE kind='dish_view'")).n;
+  const viewsBefore = await dishViews(),
+    scroller = crypto.randomUUID();
+  const batch = {
+    kind: "dish_view",
+    session: scroller,
+    entityIds: [toast.id, flaky.id, sized.id, toast.id],
+  };
+  await guestCall(`public/${slug}/events`, batch);
+  assert.equal(await dishViews(), viewsBefore + 3);
+  await guestCall(`public/${slug}/events`, batch);
+  assert.equal(await dishViews(), viewsBefore + 3, "a resend isn't counted");
+  await guestCall(
+    `public/${slug}/events`,
+    { ...batch, entityIds: [toast.id, crypto.randomUUID()] },
+    404,
+  );
+  await guestCall(
+    `public/${slug}/events`,
+    { kind: "dish_view", session: scroller },
+    404,
+  );
+  // A dining room scrolling on the restaurant's Wi-Fi (one address) still
+  // has its visits counted: dish views have their own allowance.
+  const venue = "198.51.100.7";
+  for (let n = 0; n < 301; n++)
+    await guestCall(
+      `public/${slug}/events`,
+      {
+        kind: "dish_view",
+        session: crypto.randomUUID(),
+        entityIds: [toast.id],
+      },
+      200,
+      venue,
+    );
+  await guestCall(
+    `public/${slug}/events`,
+    { kind: "menu_visit", session: crypto.randomUUID(), src: "table" },
+    200,
+    venue,
+  );
+  // One address has a cap across every restaurant's menus.
+  await run(
+    "INSERT INTO rate_limits (key,count,expires_at) VALUES (?,?,?)",
+    digest("public-event-ip:guests:203.0.113.5"),
+    1200,
+    Date.now() + 3600000,
+  );
+  await guestCall(
+    `public/${slug}/events`,
+    { kind: "menu_visit", session: crypto.randomUUID() },
+    429,
+    "203.0.113.5",
+  );
+  await guestCall(
+    `public/${slug}/events`,
+    { kind: "menu_visit", session: crypto.randomUUID() },
+    200,
+    "203.0.113.6",
+  );
+  // Housekeeping removes guest activity older than 90 days, and only that.
+  const old = Date.now() - 91 * 24 * 60 * 60 * 1000;
+  for (const [id, kind, at] of [
+    ["old-visit", "menu_visit", old],
+    ["old-view", "dish_view", old],
+    ["old-export", "export_complete", old],
+    ["recent-visit", "menu_visit", Date.now() - 80 * 24 * 60 * 60 * 1000],
+  ])
+    await run(
+      "INSERT INTO events (id,restaurant_id,kind,entity_id,details,created_at) VALUES (?,?,?,NULL,'{}',?)",
+      id,
+      restaurantState.id,
+      kind,
+      at,
+    );
+  await housekeeping();
+  assert.deepEqual(
+    (
+      await all(
+        "SELECT id FROM events WHERE id IN ('old-visit','old-view','old-export','recent-visit') ORDER BY id",
+      )
+    ).map((e) => e.id),
+    ["old-export", "recent-visit"],
   );
 
   // Quick update: sold out and prices go live without publishing other edits.

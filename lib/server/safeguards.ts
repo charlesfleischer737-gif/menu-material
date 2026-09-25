@@ -330,6 +330,11 @@ export async function housekeeping() {
     "DELETE FROM invites WHERE expires_at<? AND role='reset'",
     now() - 86400000,
   );
+  // Guest activity on menus is reported for recent weeks; keep 90 days.
+  await run(
+    "DELETE FROM events WHERE kind IN ('menu_visit','dish_view','ordering_click','call_click','directions_click','reserve_click') AND created_at<?",
+    now() - 90 * 86400000,
+  );
   const abandoned = await all(
     "SELECT * FROM storage_reservations WHERE created_at<? AND id NOT IN (SELECT id FROM assets WHERE deleted_at IS NULL) AND id NOT IN (SELECT id FROM menu_imports) AND id NOT IN (SELECT id FROM outputs WHERE status NOT IN ('completed','failed')) LIMIT 50",
     now() - 3600000,
