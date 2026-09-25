@@ -299,6 +299,53 @@ for (const [photoId, channel, feedShape] of [
   checks++;
 }
 PostKit.prototype.photo = drawPhoto;
+// Chinese, Japanese and Thai headlines break between words at a readable size,
+// measured here with every letter one em wide and marks on top of them, so
+// no font is needed.
+const measuring = {
+  font: "",
+  setTransform() {},
+  measureText(s) {
+    const px = Number(/([\d.]+)px/.exec(this.font)?.[1] || 10);
+    return {
+      width: s.replace(/\p{M}/gu, "").length * px,
+      actualBoundingBoxAscent: px * 0.8,
+      actualBoundingBoxDescent: px * 0.2,
+    };
+  },
+};
+const words = new Intl.Segmenter(undefined, { granularity: "word" });
+const kit = new PostKit({ getContext: () => measuring }, 1080, 1350, 1, {
+  top: 76,
+  bottom: 1274,
+  left: 72,
+  right: 1008,
+});
+for (const headline of [
+  "东坡肉配米饭和时令蔬菜还有自家制作的甜品",
+  "季節の野菜たっぷりの特製カレーライスと自家製デザート",
+  "ข้าวผัดกระเพราหมูสับไข่ดาวและต้มยำกุ้งน้ำข้น",
+]) {
+  const t = kit.layout(headline, 936, {
+    family: "Post Sans",
+    size: 150,
+    min: 66,
+    maxLines: 3,
+  });
+  const breaks = new Set([0]);
+  let at = 0;
+  for (const { segment } of words.segment(headline))
+    breaks.add((at += segment.length));
+  let end = 0;
+  for (const line of t.lines)
+    assert(
+      breaks.has((end += line.length)),
+      `${headline} breaks between words: ${t.lines.join(" / ")}`,
+    );
+  assert.equal(t.lines.join(""), headline);
+  assert(t.size > 66, `${headline} is set larger than the smallest size`);
+  checks++;
+}
 // A busy phone photo shown whole on a Story keeps its dish clear of the bars.
 for (const template of ["editorial", "afterdark"])
   for (const textMode of ["minimal", "photo"]) {

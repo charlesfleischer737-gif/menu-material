@@ -676,6 +676,23 @@ export function tooLong(value: string) {
     `“${quote}” is too long to read comfortably. Shorten it or move details to the caption.`,
   );
 }
+// Chinese, Japanese, Thai and their neighbours don't space their words, so a
+// run of them breaks between the words the platform's segmenter finds.
+const spaceless =
+  /[\p{Script=Han}\p{Script=Hiragana}\p{Script=Katakana}\p{Script=Thai}\p{Script=Lao}\p{Script=Khmer}\p{Script=Myanmar}]/u;
+const segmenter =
+  typeof Intl !== "undefined" && "Segmenter" in Intl
+    ? new Intl.Segmenter(undefined, { granularity: "word" })
+    : null;
+function parts(word: string) {
+  if (!segmenter || !spaceless.test(word)) return [word];
+  const out: string[] = [];
+  // Punctuation stays with the word before it.
+  for (const { segment, isWordLike } of segmenter.segment(word))
+    if (out.length && !isWordLike) out[out.length - 1] += segment;
+    else out.push(segment);
+  return out;
+}
 function wrap(
   text: string,
   width: number,
@@ -685,27 +702,28 @@ function wrap(
   const lines: string[] = [];
   for (const paragraph of text.split("\n")) {
     let line = "";
-    for (const word of paragraph.split(/\s+/).filter(Boolean)) {
-      const candidate = line ? line + " " + word : word;
-      if (measure(candidate) <= width) {
-        line = candidate;
-        continue;
-      }
-      if (line) lines.push(line);
-      line = "";
-      if (measure(word) <= width) {
-        line = word;
-        continue;
-      }
-      if (!breakWords) return null;
-      for (const char of word) {
-        if (line && measure(line + char) > width) {
-          lines.push(line);
-          line = "";
+    for (const word of paragraph.split(/\s+/).filter(Boolean))
+      for (const [n, part] of parts(word).entries()) {
+        const candidate = line ? line + (n ? "" : " ") + part : part;
+        if (measure(candidate) <= width) {
+          line = candidate;
+          continue;
         }
-        line += char;
+        if (line) lines.push(line);
+        line = "";
+        if (measure(part) <= width) {
+          line = part;
+          continue;
+        }
+        if (!breakWords) return null;
+        for (const char of part) {
+          if (line && measure(line + char) > width) {
+            lines.push(line);
+            line = "";
+          }
+          line += char;
+        }
       }
-    }
     if (line) lines.push(line);
   }
   return lines;
