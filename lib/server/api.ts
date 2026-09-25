@@ -642,7 +642,11 @@ async function downloadAsset(
       : obj.httpMetadata?.contentType || a.mime;
   const h = new Headers({
     "Content-Type": type,
-    "Cache-Control": publicImage ? "no-store" : "private, no-store",
+    // An asset ID's image never changes, and each request is still checked
+    // against the published menu; guests need not download it every visit.
+    "Cache-Control": publicImage
+      ? "public, max-age=300, stale-while-revalidate=86400"
+      : "private, no-store",
     "X-Content-Type-Options": "nosniff",
   });
   // Named after what is sent: the working copy of any upload is a JPEG.

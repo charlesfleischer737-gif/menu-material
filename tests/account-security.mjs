@@ -799,6 +799,18 @@ try {
   });
   assert.equal(logoFile.res.headers.get("content-type"), "image/png");
   assert((await bytesOf(logoFile)).equals(logoPng));
+  // 17. Guests' browsers may keep published images briefly; private
+  // workspace images are never cached.
+  assert.equal(
+    logoFile.res.headers.get("cache-control"),
+    "public, max-age=300, stale-while-revalidate=86400",
+  );
+  assert.equal(
+    (await expect(`assets/${logo}`, 200, freeOpts)).res.headers.get(
+      "cache-control",
+    ),
+    "private, no-store",
+  );
   // A JPEG logo is still served from its working copy.
   const jpegLogo = (
     await expect("assets", 201, {
@@ -810,7 +822,7 @@ try {
   assert.equal(logoFile.res.headers.get("content-type"), "image/jpeg");
 
   console.log(
-    `PASS: ${checks} account security checks: per-network limits on the IPv6 /64 with no site-wide lockout, a per-account sign-in slowdown, versioned password hashes, sliding sessions, revocable reset and setup links, the Pro waitlist, once-only free images, ID validation, lenient saved looks, staff link scope and limits, WebP and AVIF uploads, transparent logos;`,
+    `PASS: ${checks} account security checks: per-network limits on the IPv6 /64 with no site-wide lockout, a per-account sign-in slowdown, versioned password hashes, sliding sessions, revocable reset and setup links, the Pro waitlist, once-only free images, ID validation, lenient saved looks, staff link scope and limits, WebP and AVIF uploads, transparent logos, cacheable public images;`,
   );
 } finally {
   rmSync(root, { recursive: true, force: true });
