@@ -17,7 +17,8 @@ const { one, all, run, id, digest } = await import("../lib/server/core.ts");
 const { reserveAi, settledCents } = await import("../lib/server/safeguards.ts");
 const { tick, provider, enqueue, jobStatus } =
   await import("../lib/server/generation.ts");
-const { flushMonitoring } = await import("../lib/server/monitoring.ts");
+const { flushMonitoring, reportError } =
+  await import("../lib/server/monitoring.ts");
 const { env } = await import("../lib/local-runtime.ts");
 
 const image = readFileSync("public/pasta.jpg");
@@ -40,6 +41,13 @@ const finished = () =>
     data: [{ b64_json: image.toString("base64") }],
     usage: { input_tokens: 500, output_tokens: 1000 },
   });
+const refused =
+  (status, code, headers = {}) =>
+  () =>
+    Response.json(
+      { error: { message: `Fixture ${code}`, type: code, code } },
+      { status, headers },
+    );
 globalThis.fetch = async (url, init = {}) => {
   const target = String(url);
   if (target.startsWith("https://hooks.example.test/")) {
@@ -162,6 +170,13 @@ const newJob = (fixture, extra = {}) =>
 const output = (jobId) => one("SELECT * FROM outputs WHERE job_id=?", jobId);
 const jobState = async (jobId) =>
   (await one("SELECT status FROM jobs WHERE id=?", jobId)).status;
+const counted = async (rid) =>
+  (
+    await one(
+      "SELECT COUNT(*) AS n FROM outputs WHERE restaurant_id=? AND status!='failed'",
+      rid,
+    )
+  ).n;
 async function siteBudget(cents) {
   await run(
     "INSERT INTO app_settings (key,value) VALUES ('ai-controls',?) ON CONFLICT(key) DO UPDATE SET value=excluded.value",
@@ -369,6 +384,101 @@ try {
   await run("DELETE FROM ai_spend");
   await siteBudget(10000);
 
+  // 5. Rate limits and overloads are sent again after a pause, a few times at
+  // most and counted once; other refusals explain themselves.
+  const busy = await restaurant("busy-kitchen");
+  const limited = await newJob(busy);
+  sent = imageCalls.length;
+  imagePlan.push(refused(429, "rate_limit_exceeded", { "retry-after": "20" }));
+  await tick(busy.rid);
+  out = await output(limited.id);
+  assert.equal(out.status, "queued");
+  assert.equal(out.attempts, 1);
+  assert(out.next_poll_at >= Date.now() + 19000, "honors Retry-After");
+  assert.match(out.error, /busy, so this image will start again automatically/);
+  assert.equal(await jobState(limited.id), "queued");
+  assert.equal(
+    (await one("SELECT status FROM ai_spend WHERE id=?", `${out.id}:1`)).status,
+    "rejected",
+    "a refused call does not count against the budget",
+  );
+  await tick(busy.rid);
+  assert.equal(imageCalls.length, sent + 1, "not before the wait");
+  offset += 21000;
+  await tick(busy.rid);
+  out = await output(limited.id);
+  assert.deepEqual(
+    [out.status, out.attempts, out.error],
+    ["completed", 2, null],
+  );
+  assert.equal(imageCalls.length, sent + 2);
+  assert.equal(await counted(busy.rid), 1, "the image counts once");
+  checks++;
+  const overloaded = await newJob(busy, { revision: "overloaded" });
+  sent = imageCalls.length;
+  for (let n = 0; n < 4; n++) imagePlan.push(refused(503, "server_overloaded"));
+  const delays = [];
+  for (let n = 0; n < 4; n++) {
+    await tick(busy.rid);
+    out = await output(overloaded.id);
+    if (out.status === "queued") delays.push(out.next_poll_at - Date.now());
+    offset += 25000;
+  }
+  assert.equal(imageCalls.length, sent + 4, "four sends at most");
+  assert(
+    delays.length === 3 &&
+      delays.every((ms, n) => Math.abs(ms - 5000 * 2 ** n) < 1000),
+    `doubling pauses: ${delays}`,
+  );
+  assert.equal(out.status, "failed");
+  assert.match(
+    out.error,
+    /busy\. This image was not counted; please try again in a few minutes/,
+  );
+  assert.equal(await counted(busy.rid), 1);
+  checks++;
+  const quota = await newJob(busy, { revision: "quota" });
+  imagePlan.push(refused(429, "insufficient_quota"));
+  await tick(busy.rid);
+  await flushMonitoring();
+  out = await output(quota.id);
+  assert.equal(out.status, "failed");
+  assert.match(out.error, /unavailable on our side/);
+  assert(
+    posts.some(
+      (post) =>
+        post.channel === "errors" && /insufficient_quota/.test(post.text),
+    ),
+    "the operator is told the provider account needs attention",
+  );
+  const moderated = await newJob(busy, { revision: "moderated" });
+  imagePlan.push(refused(400, "moderation_blocked"));
+  await tick(busy.rid);
+  out = await output(moderated.id);
+  assert.equal(out.status, "failed");
+  assert.match(out.error, /safety check declined this photo or its wording/);
+  assert.match(out.error, /Try a different photo, or reword the dish details/);
+  checks++;
+  // Provider refusals are not server errors.
+  const alerts = () =>
+    posts.filter((post) => /server errors in 5 minutes/.test(post.text)).length;
+  const burstsBefore = alerts();
+  for (let n = 0; n < 12; n++)
+    await reportError(Error(`Provider refused ${"x".repeat(n)}`), {
+      kind: "job",
+      status: 400,
+    });
+  await flushMonitoring();
+  assert.equal(alerts(), burstsBefore);
+  for (let n = 0; n < 12; n++)
+    await reportError(Error(`Server failed ${"x".repeat(n)}`), {
+      kind: "job",
+      status: 500,
+    });
+  await flushMonitoring();
+  assert.equal(alerts(), burstsBefore + 1);
+  checks++;
+
   // 13. While the daily budget is spent, queued images are held without being
   // claimed or sent, say why honestly, and start by themselves later.
   await run("DELETE FROM ai_spend");
@@ -402,7 +512,7 @@ try {
   checks++;
 
   console.log(
-    `PASS: ${checks} AI budget and job checks: settled spend, free daily cap, paid-plan image budget and budget holds. Provider calls and webhooks are fixtures.`,
+    `PASS: ${checks} AI budget and job checks: settled spend, free daily cap, paid-plan image budget, provider retries and refusals and budget holds. Provider calls and webhooks are fixtures.`,
   );
 } finally {
   console.error = originalError;

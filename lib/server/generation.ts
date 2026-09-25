@@ -545,30 +545,74 @@ export async function provider(
     throw error;
   }
   if (!res.ok) {
+    // The provider's stated reason, such as an unsupported size, for error reports.
+    const reason: Row = await res
+      .json()
+      .then((data) => (data as Row)?.error || {})
+      .catch(() => ({}));
+    const providerMessage = String(reason.message || "");
+    const code = String(reason.code || reason.type || "");
+    const quota = code === "insufficient_quota";
+    // A rate limit or an overloaded service refuses the call before doing any
+    // work, so it can be sent again later without paying twice.
+    const busy = !quota && (res.status === 429 || res.status === 503);
     if (spendKey)
       await finishAi(
         spendKey,
-        res.status >= 400 && res.status < 500 ? "rejected" : "uncertain",
+        busy || (res.status >= 400 && res.status < 500)
+          ? "rejected"
+          : "uncertain",
       );
     const error = new AppError(
       res.status,
-      res.status === 429
-        ? "The image service is busy. Please retry shortly."
-        : "The image service could not complete this request.",
+      busy
+        ? "The AI service is busy. Please try again shortly."
+        : quota
+          ? "AI creation is unavailable on our side right now. Your work is saved; please try again later."
+          : "The image service could not complete this request.",
     );
-    (error as any).providerRejected = res.status >= 400 && res.status < 500;
-    // The provider's stated reason, such as an unsupported size, for error reports.
     Object.assign(error, {
-      providerMessage: await res
-        .json()
-        .then((data) => String((data as Row)?.error?.message || ""))
-        .catch(() => ""),
+      providerRejected: res.status >= 400 && res.status < 500,
+      providerRetryable: busy,
+      providerCode:
+        ["moderation_blocked", "content_policy_violation"].includes(code) ||
+        /safety system/i.test(providerMessage)
+          ? "moderation_blocked"
+          : code,
+      retryAfterMs: busy ? retryAfter(res.headers) : undefined,
+      providerMessage,
     });
+    // The provider account is out of credit: every AI feature fails until an
+    // operator tops it up, whoever's request found out.
+    if (quota)
+      await reportError(
+        Error(
+          "OpenAI refused a request with insufficient_quota: the API account is out of credit or over its spending limit. AI features fail until it is topped up.",
+        ),
+        {
+          kind: charge?.kind === "image" ? "job" : "server",
+          route: `provider/${path}`,
+          status: res.status,
+          restaurantId: charge?.restaurantId,
+          detail: { providerError: providerMessage },
+        },
+      );
     throw error;
   }
   const result = (await res.json()) as Row;
   if (spendKey) await finishAi(spendKey, "submitted", result.usage);
   return result;
+}
+// How long the provider asks to wait before sending again, in milliseconds.
+function retryAfter(headers: Headers) {
+  const ms = Number(headers.get("retry-after-ms"));
+  if (ms > 0) return ms;
+  const value = headers.get("retry-after");
+  if (!value) return undefined;
+  const seconds = Number(value);
+  if (Number.isFinite(seconds)) return Math.max(0, seconds * 1000);
+  const date = Date.parse(value);
+  return Number.isFinite(date) ? Math.max(0, date - now()) : undefined;
 }
 // Image calls hold their connection for the whole render. Complex images can
 // take about two minutes, so this leaves headroom before giving up.
@@ -834,12 +878,36 @@ async function settle(o: Row, res: Row) {
     );
   }
 }
-// Queued images waiting on the daily budget or a pause show why, and start by
-// themselves.
+// Queued images waiting on the daily budget, a pause or a busy provider show
+// why, and start by themselves.
 const BUDGET_HOLD =
   "Waiting for the daily AI budget to reset at 00:00 UTC. It will start automatically; cancel it to keep your image.";
 const PAUSE_HOLD =
   "AI creation is paused. It will start automatically when it resumes; cancel it to keep your image.";
+const BUSY_RETRY =
+  "The image service is busy, so this image will start again automatically shortly.";
+// A rate limit or an overloaded service did no work, so the image is sent
+// again after the wait the service asks for (at least 5 s, doubling), up to
+// this many sends in all.
+const IMAGE_SENDS = 4;
+const retryDelay = (retryAfterMs: number | undefined, sends: number) =>
+  Math.min(
+    300000,
+    Math.max(retryAfterMs || 0, 5000 * 2 ** Math.max(0, sends - 1)),
+  );
+// What the owner reads when the provider refuses an image for good.
+function refusal(error: {
+  providerCode?: string;
+  providerRetryable?: boolean;
+}) {
+  if (error.providerCode === "insufficient_quota")
+    return "Image creation is unavailable on our side right now. This image was not counted; please try again later.";
+  if (error.providerCode === "moderation_blocked")
+    return "The image service's safety check declined this photo or its wording. This image was not counted. Try a different photo, or reword the dish details or requested change, then try again.";
+  if (error.providerRetryable)
+    return "The image service is busy. This image was not counted; please try again in a few minutes.";
+  return "Image creation failed. This image was not counted.";
+}
 export async function tick(restaurantId?: string, { startNew = true } = {}) {
   if (!config("OPENAI_API_KEY")) return;
   const controls = await aiControls();
@@ -1026,10 +1094,16 @@ export async function tick(restaurantId?: string, { startNew = true } = {}) {
       }
     } catch (e) {
       const current = await one("SELECT * FROM outputs WHERE id=?", o.id);
+      const provided = e as {
+        providerRejected?: boolean;
+        providerRetryable?: boolean;
+        providerCode?: string;
+        retryAfterMs?: number;
+      };
       if (
         e instanceof AppError &&
         [423, 429].includes(e.status) &&
-        !(e as any).providerRejected &&
+        !provided.providerRejected &&
         !current?.response_id
       ) {
         // Held by a pause or the daily budget before anything was sent.
@@ -1042,8 +1116,25 @@ export async function tick(restaurantId?: string, { startNew = true } = {}) {
         );
         return;
       }
+      if (
+        provided.providerRetryable &&
+        !current?.response_id &&
+        Number(current?.attempts) < IMAGE_SENDS
+      ) {
+        // Refused before any work was done, so it is sent again. Its image
+        // is still counted once.
+        await run(
+          "UPDATE outputs SET status='queued',lease_until=0,next_poll_at=?,error=?,submitted_at=NULL WHERE id=? AND lease_token=?",
+          now() + retryDelay(provided.retryAfterMs, Number(current?.attempts)),
+          BUSY_RETRY,
+          o.id,
+          lease,
+        );
+        return;
+      }
       const definitive =
-        ((e as any).providerRejected && !current?.response_id) ||
+        ((provided.providerRejected || provided.providerRetryable) &&
+          !current?.response_id) ||
         (e instanceof AppError && e.status === 404 && !!current?.response_id);
       const preSubmit = current?.status === "queued";
       if (definitive || preSubmit)
@@ -1051,7 +1142,7 @@ export async function tick(restaurantId?: string, { startNew = true } = {}) {
           "UPDATE outputs SET status='failed',error=?,lease_until=0 WHERE id=? AND lease_token=?",
           preSubmit && e instanceof UnavailableStudioReference
             ? `${e.message} The image has been returned to your account.`
-            : "Image creation failed. This image was not counted.",
+            : refusal(provided),
           o.id,
           lease,
         );
@@ -1071,18 +1162,20 @@ export async function tick(restaurantId?: string, { startNew = true } = {}) {
           o.id,
           lease,
         );
-      await reportError(e, {
-        kind: "job",
-        route: o.response_id ? "job/retrieval" : "job/dispatch",
-        status: e instanceof AppError ? e.status : undefined,
-        restaurantId: o.restaurant_id,
-        detail: {
-          jobId: o.job_id,
-          outputId: o.id,
-          providerError: (e as { providerMessage?: string } | null)
-            ?.providerMessage,
-        },
-      });
+      // An exhausted provider account was already reported to the operator.
+      if (provided.providerCode !== "insufficient_quota")
+        await reportError(e, {
+          kind: "job",
+          route: o.response_id ? "job/retrieval" : "job/dispatch",
+          status: e instanceof AppError ? e.status : undefined,
+          restaurantId: o.restaurant_id,
+          detail: {
+            jobId: o.job_id,
+            outputId: o.id,
+            providerError: (e as { providerMessage?: string } | null)
+              ?.providerMessage,
+          },
+        });
     } finally {
       await updateJob(o.job_id);
     }
