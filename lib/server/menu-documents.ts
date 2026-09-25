@@ -18,10 +18,11 @@ import {
 import {
   menuDocumentSchema,
   upgradeMenuDocument,
-  visibleMenuSections,
   type MenuDocument,
 } from "../menu-document";
 import { publicBrandStyle } from "../restaurant-look";
+import { normalizeDietary } from "../dietary";
+import { isMenuPlacement, menuPlacementLabels } from "../menu-placements";
 import {
   applyDishUpdate,
   blockingChecks,
@@ -147,7 +148,11 @@ async function publication(r: Row, documentId: string, draft: MenuDocument) {
     name: draft.title,
     importSourceId: null,
     importSourceText: "",
-    sections: visibleMenuSections(draft),
+    // Sold-out dishes stay in the live copy so a quick update can bring them
+    // back; guest menus hide them when the menu leaves unavailable dishes out.
+    sections: draft.sections
+      .map((s) => ({ ...s, items: s.items.filter((i) => i.visible) }))
+      .filter((s) => s.items.length),
   };
   await validateReferences(r.id, publicDraft, true);
   let logoId: string | null = null;
@@ -280,8 +285,397 @@ export async function pruneDocumentAsset(rid: string, aid: string) {
   );
 }
 
+const libraryEntrySchema = z.object({
+  id: z.string().min(1).max(100),
+  name: z.string().trim().min(1).max(100),
+  description: z.string().max(2000).default(""),
+  category: z.string().trim().min(1).max(100),
+  price: z.number().int().min(0).max(100000000).default(0),
+  available: z.boolean().default(true),
+  dietary: z.array(z.string().trim().max(40)).max(16).default([]),
+});
+const matchKey = (value: string) =>
+  value
+    .normalize("NFKD")
+    .replace(/[̀-ͯ]/g, "")
+    .toLowerCase()
+    .replace(/\s+/g, " ")
+    .trim();
+/**
+ * Put a menu's dishes in My Dishes so they can have photos and follow dish
+ * edits: match a library dish by name, or create one. The draft stays the
+ * editor's to update (it may hold newer edits); the live copy gains the links
+ * so later My Dishes edits reach guests too.
+ */
+async function linkEntriesToLibrary(r: Row, row: Row, input: unknown) {
+  const b = z
+    .object({ entries: z.array(libraryEntrySchema).min(1).max(200) })
+    .parse(input);
+  await limit("menu-library:" + r.id, 60, 3600);
+  const dishes = await all(
+    "SELECT id,name,category,preferred_photo_id FROM dishes WHERE restaurant_id=? AND archived_at IS NULL AND sample=0 ORDER BY created_at",
+    r.id,
+  );
+  const photos = await all(
+    "SELECT id,dish_id FROM assets WHERE restaurant_id=? AND dish_id IS NOT NULL AND approved_at IS NOT NULL AND deleted_at IS NULL ORDER BY created_at DESC",
+    r.id,
+  );
+  const photoFor = (dish: Row) =>
+    (
+      photos.find((a) => a.id === dish.preferred_photo_id) ||
+      photos.find((a) => a.dish_id === dish.id)
+    )?.id || null;
+  const links: {
+    entryId: string;
+    dishId: string;
+    photoId: string | null;
+    created: boolean;
+  }[] = [];
+  const inserts = [],
+    created = new Map<string, string>(),
+    t = now();
+  for (const entry of b.entries) {
+    const key = matchKey(entry.name);
+    const same = dishes.filter((d) => matchKey(d.name) === key);
+    const match =
+      same.find((d) => matchKey(d.category) === matchKey(entry.category)) ||
+      same[0];
+    if (match) {
+      links.push({
+        entryId: entry.id,
+        dishId: match.id,
+        photoId: photoFor(match),
+        created: false,
+      });
+      continue;
+    }
+    if (created.has(key)) {
+      links.push({
+        entryId: entry.id,
+        dishId: created.get(key)!,
+        photoId: null,
+        created: false,
+      });
+      continue;
+    }
+    // A retried request finds the dish it already created for this entry.
+    const reusable = z.string().uuid().safeParse(entry.id).success;
+    const retry = reusable
+      ? await one("SELECT id,restaurant_id FROM dishes WHERE id=?", entry.id)
+      : null;
+    if (retry && retry.restaurant_id === r.id) {
+      links.push({
+        entryId: entry.id,
+        dishId: retry.id,
+        photoId: null,
+        created: false,
+      });
+      continue;
+    }
+    const did = retry || !reusable ? id() : entry.id;
+    created.set(key, did);
+    inserts.push(
+      db()
+        .prepare(
+          "INSERT INTO dishes (id,restaurant_id,name,description,portion,plating,setting,price,available,confirmed_at,created_at,category,preserve,sample,dietary) VALUES (?,?,?,?,'','','Natural daylight',?,?,?,?,?,'',0,?) ON CONFLICT(id) DO NOTHING",
+        )
+        .bind(
+          did,
+          r.id,
+          entry.name,
+          entry.description,
+          entry.price,
+          entry.available ? 1 : 0,
+          t,
+          t,
+          entry.category,
+          JSON.stringify(normalizeDietary(entry.dietary)),
+        ),
+    );
+    links.push({
+      entryId: entry.id,
+      dishId: did,
+      photoId: null,
+      created: true,
+    });
+  }
+  const statements = [...inserts];
+  if (row.published) {
+    const live = JSON.parse(row.published),
+      linked = new Map(links.map((l) => [l.entryId, l.dishId]));
+    let changed = false;
+    for (const section of live.sections || [])
+      for (const item of section.items || [])
+        if (!item.dishId && linked.has(item.id)) {
+          item.dishId = linked.get(item.id);
+          changed = true;
+        }
+    if (changed) {
+      const serialized = JSON.stringify(live);
+      statements.push(
+        db()
+          .prepare(
+            "UPDATE menu_documents SET published=? WHERE id=? AND restaurant_id=? AND published=?",
+          )
+          .bind(serialized, row.id, r.id, row.published),
+        // The main menu's live copy mirrors its document.
+        db()
+          .prepare(
+            "UPDATE restaurants SET published=? WHERE id=? AND published=?",
+          )
+          .bind(serialized, r.id, row.published),
+      );
+    }
+  }
+  if (statements.length) await db().batch(statements);
+  if (inserts.length)
+    await event(r.id, "menu_dishes_added_to_library", row.id, {
+      created: inserts.length,
+    });
+  return { links };
+}
+
+const guestActions = [
+  "menu_visit",
+  "ordering_click",
+  "reserve_click",
+  "call_click",
+  "directions_click",
+];
+/**
+ * What guests did with the restaurant's published menus in the last 7 days,
+ * against the 7 days before: visits (once per guest session and menu), taps
+ * on order/reserve/call/directions, where they found the menu, and the dish
+ * most guests scrolled to.
+ */
+async function menuStats(r: Row) {
+  const day = 24 * 60 * 60 * 1000,
+    t = now(),
+    since = t - 7 * day;
+  const rows = await all(
+    `SELECT kind,json_extract(details,'$.src') AS src,json_extract(details,'$.menu') AS menu,CASE WHEN created_at>=? THEN 1 ELSE 0 END AS current,count(*) AS n FROM events WHERE restaurant_id=? AND kind IN (${guestActions.map(() => "?").join(",")}) AND created_at>=? GROUP BY kind,src,menu,current`,
+    since,
+    r.id,
+    ...guestActions,
+    t - 14 * day,
+  );
+  const total = (kind: string, current = 1) =>
+    rows
+      .filter((x) => x.kind === kind && Number(x.current) === current)
+      .reduce((n, x) => n + Number(x.n), 0);
+  const documents = await all(
+    "SELECT id,published FROM menu_documents WHERE restaurant_id=? AND archived_at IS NULL AND published IS NOT NULL",
+    r.id,
+  );
+  const published = documents.map((d) => ({
+    id: d.id as string,
+    menu: JSON.parse(d.published),
+  }));
+  const tally = (key: "src" | "menu") => {
+    const counts = new Map<string, number>();
+    for (const x of rows)
+      if (x.kind === "menu_visit" && Number(x.current) === 1)
+        counts.set(x[key] || "", (counts.get(x[key] || "") || 0) + Number(x.n));
+    // Most visits first; untagged visits ("Other links") last among ties.
+    return [...counts].sort(
+      (a, b) =>
+        b[1] - a[1] ||
+        Number(!a[0]) - Number(!b[0]) ||
+        a[0].localeCompare(b[0]),
+    );
+  };
+  const top = await one(
+    "SELECT entity_id,count(*) AS n FROM events WHERE restaurant_id=? AND kind='dish_view' AND created_at>=? AND entity_id IS NOT NULL GROUP BY entity_id ORDER BY n DESC LIMIT 1",
+    r.id,
+    since,
+  );
+  const seen =
+    top &&
+    published
+      .flatMap((d) => (d.menu.sections || []).flatMap((s: Row) => s.items))
+      .find((i: Row) => i.id === top.entity_id || i.dishId === top.entity_id);
+  return {
+    published: published.length > 0,
+    views: total("menu_visit"),
+    previousViews: total("menu_visit", 0),
+    orders: total("ordering_click"),
+    reservations: total("reserve_click"),
+    calls: total("call_click"),
+    directions: total("directions_click"),
+    placements: tally("src").map(([id, views]) => ({
+      id: id || "other",
+      label: isMenuPlacement(id) ? menuPlacementLabels[id] : "Other links",
+      views,
+    })),
+    menus: tally("menu")
+      .filter(([id]) => published.some((d) => d.id === id))
+      .map(([id, views]) => {
+        const menu = published.find((d) => d.id === id)!.menu;
+        return { id, name: menu.title || menu.name || "Menu", views };
+      }),
+    mostSeen: seen
+      ? { name: seen.name as string, guests: Number(top.n) }
+      : null,
+  };
+}
+
+const quickUpdateSchema = z.object({
+  revision: z.number().int().min(1),
+  changes: z
+    .array(
+      z.object({
+        entryId: z.string().min(1).max(100),
+        available: z.boolean().optional(),
+        price: z
+          .number()
+          .int()
+          .min(1, "Enter a price above 0.")
+          .max(100000000)
+          .optional(),
+        variants: z
+          .array(
+            z.object({
+              id: z.string().max(100),
+              price: z
+                .number()
+                .int()
+                .min(1, "Enter a price above 0.")
+                .max(100000000),
+            }),
+          )
+          .max(12)
+          .optional(),
+      }),
+    )
+    .min(1)
+    .max(200),
+});
+/**
+ * Sold out, back on, or a new price: the change goes to guests right away,
+ * and into the draft, without publishing the menu's other draft edits. A dish
+ * from My Dishes follows too, and so do other menus that showed its old
+ * details (the same rule as a My Dishes edit).
+ */
+async function quickUpdate(r: Row, row: Row, input: unknown) {
+  const b = quickUpdateSchema.parse(input);
+  assert(
+    b.revision === row.revision,
+    409,
+    "This menu changed in another window. Reload it before continuing.",
+  );
+  assert(
+    row.published,
+    400,
+    "Publish this menu first. Quick updates change what guests see.",
+  );
+  const draft = menuDocumentSchema.parse(JSON.parse(row.draft)),
+    live = JSON.parse(row.published);
+  const entries = (menu: Row): Row[] =>
+    (menu.sections || []).flatMap((s: Row) => s.items || []);
+  const dishEdits = new Map<
+    string,
+    { before: { available: boolean; price: number | null }; change: Row }
+  >();
+  for (const change of b.changes) {
+    const shown = entries(live).find((i) => i.id === change.entryId);
+    assert(
+      shown,
+      404,
+      "That dish isn’t on your live menu. Publish your menu to include it.",
+    );
+    const before = {
+      available: shown.available !== false,
+      price: shown.price ?? null,
+    };
+    for (const item of [shown, entries(draft).find((i) => i.id === shown.id)]) {
+      if (!item) continue;
+      if (change.available !== undefined) item.available = change.available;
+      if (
+        change.price !== undefined &&
+        (item.priceMode ?? "single") === "single"
+      )
+        item.price = change.price;
+      if (change.variants && item.priceMode === "variants")
+        item.variants = item.variants.map((v: Row) => ({
+          ...v,
+          price: change.variants!.find((n) => n.id === v.id)?.price ?? v.price,
+        }));
+    }
+    if (shown.dishId) dishEdits.set(shown.dishId, { before, change });
+  }
+  const draftJson = JSON.stringify(menuDocumentSchema.parse(draft)),
+    liveJson = JSON.stringify(live);
+  const saved = await db().batch([
+    db()
+      .prepare(
+        // A live copy that matched the draft still does.
+        "UPDATE menu_documents SET draft=?,published=?,revision=revision+1,published_revision=CASE WHEN published_revision=revision THEN revision+1 ELSE published_revision END,updated_at=? WHERE id=? AND restaurant_id=? AND revision=? AND published=? AND archived_at IS NULL RETURNING id",
+      )
+      .bind(
+        draftJson,
+        liveJson,
+        now(),
+        row.id,
+        r.id,
+        b.revision,
+        row.published,
+      ),
+    // The main menu's live copy mirrors its document.
+    db()
+      .prepare(
+        "UPDATE restaurants SET published=? WHERE id=? AND published=? AND EXISTS(SELECT 1 FROM menu_documents WHERE id=? AND published=?)",
+      )
+      .bind(liveJson, r.id, row.published, row.id, liveJson),
+  ]);
+  assert(
+    saved[0].results.length,
+    409,
+    "This menu changed in another window. Reload it before continuing.",
+  );
+  const others: { id: string; name: string; live: boolean }[] = [];
+  for (const [dishId, { before, change }] of dishEdits) {
+    const dish = await one(
+      "SELECT * FROM dishes WHERE id=? AND restaurant_id=?",
+      dishId,
+      r.id,
+    );
+    if (!dish) continue;
+    const available =
+      change.available !== undefined && !!dish.available === before.available
+        ? change.available
+        : !!dish.available;
+    const price =
+      change.price !== undefined && dish.price === before.price
+        ? change.price
+        : dish.price;
+    if (available === !!dish.available && price === dish.price) continue;
+    const updated = await one(
+      "UPDATE dishes SET available=?,price=?,updated_at=?,revision=revision+1 WHERE id=? AND restaurant_id=? AND revision=? RETURNING *",
+      available ? 1 : 0,
+      price,
+      now(),
+      dishId,
+      r.id,
+      dish.revision,
+    );
+    if (!updated) continue;
+    for (const menu of await syncDishToMenus(r.id, dish, updated))
+      if (menu.id !== row.id && !others.some((m) => m.id === menu.id))
+        others.push(menu);
+  }
+  await event(r.id, "menu_quick_update", row.id, {
+    changes: b.changes.length,
+  });
+  return {
+    ...documentRow(await ownedDocument(r.id, row.id)),
+    menus: others,
+  };
+}
+
 export async function menuDocumentsRoute(req: Request, p: string[], r: Row) {
   if (p[0] !== "menus") return null;
+  if (req.method === "GET" && p[1] === "stats")
+    return response(await menuStats(r));
   if (req.method === "GET" && p[1] === "archived")
     return response({
       menus: (
@@ -432,6 +826,8 @@ export async function menuDocumentsRoute(req: Request, p: string[], r: Row) {
     return response(documentRow(await ownedDocument(r.id, b.id)));
   }
   const row = await ownedDocument(r.id, p[1]);
+  if (req.method === "POST" && p[2] === "library")
+    return response(await linkEntriesToLibrary(r, row, await body(req)));
   if (req.method === "POST" && p[2] === "shorten") {
     const b = z
       .object({
@@ -502,6 +898,8 @@ export async function menuDocumentsRoute(req: Request, p: string[], r: Row) {
       original: b.description,
     });
   }
+  if (req.method === "POST" && p[2] === "live")
+    return response(await quickUpdate(r, row, await body(req)));
   if (req.method === "GET" && !p[2]) return response(documentRow(row));
   if (req.method === "GET" && p[2] === "history")
     return response({
@@ -699,7 +1097,8 @@ export async function menuDocumentsRoute(req: Request, p: string[], r: Row) {
 }
 
 /**
- * Carry a My Dishes edit (name, description, price, availability) into every
+ * Carry a My Dishes edit (name, description, price, availability, dietary
+ * tags) into every
  * menu that still shows the dish's previous details, including the live menu.
  * Menus where the owner tailored that detail keep their own value.
  */
@@ -710,7 +1109,8 @@ export async function syncDishToMenus(rid: string, before: Row, after: Row) {
     previous.name === current.name &&
     previous.description === current.description &&
     previous.price === current.price &&
-    previous.available === current.available
+    previous.available === current.available &&
+    JSON.stringify(previous.dietary) === JSON.stringify(current.dietary)
   )
     return [];
   const updated: { id: string; name: string; live: boolean }[] = [];

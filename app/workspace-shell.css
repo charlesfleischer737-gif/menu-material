@@ -113,8 +113,11 @@
 }
 
 /* Credits and account */
+/* A long restaurant name truncates instead of widening the column past the
+   sidebar, which pushed the plan chip and the account chevron out of view. */
 .cx-sidebar-bottom {
   display: grid;
+  grid-template-columns: minmax(0, 1fr);
   gap: 4px;
   margin-top: auto;
   padding-top: 20px;

@@ -24,6 +24,7 @@ import {
   restaurantNameMessage,
   slugify,
 } from "../restaurant-identity";
+import { normalizeDietary } from "../dietary";
 import {
   menuDocumentsRoute,
   assetInPublishedDocuments,
@@ -124,6 +125,13 @@ const dishSchema = z.object({
   price: z.number().min(0).max(1000000).default(0),
   available: z.boolean().default(true),
   confirmed: z.boolean().default(false),
+  // Owner-set tags; saves that leave them out keep the dish's current tags.
+  dietary: z
+    .preprocess(
+      (value) => (value == null ? undefined : normalizeDietary(value)),
+      z.array(z.string().max(40)).max(16),
+    )
+    .optional(),
   // Dish rows store 0/1; only honored when a dish is created.
   sample: z
     .union([z.boolean(), z.number()])
@@ -795,10 +803,12 @@ export async function handle(req: Request) {
         aiConnected: !!config("OPENAI_API_KEY"),
         local: config("LOCAL_DEVELOPMENT") === "true",
         workerHealthy: (await workerStatus()).healthy,
-        dishes: await all(
-          "SELECT * FROM dishes WHERE restaurant_id=? ORDER BY created_at DESC",
-          r.id,
-        ),
+        dishes: (
+          await all(
+            "SELECT * FROM dishes WHERE restaurant_id=? ORDER BY created_at DESC",
+            r.id,
+          )
+        ).map((d) => ({ ...d, dietary: normalizeDietary(d.dietary) })),
         assets: await all(
           "SELECT id,dish_id,kind,mime,name,approved_at,needs_correction,created_at FROM assets WHERE restaurant_id=? AND deleted_at IS NULL ORDER BY created_at DESC",
           r.id,
@@ -1124,6 +1134,29 @@ export async function handle(req: Request) {
                 ),
             ])
             .optional(),
+          reservationUrl: z
+            .union([
+              z.literal(""),
+              z
+                .string()
+                .url()
+                .max(1500)
+                .refine(
+                  (v) => /^https?:\/\//.test(v),
+                  "Use an http or https reservation link.",
+                ),
+            ])
+            .optional(),
+          address: z.string().trim().max(300).optional(),
+          phone: z
+            .string()
+            .trim()
+            .max(40)
+            .regex(
+              /^[+()\d\s.-]*$/,
+              "Use digits, spaces, +, - or parentheses for the phone number.",
+            )
+            .optional(),
           hours: z
             .array(
               z.object({
@@ -1148,7 +1181,7 @@ export async function handle(req: Request) {
           "Set each day once.",
         );
       await run(
-        "UPDATE restaurants SET name=?,cuisine=?,brand=?,currency=?,style=?,timezone=?,ordering_url=?,hours=? WHERE id=?",
+        "UPDATE restaurants SET name=?,cuisine=?,brand=?,currency=?,style=?,timezone=?,ordering_url=?,reservation_url=?,address=?,phone=?,hours=? WHERE id=?",
         b.name,
         b.cuisine,
         b.brand,
@@ -1156,6 +1189,9 @@ export async function handle(req: Request) {
         b.style ? JSON.stringify(b.style) : r.style,
         b.timezone ?? r.timezone,
         b.orderingUrl ?? r.ordering_url,
+        b.reservationUrl ?? r.reservation_url,
+        b.address ?? r.address,
+        b.phone ?? r.phone,
         b.hours ? JSON.stringify(b.hours) : r.hours,
         r.id,
       );
@@ -1182,7 +1218,7 @@ export async function handle(req: Request) {
         );
         assert(before, 404, "Dish not found.");
         const changed = await run(
-          "UPDATE dishes SET name=?,description=?,portion=?,plating=?,setting=?,price=?,available=?,confirmed_at=?,category=?,preserve=?,updated_at=?,revision=revision+1 WHERE id=? AND restaurant_id=? AND (? IS NULL OR revision=?)",
+          "UPDATE dishes SET name=?,description=?,portion=?,plating=?,setting=?,price=?,available=?,confirmed_at=?,category=?,preserve=?,dietary=COALESCE(?,dietary),updated_at=?,revision=revision+1 WHERE id=? AND restaurant_id=? AND (? IS NULL OR revision=?)",
           b.name,
           b.description,
           b.portion,
@@ -1193,6 +1229,7 @@ export async function handle(req: Request) {
           b.confirmed ? now() : null,
           b.category,
           b.preserve,
+          b.dietary ? JSON.stringify(b.dietary) : null,
           now(),
           did,
           r.id,
@@ -1206,7 +1243,7 @@ export async function handle(req: Request) {
         );
       } else
         await run(
-          "INSERT INTO dishes (id,restaurant_id,name,description,portion,plating,setting,price,available,confirmed_at,created_at,category,preserve,sample) VALUES (?,?,?,?,?,?,?,?,?,?,?,?,?,?) ON CONFLICT(id) DO NOTHING",
+          "INSERT INTO dishes (id,restaurant_id,name,description,portion,plating,setting,price,available,confirmed_at,created_at,category,preserve,sample,dietary) VALUES (?,?,?,?,?,?,?,?,?,?,?,?,?,?,?) ON CONFLICT(id) DO NOTHING",
           did,
           r.id,
           b.name,
@@ -1221,6 +1258,7 @@ export async function handle(req: Request) {
           b.category,
           b.preserve,
           b.sample ? 1 : 0,
+          JSON.stringify(b.dietary || []),
         );
       const saved = await one(
         "SELECT * FROM dishes WHERE id=? AND restaurant_id=?",

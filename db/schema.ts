@@ -42,6 +42,10 @@ export const restaurants = sqliteTable("restaurants", {
   style: text().notNull().default("{}"),
   timezone: text().notNull().default("America/New_York"),
   orderingUrl: text("ordering_url").notNull().default(""),
+  // Shown on published guest menus as soon as they're saved.
+  address: text().notNull().default(""),
+  phone: text().notNull().default(""),
+  reservationUrl: text("reservation_url").notNull().default(""),
   hours: text().notNull().default("[]"),
   logoId: text("logo_id"),
   slug: text().notNull().unique(),
@@ -120,6 +124,8 @@ export const dishes = sqliteTable(
     confirmedAt: integer("confirmed_at"),
     // Dishes created from the built-in sample photo stay out of guest menus.
     sample: integer().notNull().default(0),
+    // Owner-set dietary and allergen tags (lib/dietary.ts), as a JSON array.
+    dietary: text().notNull().default("[]"),
     createdAt: integer("created_at").notNull(),
   },
   (t) => [index("idx_dishes_restaurant").on(t.restaurantId)],

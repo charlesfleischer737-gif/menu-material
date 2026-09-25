@@ -107,6 +107,34 @@ export default function RestaurantStyle({
       {section !== "look" && (
         <>
           <label className="field">
+            Phone
+            <input
+              type="tel"
+              autoComplete="tel"
+              maxLength={40}
+              pattern="[+\(\)0-9\s.\-]*"
+              placeholder="(555) 123-4567"
+              value={profile.phone || ""}
+              onChange={(e) =>
+                setProfile({ ...profile, phone: e.target.value })
+              }
+            />
+            <small>Guests can tap to call from your menu.</small>
+          </label>
+          <label className="field">
+            Street address
+            <input
+              autoComplete="street-address"
+              maxLength={300}
+              placeholder="12 Market Street, Springfield"
+              value={profile.address || ""}
+              onChange={(e) =>
+                setProfile({ ...profile, address: e.target.value })
+              }
+            />
+            <small>Your menu links to directions.</small>
+          </label>
+          <label className="field">
             Restaurant timezone
             <input
               name="timezone"
@@ -144,11 +172,23 @@ export default function RestaurantStyle({
               }
             />
           </label>
+          <label className="field">
+            Reservation link
+            <input
+              type="url"
+              placeholder="https://…"
+              value={profile.reservationUrl || ""}
+              onChange={(e) =>
+                setProfile({ ...profile, reservationUrl: e.target.value })
+              }
+            />
+            <small>OpenTable, Resy, Tock or your own booking page.</small>
+          </label>
           <details className="dish-options">
             <summary>Opening hours</summary>
             <p className="fine">
-              Set your actual hours for weekly suggestions. A closing time
-              before opening means the following day.
+              Your menu shows whether you’re open now. A closing time before
+              opening means the following day.
             </p>
             {hours.map((h: Row, i: number) => (
               <div className="hours-row" key={h.day}>

@@ -134,6 +134,9 @@ function restaurantProfile(restaurant: Row): Row {
     style: restaurant.style,
     timezone: restaurant.timezone || "America/New_York",
     orderingUrl: restaurant.ordering_url || "",
+    reservationUrl: restaurant.reservation_url || "",
+    address: restaurant.address || "",
+    phone: restaurant.phone || "",
     hours: restaurant.hours,
   };
 }
@@ -274,7 +277,7 @@ export default function RestaurantSettings({
             >
               <TabsTrigger value="details">Details</TabsTrigger>
               <TabsTrigger value="look">Restaurant look</TabsTrigger>
-              <TabsTrigger value="ordering">Ordering & hours</TabsTrigger>
+              <TabsTrigger value="ordering">Contact & hours</TabsTrigger>
             </TabsList>
             <form id={formId} className="rs-body" noValidate onSubmit={save}>
               <fieldset className="rs-fields" disabled={working}>
@@ -400,8 +403,13 @@ export default function RestaurantSettings({
                   "Unsaved changes"
                 ) : saved ? (
                   <>
-                    <Check size={16} /> Saved. Publish your menu to show guests.
+                    <Check size={16} />
+                    {group === "ordering"
+                      ? "Saved. Guests see these details right away."
+                      : "Saved. Publish your menu to show guests."}
                   </>
+                ) : group === "ordering" ? (
+                  "Contact details and hours show on your live menus."
                 ) : (
                   "Menu changes go live when you publish."
                 )}

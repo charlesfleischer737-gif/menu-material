@@ -7,6 +7,7 @@ import {
   type MenuSection,
 } from "./menu-document";
 import { menuDesignSpec, menuTheme, type MenuFont } from "./menu-design-system";
+import { dietaryKey, printedDietary } from "./dietary";
 
 export type MenuText = {
   kind: "text";
@@ -199,8 +200,18 @@ export function composeMenu(
     throw Error(
       "Your restaurant name or introduction is too long for this page. Shorten it before preparing the menu.",
     );
-  const footerLines = menu.footer ? lines(menu.footer, bodyWidth, 10.5) : [];
-  const footerHeight = footerLines.length * 13.5 + (menu.footer ? 18 : 0) + 16;
+  // The owner's notes, then a key for any dietary codes the menu prints.
+  const footer = [
+    menu.footer.trim(),
+    dietaryKey(
+      sections.flatMap((s) => s.items),
+      menu.footer,
+    ),
+  ]
+    .filter(Boolean)
+    .join("\n");
+  const footerLines = footer ? lines(footer, bodyWidth, 10.5) : [];
+  const footerHeight = footerLines.length * 13.5 + (footer ? 18 : 0) + 16;
   if (footerHeight > height * 0.28)
     throw Error(
       "Your footer is too long for a menu page. Shorten the notes or move details into a section.",
@@ -642,7 +653,7 @@ export function composeMenu(
       });
       const extraHeight =
         extra.reduce((n, v) => n + v.height + 3, 0) + (extra.length ? 5 : 0);
-      const tags = item.dietary.join(" · ");
+      const tags = printedDietary(item.dietary);
       const tagsHeight = tags
         ? 5 + lines(tags, columnWidth, 10.5).length * 13.4
         : 0;
@@ -887,7 +898,7 @@ export function composeMenu(
     }
     for (const [index, p] of pages.entries()) {
       page = p;
-      if (menu.footer) {
+      if (footer) {
         shape(
           "line",
           margin,
@@ -898,7 +909,7 @@ export function composeMenu(
           0.4,
         );
         addText(
-          menu.footer,
+          footer,
           margin,
           height - margin - footerHeight + 19,
           bodyWidth,

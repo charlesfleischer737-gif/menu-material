@@ -422,6 +422,9 @@
 .mm-main-canvas.is-story {
   max-width: 365px;
 }
+.mm-main-canvas.is-tall {
+  max-width: 440px;
+}
 .mm-main-canvas .cx-post-canvas {
   border-radius: 0;
 }
@@ -640,6 +643,10 @@
 .mm-post-checks.has-blocking {
   background: var(--workspace-warning-surface);
 }
+.mm-post-checks.has-notes {
+  background: transparent;
+  border: 1px solid var(--workspace-line);
+}
 .mm-post-checks strong {
   display: flex;
   align-items: center;
@@ -763,6 +770,9 @@
   }
   .mm-main-canvas.is-story {
     max-width: 300px;
+  }
+  .mm-main-canvas.is-tall {
+    max-width: 400px;
   }
   .mm-inspector {
     display: none;

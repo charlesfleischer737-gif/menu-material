@@ -798,22 +798,34 @@ export default function PhotoStudio({
       : hour >= 12 && hour < 18
         ? "Good afternoon"
         : "Good evening";
+  // The result can be the untouched original, for example a dish opened from
+  // My Dishes before it has a finished photo.
+  const resultIsOriginal = asset?.kind === "source";
   const shown = before && source ? source : `/api/assets/${resultId}`;
-  const shownLabel = before
-    ? "Your original"
-    : asset?.kind === "source"
+  const illustration = "Illustration · check it against your dish";
+  const shownLabel =
+    before || resultIsOriginal
       ? "Your original"
       : b.mode === "description"
-        ? "Illustration · check it against your dish"
+        ? illustration
         : asset?.kind === "edited"
           ? "Adjusted version"
           : "Your result";
   const views = [
     { id: "result", label: "Result", show: true },
     { id: "compare", label: "Compare", show: canCompare && adjust !== "quick" },
-    { id: "before", label: "Original", show: !!source },
+    { id: "before", label: "Original", show: !!source && !resultIsOriginal },
   ].filter((view) => view.show);
   const view = before ? "before" : comparing ? "compare" : "result";
+  // Result, Compare and Original already name the photo on the canvas, so it
+  // is labeled only when the view choice can't say what it is.
+  const canvasLabel = comparing
+    ? ""
+    : resultIsOriginal
+      ? "Your original"
+      : b.mode === "description"
+        ? illustration
+        : "";
   const versions = state.assets.filter(
     (a: Row) =>
       a.dish_id === b.dishId &&
@@ -1036,31 +1048,33 @@ export default function PhotoStudio({
           <div className="st-studio st-review">
             <section className="st-stage" aria-label="Your photo">
               <div className="st-stage-bar">
-                <div
-                  className="st-segmented st-view"
-                  role="radiogroup"
-                  aria-label="Show"
-                  onKeyDown={radioKeys}
-                  style={{ "--segments": views.length } as CSSProperties}
-                >
-                  {views.map((entry, index) => (
-                    <button
-                      key={entry.id}
-                      role="radio"
-                      aria-checked={view === entry.id}
-                      tabIndex={radioTab(
-                        index,
-                        views.findIndex((item) => item.id === view),
-                      )}
-                      onClick={() => {
-                        setBefore(entry.id === "before");
-                        setCompare(entry.id === "compare");
-                      }}
-                    >
-                      {entry.label}
-                    </button>
-                  ))}
-                </div>
+                {views.length > 1 && (
+                  <div
+                    className="st-segmented st-view"
+                    role="radiogroup"
+                    aria-label="Show"
+                    onKeyDown={radioKeys}
+                    style={{ "--segments": views.length } as CSSProperties}
+                  >
+                    {views.map((entry, index) => (
+                      <button
+                        key={entry.id}
+                        role="radio"
+                        aria-checked={view === entry.id}
+                        tabIndex={radioTab(
+                          index,
+                          views.findIndex((item) => item.id === view),
+                        )}
+                        onClick={() => {
+                          setBefore(entry.id === "before");
+                          setCompare(entry.id === "compare");
+                        }}
+                      >
+                        {entry.label}
+                      </button>
+                    ))}
+                  </div>
+                )}
                 <button
                   className="st-text-button"
                   onClick={() => setZoom(true)}
@@ -1070,7 +1084,7 @@ export default function PhotoStudio({
                 </button>
               </div>
               <div
-                className={`st-canvas has-photo st-result${comparing ? " is-comparing" : ""}`}
+                className={`st-canvas has-photo st-result${canvasLabel ? " has-label" : ""}`}
                 style={{ "--st-ratio": format.ratio } as CSSProperties}
               >
                 {comparing ? (
@@ -1092,7 +1106,9 @@ export default function PhotoStudio({
                           : `${shownLabel} of ${b.name || "your dish"}`
                       }
                     />
-                    <span className="st-canvas-label">{shownLabel}</span>
+                    {canvasLabel && (
+                      <span className="st-canvas-label">{canvasLabel}</span>
+                    )}
                   </>
                 )}
               </div>
@@ -1146,68 +1162,70 @@ export default function PhotoStudio({
             </section>
             <aside className="st-inspector" aria-label="Use your photo">
               <div className="st-section">
-                <span className="st-badge">
-                  {asset?.approved_at ? (
-                    <>
-                      <Check size={12} aria-hidden="true" />
-                      Approved
-                    </>
-                  ) : (
-                    "Needs review"
-                  )}
-                </span>
-                <DropdownMenu>
-                  <DropdownMenuTrigger asChild>
-                    <button
-                      className="st-icon-button st-result-more"
-                      aria-label="More photo actions"
-                      disabled={!!busy}
-                    >
-                      <Ellipsis size={18} aria-hidden="true" />
-                    </button>
-                  </DropdownMenuTrigger>
-                  <DropdownMenuContent
-                    className="cx-workspace-popover ps2-finish-menu"
-                    align="end"
-                    sideOffset={6}
-                    collisionPadding={16}
-                  >
-                    <DropdownMenuItem
-                      onSelect={() =>
-                        void act("Starting a new photo", () => nextPhoto())
-                      }
-                    >
-                      Add another photo
-                    </DropdownMenuItem>
-                    <DropdownMenuItem
-                      onSelect={() =>
-                        void act("Reusing your look", () => nextPhoto(true))
-                      }
-                    >
-                      Use this look again
-                    </DropdownMenuItem>
-                    {asset?.approved_at && (
-                      <DropdownMenuItem
-                        onSelect={() => needRecipe() && setSaveLookOpen(true)}
-                      >
-                        Save this look
-                      </DropdownMenuItem>
-                    )}
-                    <DropdownMenuItem
-                      onSelect={() => needRecipe() && setBatchOpen(true)}
-                    >
-                      Apply to more dishes
-                    </DropdownMenuItem>
-                    {asset?.approved_at && (
+                <div className="st-result-head">
+                  <span className="st-badge">
+                    {asset?.approved_at ? (
                       <>
-                        <DropdownMenuSeparator />
-                        <DropdownMenuItem onSelect={() => handoff("print")}>
-                          Create a print menu
-                        </DropdownMenuItem>
+                        <Check size={12} aria-hidden="true" />
+                        Approved
                       </>
+                    ) : (
+                      "Needs review"
                     )}
-                  </DropdownMenuContent>
-                </DropdownMenu>
+                  </span>
+                  <DropdownMenu>
+                    <DropdownMenuTrigger asChild>
+                      <button
+                        className="st-icon-button st-result-more"
+                        aria-label="More photo actions"
+                        disabled={!!busy}
+                      >
+                        <Ellipsis size={18} aria-hidden="true" />
+                      </button>
+                    </DropdownMenuTrigger>
+                    <DropdownMenuContent
+                      className="cx-workspace-popover ps2-finish-menu"
+                      align="end"
+                      sideOffset={6}
+                      collisionPadding={16}
+                    >
+                      <DropdownMenuItem
+                        onSelect={() =>
+                          void act("Starting a new photo", () => nextPhoto())
+                        }
+                      >
+                        Add another photo
+                      </DropdownMenuItem>
+                      <DropdownMenuItem
+                        onSelect={() =>
+                          void act("Reusing your look", () => nextPhoto(true))
+                        }
+                      >
+                        Use this look again
+                      </DropdownMenuItem>
+                      {asset?.approved_at && (
+                        <DropdownMenuItem
+                          onSelect={() => needRecipe() && setSaveLookOpen(true)}
+                        >
+                          Save this look
+                        </DropdownMenuItem>
+                      )}
+                      <DropdownMenuItem
+                        onSelect={() => needRecipe() && setBatchOpen(true)}
+                      >
+                        Apply to more dishes
+                      </DropdownMenuItem>
+                      {asset?.approved_at && (
+                        <>
+                          <DropdownMenuSeparator />
+                          <DropdownMenuItem onSelect={() => handoff("print")}>
+                            Create a print menu
+                          </DropdownMenuItem>
+                        </>
+                      )}
+                    </DropdownMenuContent>
+                  </DropdownMenu>
+                </div>
                 <h2 className="st-result-title">
                   Your food. Beautifully presented.
                 </h2>

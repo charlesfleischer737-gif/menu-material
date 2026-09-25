@@ -9,6 +9,7 @@
 // Sizes and the reasoning behind these settings: docs/HOMEPAGE_IMAGES.md.
 import sharp from "sharp";
 import { mkdir, readdir, stat } from "node:fs/promises";
+import { showcaseStyles } from "../lib/homepage-showcase.ts";
 
 // Lossy WebP tuned for photographs: quality 82 with sharp YUV conversion
 // ("smartSubsample") keeps red-on-blue edges and fine crumb texture clean at
@@ -72,6 +73,16 @@ if (!only || only === "homepage") {
       "public/homepage/styles/cheesecake-original.jpg",
       `public/homepage/styles/cheesecake-original-${width}.webp`,
       width,
+    );
+
+  // Showcase wall: tiles are at most 300 CSS px, so 640 px copies cover 2x
+  // desktops and 3x phones. The 400 px style-tile previews serve the rest.
+  await mkdir("public/homepage/showcase", { recursive: true });
+  for (const { id } of showcaseStyles)
+    await derive(
+      `public/studio/styles/${id}.webp`,
+      `public/homepage/showcase/${id}-640.webp`,
+      640,
     );
 }
 

@@ -9,6 +9,7 @@ import {
   DropdownMenuTrigger,
 } from "@/components/ui/dropdown-menu";
 import HomepageSections from "./homepage-sections";
+import HomepageShowcase from "./homepage-showcase";
 import PhotoComparison from "./photo-comparison";
 import { SiteFooter, SiteHeader } from "./site-chrome";
 
@@ -134,6 +135,7 @@ export default function Landing({
           </div>
           <PhotoComparison />
         </section>
+        <HomepageShowcase />
         <HomepageSections />
         <section className="pw-start" aria-labelledby="start-title">
           <h2 id="start-title">Start with one dish. See the difference.</h2>
