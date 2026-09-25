@@ -3850,10 +3850,18 @@
     16px/1.5 "Post Sans",
     sans-serif;
 }
+.customer-menu-switcher form {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  flex: 1 1 100%;
+  min-width: 0;
+}
 .customer-menu-switcher label {
   display: flex;
   align-items: center;
   gap: 12px;
+  flex: 1;
   min-width: 0;
 }
 .customer-menu-switcher label > span {
@@ -3871,7 +3879,19 @@
   color: var(--md-ink, var(--foreground));
   font: inherit;
 }
-.customer-menu-switcher select:focus-visible {
+.customer-menu-switcher button {
+  flex: none;
+  min-height: 44px;
+  padding: 8px 16px;
+  border: 1px solid currentColor;
+  border-radius: 8px;
+  background: transparent;
+  color: inherit;
+  font: inherit;
+  cursor: pointer;
+}
+.customer-menu-switcher select:focus-visible,
+.customer-menu-switcher button:focus-visible {
   outline: 2px solid currentColor;
   outline-offset: 3px;
 }
