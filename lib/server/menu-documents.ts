@@ -477,7 +477,7 @@ const guestActions = [
  * What guests did with the restaurant's published menus in the last 7 days,
  * against the 7 days before: visits (once per guest session and menu), taps
  * on order/reserve/call/directions, where they found the menu, and the dish
- * most guests scrolled to.
+ * most guests had on screen (the top of a menu is always seen).
  */
 async function menuStats(r: Row) {
   const day = 24 * 60 * 60 * 1000,
