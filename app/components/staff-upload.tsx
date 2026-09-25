@@ -2,7 +2,13 @@
 import { useCallback, useEffect, useRef, useState } from "react";
 import { Button } from "@/components/ui/button";
 import Brand from "./brand";
-import { api, normalizePhoto, type Row } from "@/lib/client";
+import {
+  api,
+  normalizePhoto,
+  photoAccept,
+  photoFileError,
+  type Row,
+} from "@/lib/client";
 import { photoAdvice } from "@/lib/photo-advice";
 export default function StaffUpload({ token }: { token: string }) {
   const [data, setData] = useState<Row | null>(null),
@@ -81,11 +87,21 @@ export default function StaffUpload({ token }: { token: string }) {
               <input
                 ref={photoInput}
                 type="file"
-                accept="image/jpeg,image/png,image/heic,.heic"
+                accept={photoAccept}
                 onChange={(e) => {
-                  setFile(e.target.files?.[0] || null);
+                  const chosen = e.target.files?.[0] || null;
+                  setFile(chosen);
                   setNotice("");
                   setError("");
+                  // Say straight away if this file can't be sent.
+                  if (chosen)
+                    void photoFileError(chosen).then((problem) => {
+                      const input = photoInput.current;
+                      if (!problem || input?.files?.[0] !== chosen) return;
+                      setError(problem);
+                      setFile(null);
+                      input.value = "";
+                    });
                 }}
               />
             </label>

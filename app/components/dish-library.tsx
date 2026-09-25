@@ -15,7 +15,15 @@ import {
   Megaphone,
   BookOpen,
 } from "lucide-react";
-import { api, dishCount, money, normalizePhoto, type Row } from "@/lib/client";
+import {
+  api,
+  dishCount,
+  money,
+  normalizePhoto,
+  photoAccept,
+  photoFileError,
+  type Row,
+} from "@/lib/client";
 import { preferredPhoto, dishPhotos, dishStatus } from "@/lib/dish-library";
 import { downloadPhotoItem, photoLineage } from "@/lib/photo-destinations";
 import { lookProfile } from "@/lib/photo-pack";
@@ -231,14 +239,30 @@ export default function DishLibrary({
     );
   }
   async function uploadAll() {
+    let uploaded = 0;
     for (const item of uploads) {
-      if (item.assetId) continue;
+      if (item.assetId || item.skip) continue;
       if (!item.name.trim()) throw Error("Name each dish before uploading.");
       setUploads((prev) =>
         prev.map((u) =>
           u.key === item.key ? { ...u, status: "Uploading…" } : u,
         ),
       );
+      // Prepare the photo first: one that can't be used never becomes a
+      // dish, and is skipped so the rest still upload.
+      let normalized: Blob;
+      try {
+        normalized = await normalizePhoto(item.file);
+      } catch (e) {
+        setUploads((prev) =>
+          prev.map((u) =>
+            u.key === item.key
+              ? { ...u, status: (e as Error).message, skip: true }
+              : u,
+          ),
+        );
+        continue;
+      }
       try {
         const dishId =
           item.dishId ||
@@ -249,7 +273,7 @@ export default function DishLibrary({
         const fd = new FormData();
         fd.set("dishId", dishId);
         fd.set("file", item.file);
-        fd.set("normalized", await normalizePhoto(item.file), "working.jpg");
+        fd.set("normalized", normalized, "working.jpg");
         const data = await api("assets", fd);
         setUploads((prev) =>
           prev.map((u) =>
@@ -258,6 +282,7 @@ export default function DishLibrary({
               : u,
           ),
         );
+        uploaded++;
       } catch (e) {
         setUploads((prev) =>
           prev.map((u) =>
@@ -269,7 +294,8 @@ export default function DishLibrary({
       }
     }
     await refresh();
-    action.setNotice("Photos uploaded. Open each dish to review its photo.");
+    if (uploaded)
+      action.setNotice("Photos uploaded. Open each dish to review its photo.");
   }
   return (
     <section className="mm-workspace mm-library">
@@ -947,7 +973,7 @@ export default function DishLibrary({
         hidden
         type="file"
         multiple
-        accept="image/jpeg,image/png,image/heic,image/heif"
+        accept={photoAccept}
         onChange={(e) => {
           const list = Array.from(e.target.files || []);
           e.target.value = "";
@@ -955,15 +981,26 @@ export default function DishLibrary({
             action.setError("Upload up to 10 photos at a time.");
             return;
           }
-          setUploads(
-            list.map((file) => ({
-              key: crypto.randomUUID(),
-              file,
-              url: URL.createObjectURL(file),
-              name: file.name.replace(/\.[^.]+$/, "").replace(/[-_]/g, " "),
-              status: "Ready to upload",
-            })),
-          );
+          const rows = list.map((file) => ({
+            key: crypto.randomUUID(),
+            file,
+            url: URL.createObjectURL(file),
+            name: file.name.replace(/\.[^.]+$/, "").replace(/[-_]/g, " "),
+            status: "Ready to upload",
+          }));
+          setUploads(rows);
+          // Say at once which files can't be uploaded; they're skipped.
+          for (const row of rows)
+            void photoFileError(row.file).then((problem) => {
+              if (problem)
+                setUploads((prev) =>
+                  prev.map((u) =>
+                    u.key === row.key
+                      ? { ...u, status: problem, skip: true }
+                      : u,
+                  ),
+                );
+            });
         }}
       />
       <Dialog open={adding} onOpenChange={setAdding}>
@@ -1038,7 +1075,7 @@ export default function DishLibrary({
                     aria-label={`Dish name for ${u.file.name}`}
                     value={u.name}
                     maxLength={100}
-                    disabled={!!u.dishId}
+                    disabled={!!u.dishId || u.skip}
                     onChange={(e) =>
                       setUploads((prev) =>
                         prev.map((x) =>
@@ -1056,15 +1093,17 @@ export default function DishLibrary({
           <Feedback {...action} />
           <button
             className="cx-btn"
-            disabled={!!action.busy || uploads.some((u) => !u.name.trim())}
+            disabled={
+              !!action.busy || uploads.some((u) => !u.skip && !u.name.trim())
+            }
             onClick={() =>
-              uploads.every((u) => u.assetId)
+              uploads.every((u) => u.assetId || u.skip)
                 ? (uploads.forEach((u) => URL.revokeObjectURL(u.url)),
                   setUploads([]))
                 : action.act("Uploading photos", uploadAll)
             }
           >
-            {uploads.every((u) => u.assetId)
+            {uploads.every((u) => u.assetId || u.skip)
               ? "Done"
               : action.busy || "Upload photos"}
           </button>

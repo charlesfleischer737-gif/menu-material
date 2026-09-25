@@ -12,6 +12,10 @@ const same = (actual, expected, message) => {
   assert.deepEqual(actual, expected, message);
   checks++;
 };
+const rejects = async (promise, expected, message) => {
+  await assert.rejects(promise, expected, message);
+  checks++;
+};
 
 // Dietary notes: legacy values still map exact synonyms; typed text doesn't.
 same(normalizeDietary(["V", "gluten free", "Spicy"]), [
@@ -219,6 +223,102 @@ for (const [typed, expected] of [
   same(picker.value, ["gluten-free", "Spicy", "hot"]);
 }
 
+// Photo types come from the file's bytes, whatever its name or type says.
+const { normalizePhoto, photoAccept, photoFileError, photoFormat } =
+  await import("../lib/client.ts");
+const bytes = (...parts) =>
+  new Uint8Array(
+    parts.flatMap((part) =>
+      typeof part === "string" ? [...part].map((c) => c.charCodeAt(0)) : part,
+    ),
+  );
+// An ISO media file type box: size, "ftyp", major brand, version, brands.
+const ftyp = (major, ...compatible) =>
+  bytes(
+    [0, 0, 0, 16 + 4 * compatible.length],
+    "ftyp",
+    major,
+    [0, 0, 0, 0],
+    ...compatible,
+  );
+const samples = {
+  jpeg: bytes([0xff, 0xd8, 0xff, 0xe0], "JFIF"),
+  png: bytes([0x89], "PNG\r\n\x1a\n", [0, 0, 0, 13], "IHDR"),
+  webp: bytes("RIFF", [36, 0, 0, 0], "WEBPVP8 "),
+  gif: bytes("GIF89a", [1, 0, 1, 0]),
+  gif87: bytes("GIF87a", [1, 0, 1, 0]),
+  heic: ftyp("heic", "mif1", "heic"),
+  heif: ftyp("mif1", "mif1", "heic"),
+  avif: ftyp("avif", "avif", "mif1", "miaf", "MA1B"),
+  avifAsHeif: ftyp("mif1", "mif1", "miaf", "avif"),
+  bmp: bytes("BM", [0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0]),
+  text: bytes("<svg xmlns='http://www.w3.org/2000/svg'/>"),
+};
+for (const [name, expected] of Object.entries({
+  jpeg: "jpeg",
+  png: "png",
+  webp: "webp",
+  gif: "gif",
+  gif87: "gif",
+  heic: "heic",
+  heif: "heic",
+  avif: "avif",
+  avifAsHeif: "avif",
+  bmp: null,
+  text: null,
+}))
+  ok(photoFormat(samples[name]) === expected, `${name} reads as ${expected}`);
+ok(
+  photoFormat(new Uint8Array()) === null && photoFormat(bytes("ftyp")) === null,
+);
+for (const type of ["image/jpeg", "image/png", "image/webp", ".heic", ".heif"])
+  ok(photoAccept.split(",").includes(type), `pickers accept ${type}`);
+const file = (name, data, type = "") => new File([data], name, { type });
+const choose = "Choose a JPEG, PNG, HEIC or WebP photo.";
+for (const name of ["jpeg", "png", "webp", "heic", "heif"])
+  ok(
+    (await photoFileError(file(name, samples[name]))) === "",
+    `${name} is fine`,
+  );
+ok(
+  (await photoFileError(file("photo.jpg", samples.gif, "image/jpeg"))) ===
+    `GIF files can’t be uploaded. ${choose}`,
+  "a GIF named .jpg is still a GIF",
+);
+ok(
+  (await photoFileError(file("photo.heic", samples.avif, "image/heic"))) ===
+    `AVIF files can’t be uploaded. ${choose}`,
+  "AVIF isn't mistaken for HEIC",
+);
+ok(
+  (await photoFileError(file("scan.bmp", samples.bmp))) ===
+    `This file type can’t be uploaded. ${choose}`,
+);
+ok(
+  (await photoFileError(file("empty.jpg", new Uint8Array()))).includes("empty"),
+);
+ok(
+  (
+    await photoFileError(file("huge.jpg", new Uint8Array(20 * 1024 * 1024 + 1)))
+  ).includes("smaller than 20 MB"),
+);
+// normalizePhoto refuses an unsupported file before decoding it, so callers
+// (My Dishes, Photo Studio, the guest studio) never create a dish for it.
+let decoded = 0;
+globalThis.createImageBitmap = async () => {
+  decoded++;
+  throw Error("no decoder in tests");
+};
+for (const name of ["gif", "avif", "bmp"])
+  await rejects(normalizePhoto(file(`photo.${name}`, samples[name])), {
+    message: new RegExp(`can’t be uploaded\\. ${choose}$`),
+  });
+ok(decoded === 0, "unsupported files are refused before decoding");
+await rejects(normalizePhoto(file("photo.webp", samples.webp)), {
+  message: `This photo couldn’t be opened. It may be damaged. ${choose}`,
+});
+ok(decoded === 1, "WebP is decoded like any supported photo");
+
 console.log(
-  `PASS: ${checks} dish and upload checks: dietary notes typed one character at a time.`,
+  `PASS: ${checks} dish and upload checks: dietary notes typed one character at a time, and photo types refused before anything is created.`,
 );
