@@ -942,22 +942,10 @@ export async function tick(restaurantId?: string, { startNew = true } = {}) {
   const scope = restaurantId ? " AND restaurant_id=?" : "";
   const scopeArgs = restaurantId ? [restaurantId] : [];
   await settleFinishedJobs(restaurantId);
-  // Recovery never competes with new dispatch, and submitted work is retrieved even while paused.
-  const timedOut = await all(
-    "SELECT DISTINCT job_id FROM outputs WHERE response_id IS NOT NULL AND status NOT IN ('completed','failed') AND COALESCE(submitted_at,created_at)<?" +
-      scope,
-    now() - 60 * 60000,
-    ...scopeArgs,
-  );
-  await run(
-    "UPDATE outputs SET status='failed',error='This image took too long to recover. It was not counted; contact support before trying again.',lease_until=0 WHERE response_id IS NOT NULL AND status NOT IN ('completed','failed') AND COALESCE(submitted_at,created_at)<?" +
-      scope,
-    now() - 60 * 60000,
-    ...scopeArgs,
-  );
-  for (const row of timedOut) await updateJob(row.job_id);
+  // Recovery never competes with new dispatch, and submitted work is retrieved
+  // even while paused. Listing the unfinished states keeps this on an index.
   const pending = await all(
-    "SELECT * FROM outputs WHERE status NOT IN ('queued','completed','failed') AND lease_until<? AND next_poll_at<=?" +
+    "SELECT * FROM outputs WHERE status IN ('submitting','processing','uncertain') AND lease_until<? AND next_poll_at<=?" +
       scope +
       " ORDER BY next_poll_at,created_at LIMIT 4",
     now(),
@@ -1027,7 +1015,19 @@ export async function tick(restaurantId?: string, { startNew = true } = {}) {
     // Use the claimed row, never a stale pre-claim response ID or submission state.
     o = claim;
     try {
-      if (o.response_id) {
+      if (
+        o.response_id &&
+        Number(o.submitted_at || o.created_at) < now() - 60 * 60000
+      ) {
+        // An earlier background response past its deadline is not retrieved
+        // again. It is checked here, when it comes up for its next status
+        // check, rather than by scanning every output.
+        await run(
+          "UPDATE outputs SET status='failed',error='This image took too long to recover. It was not counted; contact support before trying again.',lease_until=0 WHERE id=? AND lease_token=?",
+          o.id,
+          lease,
+        );
+      } else if (o.response_id) {
         const res = await provider(
           "responses/" + encodeURIComponent(o.response_id),
         );

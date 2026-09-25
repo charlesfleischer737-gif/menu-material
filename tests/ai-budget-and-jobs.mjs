@@ -36,6 +36,7 @@ const imageCalls = [];
 const imagePlan = [];
 let imageHandler = null;
 let textReply = null;
+let retrieved = 0;
 const finished = () =>
   Response.json({
     data: [{ b64_json: image.toString("base64") }],
@@ -76,6 +77,11 @@ globalThis.fetch = async (url, init = {}) => {
       usage: { input_tokens: 300, output_tokens: 60 },
     });
   }
+  retrieved++;
+  return Response.json({
+    id: target.split("/").at(-1),
+    status: "in_progress",
+  });
 };
 
 let checks = 0;
@@ -716,6 +722,66 @@ try {
   );
   checks++;
 
+  // 11. Earlier background responses past their deadline fail when they come
+  // up for their next check, and a worker check never scans all outputs.
+  await settleLeftovers();
+  const legacy = await restaurant("legacy-kitchen");
+  const legacyJob = await newJob(legacy);
+  await run(
+    "UPDATE outputs SET status='processing',response_id='resp-legacy',submitted_at=?,next_poll_at=0,lease_until=0 WHERE job_id=?",
+    Date.now() - 61 * 60000,
+    legacyJob.id,
+  );
+  const polling = await newJob(legacy, { revision: "still polling" });
+  await run(
+    "UPDATE outputs SET status='processing',response_id='resp-polling',submitted_at=?,next_poll_at=0,lease_until=0 WHERE job_id=?",
+    Date.now() - 60000,
+    polling.id,
+  );
+  const waiting = await newJob(await restaurant("legacy-neighbor"));
+  // The site-wide job sweep reads the jobs table and is gated (section 4).
+  await run(
+    "INSERT INTO app_settings (key,value) VALUES ('job-settle-last-run',?) ON CONFLICT(key) DO UPDATE SET value=excluded.value",
+    String(Date.now()),
+  );
+  const statements = [];
+  const realPrepare = env.DB.prepare;
+  env.DB.prepare = (sql) => {
+    const statement = realPrepare(sql);
+    return Object.assign(
+      Object.create(Object.getPrototypeOf(statement)),
+      statement,
+      {
+        bind: (...args) => {
+          statements.push({ sql, args });
+          return statement.bind(...args);
+        },
+      },
+    );
+  };
+  const before = retrieved;
+  try {
+    await tick();
+  } finally {
+    env.DB.prepare = realPrepare;
+  }
+  out = await output(legacyJob.id);
+  assert.equal(out.status, "failed");
+  assert.match(out.error, /took too long to recover/);
+  assert.equal(await jobState(legacyJob.id), "failed");
+  assert.equal(retrieved, before + 1, "only the response in time is retrieved");
+  assert.equal((await output(polling.id)).status, "processing");
+  assert.equal(await jobState(waiting.id), "completed");
+  const scans = [];
+  for (const { sql, args } of statements.filter((s) =>
+    /\boutputs\b/.test(s.sql),
+  ))
+    for (const row of await all("EXPLAIN QUERY PLAN " + sql, ...args))
+      if (/^SCAN (outputs|o|x)$/.test(row.detail))
+        scans.push(`${row.detail}: ${sql}`);
+  assert.deepEqual(scans, [], "every outputs query uses an index");
+  checks++;
+
   // 13. While the daily budget is spent, queued images are held without being
   // claimed or sent, say why honestly, and start by themselves later.
   await run("DELETE FROM ai_spend");
@@ -749,7 +815,7 @@ try {
   checks++;
 
   console.log(
-    `PASS: ${checks} AI budget and job checks: settled spend, free daily cap, paid-plan image budget, stuck-job repair, provider retries and refusals, independent image settling, uncertain spend and budget holds. Provider calls and webhooks are fixtures.`,
+    `PASS: ${checks} AI budget and job checks: settled spend, free daily cap, paid-plan image budget, stuck-job repair, provider retries and refusals, independent image settling, uncertain spend, legacy deadlines on an index and budget holds. Provider calls and webhooks are fixtures.`,
   );
 } finally {
   console.error = originalError;
