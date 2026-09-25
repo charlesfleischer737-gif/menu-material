@@ -34,7 +34,11 @@ export function SiteFooter({ credits }: { credits?: ReactNode }) {
         <div className="pw-footer-bottom">
           {credits && <p className="pw-image-credit">{credits}</p>}
           <p className="pw-footer-signoff">
-            © {new Date().getFullYear()} Menu Material
+            {/* Client components hydrate this footer; around New Year the
+                server (UTC) and the visitor's clock can disagree on the year. */}
+            <span suppressHydrationWarning>
+              © {new Date().getFullYear()} Menu Material
+            </span>
             <Kitty pose="sleep" className="pw-footer-kitty" />
           </p>
         </div>
