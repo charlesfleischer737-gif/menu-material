@@ -2,6 +2,7 @@ import assert from "node:assert/strict";
 import { readFileSync } from "node:fs";
 import ts from "typescript";
 const dietary = await import("../lib/dietary.ts");
+const photoUse = await import("../lib/photo-use.ts");
 const { normalizeDietary } = dietary;
 let checks = 0;
 const ok = (...args) => {
@@ -522,6 +523,7 @@ function myDishes(dishes, clientOverrides = {}) {
       },
     },
     "@/lib/dish-library": dishLibrary,
+    "@/lib/photo-use": photoUse,
     "@/lib/photo-destinations": {
       downloadPhotoItem: () => ({}),
       photoLineage: () => ({ format: "menu", lookId: "" }),
@@ -679,7 +681,7 @@ for (const prepared of [false, true]) {
     );
     same(statuses(), [
       `GIF files can’t be uploaded. ${choose}`,
-      "Needs review",
+      "New photo",
     ]);
     ok(feedback().notice.startsWith("Photos uploaded."));
   } else {
@@ -749,7 +751,8 @@ const bulkPhotos = [
 function bulkDownload(items, initialFormat, failWith) {
   const saved = [],
     events = [],
-    exported = [];
+    exported = [],
+    used = [];
   const sizeOf = (id) => items.find((i) => i.assetId === id).size;
   const page = mount("photo-downloads.tsx", (hooks) => ({
     "lucide-react": new Proxy({}, { get: () => Stub }),
@@ -788,6 +791,7 @@ function bulkDownload(items, initialFormat, failWith) {
     "@/lib/channel-rules": channelRules,
     "@/lib/photo-pack": photoPack,
     "@/lib/photo-export-identity": identity,
+    "@/lib/photo-use": photoUse,
     "./creation-shared": {
       CropControls: Stub,
       Feedback: FeedbackStub,
@@ -797,17 +801,21 @@ function bulkDownload(items, initialFormat, failWith) {
     },
     fflate,
   }));
-  page.render({ items, initialFormat });
+  page.render({
+    items,
+    initialFormat,
+    onUse: async (assetId) => {
+      used.push(assetId);
+    },
+  });
   const feedback = () => page.find((n) => n.type === FeedbackStub)[0].props;
   const button = (test) =>
     page.find((n) => n.type === "button" && test(text(n), n.props))[0];
-  return { page, saved, events, exported, feedback, button };
+  return { page, saved, events, exported, used, feedback, button };
 }
 {
-  const { page, saved, events, exported, feedback, button } = bulkDownload(
-    bulkPhotos,
-    "doordash",
-  );
+  const { page, saved, events, exported, used, feedback, button } =
+    bulkDownload(bulkPhotos, "doordash");
   await page.settle();
   ok(
     button((words) => words === "DoorDashItem photo").props["aria-pressed"],
@@ -815,7 +823,7 @@ function bulkDownload(items, initialFormat, failWith) {
   );
   ok(
     !page.find((n) => n.type === "input" && n.props.type === "checkbox").length,
-    "approved photos aren't approved again",
+    "no confirmation to tick",
   );
   const dishButton = (name) => button((words) => words.endsWith(name));
   ok(text(dishButton("Soda")).startsWith("Check first"), "backdrop warning");
@@ -834,6 +842,8 @@ function bulkDownload(items, initialFormat, failWith) {
   page.fire(download.props.onClick);
   await page.settle();
   same(exported, ["doordash", "doordash", "doordash"]);
+  // Downloading chooses each photo for use before it is exported.
+  same(used, ["a-large", "a-small", "a-color"]);
   ok(!feedback().error, feedback().error);
   ok(
     feedback().notice ===

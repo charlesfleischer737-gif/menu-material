@@ -21,6 +21,7 @@ import {
   CollapsibleContent,
   CollapsibleTrigger,
 } from "@/components/ui/collapsible";
+import { photoReviewReminder, type PhotoUseAction } from "@/lib/photo-use";
 import { downloadBlob } from "@/lib/client";
 import {
   downloadFormats,
@@ -66,7 +67,7 @@ export function PhotoFinishSheet({
   approved,
   initialFormat,
   style,
-  onApprove,
+  onUse,
   onPack,
   onCloseAutoFocus,
   onBusyChange,
@@ -83,7 +84,7 @@ export function PhotoFinishSheet({
   initialFormat: string;
   /** The photo's look, for delivery-app backdrop warnings. */
   style: StyleProfile;
-  onApprove: () => Promise<void>;
+  onUse: (action: PhotoUseAction) => Promise<void>;
   /** Opens the photo pack (every channel in one download). */
   onPack?: () => void;
   onCloseAutoFocus?: (event: Event) => void;
@@ -98,8 +99,7 @@ export function PhotoFinishSheet({
     ...emptyAdjustments,
     fit: !isCatalogDestination(initialFormat),
   });
-  const [confirmed, setConfirmed] = useState(false),
-    [sizesOpen, setSizesOpen] = useState(false),
+  const [sizesOpen, setSizesOpen] = useState(false),
     [busy, setBusy] = useState(false),
     [error, setError] = useState(""),
     [notice, setNotice] = useState(""),
@@ -157,9 +157,6 @@ export function PhotoFinishSheet({
       active = false;
     };
   }, [open, approved, catalog, assetId, originalSize]);
-  // Approval is once per photo: an approved photo downloads in any size or
-  // crop without another confirmation.
-  const checked = approved || confirmed;
   const eligible = !catalog || fromPhoto;
   const outputName = fileName.trim() || "Dish photo";
   const choice = sizeChoices.find((entry) => entry.id === destination)!;
@@ -180,7 +177,7 @@ export function PhotoFinishSheet({
     setNotice("");
   }
   async function finish(share = false) {
-    if (downloadLock.current || busy || !eligible || !checked) return;
+    if (downloadLock.current || busy || !eligible) return;
     downloadLock.current = true;
     setBusy(true);
     setError("");
@@ -197,7 +194,7 @@ export function PhotoFinishSheet({
       ...(exportKey ? { exportKey } : {}),
     };
     try {
-      if (!approved) await onApprove();
+      await onUse(share ? "share" : "download");
       const output = master
         ? await masterPhotoExport(assetId)
         : await photoExport(assetId, destination, edits);
@@ -395,24 +392,11 @@ export function PhotoFinishSheet({
           )}
         </div>
         <footer className="ps2-dialog-footer">
-          {!approved && (
-            <label className="cx-check ps2-finish-check">
-              <input
-                type="checkbox"
-                checked={confirmed}
-                disabled={busy}
-                onChange={(e) => setConfirmed(e.target.checked)}
-              />
-              The food, portion and branding match what I serve, and the whole
-              dish is visible.
-            </label>
-          )}
+          <p className="ps2-download-hint">{photoReviewReminder}</p>
           <p className="ps2-download-hint" id={downloadHintId} role="status">
             {!eligible
               ? "Choose Menu & website. Ordering platforms need a photo of your actual dish."
-              : !checked
-                ? "Confirm the photo above to download. You’ll only do this once."
-                : "Saved privately in My Dishes."}
+              : "Saved privately in My Dishes."}
           </p>
           {error && (
             <p className="ps2-inline-note" role="alert">
@@ -429,7 +413,7 @@ export function PhotoFinishSheet({
               <button
                 className="cx-btn cx-secondary"
                 aria-describedby={downloadHintId}
-                disabled={busy || !checked || !eligible}
+                disabled={busy || !eligible}
                 onClick={() => void finish(true)}
               >
                 <Share2 size={16} />
@@ -441,7 +425,7 @@ export function PhotoFinishSheet({
             <button
               className="cx-btn"
               aria-describedby={downloadHintId}
-              disabled={busy || !checked || !eligible}
+              disabled={busy || !eligible}
               onClick={() => void finish()}
             >
               <Download size={17} />

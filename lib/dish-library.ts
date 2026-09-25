@@ -17,7 +17,7 @@ export function preferredPhoto(dish: Row, assets: Row[]) {
 }
 export function dishStatus(dish: Row, assets: Row[]) {
   const photo = preferredPhoto(dish, assets);
-  return photo?.approved_at ? "Approved" : photo ? "Needs review" : "No photo";
+  return photo?.approved_at ? "Ready to use" : photo ? "New photo" : "No photo";
 }
 /** A dish's section; a blank one reads as "Dishes", as it does on menus. */
 export function dishSection(dish: Row): string {

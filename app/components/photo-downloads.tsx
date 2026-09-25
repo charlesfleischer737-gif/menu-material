@@ -7,6 +7,7 @@ import {
   Download,
   Megaphone,
 } from "lucide-react";
+import { photoReviewReminder } from "@/lib/photo-use";
 import { downloadBlob } from "@/lib/client";
 import {
   downloadFormats,
@@ -50,20 +51,22 @@ const instagramSizes: { id: Destination; label: string }[] = [
 ];
 
 /**
- * Downloads several approved photos at one size. Approval is once per photo
- * (as in the single download), so there's nothing to tick here; photos that
- * a destination's size limits rule out are left out and listed.
+ * Downloads several photos at one size. Downloading chooses each photo for
+ * use, as the single download does; photos that a destination's size limits
+ * rule out are left out and listed.
  */
 export default function PhotoDownloads({
   items,
   initialFormat = "menu",
   onPromote,
+  onUse,
 }: {
-  /** Approved photos, each with its look for the channel warnings. */
+  /** The photos, each with its look for the channel warnings. */
   items: (DownloadPhoto & { style: StyleProfile })[];
   /** The photos' own format when they share one; the dialog opens on it. */
   initialFormat?: string;
   onPromote?: (item: DownloadPhoto) => void;
+  onUse: (assetId: string) => Promise<void>;
 }) {
   const [destination, setDestination] = useState<Destination>(
     photoDestination(initialFormat),
@@ -152,6 +155,7 @@ export default function PhotoDownloads({
       const photo = items[n];
       setProgress(`Preparing photo ${n + 1} of ${items.length}…`);
       try {
+        await onUse(photo.assetId);
         const output =
           destination === "master"
             ? await masterPhotoExport(photo.assetId)
@@ -347,6 +351,9 @@ export default function PhotoDownloads({
                     setDownloaded(false);
                   }}
                 />
+                <p className="cx-hint">
+                  Keep the whole dish visible in the crop.
+                </p>
                 {warnings.length > 0 && (
                   <div className="ps2-finish-warning" role="note">
                     <CircleAlert size={18} aria-hidden="true" />
@@ -380,9 +387,10 @@ export default function PhotoDownloads({
                 use.
               </p>
             )}
+            <p className="cx-hint">{photoReviewReminder}</p>
             <button
               className="cx-btn cx-full"
-              disabled={!photoOnly}
+              disabled={!!action.busy || !photoOnly}
               onClick={() => action.act("Preparing your download", download)}
             >
               <Download size={18} />
@@ -451,8 +459,8 @@ export default function PhotoDownloads({
                 : "Want a matching post, too?"}
             </h3>
             <p>
-              Use this approved photo, your restaurant’s look, and an editable
-              caption. No images used.
+              Use this photo, your restaurant’s look, and an editable caption.
+              No images used.
             </p>
           </div>
           <button

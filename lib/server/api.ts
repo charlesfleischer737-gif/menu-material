@@ -1,5 +1,6 @@
 import type { Row } from "./core";
 import { z } from "zod";
+import { photoUseActions } from "../photo-use";
 import {
   studioJobContext,
   recordStudioJob,
@@ -1562,11 +1563,7 @@ async function route(req: Request) {
           url.searchParams.has("download") &&
           ["generated", "edited"].includes(a.kind)
         )
-          assert(
-            a.approved_at,
-            403,
-            "Confirm this image is accurate before downloading.",
-          );
+          assert(a.approved_at, 403, "Choose this photo before downloading.");
         return await downloadAsset(
           req,
           a,
@@ -1641,18 +1638,25 @@ async function route(req: Request) {
         await event(r.id, "asset_deleted", a.id);
         return response({ ok: true });
       }
-      if (method === "POST" && p[2] === "approve") {
+      if (method === "POST" && ["approve", "use"].includes(p[2])) {
         const b = await body(req);
-        assert(
-          b.accurate === true,
-          400,
-          "Please confirm this image represents the dish you serve.",
-        );
+        const selection =
+          p[2] === "use" ? z.enum(photoUseActions).parse(b.action) : null;
+        // Older clients can still submit their explicit attestation. Current
+        // clients record a use choice without claiming the food was certified.
+        if (!selection)
+          assert(
+            b.accurate === true,
+            400,
+            "Please confirm this image represents the dish you serve.",
+          );
         assert(
           ["source", "generated", "edited", "staff"].includes(a.kind),
           400,
-          "Only dish photos can be approved.",
+          "Only dish photos can be used.",
         );
+        // Keep the existing eligibility field for menus, exports and history.
+        // A timestamp means this version was selected for use, not verified.
         await run(
           "UPDATE assets SET approved_at=COALESCE(approved_at,?),kind=CASE WHEN kind='staff' THEN 'source' ELSE kind END WHERE id=?",
           now(),
@@ -1676,13 +1680,25 @@ async function route(req: Request) {
             r.id,
             "image_approved",
             a.id,
-            outputJob
-              ? {
-                  firstResult: !hasRevision && outputJob.parent_id === null,
-                  jobId: outputJob.id,
-                }
-              : {},
+            {
+              selectionMethod: selection ? "use_action" : "legacy_attestation",
+              ...(selection ? { action: selection } : {}),
+              ...(outputJob
+                ? {
+                    firstResult: !hasRevision && outputJob.parent_id === null,
+                    jobId: outputJob.id,
+                  }
+                : {}),
+            },
             a.id,
+          ).catch(() => {});
+        if (selection)
+          await event(
+            r.id,
+            "photo_selected",
+            a.id,
+            { action: selection },
+            selection,
           ).catch(() => {});
         return response({ ok: true });
       }

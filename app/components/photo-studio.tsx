@@ -58,6 +58,7 @@ import {
   imageBitmap,
   rotatedSize,
 } from "@/lib/photo-export";
+import { type PhotoUseAction } from "@/lib/photo-use";
 import { statePhotoHistory } from "@/lib/photo-destinations";
 import { lookProfile } from "@/lib/photo-pack";
 import { PhotoFinishSheet } from "./photo-finish-sheet";
@@ -146,7 +147,6 @@ export default function PhotoStudio({
     [compare, setCompare] = useState(false),
     [adjust, setAdjust] = useState(""),
     [aiChanges, setAiChanges] = useState(""),
-    [accurate, setAccurate] = useState(false),
     [zoom, setZoom] = useState(false),
     [finishOpen, setFinishOpen] = useState(false),
     [packOpen, setPackOpen] = useState(false);
@@ -412,7 +412,6 @@ export default function PhotoStudio({
           change(selection.draft);
           await save();
         }
-        setAccurate(false);
         setAdjust("");
         setBefore(false);
         setCompare(false);
@@ -425,7 +424,6 @@ export default function PhotoStudio({
       }
       if (seed.draftId) {
         await draftStore.resume(seed.draftId);
-        setAccurate(false);
         setAdjust("");
         onSeedUsed();
         return;
@@ -480,7 +478,6 @@ export default function PhotoStudio({
           ? { resultId: seed.photoId, jobId: context.jobId || "", step: 4 }
           : {}),
       });
-      setAccurate(false);
       setAdjust("");
       onSeedUsed();
     });
@@ -492,7 +489,6 @@ export default function PhotoStudio({
   useEffect(() => {
     if (b.jobId && output?.asset_id && !b.resultId) {
       change({ resultId: output.asset_id, step: 4 });
-      setAccurate(false);
     }
   }, [output?.asset_id, b.jobId]);
   // A photo removed in My Dishes can't be opened, downloaded or restyled.
@@ -804,7 +800,6 @@ export default function PhotoStudio({
       adjustments: { ...emptyAdjustments },
     });
     setAdjust("");
-    setAccurate(false);
     setBefore(false);
     setCompare(false);
     await save();
@@ -814,15 +809,14 @@ export default function PhotoStudio({
         "This matching photo was already saved. No additional image was used.",
       );
   }
-  async function approve(confirmed = accurate) {
+  async function selectPhoto(action: PhotoUseAction) {
     if (adjust === "quick")
       throw Error("Save your adjustments as a new version before downloading.");
-    if (!confirmed && !asset?.approved_at)
-      throw Error("Check that the photo represents the dish you serve.");
-    await api(`assets/${resultId}/approve`, { accurate: true });
-    change({ step: 4 });
-    await save();
+    // Result assets already belong to their saved dish. Choosing one must not
+    // rewrite dish facts or leave a stale revision behind on a failed attempt.
+    await api(`assets/${resultId}/use`, { action });
     await refresh();
+    await save();
   }
   async function quickSave(
     session: PhotoAdjustmentSession,
@@ -863,7 +857,6 @@ export default function PhotoStudio({
         adjustments: { ...emptyAdjustments },
         step: 4,
       });
-      setAccurate(false);
       setBefore(false);
       setCompare(false);
       setQuickOpen(false);
@@ -907,7 +900,6 @@ export default function PhotoStudio({
     setAdjust("");
     setBefore(false);
     setCompare(false);
-    setAccurate(false);
   }
   // Try again resends the failed request itself (its photo, requested change,
   // style and controls), whatever the draft has moved on to. It is a new
@@ -953,7 +945,8 @@ export default function PhotoStudio({
         : undefined,
     );
   }
-  function openPhotoAction(action: PhotoAction) {
+  async function openPhotoAction(action: PhotoAction) {
+    await selectPhoto(action);
     if (action === "download") setFinishOpen(true);
     else if (action === "pack") setPackOpen(true);
     else handoff(action);
@@ -1055,7 +1048,6 @@ export default function PhotoStudio({
             store={draftStore}
             disabled={!!busy || creating}
             onResume={() => {
-              setAccurate(false);
               setAdjust("");
               setAdvice("");
               setBefore(false);
@@ -1083,7 +1075,6 @@ export default function PhotoStudio({
                   ...restaurantPhotoDefaults(state.restaurant),
                 });
                 setAdjust("");
-                setAccurate(false);
                 setAdvice("");
                 setBefore(false);
               })
@@ -1380,7 +1371,6 @@ export default function PhotoStudio({
                               adjustments: { ...emptyAdjustments },
                             });
                             setBefore(false);
-                            setAccurate(false);
                             setAdjust("");
                           })
                         }
@@ -1396,8 +1386,8 @@ export default function PhotoStudio({
                             : a.kind === "source"
                               ? "Original"
                               : a.approved_at
-                                ? "Approved"
-                                : "Needs review"}
+                                ? "Ready to use"
+                                : "New photo"}
                         </span>
                       </button>
                     ))}
@@ -1412,10 +1402,10 @@ export default function PhotoStudio({
                     {asset?.approved_at ? (
                       <>
                         <Check size={12} aria-hidden="true" />
-                        Approved
+                        Ready to use
                       </>
                     ) : (
-                      "Needs review"
+                      "New photo"
                     )}
                   </span>
                   <DropdownMenu>
@@ -1648,16 +1638,12 @@ export default function PhotoStudio({
               <PhotoHubActions
                 key={resultId}
                 downloadRef={resultAction}
-                approved={!!asset?.approved_at}
                 disabled={!!busy || adjust === "quick"}
                 note={
                   adjust === "quick"
                     ? "Save this version before using your adjusted photo."
-                    : asset?.approved_at
-                      ? `${formatNames[resultFormat]} · ${formatShapes[resultFormat]} · No image used`
-                      : "You’ll confirm the photo once · No image used"
+                    : `${formatNames[resultFormat]} · ${formatShapes[resultFormat]} · No image used`
                 }
-                onApprove={() => approve(true)}
                 onAction={openPhotoAction}
               />
             </aside>
@@ -1755,7 +1741,7 @@ export default function PhotoStudio({
           approved={!!asset?.approved_at}
           initialFormat={resultFormat}
           style={resultStyle}
-          onApprove={() => approve(true)}
+          onUse={selectPhoto}
           onPack={() => {
             setFinishOpen(false);
             setPackOpen(true);

@@ -583,7 +583,7 @@ try {
     "cache does not reserve again",
   );
   await call("assets/" + result.asset_id + "?download=1", undefined, 403);
-  await call("assets/" + result.asset_id + "/approve", { accurate: true });
+  await call("assets/" + result.asset_id + "/use", { action: "download" });
   await call("assets/" + result.asset_id + "?download=1");
   const allowanceBeforeExport = (await call("state")).remaining;
   await call("creation-events", {
@@ -638,7 +638,7 @@ try {
     null,
   );
   await call("assets/" + editId + "?download=1", undefined, 403);
-  await call("assets/" + editId + "/approve", { accurate: true });
+  await call("assets/" + editId + "/use", { action: "post" });
   const takeoutDraft = {
     ...photoBrief(),
     ...studioLookPatch(photoBrief(), "delivery-takeout"),
