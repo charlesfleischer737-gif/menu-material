@@ -7,7 +7,7 @@ process.env.MENU_MATERIAL_DATA_DIR = root;
 process.env.APP_ORIGIN = "http://localhost";
 const { handle } = await import("../lib/server/api.ts");
 const { one, run } = await import("../lib/server/core.ts");
-const { newMenuDocument, newMenuEntry } =
+const { newMenuDocument, newMenuEntry, menuPrice } =
   await import("../lib/menu-document.ts");
 const {
   menuPublishChecks,
@@ -138,6 +138,14 @@ try {
   assert.equal(course("Sharing plates"), course("Small plates"));
   assert.equal(course("Kids’ menu"), course("Kids"));
   assert.equal(course("Entrées"), course("Main courses"));
+
+  // Prices use the currency's own decimal places.
+  assert.equal(menuPrice(120000, "JPY"), "¥1,200");
+  assert.equal(menuPrice(120000, "JPY", "numbers"), "1,200");
+  assert.equal(menuPrice(1250, "USD"), "$12.50");
+  assert.equal(menuPrice(1200, "USD", "whole"), "12");
+  assert.equal(menuPrice(1250, "GBP", "whole"), "12.50");
+  assert.equal(menuPrice(120050, "JPY", "whole"), "1,201");
 
   // API: a placeholder name blocks publishing until the owner names it.
   await call("auth/dev", {});

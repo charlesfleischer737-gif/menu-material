@@ -28,6 +28,7 @@ import {
 import { api, dishCount, downloadBlob, type Row } from "@/lib/client";
 import {
   entryPrice,
+  menuPrice,
   menuPurposeDefaults,
   menuPurposePatch,
   newMenuDocument,
@@ -1513,7 +1514,7 @@ export default function MenuStudio({
             <p className="md-help">
               Section: {section.name}
               {item.priceMode === "single" && item.price !== null
-                ? ` · Price: ${(item.price / 100).toFixed(2)} ${restaurant.currency}`
+                ? ` · Price: ${menuPrice(item.price, restaurant.currency)}`
                 : " · Size prices and add-ons stay on this menu."}
             </p>
             {(!item.sourceReviewed ||
