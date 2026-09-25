@@ -18,7 +18,7 @@ const {
 } = await import("../lib/menu-checks.ts");
 const { isPlaceholderRestaurantName, slugify, menuAddressProblem } =
   await import("../lib/restaurant-identity.ts");
-const { courseIndex } = await import("../lib/menu-paste.ts");
+const { courseIndex, parsePastedMenu } = await import("../lib/menu-paste.ts");
 let cookie = "",
   checks = 0;
 async function call(path, data, expected = 200, method) {
@@ -138,6 +138,87 @@ try {
   assert.equal(course("Sharing plates"), course("Small plates"));
   assert.equal(course("Kids’ menu"), course("Kids"));
   assert.equal(course("Entrées"), course("Main courses"));
+
+  // Pasted menus: common layouts the reader used to misread.
+  const shape = (sections) =>
+    sections.map((s) => [s.name, s.items.map((i) => i.name)]);
+  const pasted = (text, options) => parsePastedMenu(text, options);
+  const findDish = (sections, name) =>
+    sections.flatMap((s) => s.items).find((i) => i.name === name);
+  const titled = pasted(
+    "Starters\nSoup of the day 8\nGarlic bread 5\nMains\nBurger 14\nHouse made\nDesserts\nChocolate cake 7\nSmall plates\nWings 9",
+  );
+  assert.deepEqual(shape(titled), [
+    ["Starters", ["Soup of the day", "Garlic bread"]],
+    ["Mains", ["Burger"]],
+    ["Desserts", ["Chocolate cake"]],
+    ["Small plates", ["Wings"]],
+  ]);
+  assert.equal(findDish(titled, "Burger").description, "House made");
+  const capitals = pasted(
+    "MAINS\nBURGER 14\nBEEF, CHEDDAR, PICKLES\nWITH FRIES\nSTEAK\n32\nDESSERTS\nCAKE 7\nV",
+  );
+  assert.deepEqual(shape(capitals), [
+    ["MAINS", ["BURGER", "STEAK"]],
+    ["DESSERTS", ["CAKE"]],
+  ]);
+  assert.equal(
+    findDish(capitals, "BURGER").description,
+    "BEEF, CHEDDAR, PICKLES WITH FRIES",
+    "an ingredient line in capitals describes the dish above",
+  );
+  assert.equal(
+    findDish(capitals, "STEAK").price,
+    3200,
+    "price on the next line",
+  );
+  assert.equal(findDish(capitals, "CAKE").description, "V");
+  const wines = pasted(
+    "RED WINE\nChateau Margaux 2015\nBordeaux, France 450\nOpus One 2018 520\nEst. 1998",
+  );
+  const margaux = findDish(wines, "Chateau Margaux 2015");
+  assert.equal(margaux.price, 45000, "the year stays in the name");
+  assert.equal(margaux.description, "Bordeaux, France");
+  assert.deepEqual(margaux.sourceUncertain, ["price"]);
+  assert.equal(findDish(wines, "Bordeaux, France"), undefined);
+  assert.equal(findDish(wines, "Opus One 2018").price, 52000);
+  assert.equal(findDish(wines, "Est. 1998").price, null);
+  assert.equal(
+    findDish(
+      pasted("Tonkotsu ramen 1980\nGyoza 680", { currency: "JPY" }),
+      "Tonkotsu ramen",
+    ).price,
+    198000,
+    "a yen price isn't a year",
+  );
+  assert.equal(
+    findDish(
+      pasted("Chateau Margaux 2015\n80000", { currency: "JPY" }),
+      "Chateau Margaux 2015",
+    ).price,
+    8000000,
+  );
+  const lobster = findDish(
+    pasted("Lobster 38-45\nOysters 3 – 4\nRoute 66 12"),
+    "Lobster",
+  );
+  assert.deepEqual(
+    [lobster.priceMode, lobster.priceLabel, lobster.sourceUncertain],
+    ["label", "38–45", ["price"]],
+    "a price range is kept as written and marked",
+  );
+  const unnamed = pasted("12.50\nBurger 14")[0].items[0];
+  assert.deepEqual(
+    [unnamed.name, unnamed.price, unnamed.sourceUncertain],
+    ["", 1250, ["name"]],
+    "a price with no dish above it is kept",
+  );
+  assert(
+    [...titled, ...capitals, ...wines]
+      .flatMap((s) => s.items)
+      .every((i) => !i.sourceReviewed),
+    "the owner checks every pasted dish",
+  );
 
   // Prices use the currency's own decimal places.
   assert.equal(menuPrice(120000, "JPY"), "¥1,200");

@@ -323,9 +323,11 @@ export default function MenuStudio({
         typed
           ? `Set up as a ${menuPurposeDefaults(inferred!).name.toLowerCase()}; change the type in Details.`
           : "",
-        needsLook
-          ? `${needsLook} ${needsLook === 1 ? "needs" : "need"} a closer look before publishing.`
-          : "",
+        needsLook && needsLook === added.length
+          ? "Check them against your original before publishing."
+          : needsLook
+            ? `${needsLook} ${needsLook === 1 ? "needs" : "need"} a closer look before publishing.`
+            : "",
       ]
         .filter(Boolean)
         .join(" "),

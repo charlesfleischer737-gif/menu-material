@@ -1,9 +1,11 @@
 import {
+  currencyDigits,
   newMenuEntry,
   type MenuDocument,
   type MenuEntry,
   type MenuSection,
 } from "./menu-document";
+import { dietaryTag, normalizeDietary } from "./dietary";
 
 type Purpose = MenuDocument["purpose"];
 type Uncertain = MenuEntry["sourceUncertain"][number];
@@ -14,6 +16,21 @@ const price = String.raw`(?:[$€£¥]\s*)?${amount}(?:\s*[$€£¥])?`;
 const endsWithPrice = new RegExp(String.raw`^(.*?)\s*(${price})$`);
 const onlyPrice = new RegExp(String.raw`^${price}$`);
 const marketPrice = /^(.*?)\s+(?:mp|m\.p\.|market(?: price)?)$/i;
+// A price range: "38-45", "$38–$45", "38 to 45". A spaced hyphen still
+// separates a name from its price ("Route 66 - 12").
+const endsWithRange = new RegExp(
+  String.raw`^(.*?)\s*(${price}(?:-|\s*[–—]\s*|\s+to\s+)${price})$`,
+  "i",
+);
+// A bare 19xx or 20xx that may be a year ("Chateau Margaux 2015").
+const yearLike = /^(?:19|20)\d{2}$/;
+const wine =
+  /(?<!\p{L})(?:wines?|vino|vins?|red|white|ros[ée]|sparkling|champagne|prosecco|cava|ch[aâ]teau|domaine|bodega|cuv[ée]e|brut|vintage|reserv[ae]|riserva|cabernet|merlot|pinot|chardonnay|sauvignon|riesling|syrah|shiraz|malbec|zinfandel|tempranillo|sangiovese|nebbiolo|grenache|rioja|barolo|chianti|bordeaux|bourgogne|burgundy|sancerre|chablis|port|sherry|bottles?)(?!\p{L})/iu;
+// Lines that carry on from the dish above: "with fries", "served warm".
+const continuation =
+  /^(?:with|served|topped|finished|and|or|on|in|plus|includes?|choice of)(?!\p{L})/iu;
+const smallWord =
+  /^(?:a|an|and|the|of|to|from|with|on|in|for|by|or|de|del|la|le|les|du|des|al|alla|e|y|et)$/i;
 const sizeWord =
   /^(?:x?s|m|x?l|sm|md|lg|small|medium|regular|reg\.?|large|x-large|extra[- ]large|glass|bottle|carafe|half[- ]bottle|pitcher|pint|half[- ]pint|half|full|single|double|triple|cup|bowl|slice|whole|pie|hot|iced|kids?|\d+(?:[.,]\d+)?\s*(?:oz|ml|cl|l|in|inch|["”]|pc|pcs|pieces?|ct))\.?$/i;
 const addonStart = /^(?:\+|add(?:[- ]on)?\b)\s*:?\s*/i;
@@ -42,6 +59,52 @@ function isHeading(line: string) {
   return (
     line.endsWith(":") ||
     (line === line.toUpperCase() && /\p{L}/u.test(line) && line.length < 70)
+  );
+}
+const dietaryLine = (line: string) =>
+  !!dietaryTag(normalizeDietary([line])[0] || "");
+/** "BEEF, CHEDDAR, PICKLES" or "WITH FRIES" under a dish describes it. */
+const describesDish = (line: string) =>
+  line.includes(",") ||
+  continuation.test(line) ||
+  line.split(/\s+/).length > 5 ||
+  dietaryLine(line);
+/**
+ * "Starters", "Small Plates", "From the Grill", or a course such as "Small
+ * plates" or "To share" — never a note like "Served warm" or "Vegan".
+ */
+function headingLike(line: string) {
+  const words = line.split(/\s+/);
+  if (
+    words.length > 5 ||
+    line.length > 40 ||
+    /[\d,.;!?]/.test(line) ||
+    !/^\p{Lu}/u.test(line) ||
+    continuation.test(line) ||
+    dietaryLine(line)
+  )
+    return false;
+  return (
+    words.every(
+      (word, i) => /^[\p{Lu}&]/u.test(word) || (i > 0 && smallWord.test(word)),
+    ) ||
+    courseIndex(line) >= 0 ||
+    /(?<!\p{L})specials?(?!\p{L})/iu.test(line)
+  );
+}
+/** A dish named and priced on one line ("Burger 14"), not a description. */
+function dishLine(line: string) {
+  const head =
+    sizedPrices(line)?.head ??
+    (line.match(endsWithRange) ||
+      line.match(endsWithPrice) ||
+      line.match(marketPrice))?.[1];
+  const name = head ? splitName(head).name : "";
+  return (
+    !!name &&
+    !name.includes(",") &&
+    !/^\p{Ll}/u.test(name) &&
+    !isAddonName(name)
   );
 }
 function newSection(name: string): MenuSection {
@@ -127,22 +190,32 @@ function splitName(head: string) {
 /**
  * Deliberately conservative: only explicit prices at the end of a line are
  * read, and anything the reader had to guess (size names, which dish an add-on
- * belongs to) is marked so the owner checks it before publishing.
+ * belongs to, a price range, a wine's price below its vintage) is marked so
+ * the owner checks it before publishing. Yen prices such as 1980 aren't
+ * mistaken for years unless the line is clearly a wine.
  */
-export function parsePastedMenu(text: string): MenuSection[] {
+export function parsePastedMenu(
+  text: string,
+  options: { currency?: string } = {},
+): MenuSection[] {
   const sections: MenuSection[] = [];
   const sizes = new Map<string, string[]>();
   const flags = new Map<string, Set<Uncertain>>();
   const flag = (item: MenuEntry, field: Uncertain) =>
     flags.set(item.id, new Set([...(flags.get(item.id) || []), field]));
-  let section = newSection("Dishes");
+  const yearsAreNames = currencyDigits(options.currency) > 0;
+  let section = newSection("Dishes"),
+    // The last line that made, priced or described the current dish.
+    dishAt = -1;
   const lines = text
     .split(/\r?\n/)
     .map((s) => s.trim())
     .filter(Boolean);
   for (let n = 0; n < lines.length; n++) {
     const line = lines[n],
-      previous = section.items.at(-1);
+      next = lines[n + 1] || "",
+      previous = section.items.at(-1),
+      afterDish = !!previous && dishAt === n - 1;
     const heading = sizeHeading(line);
     if (heading) {
       if (heading.name) {
@@ -159,15 +232,38 @@ export function parsePastedMenu(text: string): MenuSection[] {
       else if (previous) {
         previous.description += (previous.description ? " " : "") + line;
         flag(previous, "price");
+      } else {
+        // Nothing above it to price: keep it for the owner to name.
+        const entry = newMenuEntry({
+          name: "",
+          price: cents(line),
+          sourceReviewed: false,
+        });
+        flag(entry, "name");
+        section.items.push(entry);
       }
+      dishAt = n;
       continue;
     }
     const sized = sizedPrices(line);
-    const single = sized ? null : line.match(endsWithPrice);
-    const market = sized || single ? null : line.match(marketPrice);
-    if (!sized && !(single && single[1].trim()) && !market) {
-      if (onlyPrice.test(lines[n + 1] || "") && !isHeading(line)) {
-        // A dish name with its price on the next line.
+    const range = sized ? null : line.match(endsWithRange);
+    let single = sized || range ? null : line.match(endsWithPrice);
+    // A year ends a wine's name rather than giving its price.
+    const vintage =
+      !!single &&
+      yearLike.test(single[2]) &&
+      (yearsAreNames || wine.test(line) || wine.test(section.name));
+    if (vintage) single = null;
+    const market = sized || single || range ? null : line.match(marketPrice);
+    if (
+      !sized &&
+      !(single && single[1].trim()) &&
+      !(range && range[1].trim()) &&
+      !market
+    ) {
+      const below = next.match(endsWithPrice);
+      if (onlyPrice.test(next) && !line.endsWith(":")) {
+        // A dish name with its price on the next line, even in capitals.
         const { name, description } = splitName(line);
         section.items.push(
           newMenuEntry({
@@ -177,12 +273,41 @@ export function parsePastedMenu(text: string): MenuSection[] {
             sourceReviewed: false,
           }),
         );
-      } else if (isHeading(line)) {
+        dishAt = n;
+      } else if (vintage) {
+        // A wine's region and price often follow on the line below.
+        const region =
+          below?.[1].trim() &&
+          !yearLike.test(below[2]) &&
+          !sizedPrices(next) &&
+          !isHeading(next)
+            ? below
+            : null;
+        const entry = newMenuEntry({
+          name: line.slice(0, 120),
+          description: region
+            ? region[1].replace(/[\s.·…_]{2,}$/, "").trim()
+            : "",
+          price: region ? cents(region[2]) : null,
+          sourceReviewed: false,
+        });
+        if (region) {
+          flag(entry, "price");
+          n++;
+        }
+        section.items.push(entry);
+        dishAt = n;
+      } else if (
+        (isHeading(line) && !(afterDish && describesDish(line))) ||
+        (headingLike(line) && dishLine(next))
+      ) {
         if (section.items.length) sections.push(section);
         section = newSection(line.replace(/:$/, ""));
-      } else if (previous)
+      } else if (previous) {
         previous.description += (previous.description ? " " : "") + line;
-      else
+        if (range) flag(previous, "price");
+        dishAt = n;
+      } else {
         section.items.push(
           newMenuEntry({
             name: line.slice(0, 120),
@@ -191,10 +316,19 @@ export function parsePastedMenu(text: string): MenuSection[] {
             sourceReviewed: false,
           }),
         );
+        dishAt = n;
+      }
       continue;
     }
-    const head = sized ? sized.head : single ? single[1] : market![1];
+    const head = sized
+      ? sized.head
+      : single
+        ? single[1]
+        : range
+          ? range[1]
+          : market![1];
     const { name, description } = splitName(head);
+    dishAt = n;
     if (single && previous && isAddonName(name)) {
       previous.additions = [
         ...previous.additions,
@@ -212,9 +346,15 @@ export function parsePastedMenu(text: string): MenuSection[] {
       description,
       sourceReviewed: false,
       price: single ? cents(single[2]) : null,
-      priceMode: sized ? "variants" : market ? "label" : "single",
-      priceLabel: market ? "Market price" : "",
+      priceMode: sized ? "variants" : market || range ? "label" : "single",
+      // A range stays as written ("38–45") for the owner to check.
+      priceLabel: market
+        ? "Market price"
+        : range
+          ? range[2].replace(/\s*[–—]\s*|\s+to\s+|-/i, "–")
+          : "",
     });
+    if (range) flag(entry, "price");
     if (sized) {
       const heading = sizes.get(section.id);
       const labels =

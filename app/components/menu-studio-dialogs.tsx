@@ -314,7 +314,7 @@ export function MenuSourceDialog({
       title={review ? "Review imported dishes" : "Add dishes"}
       description={
         review
-          ? "Nothing goes live yet. Dishes the reader was unsure about are marked so you can check them against the original."
+          ? "Nothing goes live yet. After adding, check each dish against your original; dishes the reader was unsure about are marked."
           : "Start with what you have. Every dish stays editable."
       }
       close={close}
@@ -384,21 +384,9 @@ export function MenuSourceDialog({
             <button
               className="md-button"
               onClick={() =>
-                append(
-                  review.map((s) => ({
-                    ...s,
-                    items: s.items.map((i) => ({
-                      ...i,
-                      // Automatic check: anything the reader was unsure about,
-                      // or a missing price, stays marked for a closer look.
-                      sourceReviewed:
-                        !i.sourceUncertain.length &&
-                        (i.priceMode !== "single" || i.price != null),
-                    })),
-                  })),
-                  importId || null,
-                  importId ? "" : text,
-                )
+                // Every dish stays marked until the owner checks it against
+                // the original; only checked dishes join My Dishes.
+                append(review, importId || null, importId ? "" : text)
               }
             >
               <Plus size={16} /> Add{" "}
@@ -577,7 +565,9 @@ export function MenuSourceDialog({
                 className="md-button"
                 disabled={!text.trim()}
                 onClick={() => {
-                  const parsed = parsePastedMenu(text);
+                  const parsed = parsePastedMenu(text, {
+                    currency: state.restaurant.currency,
+                  });
                   if (!parsed.length)
                     setError("Add some dish names and prices first.");
                   else {
@@ -698,6 +688,12 @@ export function MenuImportReview({
   const remaining = menu.sections
     .flatMap((s) => s.items)
     .filter((i) => !i.sourceReviewed).length;
+  // Dishes read with confidence and a price, for the owner to confirm at once.
+  const clear = (i: MenuDocument["sections"][number]["items"][number]) =>
+    !i.sourceReviewed &&
+    !i.sourceUncertain.length &&
+    (i.priceMode !== "single" || i.price != null);
+  const confident = menu.sections.flatMap((s) => s.items).filter(clear).length;
   const edit = (
     id: string,
     patch: Partial<MenuDocument["sections"][number]["items"][number]>,
@@ -711,7 +707,7 @@ export function MenuImportReview({
   return (
     <MenuDialog
       title="Review imported dishes"
-      description="Compare each marked dish with your original and correct anything that needs it. Everything else was read with confidence."
+      description="Compare each dish with your original and correct anything that needs it. Dishes the reader was unsure about are marked."
       close={close}
       wide
     >
@@ -813,9 +809,27 @@ export function MenuImportReview({
         <button className="md-button" onClick={close}>
           Done
         </button>
+        {confident > 0 && (
+          <button
+            className="md-button md-secondary"
+            onClick={() =>
+              change({
+                sections: menu.sections.map((s) => ({
+                  ...s,
+                  items: s.items.map((i) =>
+                    clear(i) ? { ...i, sourceReviewed: true } : i,
+                  ),
+                })),
+              })
+            }
+          >
+            <Check size={16} /> Confirm the {dishCount(confident)} the reader
+            was sure of
+          </button>
+        )}
         <p className="md-help">
           {remaining
-            ? `${remaining} ${remaining === 1 ? "dish" : "dishes"} still marked for a closer look.`
+            ? `${remaining} ${remaining === 1 ? "dish" : "dishes"} still to check.`
             : "Every imported dish is ready."}
         </p>
       </div>
