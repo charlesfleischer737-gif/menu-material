@@ -112,6 +112,22 @@ export function makeCanvas(w: number, h: number) {
   c.height = Math.max(1, Math.round(h));
   return c;
 }
+/** A canvas's 2D context; a phone out of canvas memory returns none. */
+export function context2d(
+  c: HTMLCanvasElement,
+  settings?: CanvasRenderingContext2DSettings,
+) {
+  const ctx = c.getContext("2d", settings);
+  if (!ctx)
+    throw Error(
+      "This device ran out of memory for the image. Close other tabs or apps and try again.",
+    );
+  return ctx;
+}
+/** Frees scratch canvases' pixels now; phones otherwise hold them until collected. */
+export function release(...canvases: HTMLCanvasElement[]) {
+  for (const c of canvases) c.width = c.height = 0;
+}
 type Paintable = CanvasImageSource & { width: number; height: number };
 
 /* ---------- photo analysis ---------- */
@@ -144,12 +160,13 @@ export function analyzePhoto(im: Paintable): PhotoAnalysis {
         ? long
         : Math.max(8, Math.round((long * im.height) / im.width));
   const c = makeCanvas(sw, sh),
-    ctx = c.getContext("2d", { willReadFrequently: true })!;
+    ctx = context2d(c, { willReadFrequently: true });
   // Averaged, not sampled: a noisy thumbnail would read smooth light falloff as detail.
   ctx.imageSmoothingEnabled = true;
   ctx.imageSmoothingQuality = "high";
   ctx.drawImage(im, 0, 0, sw, sh);
   const d = ctx.getImageData(0, 0, sw, sh).data;
+  release(c);
   const px = (x: number, y: number): RGB => {
     const i = (y * sw + x) * 4;
     return [d[i], d[i + 1], d[i + 2]];
@@ -753,7 +770,7 @@ export class PostKit {
   ) {
     canvas.width = Math.round(W * scale);
     canvas.height = Math.round(H * scale);
-    this.ctx = canvas.getContext("2d")!;
+    this.ctx = context2d(canvas);
     this.ctx.setTransform(scale, 0, 0, scale, 0, 0);
     this.ctx.imageSmoothingEnabled = true;
     this.ctx.imageSmoothingQuality = "high";
@@ -1236,7 +1253,7 @@ export class PostKit {
   grain(amount = 0.05, seed = 7) {
     const size = 256,
       tile = makeCanvas(size, size),
-      tc = tile.getContext("2d")!;
+      tc = context2d(tile);
     const data = tc.createImageData(size, size);
     let s = seed >>> 0;
     const random = () => {
@@ -1259,6 +1276,7 @@ export class PostKit {
     ctx.fillStyle = ctx.createPattern(tile, "repeat")!;
     ctx.fillRect(0, 0, this.canvas.width, this.canvas.height);
     ctx.restore();
+    release(tile);
   }
   vignette(strength = 0.25, color = "#000000") {
     const g = this.ctx.createRadialGradient(
@@ -1314,7 +1332,9 @@ export class PostKit {
     const s = this.scale,
       ctx = this.ctx;
     const layer = makeCanvas(box.w * s, box.h * s),
-      lc = layer.getContext("2d")!;
+      lc = context2d(layer);
+    // Scratch canvases are freed when the photo is placed.
+    const scratch = [layer];
     lc.imageSmoothingEnabled = true;
     lc.imageSmoothingQuality = "high";
     lc.setTransform(s, 0, 0, s, -box.x * s, -box.y * s);
@@ -1332,7 +1352,8 @@ export class PostKit {
       if (p.mode === "extend" || plainAll) {
         // Smear the photo's own edge rows outward, then soften them into a backdrop.
         const smear = makeCanvas(box.w * s, box.h * s),
-          sc = smear.getContext("2d")!;
+          sc = context2d(smear);
+        scratch.push(smear);
         sc.setTransform(s, 0, 0, s, -box.x * s, -box.y * s);
         sc.fillStyle = rgbToHex(a.backdrop);
         sc.fillRect(box.x, box.y, box.w, box.h);
@@ -1389,7 +1410,8 @@ export class PostKit {
       }
       // The photo itself, feathered only where it meets the extension.
       const ph = makeCanvas(p.w * s, p.h * s),
-        pc = ph.getContext("2d")!;
+        pc = context2d(ph);
+      scratch.push(ph);
       pc.imageSmoothingEnabled = true;
       pc.imageSmoothingQuality = "high";
       pc.filter = filter;
@@ -1477,6 +1499,7 @@ export class PostKit {
     ctx.clip();
     ctx.drawImage(layer, box.x, box.y, box.w, box.h);
     ctx.restore();
+    release(...scratch);
     if (o.keyline) {
       const g = o.keyline.gap;
       ctx.save();

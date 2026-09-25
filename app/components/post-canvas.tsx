@@ -3,6 +3,7 @@ import { useEffect, useRef, useState } from "react";
 import { type Row } from "@/lib/client";
 import { renderPost } from "@/lib/creation-export";
 import { postSize } from "@/lib/post-composition";
+import { context2d, release } from "@/lib/post-kit";
 import { postVisualState } from "@/lib/sharing";
 /** Thumbnails draw at their display size; previews wait for typing to pause. */
 export function PostCanvas({
@@ -57,9 +58,13 @@ export function PostCanvas({
             // Legacy designs render full size; draw them down to the display size.
             ref.current.width = Math.round(size.width * factor);
             ref.current.height = Math.round(size.height * factor);
-            ref.current
-              .getContext("2d")!
-              .drawImage(temp, 0, 0, ref.current.width, ref.current.height);
+            context2d(ref.current).drawImage(
+              temp,
+              0,
+              0,
+              ref.current.width,
+              ref.current.height,
+            );
             drawn.current = true;
             setFramed(true);
             setRendered({ key: renderKey, error: "" });
@@ -71,7 +76,8 @@ export function PostCanvas({
             setRendered({ key: renderKey, error: e.message });
             quality.current?.([e.message]);
           }
-        });
+        })
+        .finally(() => release(temp));
     };
     // The first frame draws at once; later edits wait for a pause in typing.
     const timer = setTimeout(run, drawn.current ? 150 : 0);

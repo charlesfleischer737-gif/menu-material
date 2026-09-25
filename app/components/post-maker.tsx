@@ -46,6 +46,7 @@ import {
   recommendedDesigns,
 } from "@/lib/post-composition";
 import { campaignZip, renderPost } from "@/lib/creation-export";
+import { release } from "@/lib/post-kit";
 import { postShape } from "@/lib/sharing";
 import { emptyAdjustments } from "@/lib/studio";
 import { Dialog, DialogContent, DialogTitle } from "@/components/ui/dialog";
@@ -330,14 +331,10 @@ export default function PostMaker({
     const warnings = new Map<string, string[]>();
     for (const format of b.channels)
       for (let n = 0; n < postSlideCount(b, format); n++) {
-        const result = await renderPost(
-          document.createElement("canvas"),
-          b,
-          state.restaurant,
-          format,
-          n,
-          { scale: 0.25 },
-        );
+        const proof = document.createElement("canvas");
+        const result = await renderPost(proof, b, state.restaurant, format, n, {
+          scale: 0.25,
+        }).finally(() => release(proof));
         const label =
           format === "feed"
             ? "Post"

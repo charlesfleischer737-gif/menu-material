@@ -8,7 +8,9 @@ import { postShape } from "./sharing";
 import {
   PostKit,
   analyzePhoto,
+  context2d,
   makeCanvas,
+  release,
   type Framing,
   type Safe,
   luminance,
@@ -151,9 +153,10 @@ function releasePhoto(url: string) {
 }
 function describeLogo(im: ImageBitmap): Logo {
   const c = makeCanvas(32, 32),
-    ctx = c.getContext("2d")!;
+    ctx = context2d(c);
   ctx.drawImage(im, 0, 0, 32, 32);
   const d = ctx.getImageData(0, 0, 32, 32).data;
+  release(c);
   let clear = 0,
     lum = 0,
     solid = 0;

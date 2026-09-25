@@ -13,6 +13,7 @@ import {
   type Safe,
   type TextLayout,
   type TextStyle,
+  context2d,
   contrast,
   ensureContrast,
   hexToRgb,
@@ -21,6 +22,7 @@ import {
   makeCanvas,
   mix,
   placePhoto,
+  release,
   rgba,
   rgbToHex,
   tone,
@@ -282,12 +284,13 @@ function paintLogo(d: Design, box: Box, ink: string) {
       // A one-color logo in the text ink, so it reads on this background.
       const s = d.k.scale,
         c = makeCanvas(box.w * s, box.h * s),
-        cc = c.getContext("2d")!;
+        cc = context2d(c);
       cc.drawImage(logo.im, 0, 0, c.width, c.height);
       cc.globalCompositeOperation = "source-in";
       cc.fillStyle = ink;
       cc.fillRect(0, 0, c.width, c.height);
       ctx.drawImage(c, box.x, box.y, box.w, box.h);
+      release(c);
     } else ctx.drawImage(logo.im, box.x, box.y, box.w, box.h);
     return;
   }

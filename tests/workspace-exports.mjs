@@ -299,6 +299,45 @@ for (const [photoId, channel, feedShape] of [
   checks++;
 }
 PostKit.prototype.photo = drawPhoto;
+// Scratch canvases are freed once a post is drawn, so phones don't run out of
+// canvas memory; a device that does gets a clear message. (This canvas
+// library turns a zero width back into its default, so zeroing is recorded.)
+const made = [],
+  freed = new Set();
+const createElement = globalThis.document.createElement;
+globalThis.document.createElement = (tag) => {
+  const c = createElement(tag),
+    width = Object.getOwnPropertyDescriptor(Object.getPrototypeOf(c), "width");
+  Object.defineProperty(c, "width", {
+    get: () => width.get.call(c),
+    set: (v) => {
+      if (v === 0) freed.add(c);
+      width.set.call(c, v);
+    },
+  });
+  made.push(c);
+  return c;
+};
+for (const template of ["chef", "brunch", "afterdark", "launch"]) {
+  made.length = 0;
+  await renderPost(
+    canvas(),
+    { ...base, ...applyPostTemplate(base, template), showBrand: true },
+    { ...restaurant, logo_id: "wide-logo" },
+  );
+  assert(made.length > 0);
+  assert(
+    made.every((c) => freed.has(c)),
+    `${template}: every scratch canvas is freed`,
+  );
+  checks++;
+}
+globalThis.document.createElement = createElement;
+await assert.rejects(
+  renderPost({ getContext: () => null }, base, restaurant),
+  /ran out of memory/,
+);
+checks++;
 // Chinese, Japanese and Thai headlines break between words at a readable size,
 // measured here with every letter one em wide and marks on top of them, so
 // no font is needed.
