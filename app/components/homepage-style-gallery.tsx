@@ -12,6 +12,7 @@ import {
   DialogTitle,
   DialogTrigger,
 } from "@/components/ui/dialog";
+import { libraryStyleCount } from "@/lib/homepage-showcase";
 
 const styles = [
   {
@@ -268,6 +269,10 @@ export default function HomepageStyleGallery() {
         <div className="pw-style-workbench">
           <div className="pw-section-heading">
             <h2 id="style-gallery-title">One photo. Endless possibilities.</h2>
+            <p>
+              From takeout to tasting menus, choose from {libraryStyleCount}{" "}
+              styles, each lit and styled like a professional shoot.
+            </p>
           </div>
           <figure className="pw-style-result" aria-busy={pending !== null}>
             <DialogTrigger asChild>

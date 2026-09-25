@@ -1,5 +1,5 @@
 "use client";
-import { useRef, type MouseEvent } from "react";
+import { useEffect, useRef, type MouseEvent, type RefObject } from "react";
 import { ArrowRight, Menu } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import {
@@ -39,6 +39,38 @@ function inPlace(action: () => void) {
   };
 }
 
+// The header draws the top of the hero's light (marketing.css). Moving that up
+// as the page scrolls keeps the two joined while the hero leaves; past the
+// light's reach the header is plain evergreen, so updates stop there.
+function useLightInStep(root: RefObject<HTMLDivElement | null>) {
+  useEffect(() => {
+    const header = root.current?.querySelector<HTMLElement>(".pw-header");
+    if (!header) return;
+    const reach =
+      parseFloat(
+        getComputedStyle(header).getPropertyValue("--pw-light-reach"),
+      ) || Infinity;
+    let frame = 0,
+      shown = -1;
+    const place = () => {
+      frame = 0;
+      const offset = Math.min(Math.max(scrollY, 0), reach);
+      if (offset === shown) return;
+      shown = offset;
+      header.style.setProperty("--pw-scroll", `${offset}px`);
+    };
+    const onScroll = () => {
+      frame ||= requestAnimationFrame(place);
+    };
+    place();
+    addEventListener("scroll", onScroll, { passive: true });
+    return () => {
+      removeEventListener("scroll", onScroll);
+      cancelAnimationFrame(frame);
+    };
+  }, [root]);
+}
+
 export default function Landing({
   onStart,
   onSignIn,
@@ -48,11 +80,13 @@ export default function Landing({
   onSignIn: () => void;
   signedIn?: boolean;
 }) {
+  const root = useRef<HTMLDivElement>(null);
   const navigationTarget = useRef<string | null>(null);
   const start = inPlace(onStart),
     signIn = inPlace(onSignIn);
+  useLightInStep(root);
   return (
-    <div className="pw-site pw-homepage">
+    <div className="pw-site pw-homepage" ref={root}>
       <a className="skip-link" href="#main">
         Skip to content
       </a>

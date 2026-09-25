@@ -12,6 +12,12 @@
   /* Homepage section titles and their one-line leads. */
   --pw-heading: clamp(1.75rem, 3.2vw, 2.625rem);
   --pw-section-lead: clamp(1.0625rem, 1.5vw, 1.1875rem);
+  --pw-header-height: 56px;
+  /* The homepage's light from the top edge: an ellipse reaching 70vw to each
+     side and 600px down, faded out 70% of the way (420px down). */
+  --pw-light: 70vw 600px;
+  --pw-light-reach: 420px;
+  --pw-light-color: rgb(63 191 127 / 22%);
   min-height: 100vh;
   background: var(--workspace-surface);
   color: var(--pw-ink);
@@ -34,21 +40,37 @@
   overflow: hidden;
 }
 
-/* Header: a solid evergreen bar that stays with the page. On the homepage it
-   runs into the hero's top edge, the same flat color. The visitor Photo Studio
-   turns it frosted stone (app/launch.css). */
+/* Header: a solid evergreen bar that stays with the page. The visitor Photo
+   Studio turns it frosted stone (app/launch.css). */
 .pw-header {
   position: sticky;
   top: 0;
   z-index: 50;
   background: var(--green-ink);
 }
+/* On the homepage the logo's green glows down from the top edge of the page,
+   through the header into the hero. Both draw the same ellipse, sized in
+   viewport units and pixels rather than percentages of either box, so they
+   read as one surface. As the page scrolls, the landing page moves the
+   header's part up with it (--pw-scroll), so the light leaves with the hero
+   instead of staying in the bar. */
+.pw-homepage .pw-header {
+  background:
+    radial-gradient(
+        var(--pw-light) at 50% 0,
+        var(--pw-light-color),
+        transparent 70%
+      )
+      50% calc(-1 * var(--pw-scroll, 0px)) / 100% var(--pw-light-reach)
+      no-repeat,
+    var(--green-ink);
+}
 .pw-header-inner {
   display: flex;
   align-items: center;
   justify-content: space-between;
   gap: 24px;
-  height: 56px;
+  height: var(--pw-header-height);
   max-width: calc(var(--pw-width) + 44px);
   margin-inline: auto;
   padding-inline: 22px;
@@ -137,10 +159,9 @@
 }
 
 /* Hero: a short pitch and the before-and-after on an evergreen band that runs
-   on from the header and into the showcase. Its glow sits inside the band,
-   clear of both edges, so it meets the header and the showcase in one flat
-   evergreen. Stacked, the photo sits between the pitch and its action; from
-   1001px it sits beside them, sized to fit the first screen. */
+   on from the header, under the header's light, and into the showcase.
+   Stacked, the photo sits between the pitch and its action; from 1001px it
+   sits beside them, sized to fit the first screen. */
 .pw-hero {
   display: grid;
   grid-template-columns: minmax(0, 1fr);
@@ -148,7 +169,11 @@
   justify-items: center;
   padding: clamp(28px, 4vw, 48px) var(--pw-gutter) clamp(48px, 5.5vw, 72px);
   background:
-    radial-gradient(60% 60% at 50% 50%, rgb(63 191 127 / 16%), transparent 70%),
+    radial-gradient(
+      var(--pw-light) at 50% calc(-1 * var(--pw-header-height)),
+      var(--pw-light-color),
+      transparent 70%
+    ),
     var(--green-ink);
   color: var(--on-dark);
   text-align: center;
@@ -1458,8 +1483,10 @@
   }
 }
 @media (max-width: 760px) {
+  .pw-site {
+    --pw-header-height: 52px;
+  }
   .pw-header-inner {
-    height: 52px;
     gap: 12px;
   }
   .pw-header .menu-material-wordmark {

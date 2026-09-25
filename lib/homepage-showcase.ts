@@ -4,7 +4,8 @@
 // them in step. The catalog is not imported here so its prompts stay out of
 // the homepage bundle.
 
-// Every style in the library (lib/photo-styles.ts), for the section's copy.
+// Every style in the library (lib/photo-styles.ts), for the style gallery's
+// copy on the homepage.
 export const libraryStyleCount = 56;
 
 export type ShowcaseStyle = { id: string; name: string; alt: string };

@@ -2,11 +2,7 @@
 
 import { useEffect, useRef, useState } from "react";
 import { Pause, Play } from "lucide-react";
-import {
-  libraryStyleCount,
-  showcaseRows,
-  type ShowcaseStyle,
-} from "@/lib/homepage-showcase";
+import { showcaseRows, type ShowcaseStyle } from "@/lib/homepage-showcase";
 
 // Tiles are 22vw, between 172 and 300 CSS px. The style library's 400 px
 // previews cover 1x screens and 2x phones; the 640 px copies from
@@ -142,10 +138,6 @@ export default function HomepageShowcase() {
     <section className="pw-showcase" aria-labelledby="showcase-title">
       <div className="pw-section-heading">
         <h2 id="showcase-title">Studio quality photos for every occasion.</h2>
-        <p>
-          From takeout to tasting menus, choose from {libraryStyleCount} styles,
-          each lit and styled like a professional shoot.
-        </p>
       </div>
       <div className="pw-showcase-wall" ref={wall}>
         {showcaseRows.map((row, index) => (
