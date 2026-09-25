@@ -361,11 +361,13 @@ export default function PostMaker({
         postTemplates.find((t) => t.id === id)!,
       );
   const editingIndex = selectedItem ? items.indexOf(selectedItem) : 0;
+  // A carousel's cover frames its photos apart from their own dish slides.
+  const frame = selectedSlide?.kind === "cover" ? "cover" : channel;
   const edits = {
     ...emptyAdjustments,
     fit: true,
     ...b.layouts?.[channel],
-    ...selectedItem?.layouts?.[channel],
+    ...selectedItem?.layouts?.[frame],
   };
   return (
     <section className="mm-workspace mm-post-workspace" data-action-layout>
@@ -953,26 +955,32 @@ export default function PostMaker({
                 {panel === "photo" && (
                   <>
                     <h2>
-                      {channel === "carousel" && selectedSlide?.kind === "dish"
+                      {selectedSlide?.kind === "dish"
                         ? selectedItem.name
-                        : "Photo framing"}
+                        : selectedSlide?.kind === "cover"
+                          ? "Cover framing"
+                          : selectedSlide?.kind === "closing"
+                            ? "Closing slide"
+                            : "Photo framing"}
                     </h2>
-                    {items.length > 1 && channel !== "carousel" && (
-                      <Field label="Photo to adjust">
-                        <select
-                          value={editingIndex}
-                          onChange={(e) => {
-                            setPhotoIndex(Number(e.target.value));
-                          }}
-                        >
-                          {items.map((i, n) => (
-                            <option key={i.photoId} value={n}>
-                              {i.name}
-                            </option>
-                          ))}
-                        </select>
-                      </Field>
-                    )}
+                    {items.length > 1 &&
+                      (channel !== "carousel" ||
+                        selectedSlide?.kind === "cover") && (
+                        <Field label="Photo to adjust">
+                          <select
+                            value={editingIndex}
+                            onChange={(e) => {
+                              setPhotoIndex(Number(e.target.value));
+                            }}
+                          >
+                            {items.map((i, n) => (
+                              <option key={i.photoId} value={n}>
+                                {i.name}
+                              </option>
+                            ))}
+                          </select>
+                        </Field>
+                      )}
                     {selectedSlide?.kind === "dish" && (
                       <Field label="Slide headline">
                         <input
@@ -986,54 +994,67 @@ export default function PostMaker({
                         />
                       </Field>
                     )}
-                    <p className="mm-muted">
-                      Automatic framing keeps the dish whole and extends a plain
-                      background to fit the shape. Fit shows the entire photo;
-                      Fill crops to the frame. Each format and carousel slide
-                      keeps its own framing.
-                    </p>
-                    <CropControls
-                      value={edits}
-                      onChange={(p) => {
-                        if (selectedItem)
-                          updateItem(editingIndex, {
-                            layouts: {
-                              ...selectedItem.layouts,
-                              [channel]: { ...edits, ...p, autoFrame: false },
-                            },
-                          });
-                        else
-                          update({
-                            layouts: {
-                              ...b.layouts,
-                              [channel]: { ...edits, ...p, autoFrame: false },
-                            },
-                          });
-                      }}
-                    />
-                    <button
-                      className="cx-link"
-                      onClick={() => {
-                        const automatic = {
-                          ...emptyAdjustments,
-                          fit: false,
-                          autoFrame: true,
-                        };
-                        if (selectedItem)
-                          updateItem(editingIndex, {
-                            layouts: {
-                              ...selectedItem.layouts,
-                              [channel]: automatic,
-                            },
-                          });
-                        else
-                          update({
-                            layouts: { ...b.layouts, [channel]: automatic },
-                          });
-                      }}
-                    >
-                      Back to automatic framing
-                    </button>
+                    {selectedSlide?.kind === "closing" ? (
+                      <p className="mm-muted">
+                        The closing slide has no photo. Its words come from
+                        Closing invitation in Details.
+                      </p>
+                    ) : (
+                      <>
+                        <p className="mm-muted">
+                          Automatic framing keeps the dish whole and extends a
+                          plain background to fit the shape. Fit shows the
+                          entire photo; Fill crops to the frame. Each format and
+                          carousel slide keeps its own framing.
+                        </p>
+                        <CropControls
+                          value={edits}
+                          onChange={(p) => {
+                            if (selectedItem)
+                              updateItem(editingIndex, {
+                                layouts: {
+                                  ...selectedItem.layouts,
+                                  [frame]: { ...edits, ...p, autoFrame: false },
+                                },
+                              });
+                            else
+                              update({
+                                layouts: {
+                                  ...b.layouts,
+                                  [channel]: {
+                                    ...edits,
+                                    ...p,
+                                    autoFrame: false,
+                                  },
+                                },
+                              });
+                          }}
+                        />
+                        <button
+                          className="cx-link"
+                          onClick={() => {
+                            const automatic = {
+                              ...emptyAdjustments,
+                              fit: false,
+                              autoFrame: true,
+                            };
+                            if (selectedItem)
+                              updateItem(editingIndex, {
+                                layouts: {
+                                  ...selectedItem.layouts,
+                                  [frame]: automatic,
+                                },
+                              });
+                            else
+                              update({
+                                layouts: { ...b.layouts, [channel]: automatic },
+                              });
+                          }}
+                        >
+                          Back to automatic framing
+                        </button>
+                      </>
+                    )}
                   </>
                 )}
                 {panel === "caption" && (

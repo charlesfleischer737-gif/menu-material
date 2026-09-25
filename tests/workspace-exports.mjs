@@ -437,6 +437,23 @@ for (const n of [1, 2]) {
   );
   checks++;
 }
+// Framing the cover leaves the first dish's own slide alone.
+const coverFramed = structuredClone(carousel);
+coverFramed.items[0].layouts = {
+  cover: { fit: true, x: 50, y: 50, zoom: 1, autoFrame: false },
+};
+for (const n of [0, 1]) {
+  const a = canvas(),
+    b = canvas();
+  await renderPost(a, carousel, restaurant, "carousel", n);
+  await renderPost(b, coverFramed, restaurant, "carousel", n);
+  assert.equal(
+    a.toBuffer("image/png").equals(b.toBuffer("image/png")),
+    n === 1,
+    n ? "The dish slide keeps its framing" : "The cover takes its own framing",
+  );
+  checks++;
+}
 // Without a cover, the first slide carries the price, date and call to action.
 const uncovered = {
   ...carousel,

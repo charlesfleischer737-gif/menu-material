@@ -258,13 +258,14 @@ export async function renderComposedPost(
       slide: card ? (card.kind as Design["slide"]) : "single",
       images,
       analyses: images.map((im) => analyzePhoto(im)),
+      // A carousel's cover keeps its own framing, apart from each dish's slide.
       framings: items.map(
         (item) =>
           ({
             ...emptyAdjustments,
             fit: false,
             ...draft.layouts?.[channel],
-            ...item.layouts?.[channel],
+            ...item.layouts?.[card?.kind === "cover" ? "cover" : channel],
           }) as Framing,
       ),
       names: items.map((i) => i.name || "This photo"),
