@@ -465,7 +465,8 @@ export default function PostMaker({
           <div className="mm-start-photos">
             {approved.slice(0, 3).map((d) => (
               <button key={d.id} onClick={() => choose(d)}>
-                <img src={`/api/assets/${d.photo.id}`} alt={d.name} />
+                {/* The name below says what the photo shows. */}
+                <img src={`/api/assets/${d.photo.id}`} alt="" />
                 <span>{d.name}</span>
               </button>
             ))}
@@ -627,7 +628,7 @@ export default function PostMaker({
                     <div className="mm-post-items">
                       {items.map((i, index) => (
                         <div key={i.key || i.photoId} className="mm-post-item">
-                          <img src={`/api/assets/${i.photoId}`} alt={i.name} />
+                          <img src={`/api/assets/${i.photoId}`} alt="" />
                           <div>
                             <b>{i.name}</b>
                             {b.occasion === "combo" && (
@@ -1197,7 +1198,7 @@ export default function PostMaker({
                 return (
                   <div key={d.id}>
                     <button onClick={() => choose(d)}>
-                      <img src={`/api/assets/${photo.id}`} alt={d.name} />
+                      <img src={`/api/assets/${photo.id}`} alt="" />
                       <strong>{d.name}</strong>
                       {!d.available && <small>Unavailable</small>}
                     </button>
