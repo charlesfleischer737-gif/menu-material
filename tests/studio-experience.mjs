@@ -27,6 +27,7 @@ const { emptyStudioLibrary, recipeFromDraft, applySavedLook } =
   await import("../lib/studio-library.ts");
 const { activeInspirationId, inspirationPatch } =
   await import("../lib/studio-reference.ts");
+const { failedImageRequest } = await import("../lib/photo-recipe.ts");
 let cookie = "",
   checks = 0;
 globalThis.fetch = () => {
@@ -885,6 +886,64 @@ try {
   await run(
     "UPDATE restaurants SET allowance=30 WHERE id=?",
     state.restaurant.id,
+  );
+  // Try again after a failed "Change the setting with AI", even after a
+  // reload, resends that change to that photo, not a restyle of the original.
+  const failedChange = await call(
+    "jobs",
+    {
+      dishId: dish.id,
+      sourceId: asset.id,
+      parentId: resultAsset,
+      revision: "Remove the napkin and use softer window light.",
+      requestKey: id(),
+      candidateCount: 1,
+      controls: { format: "doordash", plate: "keep", cropX: 30, zoom: 1.2 },
+      style: styleFor({ look: "menu-wood" }, {}),
+      lookContext: { presetId: "menu-wood", occasionId: "", overrides: [] },
+    },
+    202,
+  );
+  await run(
+    "UPDATE outputs SET status='failed',error='Image creation failed. This image was not counted.' WHERE job_id=?",
+    failedChange.id,
+  );
+  await updateJob(failedChange.id);
+  const failedRow = (await call("state")).jobs.find(
+    (job) => job.id === failedChange.id,
+  );
+  assert.equal(failedRow.status, "failed");
+  const again = await call(
+    "jobs",
+    { ...failedImageRequest(failedRow), requestKey: id() },
+    202,
+  );
+  const resent = await one("SELECT * FROM jobs WHERE id=?", again.id);
+  assert.notEqual(resent.id, failedChange.id, "A new request is made");
+  assert.equal(resent.parent_id, resultAsset);
+  assert.equal(resent.source_id, asset.id);
+  assert.equal(resent.prompt, "Remove the napkin and use softer window light.");
+  assert.equal(
+    resent.fingerprint,
+    failedRow.fingerprint,
+    "The same photo, change, style and controls are sent again",
+  );
+  await run("UPDATE outputs SET status='failed' WHERE job_id=?", resent.id);
+  await updateJob(resent.id);
+  // A failed complimentary correction is never resent as a paid image.
+  assert.equal(
+    failedImageRequest({
+      ...failedRow,
+      details: JSON.stringify({ correctionFor: originalJob.id }),
+    }),
+    null,
+  );
+  assert.equal(
+    failedImageRequest({
+      ...failedRow,
+      credit_period: `complimentary:${originalJob.id}`,
+    }),
+    null,
   );
   const batchItems = [];
   for (let i = 0; i < 8; i++) {

@@ -65,7 +65,13 @@ import { useStudioNavigation } from "./use-studio-navigation";
 import { useStudioTiming } from "./use-studio-timing";
 import { recipeFromDraft } from "@/lib/studio-library";
 import { occasionName } from "@/lib/studio-occasions";
-import { capturedPhotoRecipe, photoLookContext } from "@/lib/photo-recipe";
+import {
+  capturedPhotoRecipe,
+  failedImageRequest,
+  isCorrection,
+  jobDetails,
+  photoLookContext,
+} from "@/lib/photo-recipe";
 import { photoAdvice } from "@/lib/photo-advice";
 import { restaurantPhotoDefaults } from "@/lib/restaurant-look";
 import { photoAnalysisRecommendation } from "@/lib/studio-onboarding";
@@ -194,8 +200,25 @@ export default function PhotoStudio({
     output = state.outputs.find(
       (o: Row) => o.job_id === b.jobId && o.status === "completed",
     ),
-    resultId = b.resultId || output?.asset_id,
-    asset = state.assets.find((a: Row) => a.id === resultId);
+    failedJob: Row | undefined = job?.status === "failed" ? job : undefined,
+    // A complimentary food correction: never retried as a paid image.
+    failedCorrection = isCorrection(failedJob),
+    // A failed AI change or correction keeps the photo it started from.
+    startedFrom: string = failedCorrection
+      ? state.outputs.find(
+          (o: Row) =>
+            o.job_id === jobDetails(failedJob).correctionFor &&
+            o.status === "completed",
+        )?.asset_id || ""
+      : failedJob?.parent_id || "",
+    keptPhoto =
+      startedFrom && state.assets.some((a: Row) => a.id === startedFrom)
+        ? startedFrom
+        : "",
+    resultId = b.resultId || output?.asset_id || keptPhoto,
+    asset = state.assets.find((a: Row) => a.id === resultId),
+    // Shown with that photo until the owner moves on.
+    failedChange = !b.resultId && !output && keptPhoto ? failedJob : undefined;
   // My Dishes owns a saved dish's name; the studio only shows it.
   const dish = state.dishes.find((d: Row) => d.id === b.dishId),
     dishName: string = dish
@@ -606,11 +629,14 @@ export default function PhotoStudio({
       track("upload_complete", a.id);
     });
   }
-  async function generate(parentId?: string, retryControls?: Row) {
+  function requireCreation() {
     if (!state.aiConnected)
       throw Error(
         "Image creation is not connected yet. Your photo and choices are saved. You can use your original photo while the connection is set up.",
       );
+  }
+  async function generate(parentId?: string) {
+    requireCreation();
     if (b.mode === "photo" && !b.sourceId)
       throw Error("Add your dish photo first.");
     // An illustration of a saved dish follows its My Dishes description.
@@ -629,17 +655,11 @@ export default function PhotoStudio({
     // Once Create is pressed, late photo analysis must not change the chosen look.
     change({ styleChosen: true, generationStartedAt: Date.now() });
     const did = await ensureDish();
-    const key = b.requestKey || crypto.randomUUID();
-    change({ requestKey: key });
-    await save();
-    track("generation_submission", did, { format: b.format, look: b.look });
-    const j = await api("jobs", {
-      studioDraftId: draftStore.id,
+    await submit({
       dishId: did,
       sourceId: b.mode === "photo" ? b.sourceId : null,
       parentId: parentId || null,
       revision: parentId ? aiChanges : b.note,
-      requestKey: key,
       candidateCount: 1,
       style: styleFor(b, state.restaurant),
       lookContext: photoLookContext(b),
@@ -651,10 +671,25 @@ export default function PhotoStudio({
         plate: b.plate,
         angle: b.angle,
         composition: b.composition,
-        cropX: retryControls?.cropX ?? b.adjustments.x,
-        cropY: retryControls?.cropY ?? b.adjustments.y,
-        zoom: retryControls?.zoom ?? b.adjustments.zoom,
+        cropX: b.adjustments.x,
+        cropY: b.adjustments.y,
+        zoom: b.adjustments.zoom,
       },
+    });
+  }
+  async function submit(request: Row) {
+    const key = read().requestKey || crypto.randomUUID();
+    change({ requestKey: key });
+    await save();
+    const look = request.lookContext?.presetId;
+    track("generation_submission", request.dishId, {
+      format: request.controls?.format || "menu",
+      ...(looks.some((entry) => entry.id === look) ? { look } : {}),
+    });
+    const j = await api("jobs", {
+      studioDraftId: draftStore.id,
+      ...request,
+      requestKey: key,
     }).catch((error) => {
       if (inspirationIds.length) inspirationAvailability.retry();
       throw error;
@@ -776,20 +811,32 @@ export default function PhotoStudio({
     setCompare(false);
     setAccurate(false);
   }
-  // A failed photo resubmits the same choices as a new request: generate()
-  // issues a fresh request key, and failed outputs never use the allowance.
+  // Try again resends the failed request itself (its photo, requested change,
+  // style and controls), whatever the draft has moved on to. It is a new
+  // request, and failed images never use the allowance. A complimentary food
+  // correction is never resent as a paid image: its report says what's next.
   async function retry() {
     const failed = state.jobs.find((j: Row) => j.id === b.jobId);
-    let controls: Row = {};
-    try {
-      controls = JSON.parse(failed?.details || "{}").controls || {};
-    } catch {}
-    await generate(
-      failed?.parent_id && aiChanges.trim() ? failed.parent_id : undefined,
-      Number.isFinite(controls.cropX)
-        ? { cropX: controls.cropX, cropY: controls.cropY, zoom: controls.zoom }
-        : undefined,
-    );
+    if (!failed) return generate();
+    const request = failedImageRequest(failed);
+    if (!request)
+      throw Error(
+        "A food correction can’t be sent again as a new image. Open its food correction report to see what happens next.",
+      );
+    requireCreation();
+    // The saved draft follows the request again, as the server expects.
+    change({
+      ...capturedPhotoRecipe({
+        jobId: failed.id,
+        sourceId: failed.source_id,
+        inputMethod: failed.input_method,
+        details: jobDetails(failed),
+      }),
+      dishId: failed.dish_id,
+      generationStartedAt: Date.now(),
+      ...(read().requestKey === failed.request_key ? { requestKey: "" } : {}),
+    });
+    await submit(request);
   }
   function handoff(target: string) {
     setFinishOpen(false);
@@ -1075,18 +1122,20 @@ export default function PhotoStudio({
                   </p>
                 </div>
                 <div className="st-action st-action-inline">
-                  <button
-                    className="st-create"
-                    disabled={!!busy || !!failedRetry}
-                    onClick={() => void act("Creating your photo", retry)}
-                  >
-                    {cancelled ? (
-                      <Sparkles size={18} aria-hidden="true" />
-                    ) : (
-                      <RotateCcw size={18} aria-hidden="true" />
-                    )}
-                    {cancelled ? "Create photo" : "Try again"}
-                  </button>
+                  {!failedCorrection && (
+                    <button
+                      className="st-create"
+                      disabled={!!busy || !!failedRetry}
+                      onClick={() => void act("Creating your photo", retry)}
+                    >
+                      {cancelled ? (
+                        <Sparkles size={18} aria-hidden="true" />
+                      ) : (
+                        <RotateCcw size={18} aria-hidden="true" />
+                      )}
+                      {cancelled ? "Create photo" : "Try again"}
+                    </button>
+                  )}
                   <button
                     className="st-pill st-pill-quiet st-pill-wide"
                     disabled={!!busy}
@@ -1095,8 +1144,10 @@ export default function PhotoStudio({
                     Back to my styles
                   </button>
                   <p className="st-action-note">
-                    {failedRetry ||
-                      "Same photo and choices · Uses 1 image only if it works"}
+                    {failedCorrection
+                      ? "Complimentary corrections aren’t sent again as new images. Open the photo from My Dishes to see its correction report."
+                      : failedRetry ||
+                        "Same photo and choices · Uses 1 image only if it works"}
                   </p>
                 </div>
               </aside>
@@ -1296,6 +1347,58 @@ export default function PhotoStudio({
                   Take a close look at your dish. When it feels right, save a
                   size made for where you’ll use it.
                 </p>
+                {failedChange && (
+                  <div className="st-alert">
+                    <p>
+                      <b>
+                        {cancelled
+                          ? "You cancelled these changes."
+                          : failedCorrection
+                            ? "Your food correction couldn’t be created."
+                            : "Your changes couldn’t be applied."}
+                      </b>{" "}
+                      {cancelled
+                        ? "No images were used."
+                        : failedCorrection
+                          ? "See the food correction report for what happens next."
+                          : failureText}{" "}
+                      This photo is unchanged.
+                    </p>
+                    <div>
+                      {failedCorrection ? (
+                        <button
+                          className="st-text-button"
+                          disabled={!!busy}
+                          onClick={() => setCorrectionOpen(true)}
+                        >
+                          View food correction report
+                        </button>
+                      ) : (
+                        <>
+                          <button
+                            className="st-text-button"
+                            disabled={!!busy || !!failedRetry}
+                            onClick={() =>
+                              void act("Applying your changes", retry)
+                            }
+                          >
+                            Try again · Uses 1 image only if it works
+                          </button>
+                          <button
+                            className="st-text-button"
+                            disabled={!!busy}
+                            onClick={() => {
+                              setAiChanges(failedChange.prompt || "");
+                              setAdjust("ai");
+                            }}
+                          >
+                            Edit my changes
+                          </button>
+                        </>
+                      )}
+                    </div>
+                  </div>
+                )}
               </div>
               <div
                 className="st-rows"
