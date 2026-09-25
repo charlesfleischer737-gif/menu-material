@@ -16,6 +16,7 @@ import { checkMenuSharing } from "./menu-sharing";
 import {
   changeMenuAddress,
   menuAddressAvailable,
+  releaseMenuAddress,
   resolveMenuAddress,
   suggestMenuAddress,
 } from "./menu-address";
@@ -1146,6 +1147,22 @@ async function route(req: Request) {
           paused: !!b.paused,
         });
         return response({ ok: true });
+      }
+      if (p[1] === "release-address") {
+        const address = z
+          .string()
+          .trim()
+          .toLowerCase()
+          .min(1)
+          .max(60)
+          .parse(b.address);
+        const released = await releaseMenuAddress(address);
+        assert(released, 404, "No menu uses that address.");
+        await event(released.restaurantId, "menu_address_released", null, {
+          address,
+          moved: released.moved,
+        });
+        return response({ ok: true, moved: released.moved });
       }
       if (p[1] === "takedown") {
         // Public menu pages and specials go offline (and stay unpublishable)

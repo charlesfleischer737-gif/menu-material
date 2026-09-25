@@ -14,7 +14,7 @@ let offset = 0;
 Date.now = () => realNow() + offset;
 const { handle } = await import("../lib/server/api.ts");
 const { caller } = await import("../lib/server/safeguards.ts");
-const { bucket, digest, one, run } = await import("../lib/server/core.ts");
+const { all, bucket, digest, one, run } = await import("../lib/server/core.ts");
 const { validateImageDimensions } =
   await import("../lib/server/image-validation.ts");
 const { resolveMenuAddress } = await import("../lib/server/menu-address.ts");
@@ -872,8 +872,142 @@ try {
     cookie: adminCookie,
   });
 
+  // 5. Menu addresses: only an address that was live (or the signup
+  // address, unique to the restaurant) keeps a redirect, a restaurant keeps
+  // at most five, and an administrator can release one.
+  const squatter = await signup(
+    "squat@example.test",
+    "Squat Kitchen",
+    "192.0.2.70",
+  );
+  const squat = { cookie: squatter.cookie, ip: "192.0.2.70" };
+  const { id: squatRid, slug: squatStart } = (await expect("state", 200, squat))
+    .json.restaurant;
+  for (const address of [
+    "starbucks",
+    "joes-pizza",
+    "the-corner-cafe",
+    "taqueria-el-sol",
+  ])
+    await expect("restaurant/address", 200, { body: { address }, ...squat });
+  const kept = async (rid) =>
+    (
+      await all(
+        "SELECT slug FROM slug_redirects WHERE restaurant_id=? ORDER BY slug",
+        rid,
+      )
+    ).map((row) => row.slug);
+  assert.deepEqual(await kept(squatRid), [squatStart], "others are freed");
+  const joe = await signup("joe@example.test", "Joe's Pizza", "192.0.2.71");
+  const joeOpts = { cookie: joe.cookie, ip: "192.0.2.71" };
+  const check = async (address) =>
+    (await expect(`restaurant/address?check=${address}`, 200, joeOpts)).json
+      .available;
+  assert.equal(await check("joes-pizza"), true);
+  await expect("restaurant/address", 200, {
+    body: { address: "joes-pizza" },
+    ...joeOpts,
+  });
+  // An earlier address kept before this change by a restaurant that never
+  // went live holds nothing either.
+  await run(
+    "INSERT INTO slug_redirects (slug,restaurant_id,created_at) VALUES ('old-squat',?,?)",
+    squatRid,
+    Date.now(),
+  );
+  assert.equal(await check("old-squat"), true);
+  // A current address stays taken until an administrator releases it.
+  assert.equal(await check("taqueria-el-sol"), false);
+  const moved = await expect("admin/release-address", 200, {
+    body: { address: "taqueria-el-sol" },
+    cookie: adminCookie,
+  });
+  assert.equal(moved.json.moved, squatStart);
+  assert.deepEqual(await kept(squatRid), ["old-squat"]);
+  assert.equal(await check("taqueria-el-sol"), true);
+  await expect("admin/release-address", 404, {
+    body: { address: "nobody-uses-this" },
+    cookie: adminCookie,
+  });
+  await expect("admin/release-address", 403, {
+    body: { address: "joes-pizza" },
+    ...joeOpts,
+  });
+  // A live menu keeps up to five earlier addresses working.
+  const joeRid = (await expect("state", 200, joeOpts)).json.restaurant.id;
+  const [joeStart] = await kept(joeRid);
+  assert.match(joeStart, /^joe-s-pizza-[0-9a-f]{8}$/);
+  const joeDish = (
+    await expect("dishes", 200, {
+      body: { name: "Margherita", description: "Tomato and basil" },
+      ...joeOpts,
+    })
+  ).json.id;
+  await expect("menu", 200, {
+    body: {
+      sections: [{ id: "pizza", name: "Pizza", items: [{ dishId: joeDish }] }],
+    },
+    ...joeOpts,
+  });
+  await expect("menu/publish", 200, { body: {}, ...joeOpts });
+  for (let n = 1; n <= 4; n++)
+    await expect("restaurant/address", 200, {
+      body: { address: `joes-pizza-${n}` },
+      ...joeOpts,
+    });
+  assert.deepEqual(await kept(joeRid), [
+    joeStart,
+    "joes-pizza",
+    "joes-pizza-1",
+    "joes-pizza-2",
+    "joes-pizza-3",
+  ]);
+  assert.equal(
+    (await expect("public/joes-pizza-2", 200, guest)).json.menu.restaurant.name,
+    "Joe's Pizza",
+  );
+  const full = await expect("restaurant/address", 409, {
+    body: { address: "joes-pizza-5" },
+    ...joeOpts,
+  });
+  assert.match(full.json.error, /already keeps 5 earlier addresses/);
+  // Moving back to one of its own earlier addresses is always possible.
+  await expect("restaurant/address", 200, {
+    body: { address: "joes-pizza-2" },
+    ...joeOpts,
+  });
+  await expect("admin/release-address", 200, {
+    body: { address: "joes-pizza-1" },
+    cookie: adminCookie,
+  });
+  await expect("public/joes-pizza-1", 404, guest);
+  await expect("restaurant/address", 200, {
+    body: { address: "joes-pizza-6" },
+    ...joeOpts,
+  });
+  assert.equal((await kept(joeRid)).length, 5);
+  // Once the menu is offline, an address chosen then is not kept unless a
+  // menu goes live while it is current.
+  await expect("admin/release-address", 200, {
+    body: { address: "joes-pizza-3" },
+    cookie: adminCookie,
+  });
+  await expect("menu/unpublish", 200, { body: {}, ...joeOpts });
+  offset += 3600000; // past the hourly limit on address changes
+  await expect("restaurant/address", 200, {
+    body: { address: "joes-pizza-7" },
+    ...joeOpts,
+  });
+  assert((await kept(joeRid)).includes("joes-pizza-6"), "it was live");
+  await expect("restaurant/address", 200, {
+    body: { address: "joes-pizza-8" },
+    ...joeOpts,
+  });
+  assert(!(await kept(joeRid)).includes("joes-pizza-7"), "never live");
+  checks++;
+
   console.log(
-    `PASS: ${checks} account security checks: per-network limits on the IPv6 /64 with no site-wide lockout, a per-account sign-in slowdown, versioned password hashes, sliding sessions, revocable reset and setup links, the Pro waitlist, once-only free images, ID validation, lenient saved looks, staff link scope and limits, WebP and AVIF uploads, transparent logos, cacheable public images, admin takedown;`,
+    `PASS: ${checks} account security checks: per-network limits on the IPv6 /64 with no site-wide lockout, a per-account sign-in slowdown, versioned password hashes, sliding sessions, revocable reset and setup links, the Pro waitlist, once-only free images, ID validation, lenient saved looks, staff link scope and limits, WebP and AVIF uploads, transparent logos, cacheable public images, admin takedown, menu-address squatting;`,
   );
 } finally {
   rmSync(root, { recursive: true, force: true });

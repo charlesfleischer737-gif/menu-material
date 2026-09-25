@@ -257,6 +257,13 @@ export function Admin({ act, refresh, busy }: AdminProps) {
         />
       )}
       {data && (
+        <ReleaseAddress
+          busy={busy || (loading ? "Refreshing administration" : "")}
+          act={act}
+          done={load}
+        />
+      )}
+      {data && (
         <h2 className="admin-section-title">
           Restaurants <span>{data.restaurants.length}</span>
         </h2>
@@ -487,6 +494,61 @@ function LaunchRequests({
       ) : (
         <p className="admin-empty-note">No requests yet.</p>
       )}
+      <AdminOperationStatus feedback={operation.feedback} />
+    </details>
+  );
+}
+/** Free a menu address someone is holding. */
+function ReleaseAddress({
+  busy,
+  act,
+  done,
+}: {
+  busy: string;
+  act: AdminAction;
+  done: () => Promise<void>;
+}) {
+  const [address, setAddress] = useState("");
+  const operation = useAdminOperation(act, busy);
+  return (
+    <details className="admin-details">
+      <summary>Menu addresses</summary>
+      <p className="admin-empty-note">
+        Release an address a restaurant is holding. An earlier address stops
+        opening its menu. A restaurant using the address moves to an automatic
+        one, and links to the released address stop working.
+      </p>
+      <div className="admin-row-controls">
+        <label className="field" style={{ flex: "1 1 240px" }}>
+          Menu address
+          <input
+            disabled={!!busy}
+            value={address}
+            placeholder="joes-pizza"
+            onChange={(e) => {
+              setAddress(e.target.value.trim().toLowerCase());
+              operation.changed("");
+            }}
+          />
+        </label>
+        <Button
+          variant="outline"
+          disabled={!!busy || !address}
+          onClick={() =>
+            operation.run(
+              "Releasing address",
+              "Address released. It can be chosen again.",
+              async () => {
+                await api("admin/release-address", { address });
+                setAddress("");
+                await done();
+              },
+            )
+          }
+        >
+          Release address
+        </Button>
+      </div>
       <AdminOperationStatus feedback={operation.feedback} />
     </details>
   );
