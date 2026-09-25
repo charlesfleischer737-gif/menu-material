@@ -51,7 +51,7 @@ async function stripe(
     method: fields ? "POST" : "GET",
     headers: {
       Authorization: "Bearer " + config("STRIPE_SECRET_KEY"),
-      "Stripe-Version": "2025-06-30.basil",
+      "Stripe-Version": "2026-08-26.dahlia",
       ...(fields
         ? { "Content-Type": "application/x-www-form-urlencoded" }
         : {}),
@@ -73,7 +73,7 @@ function proPrice(price: Row) {
   return (
     price?.id === config("STRIPE_PRO_PRICE_ID") &&
     price.currency === "usd" &&
-    price.unit_amount === 999 &&
+    price.unit_amount === 900 &&
     price.recurring?.interval === "month" &&
     price.recurring?.interval_count === 1
   );
@@ -149,6 +149,12 @@ async function reconcile(account: Row, lease: string) {
   if (!sub) return account;
   const item = sub.items.data[0],
     invoice = sub.latest_invoice;
+  // The portal can schedule flexible subscriptions with cancel_at instead of
+  // cancel_at_period_end. Both represent the same end-of-paid-period outcome.
+  const cancelAtPeriodEnd =
+    sub.cancel_at_period_end ||
+    (Number.isSafeInteger(sub.cancel_at) &&
+      sub.cancel_at === item.current_period_end);
   const line = invoice?.lines?.data?.find(
     (l: Row) =>
       (externalId(l.pricing?.price_details?.price) || externalId(l.price)) ===
@@ -159,7 +165,7 @@ async function reconcile(account: Row, lease: string) {
   const paid =
     ["active", "past_due"].includes(sub.status) &&
     invoice?.status === "paid" &&
-    invoice.amount_paid >= 999 &&
+    invoice.amount_paid >= 900 &&
     ["subscription_create", "subscription_cycle"].includes(
       invoice.billing_reason,
     ) &&
@@ -176,7 +182,7 @@ async function reconcile(account: Row, lease: string) {
       .bind(
         sub.id,
         sub.status,
-        sub.cancel_at_period_end ? 1 : 0,
+        cancelAtPeriodEnd ? 1 : 0,
         now(),
         account.restaurant_id,
         lease,
@@ -187,7 +193,7 @@ async function reconcile(account: Row, lease: string) {
       db()
         .prepare(
           `INSERT OR IGNORE INTO billing_periods (id,restaurant_id,subscription_id,invoice_id,starts_at,ends_at,allowance)
-    SELECT ?,?,?,?,?,?,100 WHERE EXISTS(SELECT 1 FROM billing_accounts WHERE restaurant_id=? AND lease_token=?)`,
+    SELECT ?,?,?,?,?,?,50 WHERE EXISTS(SELECT 1 FROM billing_accounts WHERE restaurant_id=? AND lease_token=?)`,
         )
         .bind(
           sub.id + ":" + item.current_period_start,
@@ -283,6 +289,9 @@ export async function billingRoute(req: Request, path: string[]) {
     assert(account?.customer_id, 400, "No billing account yet.");
     const session = await stripe("billing_portal/sessions", {
       customer: account.customer_id,
+      ...(config("STRIPE_PORTAL_CONFIGURATION_ID")
+        ? { configuration: config("STRIPE_PORTAL_CONFIGURATION_ID") }
+        : {}),
       return_url: origin() + "/?billing=return#studio",
     });
     return response({ url: session.url });
@@ -352,7 +361,9 @@ export async function billingRoute(req: Request, path: string[]) {
         client_reference_id: r.id,
         "line_items[0][price]": config("STRIPE_PRO_PRICE_ID"),
         "line_items[0][quantity]": "1",
-        "payment_method_types[0]": "card",
+        "adaptive_pricing[enabled]": "false",
+        "subscription_data[billing_mode][type]": "flexible",
+        integration_identifier: "menu_material_pro_hgkxnvqm",
         "subscription_data[metadata][restaurant_id]": r.id,
         "metadata[restaurant_id]": r.id,
         success_url: origin() + "/?billing=success#studio",

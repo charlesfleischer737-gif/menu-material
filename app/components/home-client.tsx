@@ -289,7 +289,7 @@ export default function HomeClient({ hasSession }: { hasSession: boolean }) {
         local={!!state.local}
         ownerSetup={!!state.ownerSetup}
         initialMode={authMode}
-        billingEnabled={!!state.billing?.enabled}
+        billingEnabled={!!(state.billing?.enabled ?? state.billingEnabled)}
         onDone={async () => {
           if (new URLSearchParams(location.search).has("upgrade"))
             setPlans(true);
