@@ -475,6 +475,91 @@ try {
     0,
     "imports never publish",
   );
+  // Reading a menu file: one bad row never costs the whole menu, a menu over
+  // 60 dishes is asked to be split, and owners only see plain words.
+  const readerFetch = globalThis.fetch;
+  const answer = (value) => {
+    globalThis.fetch = async () =>
+      Response.json({
+        output: [
+          {
+            content: [
+              {
+                type: "output_text",
+                text: typeof value === "string" ? value : JSON.stringify(value),
+              },
+            ],
+          },
+        ],
+        usage: {},
+      });
+  };
+  const longFile = new FormData();
+  longFile.set(
+    "file",
+    new File([jpg], "long-menu.jpg", { type: "image/jpeg" }),
+  );
+  const longImport = (await call("imports", longFile)).id;
+  const readImport = async () =>
+    (await call("state")).imports.find((i) => i.id === longImport);
+  try {
+    answer({
+      items: [
+        { category: "Mains", name: "Pasta", description: "", price: 12.5 },
+        {
+          category: "Mains",
+          name: "Soup " + "x".repeat(120),
+          price: "9.50",
+          uncertain: ["sizes"],
+        },
+        { category: "", name: "Bread", price: -1 },
+        { category: "Mains", name: "", price: 4 },
+      ],
+    });
+    await call(`imports/${longImport}/extract`, {});
+    assert.deepEqual(
+      JSON.parse((await readImport()).draft).map((row) => [
+        row.name.slice(0, 5),
+        row.name.length,
+        row.category,
+        row.price,
+        row.uncertain,
+      ]),
+      [
+        ["Pasta", 5, "Mains", 12.5, []],
+        ["Soup ", 100, "Mains", 9.5, ["name", "price"]],
+        ["Bread", 5, "Dishes", null, ["category", "price"]],
+      ],
+      "rows are checked one by one; what didn't fit is marked",
+    );
+    answer({
+      items: Array.from({ length: 61 }, (_, n) => ({
+        category: "Mains",
+        name: `Dish ${n}`,
+        description: "",
+        price: 10,
+      })),
+    });
+    assert.match(
+      (await call(`imports/${longImport}/extract`, {}, 422)).error,
+      /more than 60 dishes\. Split it/,
+    );
+    assert.match((await readImport()).error, /more than 60 dishes/);
+    answer({ error: "too_many_dishes", items: [] });
+    assert.match(
+      (await call(`imports/${longImport}/extract`, {}, 422)).error,
+      /more than 60 dishes/,
+    );
+    answer("Sorry, { this is not JSON");
+    assert.match(
+      (await call(`imports/${longImport}/extract`, {}, 422)).error,
+      /Could not read this menu/,
+    );
+    assert.doesNotMatch((await readImport()).error, /JSON|token|Expected/);
+  } finally {
+    globalThis.fetch = readerFetch;
+  }
+  await run("DELETE FROM menu_imports WHERE id=?", longImport);
   const batchId = crypto.randomUUID();
   await call("batches", {
     batchId,
