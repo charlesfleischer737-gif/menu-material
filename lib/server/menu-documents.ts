@@ -1113,6 +1113,10 @@ export async function syncDishToMenus(rid: string, before: Row, after: Row) {
     JSON.stringify(previous.dietary) === JSON.stringify(current.dietary)
   )
     return [];
+  // Publishing refuses a price of 0, so guests never get one this way: drafts
+  // take it (and their checks flag it), while live copies keep their price.
+  const withheld = previous.price !== current.price && !current.price,
+    liveFacts = withheld ? { ...current, price: previous.price } : current;
   const updated: { id: string; name: string; live: boolean }[] = [];
   const rows = await all(
     "SELECT * FROM menu_documents WHERE restaurant_id=? AND archived_at IS NULL",
@@ -1124,9 +1128,14 @@ export async function syncDishToMenus(rid: string, before: Row, after: Row) {
       const nextDraft = applyDishUpdate(draft, previous, current);
       const published = row.published ? JSON.parse(row.published) : null;
       const nextPublished = published
-        ? applyDishUpdate(published as MenuDocument, previous, current)
+        ? applyDishUpdate(published as MenuDocument, previous, liveFacts)
         : null;
       if (!nextDraft.changed && !nextPublished?.changed) continue;
+      // A withheld price leaves the live copy behind this draft.
+      const inStep =
+        !withheld ||
+        JSON.stringify(applyDishUpdate(draft, previous, liveFacts).menu) ===
+          JSON.stringify(nextDraft.menu);
       const statements = [];
       if (nextDraft.changed)
         statements.push(
@@ -1137,7 +1146,7 @@ export async function syncDishToMenus(rid: string, before: Row, after: Row) {
             )
             .bind(
               JSON.stringify(menuDocumentSchema.parse(nextDraft.menu)),
-              nextPublished?.changed ? 1 : 0,
+              nextPublished?.changed && inStep ? 1 : 0,
               now(),
               row.id,
               rid,

@@ -399,6 +399,73 @@ try {
     1200,
     "guests still see the published price",
   );
+
+  // A price of 0 saved in My Dishes never reaches guests: the draft takes it
+  // (so publishing flags it) and the live menu keeps its last price.
+  const friesDish = await call("dishes", {
+    name: "Fries",
+    description: "Sea salt",
+    price: 5,
+    confirmed: true,
+  });
+  const friesSaved = await call("menus", {
+    id: crypto.randomUUID(),
+    draft: newMenuDocument({
+      name: "Sides",
+      title: "Sides",
+      sections: [
+        section(
+          [
+            newMenuEntry({
+              dishId: friesDish.id,
+              name: "Fries",
+              description: "Sea salt",
+              price: 500,
+            }),
+          ],
+          "Sides",
+        ),
+      ],
+    }),
+  });
+  const friesLive = await call(`menus/${friesSaved.id}/publish`, {
+    revision: friesSaved.revision,
+  });
+  assert.equal(friesLive.publishedRevision, friesLive.revision);
+  const zeroed = await call(`dishes/${friesDish.id}`, {
+    name: "Skin-on fries",
+    description: "Sea salt",
+    price: 0,
+    confirmed: true,
+  });
+  assert.deepEqual(
+    zeroed.menus.map((m) => [m.id, m.live]),
+    [[friesSaved.id, true]],
+  );
+  const friesAfter = await call(`menus/${friesSaved.id}`);
+  const fries = (menu) => menu.sections[0].items[0];
+  assert.equal(fries(friesAfter.draft).price, 0, "the draft takes the price");
+  assert.equal(fries(friesAfter.published).price, 500, "guests keep theirs");
+  assert.equal(
+    fries(friesAfter.published).name,
+    "Skin-on fries",
+    "other details still follow",
+  );
+  assert.notEqual(
+    friesAfter.publishedRevision,
+    friesAfter.revision,
+    "the live menu is now behind its draft",
+  );
+  assert(
+    blockingChecks(
+      menuPublishChecks(friesAfter.draft, { restaurantName: "Corner House" }),
+    ).some((c) => c.id.startsWith("zero:")),
+    "publishing flags the price",
+  );
+  assert.equal(
+    fries((await call(`public/${slugNow}?menu=${friesSaved.id}`)).menu).price,
+    500,
+  );
   console.log(
     `PASS: ${checks} menu publishing checks: placeholder names, sample dishes, zero prices, automatic checks without an I-checked box, first-publication menu address, address changes with redirects, and dish edits reaching draft and live menus.`,
   );
