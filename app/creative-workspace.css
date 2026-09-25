@@ -587,12 +587,18 @@
   font-size: var(--text-callout);
   font-weight: 600;
 }
+/* Stands in for the dish cards until a photo is approved: a white card on
+   the stone canvas, like the cards that replace it, across both columns. */
 .mm-start-empty {
+  grid-column: 1 / -1;
   min-height: 340px;
   border-radius: var(--radius-card);
-  background: var(--gray-100);
+  background: var(--workspace-surface);
+  box-shadow: var(--shadow-card);
   display: grid;
   place-content: center;
+  justify-items: center;
+  gap: 12px;
   padding: 30px;
   text-align: center;
 }

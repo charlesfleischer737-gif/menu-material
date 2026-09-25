@@ -43,7 +43,7 @@ The text grays from `--gray-400` to `--gray-900` are unchanged.
 - **Explore:** stone page, white filter chips with a hairline, white search, stone frosted filter bar. "Made for the moment" is an evergreen band with white cards, a chosen collection introduces itself on its full color, and the closing card is evergreen.
 - **Post Maker and Menus:** the preview stages are dark, with the Post/Story and Print/Phone switches, page controls, hints, design strip and review strip in on-dark colors. This includes the phone preview, Focus preview and phone layouts.
 - **My Dishes:** white search beside the white Filters and Select buttons.
-- **Post Maker:** the empty state's main action and Photo Studio link now sit in one spaced row (they previously touched).
+- **Post Maker:** the empty state's main action and Photo Studio link now sit in one spaced row (they previously touched). Before any photo is approved, "Your approved dishes will appear here." is a white card with `--shadow-card` across both photo columns, with its icon and text centered; it was stone on the stone canvas and filled only the first column.
 - **Public site:** faint green glow behind the hero, stone use-case band with white cards, evergreen closing band, stone footer, stone Free card and evergreen Pro card. The visitor Photo Studio header is frosted stone.
 - **Kitties:** evergreen cats with bright-green eyes (on their dark fur) in a few empty and waiting moments, on white or stone only. See [Kitties](KITTIES.md).
 
