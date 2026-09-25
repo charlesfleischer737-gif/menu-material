@@ -788,6 +788,9 @@ textarea.st-input {
 .st-save-status[data-error] {
   color: var(--workspace-error);
 }
+.st-save-status:empty {
+  display: none;
+}
 .cx-app .st-header-tools :is(.cx-link, .st-text-button) {
   min-height: 36px;
   padding: 6px 12px;

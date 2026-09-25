@@ -1,5 +1,8 @@
 "use client";
-import { workspacePreferenceKey } from "@/lib/workspace-navigation";
+import {
+  hasSavedContent,
+  workspacePreferenceKey,
+} from "@/lib/workspace-navigation";
 import { draftStatus } from "@/lib/workspace-status";
 import { useEffect, useRef, useState, type CSSProperties } from "react";
 import {
@@ -976,13 +979,19 @@ export default function PhotoStudio({
           <p>{greeting}. What’s on the menu?</p>
         </div>
         <div className="st-header-tools">
+          {/* A quiet label: routine autosaves aren't announced (a failed
+              save is, by DraftRecovery), and an empty studio has nothing
+              saved to report. */}
           <span
             className="st-save-status"
-            role="status"
-            aria-live="polite"
             data-error={status === draftStatus.failed || undefined}
           >
-            {status}
+            {hasSavedContent({ kind: "studio", draft: b }) ||
+            b.name?.trim() ||
+            b.note?.trim() ||
+            status === draftStatus.failed
+              ? status
+              : ""}
           </span>
           <SavedDrafts
             kind="studio"

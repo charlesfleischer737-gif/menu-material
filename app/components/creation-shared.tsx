@@ -172,6 +172,7 @@ export function useCreationDraft(
   const save = useCallback(async () => {
     if (saving.current) return saving.current;
     const run = async () => {
+      let wrote = false;
       while (
         meta.current.id &&
         JSON.stringify(latest.current) !== saved.current
@@ -185,12 +186,21 @@ export function useCreationDraft(
         });
         meta.current.revision = data.revision;
         saved.current = content;
+        wrote = true;
         rememberPreference(preferenceKey, meta.current.id);
         window.dispatchEvent(new Event("menu-material:draft-saved"));
       }
       forgetBackup();
       setSaveError("");
-      setStatus(draftStatus.saved);
+      // "Draft saved" reports a save: nothing written and nothing pending
+      // (such as opening an empty tool) leaves the status as it was.
+      setStatus((current) =>
+        wrote ||
+        current === draftStatus.saving ||
+        current === draftStatus.failed
+          ? draftStatus.saved
+          : current,
+      );
     };
     const pending = run();
     saving.current = pending;
