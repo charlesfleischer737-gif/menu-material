@@ -1,4 +1,5 @@
 "use client";
+import type { ReactNode } from "react";
 import Link from "next/link";
 import { Check } from "lucide-react";
 
@@ -20,11 +21,14 @@ export default function PlanCards({
   onUpgrade,
   onFree,
   busy = false,
+  comingSoon,
 }: {
   enabled?: boolean;
   onUpgrade?: () => void;
   onFree?: () => void;
   busy?: boolean;
+  /** Replaces the Pro card's "open soon" note while billing is off. */
+  comingSoon?: ReactNode;
 }) {
   return (
     <div className="pw-plan-grid">
@@ -88,9 +92,11 @@ export default function PlanCards({
               </Link>
             )
           ) : (
-            <p className="pw-plan-soon">
-              Subscriptions open soon. Start with 5 free images today.
-            </p>
+            (comingSoon ?? (
+              <p className="pw-plan-soon">
+                Subscriptions open soon. Start with 5 free images today.
+              </p>
+            ))
           )}
         </div>
       </article>

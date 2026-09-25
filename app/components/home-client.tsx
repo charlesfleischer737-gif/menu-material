@@ -25,6 +25,13 @@ const SettingsPanel = lazy(() =>
 const Admin = lazy(() =>
   import("./account-panels").then((m) => ({ default: m.Admin })),
 );
+// Drops a one-time query parameter from the address once it has been handled.
+function forgetParam(name: string) {
+  const url = new URL(location.href);
+  if (!url.searchParams.has(name)) return;
+  url.searchParams.delete(name);
+  history.replaceState(history.state, "", url.pathname + url.search + url.hash);
+}
 function Opening({ title, message }: { title: string; message: string }) {
   return (
     <main className="initial-loading">
@@ -112,8 +119,11 @@ export default function HomeClient({ hasSession }: { hasSession: boolean }) {
         .catch(() => {});
     }
     if (loaded && new URLSearchParams(location.search).has("upgrade")) {
-      if (state.user) setPlans(true);
-      else {
+      if (state.user) {
+        setPlans(true);
+        // Handled; a reload shouldn't reopen Plans.
+        forgetParam("upgrade");
+      } else {
         setAuthMode("signup");
         setAuth(true);
       }
@@ -249,11 +259,8 @@ export default function HomeClient({ hasSession }: { hasSession: boolean }) {
                 const { clearExportImages } =
                   await import("@/lib/offer-export");
                 clearExportImages();
-                history.replaceState(
-                  null,
-                  "",
-                  location.pathname + location.search,
-                );
+                // Leave no workspace view or one-time query (?upgrade) behind.
+                history.replaceState(null, "", location.pathname);
                 await refresh();
               })
             }
@@ -298,7 +305,7 @@ export default function HomeClient({ hasSession }: { hasSession: boolean }) {
         local={!!state.local}
         ownerSetup={!!state.ownerSetup}
         initialMode={authMode}
-        billingEnabled={!!state.billing?.enabled}
+        billingEnabled={!!(state.billing?.enabled ?? state.billingEnabled)}
         onDone={async () => {
           if (new URLSearchParams(location.search).has("upgrade"))
             setPlans(true);
