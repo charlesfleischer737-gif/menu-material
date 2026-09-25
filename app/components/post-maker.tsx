@@ -32,6 +32,7 @@ import {
 import { postTemplates, applyPostTemplate } from "@/lib/post-templates";
 import {
   carouselSlides,
+  postSize,
   postSlideCount,
   recommendedDesigns,
 } from "@/lib/post-composition";
@@ -72,6 +73,7 @@ const initial = (restaurant: Row, version = 1) => ({
   showBrand: true,
   textPlacement: "auto",
   channels: ["feed", "story"],
+  feedShape: "4:5",
   layouts: Object.fromEntries(
     ["feed", "story", "carousel"].map((k) => [
       k,
@@ -183,7 +185,7 @@ export default function PostMaker({
               a.id === seed.photoId && a.approved_at && a.dish_id === d?.id,
           );
         if (d && a) {
-          await start({
+          const draft = {
             ...postFromPhoto(
               initial(state.restaurant, 2),
               d,
@@ -192,6 +194,13 @@ export default function PostMaker({
               true,
             ),
             ...(seed.occasion ? { occasion: seed.occasion } : {}),
+          };
+          // Open on the design made for this dish, not a fixed default.
+          const lead = recommendedDesigns(draft, state.restaurant)[0];
+          await start({
+            ...draft,
+            ...applyPostTemplate(draft, lead),
+            compositionVersion: 2,
           });
           track("photo_reused", a.id, { dishId: d.id, destination: "post" });
         }
@@ -229,10 +238,14 @@ export default function PostMaker({
       quantity: 1,
       facts: dishSnapshot(d),
     };
+    const lead = first
+      ? recommendedDesigns({ ...b, items: [item] }, state.restaurant)[0]
+      : "";
     update({
       items: [...items, item],
       ...(first
         ? {
+            ...applyPostTemplate({ ...b, items: [item], title: d.name }, lead),
             compositionVersion: 2,
             title: d.name,
             description: d.description || "",
@@ -310,6 +323,7 @@ export default function PostMaker({
           state.restaurant,
           format,
           n,
+          { scale: 0.25 },
         );
         const label =
           format === "feed"
@@ -473,11 +487,11 @@ export default function PostMaker({
                   {mobileControls ? "Close edits" : "Edit design"}
                 </button>
                 <span className="mm-muted">
-                  {channel === "story" ? "1080 × 1920" : "1080 × 1350"}
+                  {postSize(b, channel).width} × {postSize(b, channel).height}
                 </span>
               </div>
               <div
-                className={`mm-main-canvas ${channel === "story" ? "is-story" : ""}`}
+                className={`mm-main-canvas ${channel === "story" ? "is-story" : channel === "feed" && b.feedShape === "3:4" ? "is-tall" : ""}`}
               >
                 <PostCanvas
                   draft={b}
@@ -755,6 +769,34 @@ export default function PostMaker({
                         Use the improved composition
                       </button>
                     )}
+                    <div className="cx-field">
+                      <span id="post-shape-label">Post shape</span>
+                      <div
+                        className="mm-segments"
+                        role="group"
+                        aria-labelledby="post-shape-label"
+                      >
+                        {[
+                          ["4:5", "Portrait 4:5"],
+                          ["3:4", "Tall 3:4"],
+                        ].map(([value, label]) => (
+                          <button
+                            key={value}
+                            aria-pressed={(b.feedShape || "4:5") === value}
+                            onClick={() => {
+                              update({ feedShape: value });
+                              setChannel("feed");
+                            }}
+                          >
+                            {label}
+                          </button>
+                        ))}
+                      </div>
+                      <small>
+                        Tall 3:4 fills Instagram’s profile grid. Stories stay
+                        9:16 and carousels 4:5.
+                      </small>
+                    </div>
                     <Field label="Text on the image">
                       <select
                         value={b.textMode || "minimal"}
@@ -777,9 +819,7 @@ export default function PostMaker({
                       />
                       Restaurant name & logo
                     </label>
-                    {["editorial", "afterdark", "fresh"].includes(
-                      b.template,
-                    ) && (
+                    {["editorial", "afterdark"].includes(b.template) && (
                       <Field label="Text placement">
                         <select
                           value={b.textPlacement || "auto"}
@@ -909,7 +949,9 @@ export default function PostMaker({
                       </Field>
                     )}
                     <p className="mm-muted">
-                      Fit keeps the whole photo. Each format and carousel slide
+                      Automatic framing keeps the dish whole and extends a plain
+                      background to fit the shape. Fit shows the entire photo;
+                      Fill crops to the frame. Each format and carousel slide
                       keeps its own framing.
                     </p>
                     <CropControls
@@ -934,23 +976,25 @@ export default function PostMaker({
                     <button
                       className="cx-link"
                       onClick={() => {
+                        const automatic = {
+                          ...emptyAdjustments,
+                          fit: false,
+                          autoFrame: true,
+                        };
                         if (selectedItem)
                           updateItem(editingIndex, {
                             layouts: {
                               ...selectedItem.layouts,
-                              [channel]: { ...emptyAdjustments, fit: true },
+                              [channel]: automatic,
                             },
                           });
                         else
                           update({
-                            layouts: {
-                              ...b.layouts,
-                              [channel]: { ...emptyAdjustments, fit: true },
-                            },
+                            layouts: { ...b.layouts, [channel]: automatic },
                           });
                       }}
                     >
-                      Reset to whole photo
+                      Back to automatic framing
                     </button>
                   </>
                 )}
@@ -1152,6 +1196,7 @@ export default function PostMaker({
                     restaurant={state.restaurant}
                     channel={c}
                     slide={n}
+                    scale={0.4}
                   />
                   <small>
                     {c === "feed"
@@ -1180,7 +1225,7 @@ export default function PostMaker({
             />
           </Field>
           <div
-            className={`mm-post-checks ${postChecks.length ? "has-blocking" : "is-clear"}`}
+            className={`mm-post-checks ${postChecks.length ? "has-blocking" : proofIssues.length ? "has-notes" : "is-clear"}`}
             role="status"
           >
             {postChecks.length ? (
@@ -1217,6 +1262,8 @@ export default function PostMaker({
                   </form>
                 )}
               </>
+            ) : proofIssues.length ? (
+              <strong>Ready to share. The note above is optional.</strong>
             ) : (
               <strong>
                 <Check size={16} aria-hidden="true" /> Automatic checks passed
@@ -1228,6 +1275,7 @@ export default function PostMaker({
             restaurant={state.restaurant}
             busy={!!busy}
             notice={action.setNotice}
+            draftId={store.id}
           />
           <button
             className="cx-link"

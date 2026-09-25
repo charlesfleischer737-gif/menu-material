@@ -104,25 +104,10 @@
   cursor: ew-resize;
   touch-action: pan-y;
 }
-.cx-comparison-stage:focus-within {
+/* Ring the slider for keyboard focus only, not after every drag. */
+.cx-comparison-stage:has(input:focus-visible) {
   outline: 3px solid var(--workspace-action);
   outline-offset: 4px;
-}
-.cx-photo-comparison figcaption {
-  display: flex;
-  align-items: center;
-  justify-content: space-between;
-  gap: 12px;
-  padding: 13px 2px;
-  color: var(--workspace-muted);
-  font-size: var(--text-footnote);
-  line-height: 1.5;
-}
-.cx-photo-comparison figcaption > span:first-child {
-  display: inline-flex;
-  gap: 8px;
-  align-items: center;
-  color: var(--workspace-ink);
 }
 .cx-comparison-error {
   position: absolute;

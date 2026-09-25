@@ -45,76 +45,6 @@ export function gradient(
   stops.forEach(([at, c]) => g.addColorStop(at, c));
   return g;
 }
-export function glow(
-  ctx: CanvasRenderingContext2D,
-  x: number,
-  y: number,
-  radius: number,
-  color: string,
-  alpha = 0.5,
-) {
-  ctx.save();
-  ctx.globalAlpha = alpha;
-  const g = ctx.createRadialGradient(x, y, 0, x, y, radius);
-  g.addColorStop(0, color);
-  g.addColorStop(1, color + "00");
-  ctx.fillStyle = g;
-  ctx.fillRect(x - radius, y - radius, radius * 2, radius * 2);
-  ctx.restore();
-}
-export async function paintMaterial(
-  ctx: CanvasRenderingContext2D,
-  width: number,
-  height: number,
-  kind: "dark" | "paper" | "silk",
-  primary = "#235b48",
-) {
-  const im = await material(
-    kind === "dark"
-      ? "/design-materials/copper-velvet.webp"
-      : "/design-materials/botanical-paper.webp",
-  );
-  ctx.save();
-  ctx.fillStyle = kind === "dark" ? "#17130e" : "#f8f2e8";
-  ctx.fillRect(0, 0, width, height);
-  ctx.drawImage(im, 0, 0, width, height);
-  if (kind === "dark") {
-    ctx.globalCompositeOperation = "color";
-    ctx.globalAlpha = 0.4;
-    ctx.fillStyle = primary;
-    ctx.fillRect(0, 0, width, height);
-    ctx.globalCompositeOperation = "source-over";
-    ctx.globalAlpha = 1;
-    ctx.fillStyle = gradient(ctx, 0, 0, width, height, [
-      [0, "#04090875"],
-      [0.55, "#04090800"],
-      [1, "#04090826"],
-    ]);
-    ctx.fillRect(0, 0, width, height);
-  } else {
-    ctx.globalAlpha = kind === "silk" ? 0.76 : 0.36;
-    ctx.fillStyle = "#fffdf7";
-    ctx.fillRect(0, 0, width, height);
-    ctx.globalAlpha = 1;
-    glow(
-      ctx,
-      width * 0.02,
-      height * 0.04,
-      width * 0.8,
-      mixColor(primary, "#ffffff", 0.8),
-      kind === "silk" ? 0.75 : 0.4,
-    );
-    glow(
-      ctx,
-      width * 0.94,
-      height * 0.85,
-      width * 0.7,
-      "#eab87c",
-      kind === "silk" ? 0.28 : 0.14,
-    );
-  }
-  ctx.restore();
-}
 export function foil(
   ctx: CanvasRenderingContext2D,
   x: number,
@@ -129,4 +59,46 @@ export function foil(
     [0.72, "#ddc18c"],
     [1, "#ebcea0"],
   ]);
+}
+/**
+ * Paints a material texture over the whole artwork. The texture is cropped
+ * to cover the frame, never stretched, so its grain keeps its shape in every
+ * format.
+ */
+export async function paintMaterial(
+  ctx: CanvasRenderingContext2D,
+  width: number,
+  height: number,
+  kind: "dark" | "paper",
+  tint: string,
+  strength = 1,
+) {
+  const im = await material(
+    kind === "dark"
+      ? "/design-materials/copper-velvet.webp"
+      : "/design-materials/botanical-paper.webp",
+  );
+  const scale = Math.max(width / im.width, height / im.height);
+  const sw = width / scale,
+    sh = height / scale;
+  ctx.save();
+  ctx.globalAlpha = strength;
+  ctx.drawImage(
+    im,
+    (im.width - sw) / 2,
+    (im.height - sh) / 2,
+    sw,
+    sh,
+    0,
+    0,
+    width,
+    height,
+  );
+  ctx.globalAlpha = 1;
+  // The restaurant's color takes over the texture's own hue.
+  ctx.globalCompositeOperation = "color";
+  ctx.globalAlpha = kind === "dark" ? 0.55 : 0.35;
+  ctx.fillStyle = tint;
+  ctx.fillRect(0, 0, width, height);
+  ctx.restore();
 }
