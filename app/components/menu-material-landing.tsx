@@ -17,43 +17,9 @@ import { SiteFooter, SiteHeader } from "./site-chrome";
    production build ("navigateClientSide is not a function"), so a <Link>
    click there does nothing. These are separate server-rendered pages anyway. */
 
-const credits = (
-  <>
-    Original photos and their AI edits:{" "}
-    <a
-      href="https://commons.wikimedia.org/wiki/File:Hamburger_(5).jpg"
-      target="_blank"
-      rel="noreferrer"
-    >
-      Burger by cyclonebill
-    </a>{" "}
-    (
-    <a
-      href="https://creativecommons.org/licenses/by-sa/2.0/"
-      target="_blank"
-      rel="noreferrer"
-    >
-      CC BY-SA 2.0
-    </a>
-    );{" "}
-    <a
-      href="https://commons.wikimedia.org/wiki/File:Carnegie_Deli_Strawberry_Cheesecake.jpg"
-      target="_blank"
-      rel="noreferrer"
-    >
-      cheesecake by Pilauricey
-    </a>{" "}
-    (
-    <a
-      href="https://creativecommons.org/licenses/by-sa/3.0/"
-      target="_blank"
-      rel="noreferrer"
-    >
-      CC BY-SA 3.0
-    </a>
-    ).
-  </>
-);
+// The burger and cheesecake photos are CC BY-SA, so they need credit. The full
+// credits are on the usage guidelines page.
+const credits = <a href="/guidelines#credits">Photo credits</a>;
 
 // The calls to action are links (/#studio, /?login) that the page itself
 // handles, so they work before JavaScript loads. Once it has, a plain click
@@ -148,8 +114,7 @@ export default function Landing({
           <div className="pw-hero-intro">
             <h1 id="hero-title">Make your food look as good as it tastes.</h1>
             <p>
-              Turn a phone photo into studio-quality images for your menu,
-              delivery listings, and social posts.
+              Turn phone pics into studio-quality images for your restaurant.
             </p>
           </div>
           <div className="pw-hero-actions">

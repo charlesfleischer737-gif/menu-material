@@ -16,6 +16,7 @@ export default function Guidelines() {
         { id: "review", label: "Review before sharing" },
         { id: "commercial", label: "Commercial use" },
         { id: "security", label: "Account security" },
+        { id: "credits", label: "Photo credits" },
       ]}
     >
       <section>
@@ -76,6 +77,48 @@ export default function Guidelines() {
           addressed. Keep downloaded copies of work your restaurant relies on.
           See <a href="/pricing">plans and account information</a> for current
           help and account-access options.
+        </p>
+      </section>
+      <section>
+        <h2 id="credits" tabIndex={-1}>
+          Photo credits
+        </h2>
+        <p>
+          The burger and cheesecake examples on the homepage are photos from
+          Wikimedia Commons and AI edits of them. Original photos and their AI
+          edits:{" "}
+          <a
+            href="https://commons.wikimedia.org/wiki/File:Hamburger_(5).jpg"
+            target="_blank"
+            rel="noreferrer"
+          >
+            Burger by cyclonebill
+          </a>{" "}
+          (
+          <a
+            href="https://creativecommons.org/licenses/by-sa/2.0/"
+            target="_blank"
+            rel="noreferrer"
+          >
+            CC BY-SA 2.0
+          </a>
+          );{" "}
+          <a
+            href="https://commons.wikimedia.org/wiki/File:Carnegie_Deli_Strawberry_Cheesecake.jpg"
+            target="_blank"
+            rel="noreferrer"
+          >
+            cheesecake by Pilauricey
+          </a>{" "}
+          (
+          <a
+            href="https://creativecommons.org/licenses/by-sa/3.0/"
+            target="_blank"
+            rel="noreferrer"
+          >
+            CC BY-SA 3.0
+          </a>
+          ).
         </p>
       </section>
     </PublicInformation>
