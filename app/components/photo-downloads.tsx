@@ -2,15 +2,19 @@
 import { useEffect, useState } from "react";
 import { ArrowRight, Check, Download, Megaphone } from "lucide-react";
 import { downloadBlob } from "@/lib/client";
-import { masterPhotoExport, photoExport } from "@/lib/photo-export";
+import {
+  downloadFormats,
+  eventDestination,
+  masterPhotoExport,
+  photoExport,
+  type DownloadFormat,
+} from "@/lib/photo-export";
 import {
   catalogProfiles,
   emptyAdjustments,
-  formats,
   type Adjustments,
 } from "@/lib/studio";
 import {
-  exportFormat,
   isCatalogDestination,
   photoDestination,
   photoDestinations,
@@ -28,6 +32,14 @@ import {
   useAction,
 } from "./creation-shared";
 
+// Instagram's 3:4 post is a download size under the Instagram choice.
+type Destination = PhotoDestination | "feed-3x4";
+const instagramSizes: { id: Destination; label: string }[] = [
+  { id: "feed", label: "Post 4:5" },
+  { id: "feed-3x4", label: "Post 3:4" },
+  { id: "story", label: "Story" },
+];
+
 export default function PhotoDownloads({
   items,
   preferenceKey,
@@ -39,7 +51,7 @@ export default function PhotoDownloads({
   initialFormat?: string;
   onPromote?: (item: DownloadPhoto) => void;
 }) {
-  const [destination, setDestination] = useState<PhotoDestination>(
+  const [destination, setDestination] = useState<Destination>(
     photoDestination(initialFormat),
   );
   const [index, setIndex] = useState(0);
@@ -57,22 +69,29 @@ export default function PhotoDownloads({
   if (!item) return null;
   const master = destination === "master";
   const catalog = isCatalogDestination(destination);
+  const instagram = instagramSizes.some((size) => size.id === destination);
   const choice = photoDestinations.find(
-    (d) => d.id === (destination === "story" ? "feed" : destination),
+    (d) => d.id === (instagram ? "feed" : destination),
   )!;
+  const sizeLabel =
+    instagram && destination !== "feed"
+      ? downloadFormats[destination as DownloadFormat].label
+      : choice.label;
   const cropKey = `${item.assetId}:${destination}`;
   const edits = crops[cropKey] || { ...emptyAdjustments, fit: !catalog };
   const allChecked =
     master || items.every((i) => checked[`${i.assetId}:${destination}`]);
   const photoOnly = !catalog || items.every((i) => i.fromPhoto);
   const profile = catalogProfiles[destination as keyof typeof catalogProfiles];
-  function select(value: PhotoDestination) {
+  function select(value: Destination) {
     setDestination(value);
     setDownloaded(false);
     action.setError("");
     action.setNotice("");
     rememberPreference(key, value);
-    track("destination_selected", item.dishId, { destination: value });
+    track("destination_selected", item.dishId, {
+      destination: eventDestination(value),
+    });
   }
   async function download() {
     const attemptId = crypto.randomUUID();
@@ -96,7 +115,7 @@ export default function PhotoDownloads({
             ? await masterPhotoExport(photo.assetId)
             : await photoExport(
                 photo.assetId,
-                exportFormat(destination),
+                destination,
                 crops[`${photo.assetId}:${destination}`] || {
                   ...emptyAdjustments,
                   fit: !catalog,
@@ -121,7 +140,12 @@ export default function PhotoDownloads({
           },
         )
           .then((key) =>
-            track("export_prepared", photo.assetId, { destination }, key),
+            track(
+              "export_prepared",
+              photo.assetId,
+              { destination: eventDestination(destination) },
+              key,
+            ),
           )
           .catch(() => {});
         if (items.length === 1) downloadBlob(output.blob, filename);
@@ -151,7 +175,7 @@ export default function PhotoDownloads({
       track(
         "export_download_started",
         photo.assetId,
-        { destination },
+        { destination: eventDestination(destination) },
         attemptId,
       );
     rememberPreference(key, destination);
@@ -221,9 +245,9 @@ export default function PhotoDownloads({
             ) : (
               <PhotoFrame
                 src={`/api/assets/${item.assetId}`}
-                ratio={formats[exportFormat(destination)].ratio}
+                ratio={downloadFormats[destination as DownloadFormat].ratio}
                 edits={edits}
-                label={`${item.name} · ${destination === "story" ? "Instagram Story" : choice.label} preview`}
+                label={`${item.name} · ${sizeLabel} preview`}
                 onChange={(next) => {
                   setCrops((old) => ({ ...old, [cropKey]: next }));
                   setChecked((old) => ({ ...old, [cropKey]: false }));
@@ -233,20 +257,17 @@ export default function PhotoDownloads({
             )}
           </div>
           <div>
-            {(destination === "feed" || destination === "story") && (
+            {instagram && (
               <div className="cx-segment" aria-label="Instagram format">
-                <button
-                  aria-pressed={destination === "feed"}
-                  onClick={() => select("feed")}
-                >
-                  Post
-                </button>
-                <button
-                  aria-pressed={destination === "story"}
-                  onClick={() => select("story")}
-                >
-                  Story
-                </button>
+                {instagramSizes.map((size) => (
+                  <button
+                    key={size.id}
+                    aria-pressed={destination === size.id}
+                    onClick={() => select(size.id)}
+                  >
+                    {size.label}
+                  </button>
+                ))}
               </div>
             )}
             {master ? (
@@ -298,7 +319,7 @@ export default function PhotoDownloads({
                   ? `Download ${items.length} photos`
                   : master
                     ? "Download full-quality image"
-                    : `Download for ${destination === "story" ? "Instagram Story" : choice.label}`}
+                    : `Download for ${sizeLabel}`}
             </button>
             <p className="cx-hint">
               Your saved photo stays unchanged. Full-quality image keeps the

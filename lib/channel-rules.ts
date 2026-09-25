@@ -204,7 +204,7 @@ export const channelRules: Record<ChannelId, ChannelRule> = {
 
 /** Which rules apply to each single-download destination. */
 export function destinationChannel(destination: string): ChannelRule | null {
-  if (destination === "feed" || destination === "story")
+  if (["feed", "feed-3x4", "story"].includes(destination))
     return channelRules.instagram;
   return destination === "doordash" ||
     destination === "uber" ||

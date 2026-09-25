@@ -3,8 +3,26 @@ import {
   catalogProfiles,
   emptyAdjustments,
   type Adjustments,
-  type PhotoFormat,
 } from "./studio";
+/**
+ * Sizes a saved photo can be downloaded at: the studio formats, plus
+ * Instagram's 3:4 post (channelRules.instagram.sizes), which the studio
+ * doesn't create but downloads and photo packs offer.
+ */
+export const downloadFormats = {
+  ...formats,
+  "feed-3x4": {
+    label: "Instagram 3:4 post",
+    short: "Portrait post",
+    width: 1080,
+    height: 1440,
+    ratio: 3 / 4,
+  },
+};
+export type DownloadFormat = keyof typeof downloadFormats;
+/** Activity events know the studio formats; a 3:4 post is an Instagram post. */
+export const eventDestination = (destination: string) =>
+  destination === "feed-3x4" ? "feed" : destination;
 export async function imageBitmap(src: string, signal?: AbortSignal) {
   signal?.throwIfAborted();
   const res = await fetch(src, signal ? { signal } : undefined);
@@ -232,12 +250,12 @@ export async function encodePhoto(
 }
 export async function photoExport(
   aid: string,
-  format: PhotoFormat,
+  format: DownloadFormat,
   edits: Partial<Adjustments> = {},
 ) {
   const im = await openOriginalPhoto(aid);
   try {
-    const profile = formats[format];
+    const profile = downloadFormats[format];
     const delivery = format in catalogProfiles;
     const spec = catalogProfiles[format as keyof typeof catalogProfiles];
     const e = {
