@@ -845,7 +845,6 @@
   font-weight: 600;
 }
 .pw-style-option-copy > span,
-.pw-style-option-copy .pw-style-name-short,
 .pw-style-selected-mark {
   display: none;
 }
@@ -889,23 +888,25 @@
   background: var(--gray-100);
 }
 .pw-style-picker.is-compact {
-  gap: 12px;
+  gap: 6px;
   margin-top: 4px;
 }
+/* Narrow pickers keep the full style names (the same words as each choice's
+   accessible name): the choices share the width and the names wrap under
+   the thumbnails. */
 .is-compact .pw-style-option {
-  min-width: 60px;
+  flex: 0 1 64px;
+  min-width: 0;
   gap: 8px;
+  white-space: normal;
+}
+.is-compact .pw-style-option-copy strong {
+  font-size: var(--text-caption);
 }
 .is-compact .pw-style-option > img {
   width: 48px;
   height: 48px;
   border-radius: 12px;
-}
-.is-compact .pw-style-name-full {
-  display: none;
-}
-.is-compact .pw-style-option-copy .pw-style-name-short {
-  display: block;
 }
 
 /* Closing call to action: an evergreen band lit from the top edge. */
@@ -1370,22 +1371,18 @@
     border-radius: var(--radius-card);
   }
   .pw-style-picker {
-    gap: 10px;
+    gap: 6px;
     margin-top: 24px;
   }
   .pw-style-option {
-    min-width: 60px;
+    flex: 0 1 68px;
+    min-width: 0;
+    white-space: normal;
   }
   .pw-style-option > img {
     width: 56px;
     height: 56px;
     border-radius: 14px;
-  }
-  .pw-style-option-copy .pw-style-name-full {
-    display: none;
-  }
-  .pw-style-option-copy .pw-style-name-short {
-    display: block;
   }
   .pw-footer-top,
   .pw-footer-bottom {

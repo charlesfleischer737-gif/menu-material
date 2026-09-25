@@ -18,7 +18,6 @@ const styles = [
     id: "color",
     asset: "color",
     name: "New backdrop",
-    short: "Color",
     detail: "Change the setting.",
     alt: "The same strawberry cheesecake on a vivid cobalt-blue studio backdrop",
   },
@@ -26,7 +25,6 @@ const styles = [
     id: "angle",
     asset: "angle",
     name: "From above",
-    short: "Angle",
     detail: "Find a new perspective.",
     alt: "The same strawberry cheesecake photographed from a higher angle on a charcoal table",
   },
@@ -34,7 +32,6 @@ const styles = [
     id: "served",
     asset: "hand",
     name: "Served by hand",
-    short: "In hand",
     detail: "Add a human touch.",
     alt: "One graceful hand presenting the same strawberry cheesecake on a white plate against a dark studio background",
   },
@@ -42,7 +39,6 @@ const styles = [
     id: "closeup",
     asset: "closeup",
     name: "Close-up",
-    short: "Detail",
     detail: "Let the textures shine.",
     alt: "A low-angle close-up of the same strawberry cheesecake showing its creamy filling and glossy berries",
   },
@@ -54,7 +50,6 @@ const originalPhoto: GalleryStyle = {
   id: "original",
   asset: "original",
   name: "Original photo",
-  short: "Original",
   detail: "The starting photo, before styling.",
   alt: "Original strawberry cheesecake photograph on a white plate on a wooden restaurant table",
 };
@@ -130,8 +125,7 @@ function StylePicker({
             fetchPriority="low"
           />
           <span className="pw-style-option-copy">
-            <strong className="pw-style-name-full">{style.name}</strong>
-            <strong className="pw-style-name-short">{style.short}</strong>
+            <strong>{style.name}</strong>
             <span>{style.detail}</span>
           </span>
           <Check
