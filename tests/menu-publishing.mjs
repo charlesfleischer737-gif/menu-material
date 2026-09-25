@@ -20,6 +20,7 @@ const {
 const { isPlaceholderRestaurantName, slugify, menuAddressProblem } =
   await import("../lib/restaurant-identity.ts");
 const { courseIndex, parsePastedMenu } = await import("../lib/menu-paste.ts");
+const { printedMenuAddress } = await import("../lib/qr-card.ts");
 let cookie = "",
   checks = 0;
 async function call(path, data, expected = 200, method) {
@@ -219,6 +220,19 @@ try {
       .flatMap((s) => s.items)
       .every((i) => !i.sourceReviewed),
     "the owner checks every pasted dish",
+  );
+
+  // A table card for a specific menu prints that menu's address.
+  const brunchId = crypto.randomUUID();
+  assert.equal(
+    printedMenuAddress(
+      `https://menumaterial.test/m/corner-house?menu=${brunchId}&src=table`,
+    ),
+    `menumaterial.test/m/corner-house?menu=${brunchId}`,
+  );
+  assert.equal(
+    printedMenuAddress("https://menumaterial.test/m/corner-house?src=table"),
+    "menumaterial.test/m/corner-house",
   );
 
   // Prices use the currency's own decimal places.
