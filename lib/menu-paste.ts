@@ -271,6 +271,25 @@ export function attachAddons(sections: MenuSection[]): MenuSection[] {
   });
 }
 
+// Courses in the order guests read them, matched as whole words (with
+// plurals), so "Steaks" isn't tea and "Barbecue" isn't the bar.
+const courses = [
+  /breakfast|brunch|morning/,
+  /baker(?:y|ies)|pastr(?:y|ies)|breads?/,
+  /snacks?|small plates?|shar(?:e|es|ing)|appeti[sz]ers?|starters?|antipast[io]s?/,
+  /soups?|salads?/,
+  /mains?|entr[ée]es?|plates?|pastas?|pizzas?|burgers?|sandwich(?:es)?|tacos?|bowls?/,
+  /sides?/,
+  /desserts?|sweets?/,
+  /kids?/,
+  /coffees?|teas?|drinks?|beverages?|juices?|smoothies?/,
+  /cocktails?|wines?|beers?|bars?/,
+].map((words) => new RegExp(`(?<!\\p{L})(?:${words.source})(?!\\p{L})`, "iu"));
+export const courseCount = courses.length;
+/** Where a section sits in a menu's course order, or -1 when unknown. */
+export const courseIndex = (name: string) =>
+  courses.findIndex((pattern) => pattern.test(name));
+
 const purposeSignals: [Purpose, RegExp][] = [
   ["cocktails", /cocktail|martini|spritz|negroni|margarita|mocktail/i],
   [

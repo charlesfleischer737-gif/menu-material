@@ -18,6 +18,7 @@ const {
 } = await import("../lib/menu-checks.ts");
 const { isPlaceholderRestaurantName, slugify, menuAddressProblem } =
   await import("../lib/restaurant-identity.ts");
+const { courseIndex } = await import("../lib/menu-paste.ts");
 let cookie = "",
   checks = 0;
 async function call(path, data, expected = 200, method) {
@@ -122,6 +123,21 @@ try {
   assert.equal(synced.menu.sections[0].items[0].price, 1700);
   assert.equal(synced.menu.sections[0].items[1].price, 1400);
   assert.equal(synced.menu.sections[0].items[1].available, false);
+
+  // Course order matches whole words: "Steaks" isn't tea, "Barbecue" isn't
+  // the bar.
+  const course = (name) => courseIndex(name);
+  for (const name of ["Steaks", "Philly cheesesteaks", "Steamed buns"])
+    assert.equal(course(name), -1, name);
+  assert.equal(course("Barbecue"), -1);
+  assert(course("Starters") < course("Mains"));
+  assert(course("Mains") < course("Desserts"));
+  assert(course("Desserts") < course("Teas & coffee"));
+  assert(course("Teas & coffee") < course("Wine bar"));
+  assert.equal(course("Pastries"), course("Bakery"));
+  assert.equal(course("Sharing plates"), course("Small plates"));
+  assert.equal(course("Kids’ menu"), course("Kids"));
+  assert.equal(course("Entrées"), course("Main courses"));
 
   // API: a placeholder name blocks publishing until the owner names it.
   await call("auth/dev", {});

@@ -30,7 +30,12 @@ import {
   menuDesignSpec,
   recommendMenuDesigns,
 } from "@/lib/menu-design-system";
-import { attachAddons, parsePastedMenu } from "@/lib/menu-paste";
+import {
+  attachAddons,
+  courseCount,
+  courseIndex,
+  parsePastedMenu,
+} from "@/lib/menu-paste";
 import { normalizeDietary } from "@/lib/dietary";
 import {
   menuPlacementIds,
@@ -153,29 +158,6 @@ export function MenuDesignPicker({
   );
 }
 
-const sectionOrder = [
-  ["breakfast", "brunch", "morning"],
-  ["bakery", "pastr", "bread"],
-  ["snack", "small plate", "share", "appetizer", "starter", "antipast"],
-  ["soup", "salad"],
-  [
-    "main",
-    "entrée",
-    "entree",
-    "plate",
-    "pasta",
-    "pizza",
-    "burger",
-    "sandwich",
-    "taco",
-    "bowl",
-  ],
-  ["side"],
-  ["dessert", "sweet"],
-  ["kid"],
-  ["coffee", "tea", "drink", "beverage", "juice", "smoothie"],
-  ["cocktail", "wine", "beer", "bar"],
-];
 export function MenuSourceDialog({
   mode,
   setMode,
@@ -262,11 +244,8 @@ export function MenuSourceDialog({
     }
     // Courses in the order guests read them; unknown sections keep their place.
     const course = (name: string) => {
-      const key = name.toLowerCase();
-      const index = sectionOrder.findIndex((words) =>
-        words.some((word) => key.includes(word)),
-      );
-      return index < 0 ? sectionOrder.length / 2 : index;
+      const index = courseIndex(name);
+      return index < 0 ? courseCount / 2 : index;
     };
     return imported
       ? sections
