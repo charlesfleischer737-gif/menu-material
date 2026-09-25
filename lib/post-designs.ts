@@ -116,6 +116,14 @@ function tooMuch() {
 function opt(d: Design, value: string, column: number, style: TextStyle) {
   return value ? d.k.layout(value, column, style) : null;
 }
+/** A layout, or null when the value doesn't fit there at a readable size. */
+function fitted(d: Design, value: string, column: number, style: TextStyle) {
+  try {
+    return d.k.layout(value, column, style);
+  } catch {
+    return null;
+  }
+}
 type Piece = {
   t: TextLayout | null;
   gap?: number;
@@ -659,7 +667,18 @@ async function special(d: Design) {
         }),
         (safe.bottom - safe.top) * (d.format === "story" ? 0.26 : 0.3),
       );
-  const info = d.photoOnly ? null : opt(d, facts(d, false), col, FACT);
+  // The price sits in a seal; one too long for it joins the other facts.
+  const sealR = d.format === "story" ? 124 : 112;
+  const sealPrice =
+    d.price && !d.photoOnly
+      ? fitted(d, d.price, sealR * 1.5, {
+          family: d.family("Post Soft"),
+          size: 88,
+          min: 44,
+          maxLines: 1,
+        })
+      : null;
+  const info = d.photoOnly ? null : opt(d, facts(d, !sealPrice), col, FACT);
   const detail = d.photoOnly ? null : opt(d, d.detail, col, BODY);
   const pieces: Piece[] = [
     { t: kicker, ink: gold },
@@ -682,8 +701,8 @@ async function special(d: Design) {
     anchor: { y: 0.5 },
   });
   let seal: { x: number; y: number; r: number } | null = null;
-  if (d.price && !d.photoOnly) {
-    const r = d.format === "story" ? 124 : 112;
+  if (sealPrice) {
+    const r = sealR;
     // The seal may overhang the card; its price stays inside the safe margins.
     seal = {
       x: Math.min(
@@ -713,13 +732,8 @@ async function special(d: Design) {
   k.grain(0.04);
   if (brand) drawBrand(d, brand, safe.left, brandY, col, "left", [gold, cream]);
   drawStack(d, pieces, safe.left, textY, "left", [cream]);
-  if (seal) {
-    const t = k.layout(d.price, seal.r * 1.5, {
-      family: d.family("Post Soft"),
-      size: 88,
-      min: 44,
-      maxLines: 1,
-    });
+  if (seal && sealPrice) {
+    const t = sealPrice;
     const ty = seal.y - t.height / 2;
     const ink = k.ink(
       [
@@ -1336,10 +1350,11 @@ async function combo(d: Design) {
         (safe.bottom - safe.top) * 0.24,
       );
   const items = d.photoOnly ? null : opt(d, d.itemsLine, col, FACT);
+  // The price is the hero; one too long for that joins the other facts.
   const price =
     d.photoOnly || !d.price
       ? null
-      : k.layout(d.price, col * 0.55, {
+      : fitted(d, d.price, col * 0.55, {
           family: "Post Poster",
           size: 150,
           min: 66,
@@ -1349,7 +1364,7 @@ async function combo(d: Design) {
     ? null
     : opt(
         d,
-        [d.validity, d.cta].filter(Boolean).join("\n"),
+        [price ? "" : d.price, d.validity, d.cta].filter(Boolean).join("\n"),
         price ? col - price.width - 40 : col,
         { ...FACT, maxLines: 4 },
       );

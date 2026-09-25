@@ -112,9 +112,11 @@ export function downloadBlob(blob: Blob, name: string) {
   setTimeout(() => URL.revokeObjectURL(url), 60000);
 }
 export function money(price: number, currency = "USD") {
+  // The narrow symbol reads as local guests expect: "$18.50", not "CA$18.50".
   return new Intl.NumberFormat(undefined, {
     style: "currency",
     currency,
+    currencyDisplay: "narrowSymbol",
   }).format(price / 100);
 }
 

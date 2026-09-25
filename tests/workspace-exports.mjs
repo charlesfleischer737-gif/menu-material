@@ -70,6 +70,7 @@ globalThis.fetch = async (url) => {
   throw Error("Unexpected export request " + path);
 };
 const { renderPost, campaignZip } = await import("../lib/creation-export.ts");
+const { money } = await import("../lib/client.ts");
 const restaurant = {
   name: "The Orchard Kitchen",
   slug: "orchard",
@@ -214,6 +215,30 @@ await assert.rejects(
   /too long to read comfortably/,
 );
 checks++;
+// Ordinary prices never block the Daily special: a long one leaves the seal.
+assert.equal(money(1850, "CAD"), "$18.50", "A narrow symbol, not CA$");
+for (const [currency, price] of [
+  ["CHF", "24.50"],
+  ["MXN", "185"],
+  ["IDR", "125000"],
+  ["USD", "1250"],
+  ["CAD", "18.50"],
+])
+  for (const channel of ["feed", "story"]) {
+    const result = await renderPost(
+      canvas(),
+      { ...base, template: "special", textMode: "minimal", price },
+      { ...restaurant, currency },
+      channel,
+    );
+    assert(
+      result.renderedText.some((t) =>
+        t.includes(money(Math.round(Number(price) * 100), currency)),
+      ),
+      `${currency} ${price}: the price is shown`,
+    );
+    checks++;
+  }
 // A deleted photo names its dish; a logo that can't be opened is left out.
 await assert.rejects(
   () =>
