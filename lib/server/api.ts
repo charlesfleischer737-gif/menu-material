@@ -1122,6 +1122,10 @@ async function route(req: Request) {
     if (menuDocumentResponse) return menuDocumentResponse;
     const creationResponse = await creationRoute(req, p, r);
     if (creationResponse) return creationResponse;
+    if (p[0] === "batches" && p[1] === "retry" && method === "POST")
+      z.object({ id: z.string().uuid("Choose a batch item.") }).parse(
+        await body(req.clone() as Request),
+      );
     const toolsResponse = await menuTools(req, p, r);
     if (toolsResponse) return toolsResponse;
     const promotionResponse = await promotionRoute(req, p, r);
@@ -1345,7 +1349,7 @@ async function route(req: Request) {
       if (method === "POST" && !p[1]) return await upload(req, r);
       const a = await one(
         "SELECT * FROM assets WHERE id=? AND restaurant_id=? AND (deleted_at IS NULL OR ?='DELETE')",
-        p[1],
+        z.string().uuid("Choose an image.").parse(p[1]),
         r.id,
         method,
       );
@@ -1552,21 +1556,32 @@ async function route(req: Request) {
       return response(job, 202);
     }
     if (p[0] === "captions" && method === "POST") {
-      const b = await body(req);
+      const b = await body(req),
+        dishId = z.string().uuid("Choose a dish.").parse(b.dishId);
       const d = await one(
         "SELECT id FROM dishes WHERE id=? AND restaurant_id=?",
-        b.dishId,
+        dishId,
         r.id,
       );
       assert(d, 404, "Dish not found.");
       if (p[1] === "generate")
-        return response(await generateCaption(r, b.dishId, b.promotionId));
+        return response(
+          await generateCaption(
+            r,
+            dishId,
+            z
+              .string()
+              .uuid("Choose a promotion.")
+              .nullish()
+              .parse(b.promotionId) ?? undefined,
+          ),
+        );
       const cid = id();
       await run(
         "INSERT INTO captions (id,restaurant_id,dish_id,body,created_at) VALUES (?,?,?,?,?)",
         cid,
         r.id,
-        b.dishId,
+        dishId,
         z.string().max(2200).parse(b.body),
         now(),
       );

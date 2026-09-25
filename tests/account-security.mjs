@@ -572,8 +572,29 @@ try {
   assert.equal(imageCalls, 14);
   checks++;
 
+  // 7. Malformed IDs are a 400, not a 500 that trips the error-burst alert.
+  for (const [path, body] of [
+    ["captions", { dishId: { a: 1 }, body: "Hello" }],
+    ["captions/generate", { dishId: ["x"] }],
+    ["captions/generate", { dishId: pasta, promotionId: 5 }],
+    ["batches/retry", {}],
+    ["batches/retry", { id: "not-an-id" }],
+  ])
+    await expect(path, 400, { body, ...freeOpts });
+  await expect("batches/retry", 404, {
+    body: { id: crypto.randomUUID() },
+    ...freeOpts,
+  });
+  await expect("assets", 400, freeOpts);
+  await expect("assets/not-an-id", 400, freeOpts);
+  await expect(`assets/${crypto.randomUUID()}`, 404, freeOpts);
+  await expect("captions", 200, {
+    body: { dishId: pasta, body: "Our tomato pasta." },
+    ...freeOpts,
+  });
+
   console.log(
-    `PASS: ${checks} account security checks: per-network limits on the IPv6 /64 with no site-wide lockout, a per-account sign-in slowdown, versioned password hashes, sliding sessions, revocable reset and setup links, the Pro waitlist, once-only free images;`,
+    `PASS: ${checks} account security checks: per-network limits on the IPv6 /64 with no site-wide lockout, a per-account sign-in slowdown, versioned password hashes, sliding sessions, revocable reset and setup links, the Pro waitlist, once-only free images, ID validation;`,
   );
 } finally {
   rmSync(root, { recursive: true, force: true });
