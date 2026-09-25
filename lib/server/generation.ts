@@ -599,7 +599,14 @@ export async function provider(
       );
     throw error;
   }
-  const result = (await res.json()) as Row;
+  let result: Row;
+  try {
+    result = (await res.json()) as Row;
+  } catch (error) {
+    // The call was accepted but its answer was lost, so it may still be billed.
+    if (spendKey) await finishAi(spendKey, "uncertain");
+    throw error;
+  }
   if (spendKey) await finishAi(spendKey, "submitted", result.usage);
   return result;
 }
@@ -999,6 +1006,11 @@ export async function tick(restaurantId?: string, { startNew = true } = {}) {
           "UPDATE outputs SET status='failed',error='The image could not be recovered. It was not counted; please try again.',lease_until=0 WHERE id=? AND lease_token=?",
           o.id,
           lease,
+        );
+        // Whether the provider finished it is unknown: a reconciliation item.
+        await run(
+          "UPDATE ai_spend SET status='uncertain' WHERE id=? AND status='reserved'",
+          `${o.id}:${o.attempts}`,
         );
       } else {
         const job = await one("SELECT * FROM jobs WHERE id=?", o.job_id);

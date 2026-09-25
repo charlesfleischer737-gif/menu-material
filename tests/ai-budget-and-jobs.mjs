@@ -251,7 +251,7 @@ try {
   checks++;
   await run("DELETE FROM ai_spend");
   await siteBudget(10000);
-  // A call whose answer never arrives may still be billed.
+  // A call whose answer never arrives, or cannot be read, may still be billed.
   textReply = () => Promise.reject(new TypeError("fetch failed"));
   await assert.rejects(() =>
     provider(
@@ -265,6 +265,22 @@ try {
       },
     ),
   );
+  textReply = () =>
+    new Response('{"output":[{"content', {
+      headers: { "content-type": "application/json" },
+    });
+  await assert.rejects(() =>
+    provider(
+      "responses",
+      "POST",
+      {},
+      {
+        restaurantId: kitchen.rid,
+        kind: "caption",
+        key: "caption-unreadable",
+      },
+    ),
+  );
   textReply = null;
   assert.deepEqual(
     (
@@ -272,7 +288,10 @@ try {
         "SELECT id,status,reserved_cents FROM ai_spend WHERE id IN ('caption-dropped','caption-unreadable') ORDER BY id",
       )
     ).map((row) => [row.id, row.status, row.reserved_cents]),
-    [["caption-dropped", "uncertain", 10]],
+    [
+      ["caption-dropped", "uncertain", 10],
+      ["caption-unreadable", "uncertain", 10],
+    ],
   );
   checks++;
   // Images settle to IMAGE_COST_ESTIMATE_USD when it is set, otherwise they
@@ -479,6 +498,55 @@ try {
   assert.equal(alerts(), burstsBefore + 1);
   checks++;
 
+  // 9. A call abandoned mid-render is recorded as uncertain, as is one whose
+  // answer could not be read.
+  const lost = await restaurant("lost-call");
+  const lostJob = await newJob(lost);
+  const lostOutput = await output(lostJob.id);
+  await run(
+    "UPDATE outputs SET status='submitting',attempts=1,submitted_at=?,lease_until=0 WHERE id=?",
+    Date.now() - 300000,
+    lostOutput.id,
+  );
+  await run(
+    "INSERT INTO ai_spend (id,restaurant_id,kind,budget_day,reserved_cents,created_at) VALUES (?,?,'image',?,200,?)",
+    `${lostOutput.id}:1`,
+    lost.rid,
+    day(),
+    Date.now(),
+  );
+  sent = imageCalls.length;
+  await tick(lost.rid);
+  out = await output(lostJob.id);
+  assert.equal(out.status, "failed");
+  assert.match(out.error, /could not be recovered/);
+  assert.equal(imageCalls.length, sent, "never sent again");
+  assert.deepEqual(
+    {
+      ...(await one(
+        "SELECT status,reserved_cents FROM ai_spend WHERE id=?",
+        `${lostOutput.id}:1`,
+      )),
+    },
+    { status: "uncertain", reserved_cents: 200 },
+  );
+  const unreadable = await newJob(lost, { revision: "cut off" });
+  imagePlan.push(
+    () =>
+      new Response('{"data":[{"b64_json":"/9j/', {
+        headers: { "content-type": "application/json" },
+      }),
+  );
+  await tick(lost.rid);
+  out = await output(unreadable.id);
+  assert.equal(out.status, "failed");
+  assert.match(out.error, /interrupted/);
+  assert.equal(
+    (await one("SELECT status FROM ai_spend WHERE id=?", `${out.id}:1`)).status,
+    "uncertain",
+  );
+  checks++;
+
   // 13. While the daily budget is spent, queued images are held without being
   // claimed or sent, say why honestly, and start by themselves later.
   await run("DELETE FROM ai_spend");
@@ -512,7 +580,7 @@ try {
   checks++;
 
   console.log(
-    `PASS: ${checks} AI budget and job checks: settled spend, free daily cap, paid-plan image budget, provider retries and refusals and budget holds. Provider calls and webhooks are fixtures.`,
+    `PASS: ${checks} AI budget and job checks: settled spend, free daily cap, paid-plan image budget, provider retries and refusals, uncertain spend and budget holds. Provider calls and webhooks are fixtures.`,
   );
 } finally {
   console.error = originalError;
