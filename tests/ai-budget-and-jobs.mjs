@@ -1,5 +1,7 @@
 import assert from "node:assert/strict";
+import { spawn } from "node:child_process";
 import { mkdtempSync, readFileSync, rmSync } from "node:fs";
+import { createServer } from "node:http";
 import { tmpdir } from "node:os";
 import { join } from "node:path";
 const root = mkdtempSync(join(tmpdir(), "menu-material-ai-budget-"));
@@ -237,6 +239,7 @@ async function eventually(ready) {
 const HELD =
   "Waiting for the daily AI budget to reset at 00:00 UTC. It will start automatically; cancel it to keep your image.";
 
+let runner;
 try {
   let sent, out;
   await siteBudget(10000);
@@ -673,6 +676,49 @@ try {
   );
   checks++;
 
+  // 7 and 8. --once keeps checking every two seconds for its window, then
+  // waits for a running image call before it exits. More checks can overlap
+  // than the six images the site renders at once.
+  assert.match(
+    readFileSync("scripts/job-runner.mjs", "utf8"),
+    /const maxRunning = 8;/,
+  );
+  const requests = [];
+  let answerFirst = null;
+  const server = createServer((req, res) => {
+    requests.push(req.headers.authorization);
+    const answer = () => {
+      res.writeHead(200, { "content-type": "application/json" });
+      res.end('{"ok":true}');
+    };
+    if (requests.length === 1) answerFirst = answer;
+    else answer();
+  });
+  await new Promise((resolve) => server.listen(0, "127.0.0.1", resolve));
+  runner = spawn(process.execPath, ["scripts/job-runner.mjs", "--once"], {
+    env: {
+      ...process.env,
+      APP_ORIGIN: `http://127.0.0.1:${server.address().port}`,
+      JOB_RUNNER_SECRET: "fixture-runner-secret",
+      RUNNER_ONCE_SECONDS: "5",
+      RUNNER_HEARTBEAT_FILE: join(root, "runner-heartbeat"),
+    },
+    stdio: "ignore",
+  });
+  const exited = new Promise((resolve) => runner.on("exit", resolve));
+  await new Promise((resolve) => setTimeout(resolve, 6500));
+  assert.equal(runner.exitCode, null, "still waiting on its first check");
+  assert(
+    requests.length >= 3 && requests.length <= 4,
+    `checks every two seconds for five seconds: ${requests.length}`,
+  );
+  assert(requests.every((auth) => auth === "Bearer fixture-runner-secret"));
+  answerFirst();
+  assert.equal(await exited, 0);
+  runner = null;
+  server.close();
+  checks++;
+
   // 9. A call abandoned mid-render is recorded as uncertain, as is one whose
   // answer could not be read.
   const lost = await restaurant("lost-call");
@@ -919,9 +965,10 @@ try {
   checks++;
 
   console.log(
-    `PASS: ${checks} AI budget and job checks: settled spend, free daily cap, paid-plan image budget, stuck-job repair, provider retries and refusals, independent image settling, uncertain spend, legacy deadlines on an index, storage before calls, budget holds, description prompts and lenient saved styles. Provider calls and webhooks are fixtures.`,
+    `PASS: ${checks} AI budget and job checks: settled spend, free daily cap, paid-plan image budget, stuck-job repair, provider retries and refusals, independent image settling, --once window and runner capacity, uncertain spend, legacy deadlines on an index, storage before calls, budget holds, description prompts and lenient saved styles. Provider calls and webhooks are fixtures.`,
   );
 } finally {
+  runner?.kill();
   console.error = originalError;
   console.warn = originalWarn;
   rmSync(root, { recursive: true, force: true });
