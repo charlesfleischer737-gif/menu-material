@@ -19,7 +19,8 @@ import { rememberScroll } from "@/lib/scroll-memory";
 // screen's file that the deploy removed.
 const GuestStudio = lazy(() => loadFresh(() => import("./guest-studio")));
 const PlanDialog = lazy(() => loadFresh(() => import("./plan-dialog")));
-const CoreWorkspace = lazy(() => loadFresh(() => import("./core-workspace")));
+const loadCoreWorkspace = () => import("./core-workspace");
+const CoreWorkspace = lazy(() => loadFresh(loadCoreWorkspace));
 const SettingsPanel = lazy(() =>
   loadFresh(() => import("./account-panels")).then((m) => ({
     default: m.SettingsPanel,
@@ -111,6 +112,11 @@ export default function HomeClient({ hasSession }: { hasSession: boolean }) {
       }),
     [refresh, hasSession],
   );
+  // With a session cookie the workspace is the likely destination: download
+  // its code alongside /api/state rather than after it answers.
+  useEffect(() => {
+    if (hasSession) loadCoreWorkspace().catch(() => {});
+  }, [hasSession]);
   useEffect(() => {
     void load();
   }, [load]);
