@@ -217,6 +217,12 @@
   color: var(--st-muted);
   font-size: var(--text-footnote);
 }
+/* A saved dish's own description, read from My Dishes. */
+.st-describe .st-describe-dish {
+  color: var(--st-ink);
+  font-size: var(--text-callout);
+  white-space: pre-line;
+}
 .st-stage-foot {
   display: flex;
   flex-wrap: wrap;
@@ -781,6 +787,9 @@ textarea.st-input {
 }
 .st-save-status[data-error] {
   color: var(--workspace-error);
+}
+.st-save-status:empty {
+  display: none;
 }
 .cx-app .st-header-tools :is(.cx-link, .st-text-button) {
   min-height: 36px;
@@ -2397,6 +2406,15 @@ textarea.st-input {
   color: var(--st-muted);
   font-size: var(--text-caption);
   font-weight: 400;
+}
+/* With enlarged text, the format choices wrap onto another row instead of
+   overlapping each other. */
+.st-studio .st-format-choice {
+  flex-wrap: wrap;
+  border-radius: 22px;
+}
+.st-studio .st-format-choice > button {
+  min-width: max-content;
 }
 
 /* The finished photo is the hub: Download, then posts, menus and a pack. */

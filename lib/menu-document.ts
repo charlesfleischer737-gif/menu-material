@@ -199,6 +199,24 @@ export function newMenuDocument(
 export function newMenuEntry(patch: Partial<MenuEntry> = {}): MenuEntry {
   return menuEntrySchema.parse({ id: crypto.randomUUID(), name: "", ...patch });
 }
+const fractionDigits = new Map<string, number>();
+/** Decimal places the currency's prices use: 2 for USD, 0 for JPY. */
+export function currencyDigits(currency = "USD") {
+  if (!fractionDigits.has(currency)) {
+    let digits = 2;
+    try {
+      digits =
+        new Intl.NumberFormat("en", {
+          style: "currency",
+          currency,
+        }).resolvedOptions().maximumFractionDigits ?? 2;
+    } catch {
+      /* An unknown currency code keeps two places. */
+    }
+    fractionDigits.set(currency, digits);
+  }
+  return fractionDigits.get(currency)!;
+}
 export function menuPrice(
   value: number | null,
   currency = "USD",
@@ -206,11 +224,12 @@ export function menuPrice(
   language = "en",
 ) {
   if (value == null) return "";
-  const whole = value % 100 === 0;
+  const whole = value % 100 === 0,
+    digits = currencyDigits(currency);
   return new Intl.NumberFormat(language || "en", {
     ...(format === "currency" ? { style: "currency", currency } : {}),
-    minimumFractionDigits: format === "whole" && whole ? 0 : 2,
-    maximumFractionDigits: 2,
+    minimumFractionDigits: format === "whole" && whole ? 0 : digits,
+    maximumFractionDigits: digits,
   }).format(value / 100);
 }
 export function entryPrice(item: MenuEntry, menu: DesignedMenu) {

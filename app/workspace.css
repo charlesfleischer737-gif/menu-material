@@ -12,10 +12,13 @@
 .skip-link:focus {
   transform: none;
 }
+/* The page-wide error banner. It sits above dialogs and their overlays
+   (z-index 50), which make the rest of the page inert to pointers, and above
+   the workspace's phone tab bar. */
 .landing-error {
   position: fixed;
-  z-index: 30;
-  bottom: 20px;
+  z-index: 60;
+  bottom: max(20px, env(safe-area-inset-bottom));
   right: 20px;
   left: 20px;
   max-width: 600px;
@@ -23,10 +26,17 @@
   display: flex;
   gap: 20px;
   justify-content: space-between;
+  pointer-events: auto;
 }
 .landing-error button {
   border: 0;
   background: none;
+}
+@media (max-width: 760px) {
+  /* 12px above the 60px tab bar (workspace-shell.css). */
+  body:has(.cx-nav) .landing-error {
+    bottom: calc(72px + env(safe-area-inset-bottom));
+  }
 }
 /* The same brand, with more room to work. */
 .pilot {

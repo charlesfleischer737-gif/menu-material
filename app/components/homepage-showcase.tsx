@@ -65,6 +65,21 @@ export default function HomepageShowcase() {
     const rows = [
       ...root.querySelectorAll<HTMLElement>(".pw-showcase-row"),
     ].map((element) => ({ element, hovered: false, frame: 0 }));
+    // Rows that scroll sideways can be focused, so they can be scrolled from
+    // the keyboard.
+    const still = matchMedia("(prefers-reduced-motion: reduce)");
+    const scrollable = () => {
+      for (const [index, { element }] of rows.entries())
+        if (still.matches) {
+          element.tabIndex = 0;
+          element.setAttribute("role", "region");
+          element.setAttribute("aria-label", `Style examples ${index + 1}`);
+        } else
+          for (const name of ["tabindex", "role", "aria-label"])
+            element.removeAttribute(name);
+    };
+    scrollable();
+    still.addEventListener("change", scrollable);
     let visible = true;
     // Speed changes glide rather than jump. updatePlaybackRate keeps the
     // compositor's copy of the drift in step, so the photos never skip.
@@ -111,6 +126,7 @@ export default function HomepageShowcase() {
     observer.observe(root);
     return () => {
       observer.disconnect();
+      still.removeEventListener("change", scrollable);
       for (const remove of listeners) remove();
       for (const row of rows) cancelAnimationFrame(row.frame);
       settle.current = null;

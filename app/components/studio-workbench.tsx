@@ -44,6 +44,8 @@ import {
 import {
   emptyAdjustments,
   foodFamilies,
+  formatNames,
+  formatShapes,
   formats,
   looks,
   photoStyles,
@@ -93,24 +95,8 @@ import {
 // shapes owners reach for. Other saved destinations stay selectable.
 const formatChoices: PhotoFormat[] = ["menu", "feed", "story", "doordash"];
 // Named by use first; the ratio is secondary.
-const formatName: Record<string, string> = {
-  menu: "Square",
-  feed: "Portrait",
-  story: "Story",
-  doordash: "Wide",
-  toast: "Toast",
-  uber: "Uber Eats",
-  print: "Print",
-};
-const formatShape: Record<string, string> = {
-  menu: "1:1",
-  feed: "4:5",
-  story: "9:16",
-  doordash: "16:9",
-  toast: "5:3",
-  uber: "5:4",
-  print: "1:1",
-};
+const formatName: Record<string, string> = formatNames;
+const formatShape: Record<string, string> = formatShapes;
 const formatUse: Record<string, string> = {
   menu: "Menus, websites and listings",
   feed: "Instagram and Facebook posts",
@@ -192,8 +178,9 @@ export function StudioWorkbench({
     state.studioAvailability?.disabledStyleIds || [];
   const creationBlock = studioCreationBlock(b, state.studioAvailability);
   const creationPaused = state.studioAvailability?.creationEnabled === false;
+  // Activity names a draft only once it is saved on the server.
   const measurementContext = {
-    ...(state.studioDraftId ? { draftId: state.studioDraftId } : {}),
+    ...(state.studioSavedDraftId ? { draftId: state.studioSavedDraftId } : {}),
     ...(b.sourceId ? { sourceId: b.sourceId } : {}),
   };
   // A fresh draft starts from the restaurant's default saved look.
@@ -472,17 +459,28 @@ export function StudioWorkbench({
   }, [tileKeys]);
 
   const format = formats[b.format as PhotoFormat] || formats.menu;
+  // A saved dish is described in My Dishes; the studio never rewrites it.
+  const dish: Row | undefined = b.dishId
+    ? state.dishes?.find((entry: Row) => entry.id === b.dishId)
+    : undefined;
   const photoReady =
-    b.mode === "photo" ? !!source : !!b.name?.trim() && !!b.description?.trim();
+    b.mode === "photo"
+      ? !!source
+      : dish
+        ? !!dish.description?.trim()
+        : !!b.name?.trim() && !!b.description?.trim();
   const vesselConflict = b.family === "Drinks" && b.plate !== "keep";
   const inspirationBlock = inspirationStatusMessage(inspirationStatus);
+  // A guest who has signed in (the guest studio hands their work over) sees
+  // their account's real allowance and availability.
+  const signedOutGuest = !!state.guest && !state.user;
   const canCreate =
     !creationBlock &&
     !inspirationBlock &&
     photoReady &&
     !vesselConflict &&
     !busy &&
-    (state.guest || state.aiConnected) &&
+    (signedOutGuest || state.aiConnected) &&
     state.remaining > 0 &&
     (b.look !== "reference" || !!referencePhoto) &&
     !b.menuDocument;
@@ -496,14 +494,16 @@ export function StudioWorkbench({
         : !photoReady
           ? b.mode === "photo"
             ? "Add a photo to get started."
-            : "Add a dish name and description."
+            : dish
+              ? "Add a description to this dish in My Dishes."
+              : "Add a dish name and description."
           : b.look === "reference" && !referencePhoto
             ? "Add an inspiration photo to use this look."
-            : !state.guest && !state.aiConnected
+            : !signedOutGuest && !state.aiConnected
               ? "Photo creation is temporarily unavailable. Your work is saved."
               : state.remaining <= 0
                 ? "You’ve used your available images."
-                : state.guest
+                : signedOutGuest
                   ? "Create a free account to continue · 5 free images"
                   : `Uses 1 image · ${state.remaining} left`);
   const showImage =
@@ -665,7 +665,7 @@ export function StudioWorkbench({
       menuDocument: false,
     });
   }
-  function accept(files: FileList | null) {
+  function accept(files: ArrayLike<File> | null) {
     if (!files?.length || busy) return;
     if (files.length > 1)
       setNotice(`Using ${files[0].name}. Add one dish photo at a time.`);
@@ -673,6 +673,56 @@ export function StudioWorkbench({
     setUndo(null);
     uploadPhoto(files[0]);
   }
+  // A photo dropped anywhere on the page, or pasted, becomes the dish photo.
+  // A dropped file never opens in the tab instead, even while one can't be
+  // used (a dialog is open, or creation is paused).
+  const acceptFiles = useRef(accept);
+  const canAccept = !creationPaused;
+  useEffect(() => {
+    acceptFiles.current = canAccept ? accept : () => {};
+  });
+  useEffect(() => {
+    const files = (event: DragEvent | ClipboardEvent) =>
+      "dataTransfer" in event
+        ? event.dataTransfer
+        : (event as ClipboardEvent).clipboardData;
+    const dialogOpen = () =>
+      !!document.querySelector('[role="dialog"][data-state="open"]');
+    const over = (event: DragEvent) => {
+      if (files(event)?.types.includes("Files")) event.preventDefault();
+    };
+    const drop = (event: DragEvent) => {
+      const transfer = files(event);
+      if (!transfer?.types.includes("Files")) return;
+      event.preventDefault();
+      setDragging(false);
+      if (!dialogOpen()) acceptFiles.current(transfer.files);
+    };
+    const paste = (event: ClipboardEvent) => {
+      const clipboard = files(event);
+      const image = [...(clipboard?.files || [])].find((file) =>
+        file.type.startsWith("image/"),
+      );
+      if (!image || dialogOpen()) return;
+      // Text pasted into a field stays text.
+      const target = event.target instanceof Element ? event.target : null;
+      if (
+        target?.closest("input, textarea, [contenteditable='true']") &&
+        clipboard?.types.includes("text/plain")
+      )
+        return;
+      event.preventDefault();
+      acceptFiles.current([image]);
+    };
+    window.addEventListener("dragover", over);
+    window.addEventListener("drop", drop);
+    window.addEventListener("paste", paste);
+    return () => {
+      window.removeEventListener("dragover", over);
+      window.removeEventListener("drop", drop);
+      window.removeEventListener("paste", paste);
+    };
+  }, []);
   async function trySample() {
     if (busy) return;
     setSampleLoading(true);
@@ -835,11 +885,8 @@ export function StudioWorkbench({
                 if (!event.currentTarget.contains(event.relatedTarget as Node))
                   setDragging(false);
               }}
-              onDrop={(event) => {
-                event.preventDefault();
-                setDragging(false);
-                if (b.mode === "photo") accept(event.dataTransfer.files);
-              }}
+              // The page-wide drop handler takes the photo.
+              onDrop={() => setDragging(false)}
             >
               {source && b.mode === "photo" ? (
                 <>
@@ -868,30 +915,47 @@ export function StudioWorkbench({
               ) : b.mode === "description" ? (
                 <div className="st-describe">
                   <span className="st-sheet-kicker">From a description</span>
-                  <h3>Describe your dish</h3>
-                  <label className="st-field">
-                    <span>Dish name</span>
-                    <input
-                      className="st-input"
-                      value={b.name}
-                      maxLength={100}
-                      onChange={(event) => update({ name: event.target.value })}
-                      placeholder="Roasted tomato pasta"
-                    />
-                  </label>
-                  <label className="st-field">
-                    <span>Ingredients, portion and presentation</span>
-                    <textarea
-                      className="st-input"
-                      value={b.description}
-                      maxLength={2000}
-                      rows={4}
-                      onChange={(event) =>
-                        update({ description: event.target.value })
-                      }
-                      placeholder="Describe the dish you actually serve."
-                    />
-                  </label>
+                  {dish ? (
+                    <>
+                      <h3>{dish.name}</h3>
+                      <p className="st-describe-dish">
+                        {dish.description?.trim() || "No description yet."}
+                      </p>
+                      <p>
+                        From My Dishes. Change the name or description there,
+                        and add styling notes in Details.
+                      </p>
+                    </>
+                  ) : (
+                    <>
+                      <h3>Describe your dish</h3>
+                      <label className="st-field">
+                        <span>Dish name</span>
+                        <input
+                          className="st-input"
+                          value={b.name}
+                          maxLength={100}
+                          onChange={(event) =>
+                            update({ name: event.target.value })
+                          }
+                          placeholder="Roasted tomato pasta"
+                        />
+                      </label>
+                      <label className="st-field">
+                        <span>Ingredients, portion and presentation</span>
+                        <textarea
+                          className="st-input"
+                          value={b.description}
+                          maxLength={2000}
+                          rows={4}
+                          onChange={(event) =>
+                            update({ description: event.target.value })
+                          }
+                          placeholder="Describe the dish you actually serve."
+                        />
+                      </label>
+                    </>
+                  )}
                   <p>
                     Creates an illustration. Check it against the real dish
                     before using it.
@@ -914,7 +978,7 @@ export function StudioWorkbench({
                   </b>
                   <span id="st-dropzone-hint">
                     <span className="st-when-pointer">
-                      Drop it here, or click to choose a file.
+                      Drop or paste it here, or click to choose a file.
                     </span>
                     <span className="st-when-touch">
                       Tap to take a photo or choose one.
@@ -937,7 +1001,9 @@ export function StudioWorkbench({
               <span>
                 <ShieldCheck size={14} aria-hidden="true" />
                 {state.guest
-                  ? "Your photo stays on this device until you sign up."
+                  ? state.user
+                    ? "Your photo is saved to your account when you create it."
+                    : "Your photo stays on this device until you sign up."
                   : b.mode === "description"
                     ? "Illustrations are labeled as illustrations."
                     : "Your original photo is always kept."}
@@ -1268,7 +1334,7 @@ export function StudioWorkbench({
                 Format
               </h2>
               <div
-                className="st-segmented"
+                className="st-segmented st-format-choice"
                 role="radiogroup"
                 aria-labelledby="st-format-title"
                 onKeyDown={radioKeys}
@@ -1329,7 +1395,7 @@ export function StudioWorkbench({
               {createButton}
               <p className="st-action-note">
                 {reason}
-                {!state.guest && state.remaining <= 0 && (
+                {!signedOutGuest && state.remaining <= 0 && (
                   <button
                     className="st-text-button"
                     onClick={() =>

@@ -11,12 +11,14 @@ const root = mkdtempSync(join(tmpdir(), "menu-material-expansion-"));
 process.env.MENU_MATERIAL_DATA_DIR = root;
 process.env.OPENAI_API_KEY = "fixture-only";
 const { handle } = await import("../lib/server/api.ts");
-const { all, one } = await import("../lib/server/core.ts");
+const { all, one, run } = await import("../lib/server/core.ts");
 const { publicMenu } = await import("../lib/server/promotions.ts");
+const { newMenuDocument, newMenuEntry } =
+  await import("../lib/menu-document.ts");
 const { localToInstant, localTime, defaultStyle } =
   await import("../lib/promotions.ts");
 const jpg = readFileSync("public/pasta.jpg"),
-  png = readFileSync("public/og.png");
+  png = readFileSync("public/apple-touch-icon.png");
 let cookie = "",
   checks = 0,
   calls = 0,
@@ -307,6 +309,68 @@ try {
   await call("dishes/" + dish, { ...dishInput, available: false });
   assert.equal((await call("public/" + r.slug)).menu.specials.length, 0);
   await call("dishes/" + dish, dishInput);
+
+  // Specials need the restaurant's real name, like menus.
+  await run("UPDATE restaurants SET name='Your restaurant' WHERE id=?", r.id);
+  assert.match(
+    (
+      await call(
+        "promotions/" + pid + "/publish",
+        { revision: promo.revision },
+        400,
+      )
+    ).error,
+    /restaurant’s name/,
+  );
+  await run("UPDATE restaurants SET name=? WHERE id=?", profile.name, r.id);
+  // A special published before any menu doesn't take the main menu's place:
+  // the first menu published becomes the main menu and still chooses the
+  // menu address, and the special stays on.
+  assert.equal((await call("public/" + r.slug)).menu.sections.length, 0);
+  const firstMenu = await call("menus", {
+    id: crypto.randomUUID(),
+    draft: newMenuDocument({
+      sections: [
+        {
+          id: crypto.randomUUID(),
+          name: "Pasta",
+          description: "",
+          pageBreakBefore: false,
+          items: [
+            newMenuEntry({
+              dishId: dish,
+              name: "Pasta",
+              description: "Tomatoes and basil",
+              price: 1400,
+            }),
+          ],
+        },
+      ],
+    }),
+  });
+  const firstLive = await call(`menus/${firstMenu.id}/publish`, {
+    revision: firstMenu.revision,
+    address: "qa-kitchen-first",
+  });
+  assert(firstLive.isPrimary, "the first menu is the main menu");
+  assert.equal(
+    (await call("state")).restaurant.slug,
+    "qa-kitchen-first",
+    "the first menu still chooses the address",
+  );
+  const withMenu = (await call("public/" + r.slug)).menu;
+  assert.equal(withMenu.documentId, firstMenu.id, "old links redirect");
+  assert.equal(withMenu.sections.length, 1);
+  assert.equal(withMenu.specials.length, 1);
+  // Taking the only menu offline leaves the special open to guests.
+  await call(`menus/${firstMenu.id}/unpublish`, {
+    revision: firstLive.revision,
+    confirmed: true,
+  });
+  const specialsLeft = (await call("public/qa-kitchen-first")).menu;
+  assert.equal(specialsLeft.sections.length, 0);
+  assert.equal(specialsLeft.specials.length, 1);
+  assert.equal(specialsLeft.restaurant.name, profile.name);
   cookie = foreignCookie;
   await call("promotions/" + pid, undefined, 404);
   await call(
@@ -411,6 +475,91 @@ try {
     0,
     "imports never publish",
   );
+  // Reading a menu file: one bad row never costs the whole menu, a menu over
+  // 60 dishes is asked to be split, and owners only see plain words.
+  const readerFetch = globalThis.fetch;
+  const answer = (value) => {
+    globalThis.fetch = async () =>
+      Response.json({
+        output: [
+          {
+            content: [
+              {
+                type: "output_text",
+                text: typeof value === "string" ? value : JSON.stringify(value),
+              },
+            ],
+          },
+        ],
+        usage: {},
+      });
+  };
+  const longFile = new FormData();
+  longFile.set(
+    "file",
+    new File([jpg], "long-menu.jpg", { type: "image/jpeg" }),
+  );
+  const longImport = (await call("imports", longFile)).id;
+  const readImport = async () =>
+    (await call("state")).imports.find((i) => i.id === longImport);
+  try {
+    answer({
+      items: [
+        { category: "Mains", name: "Pasta", description: "", price: 12.5 },
+        {
+          category: "Mains",
+          name: "Soup " + "x".repeat(120),
+          price: "9.50",
+          uncertain: ["sizes"],
+        },
+        { category: "", name: "Bread", price: -1 },
+        { category: "Mains", name: "", price: 4 },
+      ],
+    });
+    await call(`imports/${longImport}/extract`, {});
+    assert.deepEqual(
+      JSON.parse((await readImport()).draft).map((row) => [
+        row.name.slice(0, 5),
+        row.name.length,
+        row.category,
+        row.price,
+        row.uncertain,
+      ]),
+      [
+        ["Pasta", 5, "Mains", 12.5, []],
+        ["Soup ", 100, "Mains", 9.5, ["name", "price"]],
+        ["Bread", 5, "Dishes", null, ["category", "price"]],
+      ],
+      "rows are checked one by one; what didn't fit is marked",
+    );
+    answer({
+      items: Array.from({ length: 61 }, (_, n) => ({
+        category: "Mains",
+        name: `Dish ${n}`,
+        description: "",
+        price: 10,
+      })),
+    });
+    assert.match(
+      (await call(`imports/${longImport}/extract`, {}, 422)).error,
+      /more than 60 dishes\. Split it/,
+    );
+    assert.match((await readImport()).error, /more than 60 dishes/);
+    answer({ error: "too_many_dishes", items: [] });
+    assert.match(
+      (await call(`imports/${longImport}/extract`, {}, 422)).error,
+      /more than 60 dishes/,
+    );
+    answer("Sorry, { this is not JSON");
+    assert.match(
+      (await call(`imports/${longImport}/extract`, {}, 422)).error,
+      /Could not read this menu/,
+    );
+    assert.doesNotMatch((await readImport()).error, /JSON|token|Expected/);
+  } finally {
+    globalThis.fetch = readerFetch;
+  }
+  await run("DELETE FROM menu_imports WHERE id=?", longImport);
   const batchId = crypto.randomUUID();
   await call("batches", {
     batchId,

@@ -2,6 +2,8 @@ import { now, one } from "./core";
 
 // Used by both the displayed balance and the atomic job reservation. Credits
 // belong to their original period, even when a failed job finishes next month.
+// restaurants.allowance (set in Administration as "Free-plan images") only
+// applies without a paid period; Pro uses its billing period's allowance.
 export const entitlementSql = `SELECT r.id,r.paused,
   COALESCE(p.id,'free') AS credit_period,
   COALESCE(p.allowance,r.allowance)+(SELECT count(*) FROM photo_corrections c WHERE c.restaurant_id=r.id AND c.credited_period=COALESCE(p.id,'free') AND c.credited_at IS NOT NULL) AS allowance,

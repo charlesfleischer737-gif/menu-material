@@ -190,6 +190,23 @@
   font-size: var(--text-subhead);
   color: var(--workspace-error);
 }
+/* An upload or field problem, shown beside the field it belongs to. */
+.rs-dialog .rs-field-error,
+.rs-dialog .field small.rs-field-error {
+  margin: 0;
+  font-size: var(--text-footnote);
+  color: var(--workspace-error);
+}
+.rs-dialog .hours-row > .rs-field-error {
+  grid-column: 1 / -1;
+}
+.rs-dialog .hours-row > input[aria-invalid="true"] {
+  border-color: var(--workspace-error);
+}
+/* Logo and reference uploads: a button in place of the native file input. */
+.rs-dialog .rs-file-button {
+  justify-self: start;
+}
 .rs-dialog :focus-visible {
   outline: 2px solid var(--workspace-focus);
   outline-offset: 3px;

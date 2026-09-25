@@ -13,14 +13,22 @@ assert.equal(
   handle,
   "The deployed route must expose the library update method",
 );
-const { run, one, digest, id } = await import("../lib/server/core.ts");
-const { photoBrief, photoStyles, styleFor } = await import("../lib/studio.ts");
+const { run, one, all, digest, id } = await import("../lib/server/core.ts");
+const {
+  photoBrief,
+  photoStyles,
+  styleFor,
+  studioDishRequest,
+  adjustedPhotoSize,
+  withoutRemovedPhotos,
+} = await import("../lib/studio.ts");
 const { findStyles, studioLookPatch, startingLooks, lookExpectations } =
   await import("../lib/studio-discovery.ts");
 const { emptyStudioLibrary, recipeFromDraft, applySavedLook } =
   await import("../lib/studio-library.ts");
 const { activeInspirationId, inspirationPatch } =
   await import("../lib/studio-reference.ts");
+const { failedImageRequest } = await import("../lib/photo-recipe.ts");
 let cookie = "",
   checks = 0;
 globalThis.fetch = () => {
@@ -57,6 +65,106 @@ async function call(
   return body;
 }
 try {
+  // Photo Studio never renames or rewrites a saved dish (and so its live
+  // menu items); only a new dish takes the studio's name and description.
+  for (const brief of [
+    { ...photoBrief(), dishId: "saved-dish" },
+    {
+      ...photoBrief(),
+      dishId: "saved-dish",
+      mode: "description",
+      name: "Studio wording",
+      description: "On slate, 45° angle",
+    },
+  ])
+    assert.equal(studioDishRequest(brief, {}), null);
+  assert.deepEqual(studioDishRequest(photoBrief(), {}), {
+    name: "Untitled dish",
+    description: "",
+    confirmed: true,
+    setting: styleFor(photoBrief(), {}).photoStyle,
+  });
+  assert.equal(
+    studioDishRequest(
+      {
+        ...photoBrief(),
+        mode: "description",
+        name: " Roasted tomato pasta ",
+        description: "Penne, roasted tomatoes and basil",
+      },
+      {},
+    ).description,
+    "Penne, roasted tomatoes and basil",
+    "A new described dish keeps the owner's description",
+  );
+  const freshSample = studioDishRequest(
+    { ...photoBrief(), dishId: "saved-dish", name: "Margherita" },
+    {},
+    { name: "Sample burger", sample: true },
+  );
+  assert.equal(freshSample.name, "Sample burger");
+  assert.equal(freshSample.sample, true, "A sample always starts a new dish");
+  assert.equal(freshSample.description, "");
+  // A photo removed in My Dishes leaves the studio draft, with a notice,
+  // instead of failing later with "Image not found".
+  assert.equal(
+    withoutRemovedPhotos({ sourceId: "a", resultId: "b" }, ["other"]),
+    null,
+  );
+  assert.deepEqual(
+    withoutRemovedPhotos({ sourceId: "a", resultId: "b" }, ["b"]).patch,
+    { resultId: "", jobId: "", step: 1 },
+    "A removed result returns to the original",
+  );
+  const originalRemoved = withoutRemovedPhotos(
+    { sourceId: "a", resultId: "b" },
+    ["a"],
+  );
+  assert.equal(originalRemoved.patch.sourceId, "");
+  assert.equal("step" in originalRemoved.patch, false, "The result stays");
+  assert.match(originalRemoved.notice, /saved photo is still here/);
+  const bothRemoved = withoutRemovedPhotos({ sourceId: "a", resultId: "b" }, [
+    "a",
+    "b",
+  ]);
+  assert.equal(bothRemoved.patch.step, 1);
+  assert.equal(bothRemoved.patch.resultId, "");
+  assert.equal(bothRemoved.patch.sourceId, "");
+  // Quick adjustments save only the crop's real pixels. A 1.6× wide crop of
+  // a 1536 px square has 960 × 540 pixels of detail, below DoorDash's
+  // minimum, and must not be enlarged into a version that passes it.
+  const square = { width: 1536, height: 1536 };
+  assert.deepEqual(
+    adjustedPhotoSize("doordash", square, { fit: false, zoom: 1.6 }),
+    { width: 960, height: 540 },
+  );
+  assert.deepEqual(adjustedPhotoSize("doordash", square, { fit: false }), {
+    width: 1536,
+    height: 864,
+  });
+  assert.deepEqual(
+    adjustedPhotoSize("story", square, { fit: true }),
+    { width: 1152, height: 2048 },
+    "A fitted photo keeps its full size inside a taller frame, up to 2048 px",
+  );
+  assert.deepEqual(
+    adjustedPhotoSize("menu", { width: 3000, height: 2000 }, { fit: false }),
+    { width: 2000, height: 2000 },
+  );
+  assert.deepEqual(adjustedPhotoSize("menu", { width: 4000, height: 4000 }), {
+    width: 2048,
+    height: 2048,
+  });
+  for (const format of ["menu", "feed", "story", "doordash", "uber", "toast"])
+    for (const zoom of [1, 1.3, 2])
+      for (const fit of [true, false]) {
+        const size = adjustedPhotoSize(format, square, { fit, zoom });
+        const scale =
+          (fit ? Math.min : Math.max)(size.width / 1536, size.height / 1536) *
+          zoom;
+        assert(scale <= 1 + 1e-9, `${format} ${zoom}× is never enlarged`);
+        assert(Math.max(size.width, size.height) <= 2048);
+      }
   const referenceBase = {
     ...photoBrief(),
     ...studioLookPatch(photoBrief(), "menu-wood"),
@@ -547,6 +655,19 @@ try {
     originalJob.id,
   );
   await updateJob(originalJob.id);
+  // Each photo arrives with its own history, so the page never depends on
+  // the recent-requests list to tell a real DoorDash photo from an
+  // illustration.
+  const withHistory = (await call("state")).assets.find(
+    (entry) => entry.id === resultAsset,
+  );
+  assert.equal(withHistory.from_photo, true);
+  assert.equal(withHistory.photo_format, "doordash");
+  assert.equal(withHistory.look_id, "delivery-takeout");
+  assert.equal(
+    (await call("state")).assets.find((entry) => entry.id === asset.id).look_id,
+    "keep",
+  );
   await run(
     "UPDATE restaurants SET allowance=2 WHERE id=?",
     correctionState.restaurant.id,
@@ -792,6 +913,64 @@ try {
     "UPDATE restaurants SET allowance=30 WHERE id=?",
     state.restaurant.id,
   );
+  // Try again after a failed "Change the setting with AI", even after a
+  // reload, resends that change to that photo, not a restyle of the original.
+  const failedChange = await call(
+    "jobs",
+    {
+      dishId: dish.id,
+      sourceId: asset.id,
+      parentId: resultAsset,
+      revision: "Remove the napkin and use softer window light.",
+      requestKey: id(),
+      candidateCount: 1,
+      controls: { format: "doordash", plate: "keep", cropX: 30, zoom: 1.2 },
+      style: styleFor({ look: "menu-wood" }, {}),
+      lookContext: { presetId: "menu-wood", occasionId: "", overrides: [] },
+    },
+    202,
+  );
+  await run(
+    "UPDATE outputs SET status='failed',error='Image creation failed. This image was not counted.' WHERE job_id=?",
+    failedChange.id,
+  );
+  await updateJob(failedChange.id);
+  const failedRow = (await call("state")).jobs.find(
+    (job) => job.id === failedChange.id,
+  );
+  assert.equal(failedRow.status, "failed");
+  const again = await call(
+    "jobs",
+    { ...failedImageRequest(failedRow), requestKey: id() },
+    202,
+  );
+  const resent = await one("SELECT * FROM jobs WHERE id=?", again.id);
+  assert.notEqual(resent.id, failedChange.id, "A new request is made");
+  assert.equal(resent.parent_id, resultAsset);
+  assert.equal(resent.source_id, asset.id);
+  assert.equal(resent.prompt, "Remove the napkin and use softer window light.");
+  assert.equal(
+    resent.fingerprint,
+    failedRow.fingerprint,
+    "The same photo, change, style and controls are sent again",
+  );
+  await run("UPDATE outputs SET status='failed' WHERE job_id=?", resent.id);
+  await updateJob(resent.id);
+  // A failed complimentary correction is never resent as a paid image.
+  assert.equal(
+    failedImageRequest({
+      ...failedRow,
+      details: JSON.stringify({ correctionFor: originalJob.id }),
+    }),
+    null,
+  );
+  assert.equal(
+    failedImageRequest({
+      ...failedRow,
+      credit_period: `complimentary:${originalJob.id}`,
+    }),
+    null,
+  );
   const batchItems = [];
   for (let i = 0; i < 8; i++) {
     const dishId = id(),
@@ -824,15 +1003,28 @@ try {
       },
       state.restaurant,
     );
+  // "Apply to more dishes" copies the photo's shape and Details note too.
   const photoSet = await call("photo-batches", {
     batchId: batchKey,
     items: batchItems,
     style: styleFor(recipe, state.restaurant),
-    recipe,
+    recipe: { ...recipe, note: "Leave room above for a headline" },
+    format: "doordash",
   });
   assert.equal(photoSet.batch.items.length, 8);
   assert.equal(photoSet.batch.settings.controls.surface, "Pale stone");
   assert.equal(photoSet.batch.settings.controls.plate, "keep");
+  assert.equal(photoSet.batch.settings.controls.format, "doordash");
+  assert.equal(
+    photoSet.batch.settings.revision,
+    "Leave room above for a headline",
+  );
+  const setSample = await one(
+    "SELECT details,prompt FROM jobs WHERE id=?",
+    photoSet.batch.sampleJobId,
+  );
+  assert.equal(JSON.parse(setSample.details).controls.format, "doordash");
+  assert.equal(setSample.prompt, "Leave room above for a headline");
   const setBalance = (await call("state")).remaining;
   assert.equal(
     (await one("SELECT COUNT(*) n FROM batch_items WHERE batch_id=?", batchKey))
@@ -866,6 +1058,13 @@ try {
       .n,
     7,
   );
+  for (const row of await all(
+    "SELECT j.details,j.prompt FROM batch_items b JOIN jobs j ON j.id=b.job_id WHERE b.batch_id=?",
+    batchKey,
+  )) {
+    assert.equal(JSON.parse(row.details).controls.format, "doordash");
+    assert.equal(row.prompt, "Leave room above for a headline");
+  }
   assert.equal((await call("state")).remaining, setBalance - 7);
   await call(`photo-batches/${batchKey}/continue`, { remainingCount: 7 });
   assert.equal(

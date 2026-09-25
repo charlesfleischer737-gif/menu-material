@@ -151,7 +151,7 @@ function OfferPreview({
         role="img"
         aria-hidden={loading || !!error}
         style={{ visibility: loading || error ? "hidden" : "visible" }}
-        aria-label={`${exportFormats[format].label}: ${draft.title || "Draft special"}, ${money(draft.price, restaurant.currency)}`}
+        aria-label={`${exportFormats[format].label}: ${draft.title || "Draft special"}${draft.price > 0 ? `, ${money(draft.price, restaurant.currency)}` : ""}`}
       />
       {loading && (
         <p className="promotion-preview-state" role="status">
@@ -847,7 +847,7 @@ export default function PromotionWorkspace({
                       type="number"
                       min="0"
                       step="0.01"
-                      value={form.price / 100}
+                      value={form.price > 0 ? form.price / 100 : ""}
                       onChange={(e) =>
                         update(
                           "price",
@@ -1263,7 +1263,11 @@ export default function PromotionWorkspace({
                     <span className="eyebrow">Hosted menu preview</span>
                     <div>
                       <strong>{form.title || "Your special"}</strong>
-                      <b>{money(form.price, r.currency)}</b>
+                      <b>
+                        {form.price > 0
+                          ? money(form.price, r.currency)
+                          : "Add a price"}
+                      </b>
                     </div>
                     <p>{form.description}</p>
                     <small>
@@ -1275,6 +1279,30 @@ export default function PromotionWorkspace({
                         .join(" · ")}
                     </small>
                   </div>
+                  {/* Each photo is confirmed on its own, as in My Dishes, never by the package box. */}
+                  {form.items.map((i: Row) => {
+                    const a = assets.find((x) => x.id === i.photoId);
+                    return a && !a.approved_at ? (
+                      <label className="check-label" key={a.id}>
+                        <input
+                          type="checkbox"
+                          checked={false}
+                          onChange={() =>
+                            action("Approving photo", async () => {
+                              await api("assets/" + a.id + "/approve", {
+                                accurate: true,
+                              });
+                              await refresh();
+                            })
+                          }
+                        />{" "}
+                        This photo of{" "}
+                        {dishes.find((d) => d.id === i.dishId)?.name ||
+                          "the dish"}{" "}
+                        accurately shows the dish I serve.
+                      </label>
+                    ) : null;
+                  })}
                   <label className="check-label">
                     <input
                       type="checkbox"
@@ -1288,15 +1316,17 @@ export default function PromotionWorkspace({
                     disabled={!!busy || !accurate || !form.items.length}
                     onClick={() =>
                       action("Approving package", async () => {
-                        let p = await persist();
+                        if (!(form.price > 0))
+                          throw Error("Add the offer price before approving.");
                         for (const i of form.items) {
                           const a = assets.find((x) => x.id === i.photoId);
                           if (!a) throw Error("Select a photo for each dish.");
                           if (!a.approved_at)
-                            await api("assets/" + a.id + "/approve", {
-                              accurate: true,
-                            });
+                            throw Error(
+                              "Confirm each photo above before approving the package.",
+                            );
                         }
+                        let p = await persist();
                         await api("promotions/" + p.id + "/approve", {
                           revision: p.revision,
                           accurate: true,

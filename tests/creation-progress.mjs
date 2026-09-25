@@ -4,8 +4,14 @@ import { tmpdir } from "node:os";
 import { join } from "node:path";
 const root = mkdtempSync(join(tmpdir(), "menu-creation-progress-"));
 process.env.MENU_MATERIAL_DATA_DIR = root;
-const { creationProgress, typicalRenderMs, typicalWait, TYPICAL_RENDER_MS } =
-  await import("../lib/creation-progress.ts");
+const {
+  creationProgress,
+  typicalRenderMs,
+  typicalWait,
+  cancelledError,
+  heldImageMessage,
+  TYPICAL_RENDER_MS,
+} = await import("../lib/creation-progress.ts");
 const { syncServerClock, serverNow } = await import("../lib/server-clock.ts");
 const { withRenderEstimates } = await import("../lib/server/generation.ts");
 const { run, id } = await import("../lib/server/core.ts");
@@ -16,6 +22,7 @@ assert.deepEqual(creationProgress({ queuedFor: 0, sentFor: null }), {
   value: 0,
   stage: "Getting started",
   time: "",
+  late: false,
 });
 assert.equal(creationProgress({ queuedFor: 1500, sentFor: null }).value, 0.025);
 assert.equal(creationProgress({ queuedFor: 9000, sentFor: null }).value, 0.05);
@@ -46,6 +53,21 @@ assert.equal(at(12000, 30000).time, "About 20 seconds left");
 assert.equal(at(24000, 30000).time, "About 5 seconds left");
 assert.equal(at(25500, 30000).time, "Almost done");
 assert.equal(at(30000, 30000).time, "Taking longer than usual");
+// One rule for "taking longer": the side panel switches when the card does.
+for (const [ms, typical] of [
+  [0, 30000],
+  [29000, 30000],
+  [30000, 30000],
+  [90000, 30000],
+  [130000, 150000],
+  [150000, 150000],
+])
+  assert.equal(
+    at(ms, typical).late,
+    at(ms, typical).time === "Taking longer than usual",
+  );
+assert.equal(creationProgress({ queuedFor: 9000, sentFor: null }).late, false);
+assert.equal(creationProgress({ queuedFor: 11000, sentFor: null }).late, true);
 assert.equal(at(0, 70000).time, "About a minute left");
 assert.equal(at(0, 150000).time, "About 3 minutes left");
 assert.equal(typicalWait(45000), "about 45 seconds");
@@ -75,6 +97,52 @@ assert.equal(typicalRenderMs([], "low"), 30000);
 assert.equal(typicalRenderMs([], "high"), TYPICAL_RENDER_MS);
 assert.equal(typicalRenderMs([], "max"), 90000);
 assert.equal(typicalRenderMs([], "auto"), TYPICAL_RENDER_MS);
+checks++;
+// An image held by the daily AI budget or a pause gets one honest message:
+// it starts by itself, and cancelling keeps the image in the allowance.
+assert.equal(
+  heldImageMessage([
+    {
+      status: "queued",
+      error:
+        "Today's AI budget has been reached. Try again tomorrow or contact support. Your work is saved.",
+    },
+  ]),
+  "Starts automatically when the daily AI budget resets at 00:00 UTC. Cancel to keep your image.",
+);
+assert.equal(
+  heldImageMessage([
+    {
+      status: "queued",
+      error:
+        "AI creation is paused for this restaurant. Your queued work is saved.",
+    },
+  ]),
+  "Starts automatically when image creation resumes. Cancel to keep your image.",
+);
+assert.equal(heldImageMessage([{ status: "queued", error: null }]), "");
+assert.equal(
+  heldImageMessage([
+    {
+      status: "processing",
+      error: "Connection interrupted. We will check this image again.",
+    },
+  ]),
+  "",
+  "Only an image waiting to start is on hold",
+);
+checks++;
+// A queued image the owner cancelled reads as cancelled, not as a failure.
+assert.equal(
+  cancelledError("Cancelled before creation. No images used."),
+  true,
+);
+assert.equal(
+  cancelledError("Image creation failed. This image was not counted."),
+  false,
+);
+assert.equal(cancelledError(""), false);
+assert.equal(cancelledError(undefined), false);
 checks++;
 // Server times are read against the server's clock, not a wrong device clock.
 syncServerClock(Date.now() + 120000);

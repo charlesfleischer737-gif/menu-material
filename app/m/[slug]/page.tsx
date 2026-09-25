@@ -3,7 +3,7 @@ import { publicMenu } from "@/lib/server/promotions";
 import MenuView from "@/app/components/menu-view";
 import { publicDocumentSnapshot } from "@/lib/server/menu-documents";
 import { resolveMenuAddress } from "@/lib/server/menu-address";
-import { config } from "@/lib/server/core";
+import { siteOrigin } from "@/app/site-metadata";
 import {
   jsonLd,
   menuPreviewImage,
@@ -26,19 +26,19 @@ export async function generateMetadata({
     };
   const published = JSON.parse(r.published),
     name = published.restaurant.name,
-    origin = config("APP_ORIGIN");
+    origin = await siteOrigin();
   // Link previews show a dish (or the logo) and point at the menu's address.
-  const image = origin ? menuPreviewImage(published, slug, origin) : null,
-    url = origin ? new URL(`/m/${slug}`, origin).href : undefined,
+  const image = menuPreviewImage(published, slug, origin),
+    url = new URL(`/m/${slug}`, origin).href,
     description = `View the current menu from ${name}${r.address ? `, ${r.address}` : ""}.`;
   return {
     title: name + " — Menu",
     description,
-    ...(url ? { alternates: { canonical: url } } : {}),
+    alternates: { canonical: url },
     openGraph: {
       title: name + " — Menu",
       description,
-      ...(url ? { url } : {}),
+      url,
       images: image ? [{ url: image.url, alt: image.alt }] : [],
     },
     twitter: {
@@ -73,9 +73,11 @@ export default async function PublicMenu({
   const query = await searchParams,
     requested = query?.menu;
   const result = await loadMenu(slug, requested).catch(() => null);
+  // A load error isn't a page search engines should keep.
   if (!result)
     return (
       <main className="unavailable">
+        <meta name="robots" content="noindex" />
         <h1>The menu is taking a moment.</h1>
         <p>Please refresh in a little while.</p>
       </main>
@@ -90,30 +92,20 @@ export default async function PublicMenu({
     ).toString();
     permanentRedirect(`/m/${result.slug}${kept ? `?${kept}` : ""}`);
   }
-  if (result.kind === "missing") notFound();
-  if (result.kind === "menu-missing")
-    return (
-      <main className="unavailable">
-        <h1>This menu isn’t available right now.</h1>
-        <a href={`/m/${slug}`}>View the current menu</a>
-      </main>
-    );
-  const origin = config("APP_ORIGIN"),
-    url = origin ? new URL(`/m/${slug}`, origin).href : undefined,
-    image = origin ? menuPreviewImage(result.menu, slug, origin) : null;
+  // An unknown or offline menu is a real 404 (not indexed), like a missing
+  // restaurant.
+  if (result.kind === "missing" || result.kind === "menu-missing") notFound();
+  const origin = await siteOrigin(),
+    url = new URL(`/m/${slug}`, origin).href,
+    image = menuPreviewImage(result.menu, slug, origin);
+  // One root element: the view renders the structured data itself, so the
+  // server and browser trees (and the ids React generates) match.
   return (
-    <>
-      <MenuView
-        menu={result.menu}
-        slug={slug}
-        serverNow={result.menu.serverNow}
-      />
-      <script
-        type="application/ld+json"
-        dangerouslySetInnerHTML={{
-          __html: jsonLd(menuStructuredData(result.menu, url, image?.url)),
-        }}
-      />
-    </>
+    <MenuView
+      menu={result.menu}
+      slug={slug}
+      serverNow={result.menu.serverNow}
+      structuredData={jsonLd(menuStructuredData(result.menu, url, image?.url))}
+    />
   );
 }

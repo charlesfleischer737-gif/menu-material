@@ -33,8 +33,8 @@ Source and derivative are [CC BY-SA 2.0](https://creativecommons.org/licenses/by
 
 ## Additional examples
 
-- `public/rigatoni-menu-example.png`: generated editorial tomato rigatoni in an ivory bowl on a wine-red table.
-- `public/tacos-social-example.png`: generated fish tacos on a white plate against cobalt blue, in portrait composition.
+- `docs/images/rigatoni-menu-example.png`: generated editorial tomato rigatoni in an ivory bowl on a wine-red table.
+- `docs/images/tacos-social-example.png`: generated fish tacos on a white plate against cobalt blue, in portrait composition.
 
 One built-in imagegen request per asset; these are illustrative style examples, not customer or production API results. Full prompts, generation method, source paths, and current project paths are in `docs/styled-food-examples.json`. The original phone photo provenance remains in `docs/burger-image-provenance.json`.
 

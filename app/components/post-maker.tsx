@@ -24,12 +24,21 @@ import {
   changedDishFacts,
 } from "@/lib/dish-library";
 import {
+  captionPlaceholder,
+  currentCaption,
   postCaption,
+  postDefaults,
   postDetailError,
+  postDishNote,
   postFromPhoto,
+  postPhotoError,
   updatePost,
 } from "@/lib/post-flow";
-import { postTemplates, applyPostTemplate } from "@/lib/post-templates";
+import {
+  postTemplates,
+  applyPostTemplate,
+  ownerChoices,
+} from "@/lib/post-templates";
 import {
   carouselSlides,
   postSize,
@@ -37,6 +46,8 @@ import {
   recommendedDesigns,
 } from "@/lib/post-composition";
 import { campaignZip, renderPost } from "@/lib/creation-export";
+import { release } from "@/lib/post-kit";
+import { postShape } from "@/lib/sharing";
 import { emptyAdjustments } from "@/lib/studio";
 import { Dialog, DialogContent, DialogTitle } from "@/components/ui/dialog";
 import {
@@ -74,6 +85,8 @@ const initial = (restaurant: Row, version = 1) => ({
   textPlacement: "auto",
   channels: ["feed", "story"],
   feedShape: "4:5",
+  // A carousel opens on its offer; without a cover, the first slide carries it.
+  carouselCover: true,
   layouts: Object.fromEntries(
     ["feed", "story", "carousel"].map((k) => [
       k,
@@ -128,8 +141,14 @@ export default function PostMaker({
   const items: Row[] = b.items || [];
   // Automatic checks before sharing; they replace an "I checked" box.
   const namePlaceholder = isPlaceholderRestaurantName(state.restaurant.name);
+  const captionName = captionPlaceholder(b.caption || "");
   const postChecks = [
     ...(namePlaceholder ? [restaurantNameMessage] : []),
+    ...(captionName && !namePlaceholder
+      ? [
+          `Your caption still says “${captionName}”. Change it to your restaurant’s name.`,
+        ]
+      : []),
     ...(b.showPrice && (b.price === "" || Number(b.price) <= 0)
       ? ["Add the price, or turn off Show price."]
       : []),
@@ -139,6 +158,13 @@ export default function PostMaker({
     .filter((d: Row) => !d.archived_at)
     .map((d: Row) => ({ ...d, photo: preferredPhoto(d, state.assets) }))
     .filter((d: Row) => d.photo?.approved_at);
+  // Approved versions, leaving out any reported as "Something changed in my food".
+  const photoChoices = (d: Row) =>
+    dishPhotos(d, state.assets).filter(
+      (a) => a.approved_at && !a.needs_correction,
+    );
+  const photoProblem = postPhotoError(b, state.assets);
+  const dishNote = postDishNote(b, state.dishes);
   const stale = items.filter((item) => {
     const d = state.dishes.find((d: Row) => d.id === item.dishId);
     return d && changedDishFacts(item.facts, d).length;
@@ -182,7 +208,10 @@ export default function PostMaker({
         const d = state.dishes.find((d: Row) => d.id === seed.dishId),
           a = state.assets.find(
             (a: Row) =>
-              a.id === seed.photoId && a.approved_at && a.dish_id === d?.id,
+              a.id === seed.photoId &&
+              a.approved_at &&
+              !a.needs_correction &&
+              a.dish_id === d?.id,
           );
         if (d && a) {
           const draft = {
@@ -209,15 +238,17 @@ export default function PostMaker({
       onSeedUsed();
     });
   }, [ready, seed]);
+  // An automatic caption follows the restaurant, such as a name that
+  // replaced "Your restaurant".
+  useEffect(() => {
+    if (ready) change(currentCaption(store.read(), state.restaurant));
+  }, [ready, store.id, state.restaurant.name, state.restaurant.currency]);
   function choose(d: Row) {
     if (items.length >= 6 && !items.some((i) => i.dishId === d.id)) {
       action.setError("Choose up to six photos. Remove one to add another.");
       return;
     }
-    const a =
-      dishPhotos(d, state.assets).find(
-        (a) => a.id === versions[d.id] && a.approved_at,
-      ) || d.photo;
+    const a = photoChoices(d).find((a) => a.id === versions[d.id]) || d.photo;
     const existing = items.findIndex((i) => i.dishId === d.id);
     if (existing >= 0) {
       updateItem(existing, { photoId: a.id });
@@ -241,15 +272,15 @@ export default function PostMaker({
     const lead = first
       ? recommendedDesigns({ ...b, items: [item] }, state.restaurant)[0]
       : "";
+    const words = postDefaults([item]);
+    // Later dishes update the words the owner hasn't changed (see updatePost).
     update({
       items: [...items, item],
       ...(first
         ? {
-            ...applyPostTemplate({ ...b, items: [item], title: d.name }, lead),
+            ...applyPostTemplate({ ...b, items: [item], ...words }, lead),
             compositionVersion: 2,
-            title: d.name,
-            description: d.description || "",
-            price: d.price ? (d.price / 100).toFixed(2) : "",
+            ...words,
             captionMode: "auto",
           }
         : {}),
@@ -267,25 +298,8 @@ export default function PostMaker({
         ? { ...i, name: d.name, category: d.category, facts: dishSnapshot(d) }
         : i;
     });
-    const first = state.dishes.find((d: Row) => d.id === items[0]?.dishId);
-    update({
-      items: next,
-      ...(items.length === 1 && first
-        ? {
-            title: b.title === items[0].name ? first.name : b.title,
-            description:
-              b.description === items[0].facts?.description
-                ? first.description
-                : b.description,
-            price:
-              b.price === String((items[0].facts?.price || 0) / 100) ||
-              Number(b.price) === (items[0].facts?.price || 0) / 100
-                ? (first.price / 100).toFixed(2)
-                : b.price,
-          }
-        : {}),
-      factsReviewed: true,
-    });
+    // A headline, description or price the owner hasn't changed follows the dish.
+    update({ items: next, factsReviewed: true });
   }
   async function caption(mode = "draft") {
     const data = await api("post-caption", {
@@ -317,14 +331,10 @@ export default function PostMaker({
     const warnings = new Map<string, string[]>();
     for (const format of b.channels)
       for (let n = 0; n < postSlideCount(b, format); n++) {
-        const result = await renderPost(
-          document.createElement("canvas"),
-          b,
-          state.restaurant,
-          format,
-          n,
-          { scale: 0.25 },
-        );
+        const proof = document.createElement("canvas");
+        const result = await renderPost(proof, b, state.restaurant, format, n, {
+          scale: 0.25,
+        }).finally(() => release(proof));
         const label =
           format === "feed"
             ? "Post"
@@ -334,11 +344,13 @@ export default function PostMaker({
         for (const w of result.warnings)
           warnings.set(w, [...(warnings.get(w) || []), label]);
       }
-    setProofIssues(
-      [...warnings].map(
-        ([w, labels]) => `${[...new Set(labels)].join(" and ")}: ${w}`,
+    const list = new Intl.ListFormat("en", { type: "conjunction" });
+    setProofIssues([
+      ...(dishNote ? [dishNote] : []),
+      ...[...warnings].map(
+        ([w, labels]) => `${list.format([...new Set(labels)])}: ${w}`,
       ),
-    );
+    ]);
     change({ reviewed: false });
     await save();
     setExporting(true);
@@ -350,11 +362,13 @@ export default function PostMaker({
         postTemplates.find((t) => t.id === id)!,
       );
   const editingIndex = selectedItem ? items.indexOf(selectedItem) : 0;
+  // A carousel's cover frames its photos apart from their own dish slides.
+  const frame = selectedSlide?.kind === "cover" ? "cover" : channel;
   const edits = {
     ...emptyAdjustments,
     fit: true,
     ...b.layouts?.[channel],
-    ...selectedItem?.layouts?.[channel],
+    ...selectedItem?.layouts?.[frame],
   };
   return (
     <section className="mm-workspace mm-post-workspace" data-action-layout>
@@ -410,6 +424,19 @@ export default function PostMaker({
           </button>
         </div>
       )}
+      {items.length > 0 && photoProblem && (
+        <div className="mm-fact-notice">
+          <strong>{photoProblem}</strong>
+          <button className="cx-link" onClick={() => setPicker(true)}>
+            Choose a photo
+          </button>
+        </div>
+      )}
+      {items.length > 0 && dishNote && (
+        <div className="mm-fact-notice">
+          <strong>{dishNote}</strong>
+        </div>
+      )}
       {!items.length ? (
         <div className="mm-post-start">
           <div>
@@ -438,7 +465,8 @@ export default function PostMaker({
           <div className="mm-start-photos">
             {approved.slice(0, 3).map((d) => (
               <button key={d.id} onClick={() => choose(d)}>
-                <img src={`/api/assets/${d.photo.id}`} alt={d.name} />
+                {/* The name below says what the photo shows. */}
+                <img src={`/api/assets/${d.photo.id}`} alt="" />
                 <span>{d.name}</span>
               </button>
             ))}
@@ -491,7 +519,7 @@ export default function PostMaker({
                 </span>
               </div>
               <div
-                className={`mm-main-canvas ${channel === "story" ? "is-story" : channel === "feed" && b.feedShape === "3:4" ? "is-tall" : ""}`}
+                className={`mm-main-canvas ${channel === "story" ? "is-story" : channel === "feed" && postShape(b) === "3:4" ? "is-tall" : ""}`}
               >
                 <PostCanvas
                   draft={b}
@@ -600,7 +628,7 @@ export default function PostMaker({
                     <div className="mm-post-items">
                       {items.map((i, index) => (
                         <div key={i.key || i.photoId} className="mm-post-item">
-                          <img src={`/api/assets/${i.photoId}`} alt={i.name} />
+                          <img src={`/api/assets/${i.photoId}`} alt="" />
                           <div>
                             <b>{i.name}</b>
                             {b.occasion === "combo" && (
@@ -680,7 +708,14 @@ export default function PostMaker({
                         onChange={(e) => update({ title: e.target.value })}
                       />
                     </Field>
-                    <Field label="Description for your caption">
+                    <Field
+                      label="Description"
+                      hint={
+                        b.textMode === "full"
+                          ? "In your caption, and on the image while Design includes a short description."
+                          : "In your caption. Design can also show it on the image."
+                      }
+                    >
                       <textarea
                         rows={3}
                         maxLength={2000}
@@ -747,8 +782,9 @@ export default function PostMaker({
                           />
                         </Field>
                         <p className="mm-muted">
-                          Each dish gets its own slide. Select a slide to edit
-                          its headline and framing.
+                          Each dish gets its own slide. Without a cover, the
+                          first slide shows the price, date and call to action.
+                          Select a slide to edit its headline and framing.
                         </p>
                       </details>
                     )}
@@ -761,46 +797,55 @@ export default function PostMaker({
                       Your restaurant colors carry through each design. The
                       photo and layout adapt to each format.
                     </p>
-                    {b.compositionVersion !== 2 && (
+                    {b.compositionVersion !== 2 ? (
+                      // Older designs render at 4:5 only; the improved one offers 3:4.
                       <button
                         className="cx-btn cx-secondary"
                         onClick={() => applyDesign(b.template)}
                       >
                         Use the improved composition
                       </button>
-                    )}
-                    <div className="cx-field">
-                      <span id="post-shape-label">Post shape</span>
-                      <div
-                        className="mm-segments"
-                        role="group"
-                        aria-labelledby="post-shape-label"
-                      >
-                        {[
-                          ["4:5", "Portrait 4:5"],
-                          ["3:4", "Tall 3:4"],
-                        ].map(([value, label]) => (
-                          <button
-                            key={value}
-                            aria-pressed={(b.feedShape || "4:5") === value}
-                            onClick={() => {
-                              update({ feedShape: value });
-                              setChannel("feed");
-                            }}
-                          >
-                            {label}
-                          </button>
-                        ))}
+                    ) : (
+                      <div className="cx-field">
+                        <span id="post-shape-label">Post shape</span>
+                        <div
+                          className="mm-segments"
+                          role="group"
+                          aria-labelledby="post-shape-label"
+                        >
+                          {[
+                            ["4:5", "Portrait 4:5"],
+                            ["3:4", "Tall 3:4"],
+                          ].map(([value, label]) => (
+                            <button
+                              key={value}
+                              aria-pressed={(b.feedShape || "4:5") === value}
+                              onClick={() => {
+                                update({ feedShape: value });
+                                setChannel("feed");
+                              }}
+                            >
+                              {label}
+                            </button>
+                          ))}
+                        </div>
+                        <small>
+                          Tall 3:4 fills Instagram’s profile grid. Stories stay
+                          9:16 and carousels 4:5.
+                        </small>
                       </div>
-                      <small>
-                        Tall 3:4 fills Instagram’s profile grid. Stories stay
-                        9:16 and carousels 4:5.
-                      </small>
-                    </div>
+                    )}
                     <Field label="Text on the image">
                       <select
                         value={b.textMode || "minimal"}
-                        onChange={(e) => update({ textMode: e.target.value })}
+                        onChange={(e) =>
+                          update({
+                            textMode: e.target.value,
+                            chosen: [
+                              ...new Set([...ownerChoices(b), "textMode"]),
+                            ],
+                          })
+                        }
                       >
                         <option value="photo">Photo only</option>
                         <option value="minimal">Headline & essentials</option>
@@ -814,7 +859,12 @@ export default function PostMaker({
                         type="checkbox"
                         checked={b.showBrand ?? true}
                         onChange={(e) =>
-                          update({ showBrand: e.target.checked })
+                          update({
+                            showBrand: e.target.checked,
+                            chosen: [
+                              ...new Set([...ownerChoices(b), "showBrand"]),
+                            ],
+                          })
                         }
                       />
                       Restaurant name & logo
@@ -880,10 +930,7 @@ export default function PostMaker({
                         <select
                           value={b.typography || "template"}
                           onChange={(e) =>
-                            update({
-                              typography: e.target.value,
-                              brandMode: "custom",
-                            })
+                            update({ typography: e.target.value })
                           }
                         >
                           <option value="template">
@@ -915,26 +962,32 @@ export default function PostMaker({
                 {panel === "photo" && (
                   <>
                     <h2>
-                      {channel === "carousel" && selectedSlide?.kind === "dish"
+                      {selectedSlide?.kind === "dish"
                         ? selectedItem.name
-                        : "Photo framing"}
+                        : selectedSlide?.kind === "cover"
+                          ? "Cover framing"
+                          : selectedSlide?.kind === "closing"
+                            ? "Closing slide"
+                            : "Photo framing"}
                     </h2>
-                    {items.length > 1 && channel !== "carousel" && (
-                      <Field label="Photo to adjust">
-                        <select
-                          value={editingIndex}
-                          onChange={(e) => {
-                            setPhotoIndex(Number(e.target.value));
-                          }}
-                        >
-                          {items.map((i, n) => (
-                            <option key={i.photoId} value={n}>
-                              {i.name}
-                            </option>
-                          ))}
-                        </select>
-                      </Field>
-                    )}
+                    {items.length > 1 &&
+                      (channel !== "carousel" ||
+                        selectedSlide?.kind === "cover") && (
+                        <Field label="Photo to adjust">
+                          <select
+                            value={editingIndex}
+                            onChange={(e) => {
+                              setPhotoIndex(Number(e.target.value));
+                            }}
+                          >
+                            {items.map((i, n) => (
+                              <option key={i.photoId} value={n}>
+                                {i.name}
+                              </option>
+                            ))}
+                          </select>
+                        </Field>
+                      )}
                     {selectedSlide?.kind === "dish" && (
                       <Field label="Slide headline">
                         <input
@@ -948,54 +1001,67 @@ export default function PostMaker({
                         />
                       </Field>
                     )}
-                    <p className="mm-muted">
-                      Automatic framing keeps the dish whole and extends a plain
-                      background to fit the shape. Fit shows the entire photo;
-                      Fill crops to the frame. Each format and carousel slide
-                      keeps its own framing.
-                    </p>
-                    <CropControls
-                      value={edits}
-                      onChange={(p) => {
-                        if (selectedItem)
-                          updateItem(editingIndex, {
-                            layouts: {
-                              ...selectedItem.layouts,
-                              [channel]: { ...edits, ...p, autoFrame: false },
-                            },
-                          });
-                        else
-                          update({
-                            layouts: {
-                              ...b.layouts,
-                              [channel]: { ...edits, ...p, autoFrame: false },
-                            },
-                          });
-                      }}
-                    />
-                    <button
-                      className="cx-link"
-                      onClick={() => {
-                        const automatic = {
-                          ...emptyAdjustments,
-                          fit: false,
-                          autoFrame: true,
-                        };
-                        if (selectedItem)
-                          updateItem(editingIndex, {
-                            layouts: {
-                              ...selectedItem.layouts,
-                              [channel]: automatic,
-                            },
-                          });
-                        else
-                          update({
-                            layouts: { ...b.layouts, [channel]: automatic },
-                          });
-                      }}
-                    >
-                      Back to automatic framing
-                    </button>
+                    {selectedSlide?.kind === "closing" ? (
+                      <p className="mm-muted">
+                        The closing slide has no photo. Its words come from
+                        Closing invitation in Details.
+                      </p>
+                    ) : (
+                      <>
+                        <p className="mm-muted">
+                          Automatic framing keeps the dish whole and extends a
+                          plain background to fit the shape. Fit shows the
+                          entire photo; Fill crops to the frame. Each format and
+                          carousel slide keeps its own framing.
+                        </p>
+                        <CropControls
+                          value={edits}
+                          onChange={(p) => {
+                            if (selectedItem)
+                              updateItem(editingIndex, {
+                                layouts: {
+                                  ...selectedItem.layouts,
+                                  [frame]: { ...edits, ...p, autoFrame: false },
+                                },
+                              });
+                            else
+                              update({
+                                layouts: {
+                                  ...b.layouts,
+                                  [channel]: {
+                                    ...edits,
+                                    ...p,
+                                    autoFrame: false,
+                                  },
+                                },
+                              });
+                          }}
+                        />
+                        <button
+                          className="cx-link"
+                          onClick={() => {
+                            const automatic = {
+                              ...emptyAdjustments,
+                              fit: false,
+                              autoFrame: true,
+                            };
+                            if (selectedItem)
+                              updateItem(editingIndex, {
+                                layouts: {
+                                  ...selectedItem.layouts,
+                                  [frame]: automatic,
+                                },
+                              });
+                            else
+                              update({
+                                layouts: { ...b.layouts, [channel]: automatic },
+                              });
+                          }}
+                        >
+                          Back to automatic framing
+                        </button>
+                      </>
+                    )}
                   </>
                 )}
                 {panel === "caption" && (
@@ -1126,18 +1192,15 @@ export default function PostMaker({
                   .includes(query.toLowerCase()),
               )
               .map((d) => {
+                const options = photoChoices(d);
                 const photo =
-                  dishPhotos(d, state.assets).find(
-                    (a) => a.id === versions[d.id] && a.approved_at,
-                  ) || d.photo;
-                const options = dishPhotos(d, state.assets).filter(
-                  (a) => a.approved_at,
-                );
+                  options.find((a) => a.id === versions[d.id]) || d.photo;
                 return (
                   <div key={d.id}>
                     <button onClick={() => choose(d)}>
-                      <img src={`/api/assets/${photo.id}`} alt={d.name} />
+                      <img src={`/api/assets/${photo.id}`} alt="" />
                       <strong>{d.name}</strong>
+                      {!d.available && <small>Unavailable</small>}
                     </button>
                     {options.length > 1 && (
                       <select
@@ -1287,6 +1350,17 @@ export default function PostMaker({
                   await campaignZip(b, state.restaurant),
                   `${state.restaurant.slug}-post-pack.zip`,
                 );
+                // The pack counts like any other download in the owner's report.
+                track("export_complete", items[0]?.photoId, {
+                  tool: "post",
+                  method: "download",
+                  design: String(b.template || "chef"),
+                  count: b.channels.reduce(
+                    (n: number, c: string) => n + postSlideCount(b, c),
+                    0,
+                  ),
+                  ...(store.id ? { draftId: store.id } : {}),
+                });
                 action.setNotice("Your post pack download has started.");
               })
             }

@@ -199,6 +199,19 @@
   min-height: 44px;
   padding-block: 8px;
 }
+/* A dish without a photo fills the same square as a photo, so cards line up. */
+.mm-dish-open > .mm-dish-placeholder {
+  flex-direction: column;
+  aspect-ratio: 1;
+  min-height: 0;
+  margin: 0;
+  border: 0;
+  border-radius: 0;
+  background: var(--workspace-stage);
+}
+.mm-dish-price[data-empty="true"] {
+  color: var(--workspace-muted);
+}
 .mm-dish-card footer .cx-link.cx-icon {
   width: 44px;
 }
@@ -231,9 +244,7 @@
     padding-inline: 12px;
   }
   .mm-dish-placeholder {
-    margin: 12px;
     padding: 8px;
-    flex-direction: column;
     gap: 4px;
   }
   .mm-filter-drawer[data-slot="sheet-content"] {

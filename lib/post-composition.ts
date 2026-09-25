@@ -4,10 +4,13 @@ import { emptyAdjustments } from "./studio";
 import { brandTypeface } from "./restaurant-look";
 import { getPostTemplate } from "./post-templates";
 import { loadPostFonts } from "./post-fonts";
+import { postShape } from "./sharing";
 import {
   PostKit,
   analyzePhoto,
+  context2d,
   makeCanvas,
+  release,
   type Framing,
   type Safe,
   luminance,
@@ -53,7 +56,7 @@ export function postSize(draft: Row, channel: string) {
     height:
       channel === "story"
         ? 1920
-        : channel === "feed" && draft.feedShape === "3:4"
+        : channel === "feed" && postShape(draft) === "3:4"
           ? 1440
           : 1350,
   };
@@ -118,8 +121,7 @@ async function acquirePhoto(url: string) {
   let entry = photoCache.get(url);
   if (!entry) {
     const promise = fetch(url).then(async (res) => {
-      if (!res.ok)
-        throw Error("This photo could not be opened. Please try again.");
+      if (!res.ok) throw Object.assign(Error(url), { status: res.status });
       return createImageBitmap(await res.blob());
     });
     entry = { promise, users: 0, last: 0 };
@@ -151,9 +153,10 @@ function releasePhoto(url: string) {
 }
 function describeLogo(im: ImageBitmap): Logo {
   const c = makeCanvas(32, 32),
-    ctx = c.getContext("2d")!;
+    ctx = context2d(c);
   ctx.drawImage(im, 0, 0, 32, 32);
   const d = ctx.getImageData(0, 0, 32, 32).data;
+  release(c);
   let clear = 0,
     lum = 0,
     solid = 0;
@@ -199,11 +202,13 @@ export async function renderComposedPost(
     photoOnly = mode === "photo" && !closingSlide,
     showBrand = draft.showBrand ?? t.showBrand;
   const warnings: string[] = [];
+  // The offer leads a carousel: on its cover, or on the first dish without one.
+  const lead =
+    !card ||
+    card.kind === "cover" ||
+    (card.kind === "dish" && !draft.carouselCover && card.itemIndex === 0);
   const price =
-    draft.showPrice &&
-    draft.price !== "" &&
-    draft.price != null &&
-    (channel !== "carousel" || card?.kind === "cover")
+    draft.showPrice && draft.price !== "" && draft.price != null && lead
       ? money(Math.round(Number(draft.price) * 100), restaurant.currency)
       : "";
   let detail =
@@ -216,21 +221,34 @@ export async function renderComposedPost(
     );
     detail = "";
   }
-  const withFacts = !photoOnly && card?.kind !== "dish";
+  const withFacts = !photoOnly && (card?.kind !== "dish" || lead);
   const urls = items.map((i) => i.photoUrl || `/api/assets/${i.photoId}`);
   const logoId = restaurant.logo_id || restaurant.logoId;
   const held: string[] = [];
   try {
     const images: ImageBitmap[] = [];
-    for (const url of urls) {
-      images.push(await acquirePhoto(url));
+    for (const [n, url] of urls.entries()) {
+      try {
+        images.push(await acquirePhoto(url));
+      } catch (error) {
+        throw Error(
+          (error as { status?: number }).status === 404
+            ? `The photo of ${items[n].name} is no longer available. Choose another photo, or remove the dish.`
+            : `The photo of ${items[n].name} could not be opened. Please try again.`,
+        );
+      }
       held.push(url);
     }
     let logo: Logo | null = null;
     if (logoId && showBrand) {
       const url = `/api/assets/${logoId}`;
-      logo = describeLogo(await acquirePhoto(url));
-      held.push(url);
+      try {
+        const im = await acquirePhoto(url);
+        held.push(url);
+        logo = describeLogo(im);
+      } catch {
+        // A logo that can't be opened, say one just deleted, leaves the name alone.
+      }
     }
     const safe = postSafeArea(W, H, channel);
     const kit = new PostKit(canvas, W, H, options.scale || 1, safe);
@@ -243,23 +261,21 @@ export async function renderComposedPost(
       slide: card ? (card.kind as Design["slide"]) : "single",
       images,
       analyses: images.map((im) => analyzePhoto(im)),
+      // A carousel's cover keeps its own framing, apart from each dish's slide.
       framings: items.map(
         (item) =>
           ({
             ...emptyAdjustments,
             fit: false,
             ...draft.layouts?.[channel],
-            ...item.layouts?.[channel],
+            ...item.layouts?.[card?.kind === "cover" ? "cover" : channel],
           }) as Framing,
       ),
       names: items.map((i) => i.name || "This photo"),
       headline: photoOnly
         ? ""
         : String(card?.title ?? draft.title ?? items[0].name ?? ""),
-      kicker:
-        photoOnly || card?.kind === "dish" || closingSlide
-          ? ""
-          : String(draft.kicker || ""),
+      kicker: photoOnly || !lead ? "" : String(draft.kicker || ""),
       price: withFacts && !closingSlide ? price : "",
       validity: withFacts ? String(draft.validity || "") : "",
       cta: withFacts ? String(draft.cta || "") : "",
@@ -267,6 +283,7 @@ export async function renderComposedPost(
       itemsLine:
         withFacts &&
         !closingSlide &&
+        card?.kind !== "dish" &&
         (items.length > 1 || items.some((i) => (i.quantity || 1) > 1))
           ? items.map((i) => `${i.quantity || 1} × ${i.name}`).join("  ·  ")
           : "",
@@ -304,6 +321,7 @@ export async function renderComposedPost(
       renderedText: kit.renderedText,
       textBoxes: kit.textBoxes,
       photoBoxes: kit.photoBoxes,
+      dishBoxes: kit.dishBoxes,
       warnings: [...new Set([...warnings, ...kit.warnings])],
       template: t.id,
       width: W,

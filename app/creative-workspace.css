@@ -694,6 +694,12 @@
   margin: 8px 0;
   font-size: var(--text-subhead);
 }
+.mm-picker-grid small {
+  display: block;
+  margin: -4px 0 8px;
+  color: var(--workspace-muted);
+  font-size: var(--text-caption);
+}
 .mm-picker-grid select {
   width: 100%;
   font-size: var(--text-caption);

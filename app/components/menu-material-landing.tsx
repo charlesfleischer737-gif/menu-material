@@ -1,5 +1,5 @@
 "use client";
-import { useRef } from "react";
+import { useRef, type MouseEvent } from "react";
 import { ArrowRight, Menu } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import {
@@ -12,6 +12,10 @@ import HomepageSections from "./homepage-sections";
 import HomepageShowcase from "./homepage-showcase";
 import PhotoComparison from "./photo-comparison";
 import { SiteFooter, SiteHeader } from "./site-chrome";
+/* eslint-disable @next/next/no-html-link-for-pages --
+   Plain links on purpose: next/link's client navigation throws in the vinext
+   production build ("navigateClientSide is not a function"), so a <Link>
+   click there does nothing. These are separate server-rendered pages anyway. */
 
 const credits = (
   <>
@@ -51,6 +55,24 @@ const credits = (
   </>
 );
 
+// The calls to action are links (/#studio, /?login) that the page itself
+// handles, so they work before JavaScript loads. Once it has, a plain click
+// runs in place; a click meant for a new tab or window follows the link.
+function inPlace(action: () => void) {
+  return (event: MouseEvent<HTMLAnchorElement>) => {
+    if (
+      event.button !== 0 ||
+      event.metaKey ||
+      event.ctrlKey ||
+      event.shiftKey ||
+      event.altKey
+    )
+      return;
+    event.preventDefault();
+    action();
+  };
+}
+
 export default function Landing({
   onStart,
   onSignIn,
@@ -61,6 +83,8 @@ export default function Landing({
   signedIn?: boolean;
 }) {
   const navigationTarget = useRef<string | null>(null);
+  const start = inPlace(onStart),
+    signIn = inPlace(onSignIn);
   return (
     <div className="pw-site pw-homepage">
       <a className="skip-link" href="#main">
@@ -71,12 +95,14 @@ export default function Landing({
           <a href="#use-cases">Use cases</a>
           <a href="/pricing">Pricing</a>
           {!signedIn && (
-            <button className="pw-login" onClick={onSignIn}>
+            <a className="pw-login" href="/?login" onClick={signIn}>
               Log in
-            </button>
+            </a>
           )}
-          <Button className="pw-header-cta" onClick={onStart}>
-            {signedIn ? "My studio" : "Try it free"}
+          <Button className="pw-header-cta" asChild>
+            <a href="/#studio" onClick={start}>
+              {signedIn ? "My studio" : "Try it free"}
+            </a>
           </Button>
           <DropdownMenu>
             <DropdownMenuTrigger asChild>
@@ -127,9 +153,11 @@ export default function Landing({
             </p>
           </div>
           <div className="pw-hero-actions">
-            <Button size="marketing" onClick={onStart}>
-              {signedIn ? "Open my studio" : "Try it free"}
-              <ArrowRight size={17} />
+            <Button size="marketing" asChild>
+              <a href="/#studio" onClick={start}>
+                {signedIn ? "Open my studio" : "Try it free"}
+                <ArrowRight size={17} />
+              </a>
             </Button>
             <span className="pw-free-note">5 free images · No credit card</span>
           </div>
@@ -143,9 +171,11 @@ export default function Landing({
             Choose your look, add your photo, and give your food the
             presentation it deserves. Your first 5 images are free.
           </p>
-          <Button size="marketing" onClick={onStart}>
-            {signedIn ? "Open my studio" : "Try it free"}
-            <ArrowRight size={17} />
+          <Button size="marketing" asChild>
+            <a href="/#studio" onClick={start}>
+              {signedIn ? "Open my studio" : "Try it free"}
+              <ArrowRight size={17} />
+            </a>
           </Button>
         </section>
       </main>

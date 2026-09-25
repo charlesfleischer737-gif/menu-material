@@ -16,6 +16,10 @@ if (
 const secret = process.env.JOB_RUNNER_SECRET;
 if (!secret) throw Error("Set JOB_RUNNER_SECRET on the app and this runner.");
 const once = process.argv.includes("--once");
+// Run by a scheduler once a minute, --once keeps checking every two seconds
+// for most of that minute, then lets its image calls finish before it exits.
+const onceUntil =
+  Date.now() + (Number(process.env.RUNNER_ONCE_SECONDS) || 55) * 1000;
 const shutdown = new AbortController();
 for (const signal of ["SIGINT", "SIGTERM"])
   process.on(signal, () => {
@@ -26,7 +30,9 @@ for (const signal of ["SIGINT", "SIGTERM"])
   });
 // A check that starts an image lasts its whole render, so checks overlap and a
 // long render never delays the next one. The app's claims keep overlap safe.
-const maxRunning = 4;
+// There is always room for more checks than the six images the site renders
+// at once, so a full queue never waits on idle capacity.
+const maxRunning = 8;
 let failures = 0,
   running = 0;
 async function check() {
@@ -60,10 +66,15 @@ async function check() {
     running--;
   }
 }
-if (once) await check();
-while (!once && !shutdown.signal.aborted) {
+while (!shutdown.signal.aborted && (!once || Date.now() < onceUntil)) {
   if (running < maxRunning) void check();
-  await delay(Math.min(60000, 2000 * 2 ** Math.min(failures, 5)), undefined, {
-    signal: shutdown.signal,
-  }).catch(() => {});
+  await delay(
+    Math.min(
+      60000,
+      2000 * 2 ** Math.min(failures, 5),
+      once ? Math.max(0, onceUntil - Date.now()) : Infinity,
+    ),
+    undefined,
+    { signal: shutdown.signal },
+  ).catch(() => {});
 }

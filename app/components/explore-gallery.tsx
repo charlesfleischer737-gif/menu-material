@@ -34,6 +34,7 @@ import {
   styleThumbnail,
   type PhotoStyle,
 } from "@/lib/photo-styles";
+import { styleImageSrcSet } from "@/lib/style-images";
 import { orderedOccasions } from "@/lib/studio-occasions";
 import { maximumStyleQueryLength, searchStyles } from "@/lib/studio-search";
 import Kitty from "./kitty";
@@ -321,7 +322,7 @@ export default function ExploreGallery({
             if (img?.complete) showPhoto(img);
           }}
           src={styleThumbnail(style.image)}
-          srcSet={`${styleThumbnail(style.image)} 400w, ${style.image} 1254w`}
+          srcSet={styleImageSrcSet(style.image)}
           sizes={
             feature
               ? "(max-width: 760px) 100vw, 50vw"
@@ -451,8 +452,9 @@ export default function ExploreGallery({
               <div>
                 <dt>Good to know</dt>
                 <dd>
-                  These looks change the scene, never your food. Add promotional
-                  words later in Post Maker.
+                  These looks are designed to change the scene and keep your
+                  food as served. Check each result before sharing, and add
+                  promotional words later in Post Maker.
                 </dd>
               </div>
             )}
@@ -662,7 +664,8 @@ export default function ExploreGallery({
                   )}
                   <p className="ex-fidelity">
                     <ShieldCheck size={16} aria-hidden="true" />
-                    Your food and portion stay the same.
+                    Designed to keep your food and portion as served — check
+                    each result before sharing.
                   </p>
                   {more.length > 0 && (
                     <section className="ex-more" aria-labelledby="ex-more">

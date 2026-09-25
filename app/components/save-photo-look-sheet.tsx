@@ -97,7 +97,7 @@ export function SavePhotoLookSheet({
           )}
           {savedId ? (
             <>
-              <p>Available in Browse all looks → Saved.</p>
+              <p>Available in All styles → Saved.</p>
               <button
                 className="cx-btn cx-secondary"
                 disabled={store.busy || store.library.defaultLookId === savedId}

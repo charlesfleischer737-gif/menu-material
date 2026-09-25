@@ -3,6 +3,7 @@ import { useEffect, useRef, useState } from "react";
 import { type Row } from "@/lib/client";
 import { renderPost } from "@/lib/creation-export";
 import { postSize } from "@/lib/post-composition";
+import { context2d, release } from "@/lib/post-kit";
 import { postVisualState } from "@/lib/sharing";
 /** Thumbnails draw at their display size; previews wait for typing to pause. */
 export function PostCanvas({
@@ -57,9 +58,13 @@ export function PostCanvas({
             // Legacy designs render full size; draw them down to the display size.
             ref.current.width = Math.round(size.width * factor);
             ref.current.height = Math.round(size.height * factor);
-            ref.current
-              .getContext("2d")!
-              .drawImage(temp, 0, 0, ref.current.width, ref.current.height);
+            context2d(ref.current).drawImage(
+              temp,
+              0,
+              0,
+              ref.current.width,
+              ref.current.height,
+            );
             drawn.current = true;
             setFramed(true);
             setRendered({ key: renderKey, error: "" });
@@ -71,7 +76,8 @@ export function PostCanvas({
             setRendered({ key: renderKey, error: e.message });
             quality.current?.([e.message]);
           }
-        });
+        })
+        .finally(() => release(temp));
     };
     // The first frame draws at once; later edits wait for a pause in typing.
     const timer = setTimeout(run, drawn.current ? 150 : 0);
@@ -80,26 +86,34 @@ export function PostCanvas({
       clearTimeout(timer);
     };
   }, [renderKey, factor, size.width, size.height]);
+  const format =
+    channel === "story"
+      ? "Story"
+      : channel === "carousel"
+        ? `Carousel slide ${slide + 1}`
+        : "Post";
   return (
     <div
       className="cx-post-canvas"
       style={{ aspectRatio: size.width / size.height }}
     >
+      {/* A design thumbnail sits in a button that already names the design. */}
       <canvas
         ref={ref}
         style={{ visibility: error ? "hidden" : "visible" }}
         role="img"
+        aria-hidden={thumbnail || undefined}
         aria-label={
           example
-            ? `Example Instagram ${channel} design`
-            : `${channel} design preview using your approved photo`
+            ? `Example Instagram ${format.toLowerCase()} design`
+            : `${format} preview using your approved photo`
         }
       />
       {loading && !framed && (
         <span className="cx-canvas-status">Preparing preview…</span>
       )}
       {error && (
-        <p role="alert" className="cx-canvas-status">
+        <p role={thumbnail ? undefined : "alert"} className="cx-canvas-status">
           {error}
         </p>
       )}

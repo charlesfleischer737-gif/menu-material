@@ -6,6 +6,7 @@ let advances = 0,
   statusCalls = 0,
   reloads = 0,
   pageHidden = false,
+  workerIsHealthy = false,
   failReload = false,
   gate = Promise.resolve();
 let progress = { jobs: [{ id: "one", status: "queued" }] };
@@ -40,6 +41,8 @@ const stop = watchJobs({
     if (failReload) throw Error("Offline");
   },
   hidden: () => pageHidden,
+  workerHealthy: () => workerIsHealthy,
+  healthEvery: 8000,
   schedule: (callback, ms) => {
     fire = callback;
     every = ms;
@@ -95,17 +98,76 @@ failReload = false;
 await step();
 assert.equal(reloads, 6, "A failed reload is retried at the next check");
 
+// Without a worker, only an open page starts queued work, so a background tab
+// keeps starting it every 8 seconds; nobody sees its status, so it checks none.
 pageHidden = true;
 const quiet = { advances, statusCalls };
 await step();
-assert.deepEqual({ advances, statusCalls }, quiet, "A hidden page is quiet");
+assert.deepEqual(
+  { advances, statusCalls },
+  quiet,
+  "A hidden page checks no status while a render holds a request open",
+);
+while (held.length) await finish();
+const hiddenStart = { advances, statusCalls };
+for (let n = 0; n < 3; n++) await step();
+assert.deepEqual(
+  { advances, statusCalls },
+  hiddenStart,
+  "A hidden tab starts work at a slower pace",
+);
+await step();
+assert.equal(advances, hiddenStart.advances + 1, "…every 8 seconds");
+await finish();
+assert.equal(statusCalls, hiddenStart.statusCalls, "…and checks no status");
+for (let n = 0; n < 3; n++) await step();
+assert.equal(advances, hiddenStart.advances + 1);
+await step();
+assert.equal(advances, hiddenStart.advances + 2);
+await finish();
 pageHidden = false;
+await step();
+assert.equal(
+  advances,
+  hiddenStart.advances + 3,
+  "A visible page starts work on every interval again",
+);
+await finish();
 
+// A healthy worker starts and finishes images itself: the page only watches.
+workerIsHealthy = true;
+const watching = { advances, statusCalls, reloads };
+await step();
+await step();
+assert.equal(advances, watching.advances, "No start requests with a worker");
+assert.equal(statusCalls, watching.statusCalls + 2, "Status is still checked");
+pageHidden = true;
+await step();
+assert.equal(statusCalls, watching.statusCalls + 2, "…while the page is seen");
+pageHidden = false;
+assert.equal(reloads, watching.reloads);
+await step();
+assert.equal(
+  reloads,
+  watching.reloads + 1,
+  "A reload now and then keeps the worker's health current",
+);
+assert.equal(advances, watching.advances);
+// A worker that stops checking in hands starting back to the page.
+workerIsHealthy = false;
+await step();
+assert.equal(advances, watching.advances + 1);
+await finish();
+
+const stopped = { advances, statusCalls };
 stop();
 assert.equal(unscheduled, 7);
-await finish();
 await step();
-assert.deepEqual({ advances, statusCalls }, quiet, "Stopping ends all checks");
+assert.deepEqual(
+  { advances, statusCalls },
+  stopped,
+  "Stopping ends all checks",
+);
 console.log(
-  "Job progress: one advance and one status check per interval, status-driven reloads, prompt results, mid-check changes, reload retries, hidden pages and stopping passed.",
+  "Job progress: one advance and one status check per interval, status-driven reloads, prompt results, mid-check changes, reload retries, slower starts from hidden tabs, worker-only starts and stopping passed.",
 );

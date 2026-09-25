@@ -68,10 +68,11 @@ export function MenuStatsSummary({
   onOpen: () => void;
 }) {
   if (!stats?.published) return null;
+  // The numbers cover every menu, not only the one that's open.
   return (
     <button className="md-stats-summary" onClick={onOpen}>
       {stats.views
-        ? `${count(stats.views)} ${stats.views === 1 ? "view" : "views"} this week`
+        ? `${count(stats.views)} ${stats.views === 1 ? "view" : "views"} this week · all menus`
         : "No menu views yet"}
     </button>
   );
@@ -98,7 +99,7 @@ export default function MenuStats({
   return (
     <section className="md-stats" aria-labelledby={titleId}>
       <h2 id={titleId} className="md-stats-title">
-        Last 7 days
+        Last 7 days · all menus
       </h2>
       {quiet ? (
         <p className="md-stats-empty">
@@ -142,7 +143,7 @@ export default function MenuStats({
       {open && (
         <MenuDialog
           title="Menu visits"
-          description="The last 7 days. Each guest counts once per menu, however often they look."
+          description="All your menus, over the last 7 days. Each guest counts once per menu, however often they look."
           close={() => setOpen(false)}
         >
           <div className="md-stat-grid">
@@ -199,10 +200,13 @@ export default function MenuStats({
             <>
               <h3 className="md-stats-heading">Most seen dish</h3>
               <p className="md-stats-seen">
-                <strong>{stats.mostSeen.name}</strong> ·{" "}
+                <strong>{stats.mostSeen.name}</strong> · on screen for{" "}
                 {count(stats.mostSeen.guests)}{" "}
-                {stats.mostSeen.guests === 1 ? "guest" : "guests"} scrolled to
-                it.
+                {stats.mostSeen.guests === 1 ? "guest" : "guests"}.
+              </p>
+              <p className="md-help">
+                Dishes near the top of your menu are seen most, so this shows
+                where a dish sits more than how popular it is.
               </p>
             </>
           )}

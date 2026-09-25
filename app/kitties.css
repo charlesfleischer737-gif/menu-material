@@ -103,15 +103,19 @@
 .kitty .kitty-ledge {
   fill: var(--kitty-ledge);
 }
+/* Three growing "z"s, drawn as strokes. */
 .kitty .kitty-zzz {
-  fill: var(--kitty-on-page);
-  font: 700 8px var(--font-ui);
+  fill: none;
+  stroke: var(--kitty-on-page);
+  stroke-linecap: round;
+  stroke-linejoin: round;
+  stroke-width: 1.2;
 }
-.kitty .kitty-zzz text:nth-child(2) {
-  font-size: 10px;
+.kitty .kitty-zzz path:nth-child(2) {
+  stroke-width: 1.5;
 }
-.kitty .kitty-zzz text:nth-child(3) {
-  font-size: 12px;
+.kitty .kitty-zzz path:nth-child(3) {
+  stroke-width: 1.8;
 }
 .kitty .kitty-box-front {
   fill: var(--gray-300);
@@ -187,45 +191,48 @@
   }
 }
 
-/* Motion is decorative and only runs when the viewer allows it. */
+/* Motion is decorative and only runs when the viewer allows it. It also
+   settles within five seconds of a kitty appearing (WCAG 2.2.2): each one
+   goes through its gestures once, then rests. */
 @media (prefers-reduced-motion: no-preference) {
   .kitty .kitty-tail,
   .kitty .kitty-eyes,
   .kitty .kitty-ear,
   .kitty .kitty-breath,
-  .kitty .kitty-zzz text,
+  .kitty .kitty-zzz path,
   .kitty .kitty-heart {
     transform-box: fill-box;
   }
   .kitty .kitty-tail {
     transform-origin: 0 100%;
-    animation: kitty-swish 3.2s ease-in-out infinite alternate;
+    /* Out and halfway back, ending near its resting angle. */
+    animation: kitty-swish 3.2s ease-in-out 1.5 alternate both;
   }
   .kitty .kitty-eyes {
     transform-origin: center;
-    animation: kitty-blink 5.2s ease-in-out infinite;
+    animation: kitty-blink 5s ease-in-out;
   }
   .kitty .kitty-pupils {
-    animation: kitty-glance 7s ease-in-out infinite;
+    animation: kitty-glance 5s ease-in-out;
   }
   .kitty .kitty-ear-right {
     transform-origin: 50% 75%;
-    animation: kitty-flick 8.5s ease-in-out infinite;
+    animation: kitty-flick 5s ease-in-out;
   }
   .kitty .kitty-breath {
     transform-origin: 50% 100%;
-    animation: kitty-breathe 3.6s ease-in-out infinite alternate;
+    animation: kitty-breathe 2.4s ease-in-out 2 alternate;
   }
-  .kitty .kitty-zzz text {
-    opacity: 0;
+  /* The "z"s drift up into place one after another and stay. */
+  .kitty .kitty-zzz path {
     transform-origin: center;
-    animation: kitty-doze 3.6s ease-in-out infinite;
+    animation: kitty-doze 1.2s ease-out both;
   }
-  .kitty .kitty-zzz text:nth-child(2) {
+  .kitty .kitty-zzz path:nth-child(2) {
+    animation-delay: 0.6s;
+  }
+  .kitty .kitty-zzz path:nth-child(3) {
     animation-delay: 1.2s;
-  }
-  .kitty .kitty-zzz text:nth-child(3) {
-    animation-delay: 2.4s;
   }
   .kitty .kitty-heart {
     transform-origin: 50% 100%;
@@ -295,17 +302,9 @@
   }
 }
 @keyframes kitty-doze {
-  0% {
+  from {
     opacity: 0;
     transform: translate(-2px, 4px);
-  }
-  30%,
-  60% {
-    opacity: 1;
-  }
-  100% {
-    opacity: 0;
-    transform: translate(3px, -5px);
   }
 }
 @keyframes kitty-heart {

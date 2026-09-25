@@ -1,7 +1,16 @@
 "use client";
-import { workspacePreferenceKey } from "@/lib/workspace-navigation";
+import {
+  hasSavedContent,
+  workspacePreferenceKey,
+} from "@/lib/workspace-navigation";
 import { draftStatus } from "@/lib/workspace-status";
-import { useEffect, useRef, useState, type CSSProperties } from "react";
+import {
+  useEffect,
+  useRef,
+  useState,
+  type CSSProperties,
+  type DragEvent,
+} from "react";
 import {
   Camera,
   Check,
@@ -36,11 +45,21 @@ import {
   unavailablePhotoLook,
   emptyAdjustments,
   samplePhoto,
+  studioDishRequest,
+  adjustedPhotoSize,
+  formatNames,
+  formatShapes,
+  withoutRemovedPhotos,
   type PhotoFormat,
 } from "@/lib/studio";
-import { canvasBlob, drawPhoto, imageBitmap } from "@/lib/photo-export";
+import {
+  canvasBlob,
+  drawPhoto,
+  imageBitmap,
+  rotatedSize,
+} from "@/lib/photo-export";
 import { type PhotoUseAction } from "@/lib/photo-use";
-import { photoLineage } from "@/lib/photo-destinations";
+import { statePhotoHistory } from "@/lib/photo-destinations";
 import { lookProfile } from "@/lib/photo-pack";
 import { PhotoFinishSheet } from "./photo-finish-sheet";
 import { PhotoPackSheet } from "./photo-pack-sheet";
@@ -57,7 +76,13 @@ import { useStudioNavigation } from "./use-studio-navigation";
 import { useStudioTiming } from "./use-studio-timing";
 import { recipeFromDraft } from "@/lib/studio-library";
 import { occasionName } from "@/lib/studio-occasions";
-import { capturedPhotoRecipe, photoLookContext } from "@/lib/photo-recipe";
+import {
+  capturedPhotoRecipe,
+  failedImageRequest,
+  isCorrection,
+  jobDetails,
+  photoLookContext,
+} from "@/lib/photo-recipe";
 import { photoAdvice } from "@/lib/photo-advice";
 import { restaurantPhotoDefaults } from "@/lib/restaurant-look";
 import { photoAnalysisRecommendation } from "@/lib/studio-onboarding";
@@ -69,6 +94,7 @@ import {
 } from "@/lib/studio-reference";
 import { useInspirationAvailability } from "./use-inspiration-availability";
 import { PhotoComparison, StudioCreating } from "./studio-onboarding";
+import { cancelledError, heldImageMessage } from "@/lib/creation-progress";
 import { StudioWorkbench } from "./studio-workbench";
 import { radioKeys, radioTab } from "./radio-keys";
 import {
@@ -80,6 +106,10 @@ import {
   useCreationDraft,
   useStepFocus,
 } from "./creation-shared";
+// A file dragged over or dropped on the page must not open in the tab.
+function keepPage(event: DragEvent<HTMLElement>) {
+  if (event.dataTransfer.types.includes("Files")) event.preventDefault();
+}
 export default function PhotoStudio({
   active = true,
   state,
@@ -127,7 +157,10 @@ export default function PhotoStudio({
     [saveLookOpen, setSaveLookOpen] = useState(false);
   const [resultRecipe, setResultRecipe] = useState<Row | null>(null);
   const [resultHasGeneration, setResultHasGeneration] = useState(false);
-  const resultAction = useRef<HTMLButtonElement>(null);
+  const resultAction = useRef<HTMLButtonElement>(null),
+    resultHeading = useRef<HTMLHeadingElement>(null),
+    failureHeading = useRef<HTMLHeadingElement>(null),
+    announcer = useRef<HTMLParagraphElement>(null);
   const [quickSession, setQuickSession] =
     useState<PhotoAdjustmentSession | null>(null);
   const quickActive = useRef<string | null>(null),
@@ -184,8 +217,40 @@ export default function PhotoStudio({
     output = state.outputs.find(
       (o: Row) => o.job_id === b.jobId && o.status === "completed",
     ),
-    resultId = b.resultId || output?.asset_id,
-    asset = state.assets.find((a: Row) => a.id === resultId);
+    failedJob: Row | undefined = job?.status === "failed" ? job : undefined,
+    // A complimentary food correction: never retried as a paid image.
+    failedCorrection = isCorrection(failedJob),
+    // A failed AI change or correction keeps the photo it started from.
+    startedFrom: string = failedCorrection
+      ? state.outputs.find(
+          (o: Row) =>
+            o.job_id === jobDetails(failedJob).correctionFor &&
+            o.status === "completed",
+        )?.asset_id || ""
+      : failedJob?.parent_id || "",
+    keptPhoto =
+      startedFrom && state.assets.some((a: Row) => a.id === startedFrom)
+        ? startedFrom
+        : "",
+    resultId = b.resultId || output?.asset_id || keptPhoto,
+    asset = state.assets.find((a: Row) => a.id === resultId),
+    // Shown with that photo until the owner moves on.
+    failedChange = !b.resultId && !output && keptPhoto ? failedJob : undefined;
+  // My Dishes owns a saved dish's name; the studio only shows it.
+  const dish = state.dishes.find((d: Row) => d.id === b.dishId),
+    dishName: string = dish
+      ? dish.name === "Untitled dish"
+        ? ""
+        : dish.name
+      : b.name || "";
+  // The shown photo's own history, never the editable draft, decides its size
+  // and whether it can go to delivery apps and Google (illustrations can't).
+  // Only a version saved a moment ago, before the page reloads, borrows the
+  // draft's size for its frame.
+  const history = asset ? statePhotoHistory(state, asset) : null,
+    resultFormat: PhotoFormat =
+      history?.format || (b.format in formats ? b.format : "menu"),
+    illustrated = !!history && !history.fromPhoto;
   const running = job && ["queued", "processing"].includes(job.status),
     sentTimes: number[] = state.outputs
       .filter(
@@ -198,7 +263,7 @@ export default function PhotoStudio({
     creating =
       !!running ||
       ["Creating your photo", "Applying your changes"].includes(busy),
-    format = formats[b.format as PhotoFormat] || formats.menu;
+    format = formats[resultFormat];
   const inspirationIds = activeInspirationIds(b, state.restaurant);
   const inspirationId = inspirationIds[0] || "";
   const inspirationAvailability = useInspirationAvailability(
@@ -206,8 +271,13 @@ export default function PhotoStudio({
     inspirationIds,
     ready && active && b.step <= 3,
   );
+  // Activity is recorded against a draft only once it exists on the server:
+  // an unsaved draft's id is "unavailable work" there.
+  const measuredDraft = draftStore.storedId
+    ? { draftId: draftStore.storedId }
+    : {};
   useStudioTiming(
-    ready && active ? draftStore.id : "",
+    ready && active ? draftStore.storedId : "",
     b.sourceId || "",
     exporting
       ? "export"
@@ -253,7 +323,8 @@ export default function PhotoStudio({
         track(
           "studio_opened",
           undefined,
-          { draftId, guest: false },
+          // A new, empty draft isn't saved yet: the open still counts.
+          draftStore.stored() ? { draftId, guest: false } : { guest: false },
           `${session}:${draftId}`,
         ),
       )
@@ -412,10 +483,89 @@ export default function PhotoStudio({
     });
   }, [seed, ready, active, busy, referenceBusy]);
   useEffect(() => {
+    // Saved photos are titled with the dish’s current name.
+    if (ready && dish && b.name !== dishName) change({ name: dishName });
+  }, [ready, dish, dishName, b.name, change]);
+  useEffect(() => {
     if (b.jobId && output?.asset_id && !b.resultId) {
       change({ resultId: output.asset_id, step: 4 });
     }
   }, [output?.asset_id, b.jobId]);
+  // A photo removed in My Dishes can't be opened, downloaded or restyled.
+  // Once the server confirms it is gone (a new upload or version can arrive
+  // a moment before the page reloads), take it out of the draft and say so.
+  const missingPhotos = [b.mode === "photo" ? b.sourceId : "", b.resultId]
+    .filter((id) => id && !state.assets.some((a: Row) => a.id === id))
+    .join();
+  useEffect(() => {
+    if (!ready || !active || !missingPhotos) return;
+    let current = true;
+    void Promise.all(
+      missingPhotos.split(",").map((id) =>
+        api(`assets/${id}/context`).then(
+          () => "",
+          (error) => ((error as { status?: number }).status === 404 ? id : ""),
+        ),
+      ),
+    ).then((gone) => {
+      const draft = read();
+      const removed = withoutRemovedPhotos(
+        {
+          sourceId: draft.mode === "photo" ? draft.sourceId : "",
+          resultId: draft.resultId,
+        },
+        gone.filter(Boolean),
+      );
+      if (!current || !removed) return;
+      change(removed.patch);
+      setAdjust("");
+      setBefore(false);
+      setCompare(false);
+      setNotice(removed.notice);
+    });
+    return () => {
+      current = false;
+    };
+  }, [ready, active, missingPhotos]);
+  // When the photo being made is ready or stops, say so to screen readers
+  // and move focus to what replaced the waiting screen.
+  const watchedJob = useRef({ id: "", running: false });
+  useEffect(() => {
+    const was = watchedJob.current;
+    watchedJob.current = { id: b.jobId, running: !!running };
+    if (!ready || !job || running || was.id !== b.jobId || !was.running) return;
+    const reason: string =
+      state.outputs.find((o: Row) => o.job_id === job.id && o.error)?.error ||
+      "";
+    const message = ["completed", "partial"].includes(job.status)
+      ? "Your photo is ready."
+      : cancelledError(reason)
+        ? "Image cancelled. No images were used."
+        : `Your photo couldn’t be created. ${reason}`.trim();
+    const region = announcer.current;
+    if (region) {
+      region.textContent = "";
+      requestAnimationFrame(() => {
+        region.textContent = message;
+      });
+    }
+    requestAnimationFrame(() => {
+      const current = document.activeElement;
+      // Never take focus from somewhere else the owner has moved to.
+      if (
+        !active ||
+        (current &&
+          current !== document.body &&
+          !root.current?.contains(current))
+      )
+        return;
+      (
+        resultHeading.current ||
+        failureHeading.current ||
+        resultAction.current
+      )?.focus({ preventScroll: true });
+    });
+  }, [ready, job, running, b.jobId, state.outputs, active, root]);
   useEffect(() => {
     if (!ready || !b.sourceId || b.mode !== "photo" || b.step > 3) return;
     const sourceId = b.sourceId;
@@ -484,7 +634,12 @@ export default function PhotoStudio({
     const session = {
       id: crypto.randomUUID(),
       assetId,
-      format: (b.format in formats ? b.format : "menu") as PhotoFormat,
+      // A saved photo is adjusted from its own size; an original from the
+      // size chosen for it.
+      format:
+        assetId === resultId
+          ? resultFormat
+          : ((b.format in formats ? b.format : "menu") as PhotoFormat),
       adjustments: { ...emptyAdjustments },
     };
     quickTrigger.current =
@@ -506,25 +661,12 @@ export default function PhotoStudio({
     onDestination("menu", "", "", { importId: imported.id });
   }
   // `fresh` starts a new dish, so a sample and a real photo never share one.
+  // An existing dish is only read: its name and description are My Dishes’.
   async function ensureDish(fresh?: { name: string; sample?: boolean }) {
-    const dishId = fresh ? "" : b.dishId;
-    const prior = state.dishes.find((d: Row) => d.id === dishId);
-    const payload = {
-      ...prior,
-      name: (fresh ? fresh.name : b.name).trim() || "Untitled dish",
-      description: fresh ? "" : b.description || "",
-      category: prior?.category || "Dishes",
-      price: (prior?.price || 0) / 100,
-      available: prior ? !!prior.available : true,
-      confirmed: true,
-      // Sample dishes stay out of guest menus.
-      ...(fresh?.sample ? { sample: true } : {}),
-      setting: resolvePhotoLook(b)
-        ? styleFor(b, state.restaurant).photoStyle
-        : prior?.setting || "",
-    };
-    const data = await api("dishes" + (dishId ? "/" + dishId : ""), payload);
-    if (!dishId) change({ dishId: data.id });
+    const request = studioDishRequest(b, state.restaurant, fresh);
+    if (!request) return b.dishId as string;
+    const data = await api("dishes", request);
+    change({ dishId: data.id });
     return data.id;
   }
   async function uploadPhoto(file: File, options: { sample?: boolean } = {}) {
@@ -581,14 +723,24 @@ export default function PhotoStudio({
       track("upload_complete", a.id);
     });
   }
-  async function generate(parentId?: string, retryControls?: Row) {
+  function requireCreation() {
     if (!state.aiConnected)
       throw Error(
         "Image creation is not connected yet. Your photo and choices are saved. You can use your original photo while the connection is set up.",
       );
+  }
+  async function generate(parentId?: string) {
+    requireCreation();
     if (b.mode === "photo" && !b.sourceId)
       throw Error("Add your dish photo first.");
-    if (b.mode === "description" && (!b.name.trim() || !b.description.trim()))
+    // An illustration of a saved dish follows its My Dishes description.
+    if (b.mode === "description" && dish && !dish.description?.trim())
+      throw Error("Add a description to this dish in My Dishes first.");
+    if (
+      b.mode === "description" &&
+      !dish &&
+      (!b.name.trim() || !b.description.trim())
+    )
       throw Error("Add a dish name and a short description first.");
     if (b.look === "reference" && !inspirationId)
       throw Error("Add a style reference, or choose one of our looks.");
@@ -597,17 +749,11 @@ export default function PhotoStudio({
     // Once Create is pressed, late photo analysis must not change the chosen look.
     change({ styleChosen: true, generationStartedAt: Date.now() });
     const did = await ensureDish();
-    const key = b.requestKey || crypto.randomUUID();
-    change({ requestKey: key });
-    await save();
-    track("generation_submission", did, { format: b.format, look: b.look });
-    const j = await api("jobs", {
-      studioDraftId: draftStore.id,
+    await submit({
       dishId: did,
       sourceId: b.mode === "photo" ? b.sourceId : null,
       parentId: parentId || null,
       revision: parentId ? aiChanges : b.note,
-      requestKey: key,
       candidateCount: 1,
       style: styleFor(b, state.restaurant),
       lookContext: photoLookContext(b),
@@ -619,10 +765,25 @@ export default function PhotoStudio({
         plate: b.plate,
         angle: b.angle,
         composition: b.composition,
-        cropX: retryControls?.cropX ?? b.adjustments.x,
-        cropY: retryControls?.cropY ?? b.adjustments.y,
-        zoom: retryControls?.zoom ?? b.adjustments.zoom,
+        cropX: b.adjustments.x,
+        cropY: b.adjustments.y,
+        zoom: b.adjustments.zoom,
       },
+    });
+  }
+  async function submit(request: Row) {
+    const key = read().requestKey || crypto.randomUUID();
+    change({ requestKey: key });
+    await save();
+    const look = request.lookContext?.presetId;
+    track("generation_submission", request.dishId, {
+      format: request.controls?.format || "menu",
+      ...(looks.some((entry) => entry.id === look) ? { look } : {}),
+    });
+    const j = await api("jobs", {
+      studioDraftId: draftStore.id,
+      ...request,
+      requestKey: key,
     }).catch((error) => {
       if (inspirationIds.length) inspirationAvailability.retry();
       throw error;
@@ -665,8 +826,13 @@ export default function PhotoStudio({
     const im = await imageBitmap(`/api/assets/${session.assetId}`);
     const c = document.createElement("canvas");
     try {
-      const width = Math.min(2048, im.width),
-        height = Math.round(width / formats[values.format].ratio);
+      // Only the crop's real pixels: an enlarged version would pass
+      // delivery-app minimums that its detail can't meet.
+      const { width, height } = adjustedPhotoSize(
+        values.format,
+        rotatedSize(im, values.adjustments.rotate),
+        values.adjustments,
+      );
       drawPhoto(c, im, width, height, values.adjustments);
     } finally {
       im.close();
@@ -722,7 +888,7 @@ export default function PhotoStudio({
       ...recipe,
       ...(reuse
         ? {
-            format: b.format,
+            format: resultFormat,
             referenceId: resultRecipe?.referenceId,
             savedLookId: resultRecipe?.savedLookId,
             savedLookName: resultRecipe?.savedLookName,
@@ -735,27 +901,39 @@ export default function PhotoStudio({
     setBefore(false);
     setCompare(false);
   }
-  // A failed photo resubmits the same choices as a new request: generate()
-  // issues a fresh request key, and failed outputs never use the allowance.
+  // Try again resends the failed request itself (its photo, requested change,
+  // style and controls), whatever the draft has moved on to. It is a new
+  // request, and failed images never use the allowance. A complimentary food
+  // correction is never resent as a paid image: its report says what's next.
   async function retry() {
     const failed = state.jobs.find((j: Row) => j.id === b.jobId);
-    let controls: Row = {};
-    try {
-      controls = JSON.parse(failed?.details || "{}").controls || {};
-    } catch {}
-    await generate(
-      failed?.parent_id && aiChanges.trim() ? failed.parent_id : undefined,
-      Number.isFinite(controls.cropX)
-        ? { cropX: controls.cropX, cropY: controls.cropY, zoom: controls.zoom }
-        : undefined,
-    );
+    if (!failed) return generate();
+    const request = failedImageRequest(failed);
+    if (!request)
+      throw Error(
+        "A food correction can’t be sent again as a new image. Open its food correction report to see what happens next.",
+      );
+    requireCreation();
+    // The saved draft follows the request again, as the server expects.
+    change({
+      ...capturedPhotoRecipe({
+        jobId: failed.id,
+        sourceId: failed.source_id,
+        inputMethod: failed.input_method,
+        details: jobDetails(failed),
+      }),
+      dishId: failed.dish_id,
+      generationStartedAt: Date.now(),
+      ...(read().requestKey === failed.request_key ? { requestKey: "" } : {}),
+    });
+    await submit(request);
   }
   function handoff(target: string) {
     setFinishOpen(false);
     setPackOpen(false);
     track("handoff_started", resultId, {
       destination: target,
-      draftId: draftStore.id,
+      ...measuredDraft,
       ...(b.sourceId ? { sourceId: b.sourceId } : {}),
     });
     onDestination(
@@ -779,18 +957,22 @@ export default function PhotoStudio({
     return false;
   }
   if (!ready) return <DraftRecovery store={draftStore} title="Photo Studio" />;
-  const lineage = photoLineage(state, asset);
   const resultStyle = lookProfile(
-    lineage.lookId || b.look,
+    history?.lookId || b.look,
     state.restaurant.style,
   );
   // Description-only illustrations stay out of delivery apps and Google.
-  const resultFromPhoto = b.mode === "photo";
+  const resultFromPhoto = !!history?.fromPhoto;
   const failedRetry = !state.aiConnected
     ? "Photo creation is temporarily unavailable. Your work is saved."
     : state.remaining < 1
       ? "You’ve used your available images."
       : "";
+  // Why the latest image stopped: cancelled by the owner while it waited, or
+  // it couldn't be created.
+  const failureText: string =
+    state.outputs.find((o: Row) => o.job_id === b.jobId)?.error || "";
+  const cancelled = cancelledError(failureText);
   const hour = new Date().getHours();
   const greeting =
     hour >= 5 && hour < 12
@@ -806,7 +988,7 @@ export default function PhotoStudio({
   const shownLabel =
     before || resultIsOriginal
       ? "Your original"
-      : b.mode === "description"
+      : illustrated
         ? illustration
         : asset?.kind === "edited"
           ? "Adjusted version"
@@ -823,7 +1005,7 @@ export default function PhotoStudio({
     ? ""
     : resultIsOriginal
       ? "Your original"
-      : b.mode === "description"
+      : illustrated
         ? illustration
         : "";
   const versions = state.assets.filter(
@@ -836,6 +1018,10 @@ export default function PhotoStudio({
       className="cx-tool cx-feature-page cx-guided-studio st-page"
       ref={root}
       data-action-layout
+      // Choosing a photo happens at step 1, which takes dropped and pasted
+      // photos; elsewhere a dropped file must not replace the page.
+      onDragOver={b.step >= 4 ? keepPage : undefined}
+      onDrop={b.step >= 4 ? keepPage : undefined}
     >
       <header className="st-header">
         <div className="st-header-copy">
@@ -843,13 +1029,19 @@ export default function PhotoStudio({
           <p>{greeting}. What’s on the menu?</p>
         </div>
         <div className="st-header-tools">
+          {/* A quiet label: routine autosaves aren't announced (a failed
+              save is, by DraftRecovery), and an empty studio has nothing
+              saved to report. */}
           <span
             className="st-save-status"
-            role="status"
-            aria-live="polite"
             data-error={status === draftStatus.failed || undefined}
           >
-            {status}
+            {hasSavedContent({ kind: "studio", draft: b }) ||
+            b.name?.trim() ||
+            b.note?.trim() ||
+            status === draftStatus.failed
+              ? status
+              : ""}
           </span>
           <SavedDrafts
             kind="studio"
@@ -894,11 +1086,23 @@ export default function PhotoStudio({
         </div>
       </header>
       <DraftRecovery store={draftStore} />
+      {/* Filled when the photo being made is ready or stops. */}
+      <p
+        className="sr-only"
+        role="status"
+        aria-live="polite"
+        aria-atomic="true"
+        ref={announcer}
+      />
       <Feedback {...action} />
       {b.step <= 3 && (
         <StudioWorkbench
           draft={b}
-          state={{ ...state, studioDraftId: draftStore.id }}
+          state={{
+            ...state,
+            studioDraftId: draftStore.id,
+            studioSavedDraftId: draftStore.storedId,
+          }}
           selected={selected}
           styleImage={styleImage}
           source={source}
@@ -958,6 +1162,7 @@ export default function PhotoStudio({
         (!resultId ? (
           creating ? (
             <StudioCreating
+              key={b.jobId}
               source={source}
               style={{ ...selected, image: styleImage }}
               queued={!job || job.status === "queued"}
@@ -966,9 +1171,15 @@ export default function PhotoStudio({
               sentAt={sentTimes.length ? Math.min(...sentTimes) : undefined}
               typicalMs={job?.estimate_ms}
               jobId={b.jobId}
+              held={heldImageMessage(
+                state.outputs.filter((o: Row) => o.job_id === b.jobId),
+              )}
             >
               {state.outputs
-                .filter((o: Row) => o.job_id === b.jobId && o.error)
+                .filter(
+                  (o: Row) =>
+                    o.job_id === b.jobId && o.error && o.status !== "queued",
+                )
                 .map((o: Row) => (
                   <p className="st-alert" role="status" key={o.id}>
                     {o.error}
@@ -1009,27 +1220,44 @@ export default function PhotoStudio({
               </section>
               <aside className="st-inspector" aria-label="Image creation">
                 <div className="st-section">
-                  <span className="st-badge st-badge-warning">
-                    Needs attention
+                  <span
+                    className={
+                      cancelled ? "st-badge" : "st-badge st-badge-warning"
+                    }
+                  >
+                    {cancelled ? "Cancelled" : "Needs attention"}
                   </span>
-                  <h2 className="st-result-title">
-                    This photo couldn’t be created.
+                  <h2
+                    className="st-result-title"
+                    ref={failureHeading}
+                    tabIndex={-1}
+                  >
+                    {cancelled
+                      ? "You cancelled this image."
+                      : "This photo couldn’t be created."}
                   </h2>
                   <p className="st-result-copy">
-                    {state.outputs.find((o: Row) => o.job_id === b.jobId)
-                      ?.error ||
-                      "You don’t need to do anything else. Your original and choices are saved."}
+                    {cancelled
+                      ? "No images were used. Your photo and choices are saved."
+                      : failureText ||
+                        "You don’t need to do anything else. Your original and choices are saved."}
                   </p>
                 </div>
                 <div className="st-action st-action-inline">
-                  <button
-                    className="st-create"
-                    disabled={!!busy || !!failedRetry}
-                    onClick={() => void act("Creating your photo", retry)}
-                  >
-                    <RotateCcw size={18} aria-hidden="true" />
-                    Try again
-                  </button>
+                  {!failedCorrection && (
+                    <button
+                      className="st-create"
+                      disabled={!!busy || !!failedRetry}
+                      onClick={() => void act("Creating your photo", retry)}
+                    >
+                      {cancelled ? (
+                        <Sparkles size={18} aria-hidden="true" />
+                      ) : (
+                        <RotateCcw size={18} aria-hidden="true" />
+                      )}
+                      {cancelled ? "Create photo" : "Try again"}
+                    </button>
+                  )}
                   <button
                     className="st-pill st-pill-quiet st-pill-wide"
                     disabled={!!busy}
@@ -1038,8 +1266,10 @@ export default function PhotoStudio({
                     Back to my styles
                   </button>
                   <p className="st-action-note">
-                    {failedRetry ||
-                      "Same photo and choices · Uses 1 image only if it works"}
+                    {failedCorrection
+                      ? "Complimentary corrections aren’t sent again as new images. Open the photo from My Dishes to see its correction report."
+                      : failedRetry ||
+                        "Same photo and choices · Uses 1 image only if it works"}
                   </p>
                 </div>
               </aside>
@@ -1104,7 +1334,7 @@ export default function PhotoStudio({
                       alt={
                         before
                           ? "Original photo"
-                          : `${shownLabel} of ${b.name || "your dish"}`
+                          : `${shownLabel} of ${dishName || "your dish"}`
                       }
                     />
                     {canvasLabel && (
@@ -1130,6 +1360,11 @@ export default function PhotoStudio({
                             const context = await api(`assets/${a.id}/context`);
                             change({
                               ...capturedPhotoRecipe(context),
+                              // A saved crop keeps its own size, not the
+                              // size of the request it was cropped from.
+                              ...(context.jobId
+                                ? { format: statePhotoHistory(state, a).format }
+                                : {}),
                               resultId: a.id,
                               jobId: context.jobId || "",
                               step: 4,
@@ -1142,7 +1377,7 @@ export default function PhotoStudio({
                       >
                         <img
                           src={`/api/assets/${a.id}`}
-                          alt={`${a.kind === "source" ? "Original" : "Saved version"} of ${b.name || "your dish"}`}
+                          alt={`${a.kind === "source" ? "Original" : "Saved version"} of ${dishName || "your dish"}`}
                           loading="lazy"
                         />
                         <span>
@@ -1226,13 +1461,69 @@ export default function PhotoStudio({
                     </DropdownMenuContent>
                   </DropdownMenu>
                 </div>
-                <h2 className="st-result-title">
+                <h2
+                  className="st-result-title"
+                  ref={resultHeading}
+                  tabIndex={-1}
+                >
                   Your food. Beautifully presented.
                 </h2>
                 <p className="st-result-copy">
                   Take a close look at your dish. When it feels right, save a
                   size made for where you’ll use it.
                 </p>
+                {failedChange && (
+                  <div className="st-alert">
+                    <p>
+                      <b>
+                        {cancelled
+                          ? "You cancelled these changes."
+                          : failedCorrection
+                            ? "Your food correction couldn’t be created."
+                            : "Your changes couldn’t be applied."}
+                      </b>{" "}
+                      {cancelled
+                        ? "No images were used."
+                        : failedCorrection
+                          ? "See the food correction report for what happens next."
+                          : failureText}{" "}
+                      This photo is unchanged.
+                    </p>
+                    <div>
+                      {failedCorrection ? (
+                        <button
+                          className="st-text-button"
+                          disabled={!!busy}
+                          onClick={() => setCorrectionOpen(true)}
+                        >
+                          View food correction report
+                        </button>
+                      ) : (
+                        <>
+                          <button
+                            className="st-text-button"
+                            disabled={!!busy || !!failedRetry}
+                            onClick={() =>
+                              void act("Applying your changes", retry)
+                            }
+                          >
+                            Try again · Uses 1 image only if it works
+                          </button>
+                          <button
+                            className="st-text-button"
+                            disabled={!!busy}
+                            onClick={() => {
+                              setAiChanges(failedChange.prompt || "");
+                              setAdjust("ai");
+                            }}
+                          >
+                            Edit my changes
+                          </button>
+                        </>
+                      )}
+                    </div>
+                  </div>
+                )}
               </div>
               <div
                 className="st-rows"
@@ -1351,7 +1642,7 @@ export default function PhotoStudio({
                 note={
                   adjust === "quick"
                     ? "Save this version before using your adjusted photo."
-                    : `Sized for ${format.label} · No image used`
+                    : `${formatNames[resultFormat]} · ${formatShapes[resultFormat]} · No image used`
                 }
                 onAction={openPhotoAction}
               />
@@ -1371,7 +1662,7 @@ export default function PhotoStudio({
         <PhotoBatchSheet
           onCloseAutoFocus={returnToResult}
           state={state}
-          draft={{ ...b, ...resultRecipe }}
+          draft={{ ...b, ...resultRecipe, format: resultFormat }}
           onClose={() => setBatchOpen(false)}
           refresh={refresh}
           remember={async (id) => {
@@ -1435,7 +1726,7 @@ export default function PhotoStudio({
       {resultId && (
         <PhotoFinishSheet
           measurementContext={{
-            draftId: draftStore.id,
+            ...measuredDraft,
             ...(b.sourceId ? { sourceId: b.sourceId } : {}),
           }}
           onBusyChange={setExporting}
@@ -1445,10 +1736,10 @@ export default function PhotoStudio({
           onOpenChange={setFinishOpen}
           assetId={resultId}
           dishId={b.dishId}
-          name={b.name || ""}
+          name={dishName}
           fromPhoto={resultFromPhoto}
           approved={!!asset?.approved_at}
-          initialFormat={b.format}
+          initialFormat={resultFormat}
           style={resultStyle}
           onUse={selectPhoto}
           onPack={() => {
@@ -1461,21 +1752,21 @@ export default function PhotoStudio({
         <PhotoPackSheet
           key={`pack-${resultId}`}
           measurementContext={{
-            draftId: draftStore.id,
+            ...measuredDraft,
             ...(b.sourceId ? { sourceId: b.sourceId } : {}),
           }}
           onCloseAutoFocus={returnToResult}
           open={packOpen}
           onOpenChange={setPackOpen}
           assetId={resultId}
-          name={b.name || ""}
+          name={dishName}
           fromPhoto={resultFromPhoto}
           style={resultStyle}
         />
       )}
       <Dialog open={zoom} onOpenChange={setZoom}>
         <DialogContent className="cx-workspace-popover cx-zoom-dialog">
-          <DialogTitle>{b.name || "Your photo"} · full view</DialogTitle>
+          <DialogTitle>{dishName || "Your photo"} · full view</DialogTitle>
           <img
             src={before && source ? source : `/api/assets/${resultId}`}
             alt={before ? "Original photo" : "Photo under review"}
