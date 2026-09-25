@@ -1333,10 +1333,15 @@ export default function MenuStudio({
               await refresh();
             }}
             published={async (address) => {
+              const first = !record.published;
               await documentAction("publish", address ? { address } : {});
-              setDialog("share");
+              // Share opens by itself when a menu first goes live; later
+              // updates keep the same link and QR code.
+              setDialog(first ? "share" : "");
               tell(
-                "Your menu is live. Future edits stay private until you publish again.",
+                first
+                  ? "Your menu is live. Future edits stay private until you publish again."
+                  : "Your changes are live. Future edits stay private until you publish again.",
               );
             }}
             save={async () => {
