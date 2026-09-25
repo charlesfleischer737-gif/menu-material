@@ -154,16 +154,15 @@
   height: clamp(88px, 11vw, 112px);
 }
 
-/* Photo Studio: perched on the progress track while a photo is created. Its
-   eyes follow the moving bar, on the bar's own timing. */
+/* Photo Studio: perched at the end of the progress track on the photo while
+   it is created, paws on the track. Its eyes follow the bar as it fills. */
 .st-progress-kitty {
-  position: relative;
+  position: absolute;
+  right: 18px;
+  /* The card's bottom padding plus the track, less a 2px overlap. */
+  bottom: 22px;
   z-index: 1;
   height: 40px;
-  margin: 12px 8px -2px auto;
-}
-.st-progress-kitty + .st-progress {
-  margin-top: 0;
 }
 
 /* My Dishes before the first dish, and Explore when a search finds nothing. */
@@ -232,7 +231,9 @@
     transform-origin: 50% 100%;
   }
   .st-progress-kitty .kitty-pupils {
-    animation: kitty-follow 1.6s var(--ease) infinite;
+    animation: none;
+    transform: translateX(calc(var(--progress, 0) * 3.2px - 2px));
+    transition: transform 1s linear;
   }
 }
 @media (hover: hover) and (prefers-reduced-motion: no-preference) {
@@ -275,15 +276,6 @@
   82%,
   100% {
     transform: translateX(0);
-  }
-}
-/* Matches st-indeterminate in photo-studio.css. */
-@keyframes kitty-follow {
-  from {
-    transform: translateX(-2px);
-  }
-  to {
-    transform: translateX(1.2px);
   }
 }
 @keyframes kitty-flick {

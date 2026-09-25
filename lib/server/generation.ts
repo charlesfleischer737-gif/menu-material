@@ -5,6 +5,7 @@ import { z } from "zod";
 import { checkStudioGeneration } from "./studio-release";
 import { keepAlive, reportError } from "./monitoring";
 import { PIPELINE_VERSION, looks } from "../studio";
+import { TYPICAL_RENDER_MS, typicalRenderMs } from "../creation-progress";
 import { styleSchema } from "./promotions";
 import {
   requireStudioReferences,
@@ -38,6 +39,8 @@ function imageSettings(
   const modern = model.startsWith("gpt-image-2");
   return {
     model,
+    // Squares stay 1536 x 1536 so their DoorDash crop (1536 x 864) meets
+    // DoorDash's 1400 x 800 minimum; exports never enlarge a photo.
     size: ["toast", "door", "doordash", "uber"].includes(format)
       ? modern
         ? "2048x1152"
@@ -49,7 +52,7 @@ function imageSettings(
           : "1024x1024",
     quality: z
       .enum(["low", "medium", "high", "xhigh", "max", "auto"])
-      .parse(config("OPENAI_IMAGE_QUALITY", "high")),
+      .parse(config("OPENAI_IMAGE_QUALITY", "medium")),
     output_format: "jpeg",
     output_compression: 95,
   };
@@ -709,6 +712,7 @@ async function saveImage(o: Row, result: string, usage: unknown) {
   });
   const job = await one("SELECT * FROM jobs WHERE id=?", o.job_id);
   assert(job, 404, "Generation not found.");
+  const { model, quality, size } = JSON.parse(job.details).rendering ?? {};
   await db().batch([
     db()
       .prepare(
@@ -744,10 +748,52 @@ async function saveImage(o: Row, result: string, usage: unknown) {
     {
       jobId: o.job_id,
       waitMs: now() - job.created_at,
+      // A direct call's time from sending to saving sets later progress bars.
+      ...(!o.response_id && o.submitted_at
+        ? { renderMs: now() - o.submitted_at, model, quality, size }
+        : {}),
     },
     o.id,
   ).catch(() => {});
   return true;
+}
+// Recent render times for these settings, in any restaurant. Output sizes
+// render at different speeds, so matching ones are preferred.
+async function renderEstimate(rendering: Row | undefined) {
+  if (!rendering?.model) return TYPICAL_RENDER_MS;
+  const recent = await all(
+    "SELECT json_extract(details,'$.renderMs') AS ms,json_extract(details,'$.size') AS size FROM events WHERE kind='image_completed' AND created_at>? AND json_extract(details,'$.model')=? AND json_extract(details,'$.quality')=? AND json_extract(details,'$.renderMs')>0 ORDER BY created_at DESC LIMIT 40",
+    now() - 14 * 86400000,
+    rendering.model,
+    rendering.quality,
+  );
+  const sameSize = recent.filter((row) => row.size === rendering.size);
+  return typicalRenderMs(
+    (sameSize.length >= 5 ? sameSize : recent).map((row) => Number(row.ms)),
+    rendering.quality,
+  );
+}
+/** Adds `estimate_ms`, a typical render time, to queued and running jobs. */
+export async function withRenderEstimates(jobs: Row[]) {
+  const estimates = new Map<string, Promise<number>>();
+  return Promise.all(
+    jobs.map(async (job) => {
+      if (!["queued", "processing"].includes(job.status)) return job;
+      const rendering = JSON.parse(job.details).rendering;
+      const key = JSON.stringify([
+        rendering?.model,
+        rendering?.quality,
+        rendering?.size,
+      ]);
+      if (!estimates.has(key))
+        estimates.set(
+          key,
+          // Progress is decoration; the workspace must load without it.
+          renderEstimate(rendering).catch(() => TYPICAL_RENDER_MS),
+        );
+      return { ...job, estimate_ms: await estimates.get(key) };
+    }),
+  );
 }
 // Jobs submitted before direct image calls ran as background responses and
 // are still retrieved by their response ID.
@@ -906,13 +952,15 @@ export async function tick(restaurantId?: string, { startNew = true } = {}) {
         };
         // The lease outlasts the call, so no other tick treats a render in
         // progress as abandoned.
+        const sentAt = now();
         await run(
           "UPDATE outputs SET status='submitting',submitted_at=?,attempts=attempts+1,lease_until=? WHERE id=? AND lease_token=?",
-          now(),
-          now() + IMAGE_TIMEOUT_MS + 60000,
+          sentAt,
+          sentAt + IMAGE_TIMEOUT_MS + 60000,
           o.id,
           lease,
         );
+        o = { ...o, status: "submitting", submitted_at: sentAt };
         await updateJob(o.job_id);
         let body: FormData | Row = request;
         if (images.length) {

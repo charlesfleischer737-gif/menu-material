@@ -550,7 +550,11 @@ try {
     "gpt-image-2.5-flare",
     "queued jobs retain their model",
   );
-  assert.equal(requests[0].quality, "high", "queued jobs retain their quality");
+  assert.equal(
+    requests[0].quality,
+    "medium",
+    "queued jobs retain their quality",
+  );
   assert.equal(requests[0].output_format, "jpeg");
   assert.equal(requests[0].output_compression, "95");
   assert.equal(requests[0].photos.length, 1);
@@ -655,7 +659,7 @@ try {
   assert.equal(
     requests.at(-1).size,
     "1536x1536",
-    "Flare retains full menu dimensions",
+    "Menu photos stay large enough for a DoorDash crop (1400 × 800 minimum)",
   );
   assert.equal(
     requests.at(-1).form.getAll("image[]").length,

@@ -25,7 +25,7 @@ Local records and uploads live in `.local-data/`, which is excluded from Git. Re
 Set `OPENAI_API_KEY` in `.env`, then restart. Keep this key on the server. Images are created by calling the OpenAI Images API directly: `images/edits` with the dish photo, previous result and style references, or `images/generations` from a description alone. The photos go in upload order and the prompt names each one's role. No text model sits in front of the image model. Captions, photo guidance and menu imports use a text-only Responses request. Models are configurable:
 
 - `OPENAI_IMAGE_MODEL`: `gpt-image-2.5-flare`
-- `OPENAI_IMAGE_QUALITY`: `high` (Flare also supports `low`, `medium`, `xhigh`, `max`, and `auto`)
+- `OPENAI_IMAGE_QUALITY`: `medium` (Flare also supports `low`, `high`, `xhigh`, `max`, and `auto`)
 - `OPENAI_TEXT_MODEL`: `gpt-4.1-mini`
 
 Flare is the selected image provider; its food fidelity, latency, and cost still require a live pilot. New jobs request JPEG at 95% quality for faster delivery, retaining the existing delivery, social, and menu dimensions. Model, rendering quality, format, and dimensions are saved with each job so configuration changes cannot alter a queued request. Previously submitted PNG jobs still recover normally. Your API account must have access to the configured models. Calls can incur provider charges even though the pilot is free to restaurants. See [OpenAI image generation](https://developers.openai.com/api/docs/guides/image-generation).

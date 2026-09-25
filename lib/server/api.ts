@@ -74,6 +74,7 @@ import {
   generateCaption,
   jobStatus,
   tick,
+  withRenderEstimates,
 } from "./generation";
 import {
   checkAlertsInBackground,
@@ -817,12 +818,14 @@ export async function handle(req: Request) {
           "SELECT e.* FROM asset_edits e JOIN assets a ON a.id=e.asset_id WHERE a.restaurant_id=? AND a.deleted_at IS NULL",
           r.id,
         ),
-        jobs: await all(
-          "SELECT id,restaurant_id,dish_id,request_key,credit_period,fingerprint,prompt,json_remove(details,'$.generationPrompts') AS details,input_method,source_id,parent_id,status,created_at FROM jobs WHERE restaurant_id=? ORDER BY created_at DESC LIMIT 100",
-          r.id,
+        jobs: await withRenderEstimates(
+          await all(
+            "SELECT id,restaurant_id,dish_id,request_key,credit_period,fingerprint,prompt,json_remove(details,'$.generationPrompts') AS details,input_method,source_id,parent_id,status,created_at FROM jobs WHERE restaurant_id=? ORDER BY created_at DESC LIMIT 100",
+            r.id,
+          ),
         ),
         outputs: await all(
-          "SELECT id,job_id,slot,status,asset_id,error,attempts FROM outputs WHERE restaurant_id=? ORDER BY created_at DESC LIMIT 200",
+          "SELECT id,job_id,slot,status,asset_id,error,attempts,submitted_at FROM outputs WHERE restaurant_id=? ORDER BY created_at DESC LIMIT 200",
           r.id,
         ),
         promotions: (
@@ -843,6 +846,8 @@ export async function handle(req: Request) {
           "SELECT id,dish_id,body,created_at FROM captions WHERE restaurant_id=? ORDER BY created_at DESC",
           r.id,
         ),
+        // Last, so it is as close as possible to when the page receives it.
+        serverTime: now(),
       });
     }
     if (p[0] === "admin") {
