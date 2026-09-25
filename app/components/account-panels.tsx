@@ -690,10 +690,11 @@ function AdminRestaurant({
           />
         </label>
         <label className="field">
-          Total allowance
+          Free-plan images
+          <small>Pro uses its plan’s allowance instead.</small>
           <input
             disabled={!!busy}
-            aria-label={`Allowance for ${r.name}`}
+            aria-label={`Free-plan images for ${r.name}`}
             type="number"
             min={0}
             value={allowance}
