@@ -31,13 +31,13 @@ export default function AccountDeletion() {
   return (
     <details className="dish-options" style={{ gridColumn: "1 / -1" }}>
       <summary>Delete account</summary>
+      <p className="fine">
+        This permanently deletes your restaurant and everything in it: dishes,
+        photos, menus, specials and posts. Your public menu pages stop working
+        and you are signed out everywhere. It can’t be undone, so download
+        anything you want to keep first.
+      </p>
       <div style={{ display: "grid", gap: 16 }}>
-        <p className="fine">
-          This permanently deletes your restaurant and everything in it: dishes,
-          photos, menus, specials and posts. Your public menu pages stop working
-          and you are signed out everywhere. It can’t be undone, so download
-          anything you want to keep first.
-        </p>
         <label className="field">
           Password
           <input
