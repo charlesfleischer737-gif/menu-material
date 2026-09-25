@@ -1,11 +1,19 @@
 "use client";
 import { useEffect, useState } from "react";
-import { ArrowRight, Check, Download, Megaphone } from "lucide-react";
+import {
+  ArrowRight,
+  Check,
+  CircleAlert,
+  Download,
+  Megaphone,
+} from "lucide-react";
 import { downloadBlob } from "@/lib/client";
 import {
   downloadFormats,
   eventDestination,
   masterPhotoExport,
+  openOriginalPhoto,
+  outsideLimits,
   photoExport,
   type DownloadFormat,
 } from "@/lib/photo-export";
@@ -22,7 +30,8 @@ import {
   type DownloadPhoto,
   type PhotoDestination,
 } from "@/lib/photo-destinations";
-import { readPreference, rememberPreference } from "@/lib/workspace-navigation";
+import { destinationChannel, type StyleProfile } from "@/lib/channel-rules";
+import { downloadWarnings } from "@/lib/photo-pack";
 import { photoExportEventKey } from "@/lib/photo-export-identity";
 import {
   CropControls,
@@ -40,14 +49,19 @@ const instagramSizes: { id: Destination; label: string }[] = [
   { id: "story", label: "Story" },
 ];
 
+/**
+ * Downloads several approved photos at one size. Approval is once per photo
+ * (as in the single download), so there's nothing to tick here; photos that
+ * a destination's size limits rule out are left out and listed.
+ */
 export default function PhotoDownloads({
   items,
-  preferenceKey,
   initialFormat = "menu",
   onPromote,
 }: {
-  items: DownloadPhoto[];
-  preferenceKey: string;
+  /** Approved photos, each with its look for the channel warnings. */
+  items: (DownloadPhoto & { style: StyleProfile })[];
+  /** The photos' own format when they share one; the dialog opens on it. */
   initialFormat?: string;
   onPromote?: (item: DownloadPhoto) => void;
 }) {
@@ -56,19 +70,37 @@ export default function PhotoDownloads({
   );
   const [index, setIndex] = useState(0);
   const [crops, setCrops] = useState<Record<string, Adjustments>>({});
-  const [checked, setChecked] = useState<Record<string, boolean>>({});
   const [progress, setProgress] = useState("");
   const [downloaded, setDownloaded] = useState(false);
+  const [leftOut, setLeftOut] = useState<{ name: string; reason: string }[]>(
+    [],
+  );
+  const [originals, setOriginals] = useState<
+    Record<string, { width: number; height: number }>
+  >({});
   const action = useAction();
-  const key = `${preferenceKey}:photo-destination`;
-  useEffect(() => {
-    const remembered = readPreference(key);
-    if (remembered) setDestination(photoDestination(remembered));
-  }, [key]);
   const item = items[Math.min(index, items.length - 1)];
+  const assetId = item?.assetId;
+  const catalog = isCatalogDestination(destination);
+  // Delivery minimums are measured on the saved original, as in the single
+  // download (the working copy is capped at 2048 pixels).
+  useEffect(() => {
+    if (!assetId || !catalog || originals[assetId]) return;
+    let active = true;
+    void openOriginalPhoto(assetId)
+      .then((im) => {
+        // A closed bitmap reads as 0 × 0: take the size first.
+        const size = { width: im.width, height: im.height };
+        im.close();
+        if (active) setOriginals((old) => ({ ...old, [assetId]: size }));
+      })
+      .catch(() => {});
+    return () => {
+      active = false;
+    };
+  }, [assetId, catalog, originals]);
   if (!item) return null;
   const master = destination === "master";
-  const catalog = isCatalogDestination(destination);
   const instagram = instagramSizes.some((size) => size.id === destination);
   const choice = photoDestinations.find(
     (d) => d.id === (instagram ? "feed" : destination),
@@ -79,24 +111,32 @@ export default function PhotoDownloads({
       : choice.label;
   const cropKey = `${item.assetId}:${destination}`;
   const edits = crops[cropKey] || { ...emptyAdjustments, fit: !catalog };
-  const allChecked =
-    master || items.every((i) => checked[`${i.assetId}:${destination}`]);
   const photoOnly = !catalog || items.every((i) => i.fromPhoto);
   const profile = catalogProfiles[destination as keyof typeof catalogProfiles];
+  const rule = destinationChannel(destination);
+  // The single download's warnings: a backdrop the channel often rejects,
+  // or a crop smaller than its minimum.
+  const warningsFor = (photo: (typeof items)[number]) =>
+    catalog && !photo.fromPhoto
+      ? []
+      : downloadWarnings(destination, {
+          style: photo.style,
+          source: originals[photo.assetId],
+          edits: crops[`${photo.assetId}:${destination}`],
+        });
+  const warnings = warningsFor(item);
   function select(value: Destination) {
     setDestination(value);
     setDownloaded(false);
+    setLeftOut([]);
     action.setError("");
     action.setNotice("");
-    rememberPreference(key, value);
     track("destination_selected", item.dishId, {
       destination: eventDestination(value),
     });
   }
   async function download() {
     const attemptId = crypto.randomUUID();
-    if (!allChecked)
-      throw Error("Review the crop for each selected dish first.");
     if (!photoOnly)
       throw Error("Use a photo of your actual dish for ordering platforms.");
     const files: Record<string, Uint8Array> = {};
@@ -106,6 +146,8 @@ export default function PhotoDownloads({
       width?: number;
       height?: number;
     }[] = [];
+    const skipped: { name: string; reason: string }[] = [];
+    setLeftOut([]);
     for (let n = 0; n < items.length; n++) {
       const photo = items[n];
       setProgress(`Preparing photo ${n + 1} of ${items.length}…`);
@@ -157,13 +199,33 @@ export default function PhotoDownloads({
             : {}),
         });
       } catch (error) {
+        // A photo this destination's limits rule out (too small, or too
+        // large a file) is left out with its reason; the rest still download.
+        if (items.length > 1 && outsideLimits(error)) {
+          skipped.push({ name: photo.name, reason: (error as Error).message });
+          continue;
+        }
         setIndex(n);
         throw Error(`${photo.name}: ${(error as Error).message}`);
       }
     }
+    setLeftOut(skipped);
+    if (!completed.length)
+      throw Error(`None of these photos can be downloaded for ${sizeLabel}.`);
     if (items.length > 1) {
       const { zipSync, strToU8 } = await import("fflate");
-      files["Upload instructions.txt"] = strToU8(choice.instructions);
+      files["Upload instructions.txt"] = strToU8(
+        [
+          choice.instructions,
+          ...(skipped.length
+            ? [
+                "",
+                "Not included:",
+                ...skipped.map(({ name, reason }) => `- ${name}: ${reason}`),
+              ]
+            : []),
+        ].join("\n"),
+      );
       downloadBlob(
         new Blob([zipSync(files, { level: 0 }) as Uint8Array<ArrayBuffer>], {
           type: "application/zip",
@@ -178,12 +240,13 @@ export default function PhotoDownloads({
         { destination: eventDestination(destination) },
         attemptId,
       );
-    rememberPreference(key, destination);
     setDownloaded(true);
     action.setNotice(
-      items.length > 1
-        ? "Download started. Your photos and upload instructions are in one file."
-        : "Download started. Your photo is also saved in My Dishes.",
+      items.length === 1
+        ? "Download started. Your photo is also saved in My Dishes."
+        : skipped.length
+          ? `Download started: ${completed.length} of ${items.length} photos and upload instructions are in one file.`
+          : "Download started. Your photos and upload instructions are in one file.",
     );
   }
   return (
@@ -220,7 +283,7 @@ export default function PhotoDownloads({
         </div>
         {items.length > 1 && (
           <div className="cx-batch-review">
-            <p>Review each dish before downloading the collection.</p>
+            <p>Choose a dish to check its crop.</p>
             <div className="cx-button-row">
               {items.map((photo, i) => (
                 <button
@@ -229,8 +292,11 @@ export default function PhotoDownloads({
                   aria-pressed={i === index}
                   onClick={() => setIndex(i)}
                 >
-                  {checked[`${photo.assetId}:${destination}`] && (
-                    <Check size={15} />
+                  {warningsFor(photo).length > 0 && (
+                    <>
+                      <CircleAlert size={15} aria-hidden="true" />
+                      <span className="sr-only">Check first: </span>
+                    </>
                   )}
                   {photo.name}
                 </button>
@@ -250,7 +316,6 @@ export default function PhotoDownloads({
                 label={`${item.name} · ${sizeLabel} preview`}
                 onChange={(next) => {
                   setCrops((old) => ({ ...old, [cropKey]: next }));
-                  setChecked((old) => ({ ...old, [cropKey]: false }));
                   setDownloaded(false);
                 }}
               />
@@ -279,24 +344,32 @@ export default function PhotoDownloads({
                   allowFit={!catalog}
                   onChange={(next) => {
                     setCrops((old) => ({ ...old, [cropKey]: next }));
-                    setChecked((old) => ({ ...old, [cropKey]: false }));
                     setDownloaded(false);
                   }}
                 />
-                <label className="cx-check">
-                  <input
-                    type="checkbox"
-                    checked={!!checked[cropKey]}
-                    onChange={(e) =>
-                      setChecked((old) => ({
-                        ...old,
-                        [cropKey]: e.target.checked,
-                      }))
-                    }
-                  />
-                  The full dish is visible and accurately represents what I
-                  serve.
-                </label>
+                {warnings.length > 0 && (
+                  <div className="ps2-finish-warning" role="note">
+                    <CircleAlert size={18} aria-hidden="true" />
+                    <div>
+                      {warnings.map((warning) => (
+                        <p key={warning}>
+                          {items.length > 1 && <b>{item.name}: </b>}
+                          {warning}
+                        </p>
+                      ))}
+                      {rule && (
+                        <a
+                          className="cx-link"
+                          href={rule.sources[0]}
+                          target="_blank"
+                          rel="noreferrer"
+                        >
+                          {rule.label} photo rules
+                        </a>
+                      )}
+                    </div>
+                  </div>
+                )}
               </>
             )}
             {!photoOnly && (
@@ -309,7 +382,7 @@ export default function PhotoDownloads({
             )}
             <button
               className="cx-btn cx-full"
-              disabled={!allChecked || !photoOnly}
+              disabled={!photoOnly}
               onClick={() => action.act("Preparing your download", download)}
             >
               <Download size={18} />
@@ -324,6 +397,9 @@ export default function PhotoDownloads({
             <p className="cx-hint">
               Your saved photo stays unchanged. Full-quality image keeps the
               original resolution and file.
+              {items.length > 1 && catalog && rule
+                ? ` Photos smaller than ${rule.label}’s minimum of ${rule.minWidth} × ${rule.minHeight} are left out and listed.`
+                : ""}
             </p>
             {!master && (
               <div className="cx-upload-guidance">
@@ -351,6 +427,21 @@ export default function PhotoDownloads({
         </div>
       </fieldset>
       <Feedback {...action} />
+      {leftOut.length > 0 && (
+        <div className="ps2-finish-warning" role="status">
+          <CircleAlert size={18} aria-hidden="true" />
+          <div>
+            <p>Left out of this download:</p>
+            <ul>
+              {leftOut.map(({ name, reason }, n) => (
+                <li key={n}>
+                  <b>{name}:</b> {reason}
+                </li>
+              ))}
+            </ul>
+          </div>
+        </div>
+      )}
       {onPromote && (
         <div className="cx-reuse-next">
           <div>

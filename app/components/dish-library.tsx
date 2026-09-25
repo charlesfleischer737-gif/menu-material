@@ -36,7 +36,6 @@ import { lookProfile } from "@/lib/photo-pack";
 import { PhotoFinishSheet } from "./photo-finish-sheet";
 import { PhotoPackSheet } from "./photo-pack-sheet";
 import { photoActionLabels } from "./photo-hub-actions";
-import { workspacePreferenceKey } from "@/lib/workspace-navigation";
 import { Sheet, SheetContent, SheetTitle } from "@/components/ui/sheet";
 import { Dialog, DialogContent, DialogTitle } from "@/components/ui/dialog";
 import {
@@ -238,6 +237,22 @@ export default function DishLibrary({
   const usedFromPhoto = usedPhoto
     ? downloadPhotoItem(state, usedPhoto, usedName).fromPhoto
     : false;
+  // Photos chosen for a bulk download, each with its look (for channel
+  // warnings) and the format it was made for (the download opens on a
+  // format they share, as a single download does).
+  const downloads = downloadIds.flatMap((id) => {
+    const a = state.assets.find((a: Row) => a.id === id && a.approved_at);
+    const d = a && allDishes.find((d) => d.id === a.dish_id);
+    if (!a || !d) return [];
+    const lineage = photoLineage(state, a);
+    return [
+      {
+        ...downloadPhotoItem(state, a, d.name),
+        style: lookProfile(lineage.lookId, state.restaurant.style),
+        format: lineage.format,
+      },
+    ];
+  });
   async function archiveDish(d: Row, value: boolean) {
     await api(`library/${d.id}`, { archived: value });
     await refresh();
@@ -1149,19 +1164,12 @@ export default function DishLibrary({
           </DialogTitle>
           <PhotoDownloads
             key={downloadIds.join(":")}
-            items={downloadIds
-              .map((id) => {
-                const a = state.assets.find(
-                  (a: Row) => a.id === id && a.approved_at,
-                );
-                const d = a && allDishes.find((d) => d.id === a.dish_id);
-                return a && d ? downloadPhotoItem(state, a, d.name) : null;
-              })
-              .filter((item) => item !== null)}
-            preferenceKey={workspacePreferenceKey(
-              state.user.id,
-              state.restaurant.id,
-            )}
+            items={downloads}
+            initialFormat={
+              new Set(downloads.map((item) => item.format)).size === 1
+                ? downloads[0].format
+                : "menu"
+            }
             onPromote={(item) => {
               setDownloadIds([]);
               reuse({ id: item.dishId }, { id: item.assetId }, "post");

@@ -59,15 +59,16 @@ function mount(file, modules) {
     useState(init) {
       const slot = (slots[cursor++] ||= {
         value: typeof init === "function" ? init() : init,
+        queue: [],
       });
+      // Like React, updates (and updater functions) apply at the next render.
+      for (const next of slot.queue.splice(0))
+        slot.value = typeof next === "function" ? next(slot.value) : next;
       return [
         slot.value,
         (next) => {
-          const value = typeof next === "function" ? next(slot.value) : next;
-          if (!Object.is(value, slot.value)) {
-            slot.value = value;
-            dirty = true;
-          }
+          slot.queue.push(next);
+          dirty = true;
         },
       ];
     },
@@ -484,6 +485,25 @@ for (const [typed, price] of [
 ])
   ok(dishLibrary.typedPrice(typed) === price, `price "${typed}"`);
 globalThis.window = { confirm: () => true, dispatchEvent: () => true };
+/** useAction from creation-shared: busy, error and notice around a task. */
+function useActionStub(hooks) {
+  const [busy, setBusy] = hooks.useState(""),
+    [error, setError] = hooks.useState(""),
+    [notice, setNotice] = hooks.useState("");
+  async function act(label, fn) {
+    setBusy(label);
+    setError("");
+    setNotice("");
+    try {
+      await fn();
+    } catch (e) {
+      setError(e.message);
+    } finally {
+      setBusy("");
+    }
+  }
+  return { busy, error, notice, setError, setNotice, act };
+}
 const Stub = () => null,
   FeedbackStub = () => null;
 function myDishes(dishes, clientOverrides = {}) {
@@ -530,24 +550,7 @@ function myDishes(dishes, clientOverrides = {}) {
     "./creation-shared": {
       Feedback: FeedbackStub,
       Field: Stub,
-      useAction() {
-        const [busy, setBusy] = hooks.useState(""),
-          [error, setError] = hooks.useState(""),
-          [notice, setNotice] = hooks.useState("");
-        async function act(label, fn) {
-          setBusy(label);
-          setError("");
-          setNotice("");
-          try {
-            await fn();
-          } catch (e) {
-            setError(e.message);
-          } finally {
-            setBusy("");
-          }
-        }
-        return { busy, error, notice, setError, setNotice, act };
-      },
+      useAction: () => useActionStub(hooks),
     },
     "./dietary-picker": { default: Stub },
     "./controls": { ConfirmDelete: Stub },
@@ -688,6 +691,230 @@ for (const prepared of [false, true]) {
     ok(!feedback().notice && !feedback().error);
   }
   ok(button("Done"), "the dialog can be closed");
+}
+
+// A crop too small for a delivery app is a limit, not a failure: callers
+// can leave that photo out and carry on.
+const photoExports = await import("../lib/photo-export.ts");
+globalThis.fetch = async () =>
+  new Response(new Blob([samples.jpeg], { type: "image/jpeg" }));
+globalThis.createImageBitmap = async () => ({
+  width: 1125,
+  height: 750,
+  close() {},
+});
+await rejects(photoExports.photoExport("a1", "doordash"), (error) => {
+  assert(photoExports.outsideLimits(error), "tagged as outside the limits");
+  assert.match(error.message, /too small for DoorDash item photo/);
+  return true;
+});
+ok(!photoExports.outsideLimits(Error("Network down")));
+
+// Bulk download from My Dishes: the real PhotoDownloads, with exports stubbed.
+const fflate = await import("fflate");
+const studio = await import("../lib/studio.ts");
+const destinations = await import("../lib/photo-destinations.ts");
+const channelRules = await import("../lib/channel-rules.ts");
+const photoPack = await import("../lib/photo-pack.ts");
+const identity = await import("../lib/photo-export-identity.ts");
+const natural = photoPack.lookProfile("menu-wood"),
+  colorful = photoPack.lookProfile("studio-color");
+const bulkPhotos = [
+  // 2400 × 1800 real photos fit DoorDash; 1125 × 750 is too small.
+  {
+    assetId: "a-large",
+    dishId: "d1",
+    name: "Burger",
+    fromPhoto: true,
+    style: natural,
+    size: [2400, 1800],
+  },
+  {
+    assetId: "a-small",
+    dishId: "d2",
+    name: "Salad",
+    fromPhoto: true,
+    style: natural,
+    size: [1125, 750],
+  },
+  {
+    assetId: "a-color",
+    dishId: "d3",
+    name: "Soda",
+    fromPhoto: true,
+    style: colorful,
+    size: [2400, 1800],
+  },
+];
+function bulkDownload(items, initialFormat, failWith) {
+  const saved = [],
+    events = [],
+    exported = [];
+  const sizeOf = (id) => items.find((i) => i.assetId === id).size;
+  const page = mount("photo-downloads.tsx", (hooks) => ({
+    "lucide-react": new Proxy({}, { get: () => Stub }),
+    "@/lib/client": {
+      downloadBlob: (blob, name) => saved.push({ blob, name }),
+    },
+    "@/lib/photo-export": {
+      ...photoExports,
+      openOriginalPhoto: async (id) => {
+        const [width, height] = sizeOf(id);
+        // Like an ImageBitmap, a closed one reads as 0 × 0.
+        return {
+          width,
+          height,
+          close() {
+            this.width = this.height = 0;
+          },
+        };
+      },
+      photoExport: async (id, format) => {
+        exported.push(format);
+        if (failWith) throw failWith;
+        const [width] = sizeOf(id);
+        if (format === "doordash" && width < 1400)
+          throw Object.assign(
+            Error(
+              "This crop is too small for DoorDash item photo. Use a wider, higher-resolution photo; enlarging it will not add detail.",
+            ),
+            { outsideLimits: true },
+          );
+        return { blob: new Blob([`jpeg ${id}`]), width: 1920, height: 1080 };
+      },
+    },
+    "@/lib/studio": studio,
+    "@/lib/photo-destinations": destinations,
+    "@/lib/channel-rules": channelRules,
+    "@/lib/photo-pack": photoPack,
+    "@/lib/photo-export-identity": identity,
+    "./creation-shared": {
+      CropControls: Stub,
+      Feedback: FeedbackStub,
+      PhotoFrame: Stub,
+      track: (kind, id, details) => events.push({ kind, id, ...details }),
+      useAction: () => useActionStub(hooks),
+    },
+    fflate,
+  }));
+  page.render({ items, initialFormat });
+  const feedback = () => page.find((n) => n.type === FeedbackStub)[0].props;
+  const button = (test) =>
+    page.find((n) => n.type === "button" && test(text(n), n.props))[0];
+  return { page, saved, events, exported, feedback, button };
+}
+{
+  const { page, saved, events, exported, feedback, button } = bulkDownload(
+    bulkPhotos,
+    "doordash",
+  );
+  await page.settle();
+  ok(
+    button((words) => words === "DoorDashItem photo").props["aria-pressed"],
+    "opens on the photos' own format",
+  );
+  ok(
+    !page.find((n) => n.type === "input" && n.props.type === "checkbox").length,
+    "approved photos aren't approved again",
+  );
+  const dishButton = (name) => button((words) => words.endsWith(name));
+  ok(text(dishButton("Soda")).startsWith("Check first"), "backdrop warning");
+  ok(!text(dishButton("Burger")).startsWith("Check first"));
+  page.fire(dishButton("Salad").props.onClick);
+  await page.settle();
+  const warning = text(page.find((n) => n.props.role === "note"));
+  ok(
+    warning.includes("smaller than DoorDash’s minimum of 1400 × 800") &&
+      warning.includes("DoorDash photo rules"),
+    warning,
+  );
+  ok(text(dishButton("Salad")).startsWith("Check first"), "measured, flagged");
+  const download = button((words) => words === "Download 3 photos");
+  ok(!download.props.disabled, "nothing to tick before downloading");
+  page.fire(download.props.onClick);
+  await page.settle();
+  same(exported, ["doordash", "doordash", "doordash"]);
+  ok(!feedback().error, feedback().error);
+  ok(
+    feedback().notice ===
+      "Download started: 2 of 3 photos and upload instructions are in one file.",
+    feedback().notice,
+  );
+  ok(
+    saved.length === 1 && saved[0].name === "menu-material-doordash-photos.zip",
+  );
+  const zip = fflate.unzipSync(
+    new Uint8Array(await saved[0].blob.arrayBuffer()),
+  );
+  same(Object.keys(zip).sort(), [
+    "Burger-a-large-doordash.jpg",
+    "Soda-a-color-doordash.jpg",
+    "Upload instructions.txt",
+  ]);
+  const instructions = fflate.strFromU8(zip["Upload instructions.txt"]);
+  ok(
+    instructions.includes("Not included:\n- Salad: This crop is too small"),
+    instructions,
+  );
+  const listed = text(page.find((n) => n.type === "li"));
+  ok(listed.startsWith("Salad: This crop is too small for DoorDash"), listed);
+  ok(
+    events.filter((e) => e.kind === "export_download_started").length === 2,
+    "only downloaded photos count as downloaded",
+  );
+}
+// Every photo too small: nothing to download, and each reason is listed.
+{
+  const { page, saved, feedback, button } = bulkDownload(
+    [bulkPhotos[1], { ...bulkPhotos[1], assetId: "a-small-2", name: "Wrap" }],
+    "doordash",
+  );
+  page.fire(button((words) => words === "Download 2 photos").props.onClick);
+  await page.settle();
+  ok(
+    feedback().error === "None of these photos can be downloaded for DoorDash.",
+    feedback().error,
+  );
+  ok(!saved.length && page.find((n) => n.type === "li").length === 2);
+}
+// Any other failure still stops the download, naming the photo.
+{
+  const { page, saved, feedback, button } = bulkDownload(
+    bulkPhotos,
+    "menu",
+    Error("This photo could not be opened. Please try again."),
+  );
+  ok(
+    button((words) => words === "Website or menuSquare photo").props[
+      "aria-pressed"
+    ],
+  );
+  page.fire(button((words) => words === "Download 3 photos").props.onClick);
+  await page.settle();
+  ok(
+    feedback().error ===
+      "Burger: This photo could not be opened. Please try again.",
+  );
+  ok(!saved.length);
+}
+// Instagram's 3:4 post, reported to activity events as an Instagram post.
+{
+  const { page, saved, events, exported, button } = bulkDownload(
+    [bulkPhotos[0]],
+    "feed",
+  );
+  page.fire(button((words) => words === "Post 3:4").props.onClick);
+  page.fire(
+    button((words) => words === "Download for Instagram 3:4 post").props
+      .onClick,
+  );
+  await page.settle();
+  same(exported, ["feed-3x4"]);
+  ok(saved[0].name === "Burger-a-large-feed-3x4.jpg", saved[0].name);
+  ok(
+    events.every((e) => e.destination === "feed"),
+    JSON.stringify(events),
+  );
 }
 
 // Looks aim to keep the food as served; AI results can still change it (the
