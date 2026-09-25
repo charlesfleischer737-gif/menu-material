@@ -101,6 +101,21 @@ if (!only || only === "studio") {
       .toFile(path);
     console.log(path, (await stat(path)).size);
   }
+
+  // Explore tiles are 25–50% of the page wide, so sharp screens need more
+  // than the 400 px previews but rarely the full 1000 or 1254 px photo:
+  // 640 px copies for every style, 960 px copies of the 1254 px photos.
+  // lib/style-images.ts builds the srcset from these.
+  await mkdir("public/studio/styles/640", { recursive: true });
+  await mkdir("public/studio/styles/960", { recursive: true });
+  for (const file of (await readdir("public/studio/styles")).filter((name) =>
+    name.endsWith(".webp"),
+  )) {
+    const source = `public/studio/styles/${file}`;
+    await derive(source, `public/studio/styles/640/${file}`, 640);
+    if ((await sharp(source).metadata()).width > 1100)
+      await derive(source, `public/studio/styles/960/${file}`, 960);
+  }
 }
 
 if (!only || only === "site") {

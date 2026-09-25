@@ -34,6 +34,7 @@ import {
   styleThumbnail,
   type PhotoStyle,
 } from "@/lib/photo-styles";
+import { styleImageSrcSet } from "@/lib/style-images";
 import { orderedOccasions } from "@/lib/studio-occasions";
 import { maximumStyleQueryLength, searchStyles } from "@/lib/studio-search";
 import Kitty from "./kitty";
@@ -321,7 +322,7 @@ export default function ExploreGallery({
             if (img?.complete) showPhoto(img);
           }}
           src={styleThumbnail(style.image)}
-          srcSet={`${styleThumbnail(style.image)} 400w, ${style.image} 1254w`}
+          srcSet={styleImageSrcSet(style.image)}
           sizes={
             feature
               ? "(max-width: 760px) 100vw, 50vw"
