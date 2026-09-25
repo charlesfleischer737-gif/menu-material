@@ -506,8 +506,12 @@
   line-height: 1.55;
   margin: 0;
 }
+/* One column at every width: Share and Download always get the whole row, so
+   their labels never spill out of the buttons, and Photo pack sits centered
+   below. A definite track also keeps a long row from widening the footer. */
 .ps2-finish .ps2-dialog-footer {
   display: grid;
+  grid-template-columns: minmax(0, 1fr);
   justify-content: stretch;
   align-items: stretch;
   gap: 8px;
@@ -563,21 +567,6 @@
   align-items: center;
   gap: 8px;
   color: var(--gray-900);
-}
-@media (min-width: 761px) {
-  .ps2-finish .ps2-dialog-footer {
-    grid-template-columns: minmax(0, 1fr) auto;
-  }
-  .ps2-finish .ps2-dialog-footer > :not(.ps2-finish-actions, .ps2-finish-more) {
-    grid-column: 1 / -1;
-  }
-  .ps2-finish-actions {
-    grid-column: 1;
-  }
-  .ps2-finish .ps2-finish-more {
-    grid-column: 2;
-    align-self: center;
-  }
 }
 @media (max-width: 760px) {
   .ps2-finish {

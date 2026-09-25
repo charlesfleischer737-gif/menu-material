@@ -36,6 +36,7 @@ import DietaryPicker from "./dietary-picker";
 import { ConfirmDelete } from "./controls";
 import CreativeHeader from "./creative-header";
 import PhotoDownloads from "./photo-downloads";
+import Kitty from "./kitty";
 
 export default function DishLibrary({
   state,
@@ -482,7 +483,11 @@ export default function DishLibrary({
       )}
       {!dishes.length ? (
         <div className="mm-empty">
-          <Images size={32} />
+          {search || section || status || archived ? (
+            <Images size={32} />
+          ) : (
+            <Kitty pose="sleep" className="mm-empty-kitty" />
+          )}
           <h2>
             {search || section || status
               ? "No dishes match these filters."

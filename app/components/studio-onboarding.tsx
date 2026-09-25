@@ -5,6 +5,7 @@ import {
   useRef,
   useState,
   useSyncExternalStore,
+  type CSSProperties,
   type ReactNode,
 } from "react";
 import { Check, ChevronsLeftRight, Sparkles } from "lucide-react";
@@ -16,6 +17,7 @@ import {
   workerHealthServerSnapshot,
   workerHealthSnapshot,
 } from "@/lib/worker-health";
+import Kitty from "./kitty";
 
 export function PhotoComparison({
   original,
@@ -169,12 +171,18 @@ export function StudioCreating({
             {source ? "Your original" : "Style example"}
           </span>
           <span className="st-develop" aria-hidden="true" />
-          {/* On the photo, so it stays in view on a phone as well. */}
-          <div className="st-progress-card">
+          {/* On the photo, so it stays in view on a phone as well. The
+              --progress value fills the bar and moves the kitty's eyes. */}
+          <div
+            className="st-progress-card"
+            style={{ "--progress": progress.value } as CSSProperties}
+          >
             <div className="st-progress-head" aria-hidden="true">
               <b>{progress.stage}</b>
               {progress.time && <span>{progress.time}</span>}
             </div>
+            {/* Waits at the end of the track, watching the bar fill. */}
+            <Kitty pose="sit" className="st-progress-kitty" />
             <div
               className="st-progress"
               role="progressbar"
@@ -184,11 +192,7 @@ export function StudioCreating({
               aria-valuenow={Math.round(progress.value * 20) * 5}
               aria-valuetext={progress.time || progress.stage}
             >
-              <span
-                style={{
-                  transform: `translateX(${(progress.value - 1) * 100}%)`,
-                }}
-              />
+              <span />
             </div>
           </div>
         </div>

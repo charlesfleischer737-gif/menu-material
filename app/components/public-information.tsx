@@ -6,11 +6,14 @@ export default function PublicInformation({
   title,
   intro,
   sections = [],
+  art,
   children,
 }: {
   title: string;
   intro: string;
   sections?: { id: string; label: string }[];
+  /** Decorative illustration above the title. */
+  art?: ReactNode;
   children: ReactNode;
 }) {
   return (
@@ -28,6 +31,7 @@ export default function PublicInformation({
       </SiteHeader>
       <main id="main" className="pw-information">
         <header className="pw-information-header">
+          {art}
           <h1>{title}</h1>
           <p className="pw-information-intro">{intro}</p>
         </header>
