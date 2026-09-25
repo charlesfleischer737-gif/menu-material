@@ -4,12 +4,15 @@ import { Check, Copy, Download, Share2 } from "lucide-react";
 import { canvasBlob, renderPost } from "@/lib/creation-export";
 import { downloadBlob, type Row } from "@/lib/client";
 import {
+  postFileName,
   postFormatDetail,
+  postShape,
   postShareFormats,
   postVisualState,
 } from "@/lib/sharing";
 import { track } from "./creation-shared";
 import { postSlideCount } from "@/lib/post-composition";
+import { release } from "@/lib/post-kit";
 
 export default function PostSharing({
   draft,
@@ -65,8 +68,8 @@ export default function PostSharing({
       shape:
         selected === "story"
           ? "9:16"
-          : selected === "feed" && draft.feedShape === "3:4"
-            ? "3:4"
+          : selected === "feed"
+            ? postShape(draft)
             : "4:5",
       count: files.length,
       ...(draftId ? { draftId } : {}),
@@ -87,10 +90,12 @@ export default function PostSharing({
       for (let i = 0; i < length; i++) {
         const canvas = document.createElement("canvas");
         await renderPost(canvas, data.draft, data.restaurant, data.channel, i);
+        const blob = await canvasBlob(canvas, "image/png");
+        release(canvas);
         outputs.push(
           new File(
-            [await canvasBlob(canvas, "image/png")],
-            `${data.restaurant.slug}-${data.channel}${length > 1 ? "-" + (i + 1) : ""}.png`,
+            [blob],
+            `${data.restaurant.slug}-${postFileName(data.channel)}${length > 1 ? "-" + (i + 1) : ""}.png`,
             { type: "image/png" },
           ),
         );

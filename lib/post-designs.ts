@@ -13,6 +13,7 @@ import {
   type Safe,
   type TextLayout,
   type TextStyle,
+  context2d,
   contrast,
   ensureContrast,
   hexToRgb,
@@ -21,6 +22,7 @@ import {
   makeCanvas,
   mix,
   placePhoto,
+  release,
   rgba,
   rgbToHex,
   tone,
@@ -101,7 +103,8 @@ const BODY: TextStyle = {
   lineHeight: 1.32,
 };
 const CREAM = "#fbf6ec",
-  INK = "#17140f";
+  INK = "#17140f",
+  GOLD = "#d8b878";
 
 function facts(d: Design, withPrice = true) {
   return [withPrice ? d.price : "", d.validity, d.cta]
@@ -115,6 +118,14 @@ function tooMuch() {
 }
 function opt(d: Design, value: string, column: number, style: TextStyle) {
   return value ? d.k.layout(value, column, style) : null;
+}
+/** A layout, or null when the value doesn't fit there at a readable size. */
+function fitted(d: Design, value: string, column: number, style: TextStyle) {
+  try {
+    return d.k.layout(value, column, style);
+  } catch {
+    return null;
+  }
 }
 type Piece = {
   t: TextLayout | null;
@@ -217,10 +228,10 @@ function brandLayout(
   style: TextStyle = LABEL,
 ): BrandLayout | null {
   if (!d.showBrand || (!d.brandName && !d.logo)) return null;
-  const logoH = d.logo ? 64 : 0,
-    logoW = d.logo
-      ? Math.min(220, (d.logo.im.width / d.logo.im.height) * logoH)
-      : 0;
+  // A wide wordmark keeps its shape: capping its width lowers its height too.
+  const ratio = d.logo ? d.logo.im.width / d.logo.im.height : 0,
+    logoW = d.logo ? Math.min(220, ratio * 64) : 0,
+    logoH = d.logo ? logoW / ratio : 0;
   const t = d.brandName
     ? d.k.layout(d.brandName, column - (logoW ? logoW + 22 : 0), style)
     : null;
@@ -273,12 +284,13 @@ function paintLogo(d: Design, box: Box, ink: string) {
       // A one-color logo in the text ink, so it reads on this background.
       const s = d.k.scale,
         c = makeCanvas(box.w * s, box.h * s),
-        cc = c.getContext("2d")!;
+        cc = context2d(c);
       cc.drawImage(logo.im, 0, 0, c.width, c.height);
       cc.globalCompositeOperation = "source-in";
       cc.fillStyle = ink;
       cc.fillRect(0, 0, c.width, c.height);
       ctx.drawImage(c, box.x, box.y, box.w, box.h);
+      release(c);
     } else ctx.drawImage(logo.im, box.x, box.y, box.w, box.h);
     return;
   }
@@ -386,6 +398,7 @@ function photos(d: Design, box: Box, o: PhotoOptions = {}) {
       radius,
       keyline: undefined,
       maxCrop: 0.3,
+      band: undefined,
     });
     first ||= p;
   }
@@ -393,6 +406,18 @@ function photos(d: Design, box: Box, o: PhotoOptions = {}) {
 }
 function minPhoto(d: Design) {
   return d.images.length > 1 ? 380 : 420;
+}
+/**
+ * On a Story, a photo shown whole sits in the band clear of Instagram's bars,
+ * between the words (`above` and `below` them, gaps included). Words that
+ * leave it too little room share the band with it instead.
+ */
+function storyBand(d: Design, above: number, below: number) {
+  if (d.format !== "story") return undefined;
+  const { top, bottom } = d.safe;
+  return bottom - below - (top + above) >= minPhoto(d)
+    ? { top: top + above, bottom: bottom - below }
+    : { top, bottom };
 }
 function photoBackdrop(d: Design) {
   return rgbToHex(d.analyses[0].backdrop);
@@ -600,7 +625,15 @@ async function editorial(d: Design) {
   ];
   const blockH = stackHeight(pieces);
   let edge = plan.edge;
-  const photo = photos(d, plan.box, plan.options);
+  const taken = blockH ? blockH + 48 : 0;
+  const photo = photos(d, plan.box, {
+    ...plan.options,
+    band: storyBand(
+      d,
+      (brand ? brand.h + 40 : 0) + (edge === "top" ? taken : 0),
+      edge === "bottom" ? taken : 0,
+    ),
+  });
   if (
     blockH &&
     d.placement === "auto" &&
@@ -659,7 +692,18 @@ async function special(d: Design) {
         }),
         (safe.bottom - safe.top) * (d.format === "story" ? 0.26 : 0.3),
       );
-  const info = d.photoOnly ? null : opt(d, facts(d, false), col, FACT);
+  // The price sits in a seal; one too long for it joins the other facts.
+  const sealR = d.format === "story" ? 124 : 112;
+  const sealPrice =
+    d.price && !d.photoOnly
+      ? fitted(d, d.price, sealR * 1.5, {
+          family: d.family("Post Soft"),
+          size: 88,
+          min: 44,
+          maxLines: 1,
+        })
+      : null;
+  const info = d.photoOnly ? null : opt(d, facts(d, !sealPrice), col, FACT);
   const detail = d.photoOnly ? null : opt(d, d.detail, col, BODY);
   const pieces: Piece[] = [
     { t: kicker, ink: gold },
@@ -682,8 +726,8 @@ async function special(d: Design) {
     anchor: { y: 0.5 },
   });
   let seal: { x: number; y: number; r: number } | null = null;
-  if (d.price && !d.photoOnly) {
-    const r = d.format === "story" ? 124 : 112;
+  if (sealPrice) {
+    const r = sealR;
     // The seal may overhang the card; its price stays inside the safe margins.
     seal = {
       x: Math.min(
@@ -713,13 +757,8 @@ async function special(d: Design) {
   k.grain(0.04);
   if (brand) drawBrand(d, brand, safe.left, brandY, col, "left", [gold, cream]);
   drawStack(d, pieces, safe.left, textY, "left", [cream]);
-  if (seal) {
-    const t = k.layout(d.price, seal.r * 1.5, {
-      family: d.family("Post Soft"),
-      size: 88,
-      min: 44,
-      maxLines: 1,
-    });
+  if (seal && sealPrice) {
+    const t = sealPrice;
     const ty = seal.y - t.height / 2;
     const ink = k.ink(
       [
@@ -904,7 +943,15 @@ async function afterdark(d: Design) {
   ];
   const blockH = stackHeight(pieces) + (brand ? brand.h + 34 : 0);
   let edge = plan.edge;
-  const photo = photos(d, plan.box, plan.options);
+  const taken = blockH ? blockH + 48 : 0;
+  const photo = photos(d, plan.box, {
+    ...plan.options,
+    band: storyBand(
+      d,
+      edge === "top" ? taken : 0,
+      edge === "bottom" ? taken : 0,
+    ),
+  });
   if (
     blockH &&
     d.placement === "auto" &&
@@ -921,6 +968,32 @@ async function afterdark(d: Design) {
     });
     edge = bottom > top * 1.15 ? "bottom" : "top";
   }
+  const at = (e: "top" | "bottom") => {
+    const brandY = e === "top" ? safe.top : safe.bottom - blockH;
+    const placed = stackBoxes(
+      k,
+      pieces,
+      safe.left,
+      brandY + (brand ? brand.h + 34 : 0),
+      "center",
+    );
+    const mark = brand
+      ? brandBoxes(d, brand, safe.left, brandY, col, "center").text
+      : null;
+    return { brandY, placed, blocks: [...placed, ...(mark ? [mark] : [])] };
+  };
+  // Gold, or cream or ink on a light photo, shading the dish by no more than
+  // 60%; when that can't read, the words move to the other edge.
+  const inks = [GOLD, CREAM, INK];
+  let words = at(edge);
+  if (
+    blockH &&
+    d.placement === "auto" &&
+    !k.inkOffFood(words.blocks, inks, edge, 0.6, false)
+  ) {
+    edge = edge === "top" ? "bottom" : "top";
+    words = at(edge);
+  }
   k.vignette(0.42, "#080605");
   k.glow(
     W * (edge === "top" ? 0.85 : 0.15),
@@ -931,38 +1004,34 @@ async function afterdark(d: Design) {
   );
   k.grain(0.04);
   if (!blockH) return;
-  let y = edge === "top" ? safe.top : safe.bottom - blockH;
-  const brandY = y;
-  if (brand) y += brand.h + 34;
-  const placed = stackBoxes(k, pieces, safe.left, y, "center");
-  const at = brand
-    ? brandBoxes(d, brand, safe.left, brandY, col, "center")
-    : null;
-  // One gold for the whole block, with any shade it needs laid down before the words.
-  const gold = k.ink(
-    [...placed, ...(at?.text ? [at.text] : [])],
-    ["#d8b878"],
-    edge,
-  );
-  if (brand) drawBrand(d, brand, safe.left, brandY, col, "center", [gold]);
-  for (const p of placed) {
+  // One ink for the whole block, with any shade it needs laid down before the words.
+  const ink = k.inkOffFood(words.blocks, inks, edge);
+  if (!ink)
+    throw Error(
+      "The words would hide the dish in this design. Choose another design, or Photo only.",
+    );
+  const gold = ink === GOLD;
+  if (brand) drawBrand(d, brand, safe.left, words.brandY, col, "center", [ink]);
+  for (const p of words.placed) {
     const t = p.piece.t!;
     const isTitle = t === title;
-    const fill = isTitle
-      ? k.linear(safe.left, p.y, safe.right, p.y + t.height, [
-          [0, "#d8b878"],
-          [0.35, "#f1d9a6"],
-          [0.55, "#fff1cf"],
-          [0.8, "#e4c68e"],
-          [1, "#d8b878"],
-        ])
-      : t === kicker
-        ? gold
-        : "#f6ecdc";
+    const fill = !gold
+      ? ink
+      : isTitle
+        ? k.linear(safe.left, p.y, safe.right, p.y + t.height, [
+            [0, GOLD],
+            [0.35, "#f1d9a6"],
+            [0.55, "#fff1cf"],
+            [0.8, "#e4c68e"],
+            [1, GOLD],
+          ])
+        : t === kicker
+          ? GOLD
+          : "#f6ecdc";
     k.text(t, safe.left, p.y, fill, "center");
     if (isTitle && (info || detail))
       k.overlay(() =>
-        k.rule(W / 2 - 32, p.y + t.height + 16, 64, rgba("#d8b878", 0.9), 2),
+        k.rule(W / 2 - 32, p.y + t.height + 16, 64, rgba(ink, 0.9), 2),
       );
   }
 }
@@ -1336,10 +1405,11 @@ async function combo(d: Design) {
         (safe.bottom - safe.top) * 0.24,
       );
   const items = d.photoOnly ? null : opt(d, d.itemsLine, col, FACT);
+  // The price is the hero; one too long for that joins the other facts.
   const price =
     d.photoOnly || !d.price
       ? null
-      : k.layout(d.price, col * 0.55, {
+      : fitted(d, d.price, col * 0.55, {
           family: "Post Poster",
           size: 150,
           min: 66,
@@ -1349,7 +1419,7 @@ async function combo(d: Design) {
     ? null
     : opt(
         d,
-        [d.validity, d.cta].filter(Boolean).join("\n"),
+        [price ? "" : d.price, d.validity, d.cta].filter(Boolean).join("\n"),
         price ? col - price.width - 40 : col,
         { ...FACT, maxLines: 4 },
       );

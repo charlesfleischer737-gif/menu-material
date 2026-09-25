@@ -18,6 +18,11 @@ const root = "/private/tmp/menu-workspace-export-qa";
 mkdirSync(root, { recursive: true });
 const jpg = readFileSync("public/burger.jpg"),
   pasta = readFileSync("public/pasta.jpg");
+// A 5:1 magenta wordmark, so the drawn logo's shape can be measured.
+const wordmark = createCanvas(500, 100);
+wordmark.getContext("2d").fillStyle = "#ff00ff";
+wordmark.getContext("2d").fillRect(0, 0, 500, 100);
+const wideLogo = wordmark.toBuffer("image/png");
 Object.assign(globalThis, { DOMMatrix, Path2D, ImageData });
 function canvas() {
   const c = createCanvas(1, 1);
@@ -61,6 +66,14 @@ globalThis.fetch = async (url) => {
     return new Response(readFileSync("public/studio/styles/menu-stone.webp"), {
       headers: { "Content-Type": "image/webp" },
     });
+  if (path.startsWith("/api/assets/deleted-"))
+    return new Response("Image not found.", { status: 404 });
+  if (path === "/api/assets/wide-logo")
+    return new Response(wideLogo, { headers: { "Content-Type": "image/png" } });
+  if (path === "/api/assets/phone-burger")
+    return new Response(readFileSync("public/burger-phone-original.jpg"), {
+      headers: { "Content-Type": "image/jpeg" },
+    });
   if (path.startsWith("/api/assets/"))
     return new Response(path.includes("pasta") ? pasta : jpg, {
       headers: { "Content-Type": "image/jpeg" },
@@ -68,6 +81,7 @@ globalThis.fetch = async (url) => {
   throw Error("Unexpected export request " + path);
 };
 const { renderPost, campaignZip } = await import("../lib/creation-export.ts");
+const { money } = await import("../lib/client.ts");
 const restaurant = {
   name: "The Orchard Kitchen",
   slug: "orchard",
@@ -165,6 +179,14 @@ for (const t of postTemplates) {
   writeFileSync(`${root}/post-${t.id}-tall.png`, c.toBuffer("image/png"));
   checks++;
 }
+// Older drafts render at 4:5 only, so they never claim to be 3:4.
+const { postSize } = await import("../lib/post-composition.ts");
+const { postFormatDetail } = await import("../lib/sharing.ts");
+const olderTall = { ...base, compositionVersion: 1, feedShape: "3:4" };
+assert.equal(postSize(olderTall, "feed").height, 1350);
+assert.equal(postFormatDetail(olderTall, "feed"), "1080 × 1350 · 4:5");
+assert.equal((await renderPost(canvas(), olderTall, restaurant)).height, 1350);
+checks++;
 // A dish word decides the design before the restaurant's cuisine does.
 const { recommendedDesigns } = await import("../lib/post-composition.ts");
 assert.equal(
@@ -212,6 +234,244 @@ await assert.rejects(
   /too long to read comfortably/,
 );
 checks++;
+// The nightcap never shades the dish by more than 60%: each dish row is
+// compared with the photo as drawn, before any shade or words.
+const { PostKit } = await import("../lib/post-kit.ts");
+const drawPhoto = PostKit.prototype.photo;
+let photoPixels = null;
+PostKit.prototype.photo = function (...args) {
+  const placed = drawPhoto.apply(this, args);
+  photoPixels = this.ctx.getImageData(
+    0,
+    0,
+    this.canvas.width,
+    this.canvas.height,
+  ).data;
+  return placed;
+};
+for (const [photoId, channel, feedShape] of [
+  ["hero-burrata", "feed", "4:5"],
+  ["hero-burrata", "feed", "3:4"],
+  ["hero-burrata", "story", "4:5"],
+  ["pasta", "feed", "4:5"],
+  ["burger", "feed", "4:5"],
+]) {
+  const c = canvas(),
+    draft = {
+      ...base,
+      ...applyPostTemplate(base, "afterdark"),
+      feedShape,
+      items: [{ ...base.items[0], photoId }],
+    };
+  photoPixels = null;
+  const result = await renderPost(c, draft, restaurant, channel);
+  const final = c.getContext("2d").getImageData(0, 0, c.width, c.height).data;
+  let shade = 0;
+  for (const box of result.dishBoxes)
+    for (let y = Math.ceil(box.y); y < box.y + box.h; y += 4) {
+      let before = 0,
+        after = 0,
+        n = 0;
+      for (
+        let x = Math.ceil(box.x + box.w / 4);
+        x < box.x + box.w * 0.75;
+        x++
+      ) {
+        const i = (y * c.width + x) * 4;
+        before += photoPixels[i] + photoPixels[i + 1] + photoPixels[i + 2];
+        after += final[i] + final[i + 1] + final[i + 2];
+        n += 3;
+      }
+      [before, after] = [before / n, after / n];
+      if (before < 40 || before > 235) continue;
+      // How much of a dark (or pale) shade turns the photo's row into the post's.
+      shade = Math.max(
+        shade,
+        after < before
+          ? (before - after) / (before - 11)
+          : (after - before) / (248 - before),
+      );
+    }
+  assert(
+    shade <= 0.62,
+    `Nightcap ${photoId} ${channel} ${feedShape}: ${shade.toFixed(2)} shade over the dish`,
+  );
+  checks++;
+}
+PostKit.prototype.photo = drawPhoto;
+// Scratch canvases are freed once a post is drawn, so phones don't run out of
+// canvas memory; a device that does gets a clear message. (This canvas
+// library turns a zero width back into its default, so zeroing is recorded.)
+const made = [],
+  freed = new Set();
+const createElement = globalThis.document.createElement;
+globalThis.document.createElement = (tag) => {
+  const c = createElement(tag),
+    width = Object.getOwnPropertyDescriptor(Object.getPrototypeOf(c), "width");
+  Object.defineProperty(c, "width", {
+    get: () => width.get.call(c),
+    set: (v) => {
+      if (v === 0) freed.add(c);
+      width.set.call(c, v);
+    },
+  });
+  made.push(c);
+  return c;
+};
+for (const template of ["chef", "brunch", "afterdark", "launch"]) {
+  made.length = 0;
+  await renderPost(
+    canvas(),
+    { ...base, ...applyPostTemplate(base, template), showBrand: true },
+    { ...restaurant, logo_id: "wide-logo" },
+  );
+  assert(made.length > 0);
+  assert(
+    made.every((c) => freed.has(c)),
+    `${template}: every scratch canvas is freed`,
+  );
+  checks++;
+}
+globalThis.document.createElement = createElement;
+await assert.rejects(
+  renderPost({ getContext: () => null }, base, restaurant),
+  /ran out of memory/,
+);
+checks++;
+// Chinese, Japanese and Thai headlines break between words at a readable size,
+// measured here with every letter one em wide and marks on top of them, so
+// no font is needed.
+const measuring = {
+  font: "",
+  setTransform() {},
+  measureText(s) {
+    const px = Number(/([\d.]+)px/.exec(this.font)?.[1] || 10);
+    return {
+      width: s.replace(/\p{M}/gu, "").length * px,
+      actualBoundingBoxAscent: px * 0.8,
+      actualBoundingBoxDescent: px * 0.2,
+    };
+  },
+};
+const words = new Intl.Segmenter(undefined, { granularity: "word" });
+const kit = new PostKit({ getContext: () => measuring }, 1080, 1350, 1, {
+  top: 76,
+  bottom: 1274,
+  left: 72,
+  right: 1008,
+});
+for (const headline of [
+  "东坡肉配米饭和时令蔬菜还有自家制作的甜品",
+  "季節の野菜たっぷりの特製カレーライスと自家製デザート",
+  "ข้าวผัดกระเพราหมูสับไข่ดาวและต้มยำกุ้งน้ำข้น",
+]) {
+  const t = kit.layout(headline, 936, {
+    family: "Post Sans",
+    size: 150,
+    min: 66,
+    maxLines: 3,
+  });
+  const breaks = new Set([0]);
+  let at = 0;
+  for (const { segment } of words.segment(headline))
+    breaks.add((at += segment.length));
+  let end = 0;
+  for (const line of t.lines)
+    assert(
+      breaks.has((end += line.length)),
+      `${headline} breaks between words: ${t.lines.join(" / ")}`,
+    );
+  assert.equal(t.lines.join(""), headline);
+  assert(t.size > 66, `${headline} is set larger than the smallest size`);
+  checks++;
+}
+// A busy phone photo shown whole on a Story keeps its dish clear of the bars.
+for (const template of ["editorial", "afterdark"])
+  for (const textMode of ["minimal", "photo"]) {
+    const draft = {
+      ...base,
+      ...applyPostTemplate(base, template),
+      textMode,
+      items: [{ ...base.items[0], photoId: "phone-burger" }],
+    };
+    const result = await renderPost(canvas(), draft, restaurant, "story");
+    assert(result.dishBoxes.length);
+    for (const box of result.dishBoxes)
+      assert(
+        box.y >= 269 && box.y + box.h <= 1541,
+        `${template}/${textMode}: the dish sits between Instagram's bars ${JSON.stringify(box)}`,
+      );
+    checks++;
+  }
+// Ordinary prices never block the Daily special: a long one leaves the seal.
+assert.equal(money(1850, "CAD"), "$18.50", "A narrow symbol, not CA$");
+for (const [currency, price] of [
+  ["CHF", "24.50"],
+  ["MXN", "185"],
+  ["IDR", "125000"],
+  ["USD", "1250"],
+  ["CAD", "18.50"],
+])
+  for (const channel of ["feed", "story"]) {
+    const result = await renderPost(
+      canvas(),
+      { ...base, template: "special", textMode: "minimal", price },
+      { ...restaurant, currency },
+      channel,
+    );
+    assert(
+      result.renderedText.some((t) =>
+        t.includes(money(Math.round(Number(price) * 100), currency)),
+      ),
+      `${currency} ${price}: the price is shown`,
+    );
+    checks++;
+  }
+// A deleted photo names its dish; a logo that can't be opened is left out.
+await assert.rejects(
+  () =>
+    renderPost(
+      canvas(),
+      { ...base, items: [{ ...base.items[0], photoId: "deleted-pasta" }] },
+      restaurant,
+    ),
+  /The photo of Tomato basil pappardelle is no longer available/,
+);
+const noLogo = await renderPost(
+  canvas(),
+  { ...base, template: "chef", showBrand: true, textMode: "minimal" },
+  { ...restaurant, logo_id: "deleted-logo" },
+);
+assert(noLogo.renderedText.includes(restaurant.name));
+checks += 2;
+// A wide wordmark keeps its 5:1 shape instead of being squashed.
+const branded = canvas();
+await renderPost(
+  branded,
+  { ...base, template: "chef", showBrand: true, textMode: "minimal" },
+  { ...restaurant, logo_id: "wide-logo" },
+);
+const pixels = branded
+  .getContext("2d")
+  .getImageData(0, 0, branded.width, branded.height).data;
+let [left, right, top, bottom] = [Infinity, -1, Infinity, -1];
+for (let i = 0; i < pixels.length; i += 4)
+  if (pixels[i] > 200 && pixels[i + 1] < 60 && pixels[i + 2] > 200) {
+    const x = (i / 4) % branded.width,
+      y = Math.floor(i / 4 / branded.width);
+    [left, right, top, bottom] = [
+      Math.min(left, x),
+      Math.max(right, x),
+      Math.min(top, y),
+      Math.max(bottom, y),
+    ];
+  }
+const logoShape = (right - left + 1) / (bottom - top + 1);
+assert(
+  logoShape > 4.6 && logoShape < 5.4,
+  `A wide logo keeps its shape (drawn at ${logoShape.toFixed(2)}:1)`,
+);
+checks++;
 const carousel = {
   ...base,
   template: "chef",
@@ -249,6 +509,17 @@ const zip = unzipSync(
 );
 assert.equal(Object.keys(zip).filter((k) => k.endsWith(".png")).length, 4);
 checks++;
+// Downloads use owner-facing names: a post, not a "feed".
+const pack = unzipSync(
+  new Uint8Array(await (await campaignZip(base, restaurant)).arrayBuffer()),
+);
+assert.deepEqual(Object.keys(pack).sort(), [
+  "caption.txt",
+  "post.png",
+  "story.png",
+]);
+assert(Object.keys(zip).every((k) => /^(carousel-\d|caption)/.test(k)));
+checks++;
 // Per-slide framing must change only the selected slide's pixels.
 const revised = structuredClone(carousel);
 revised.items[1].layouts.carousel.x = 90;
@@ -263,6 +534,46 @@ for (const n of [1, 2]) {
   );
   checks++;
 }
+// Framing the cover leaves the first dish's own slide alone.
+const coverFramed = structuredClone(carousel);
+coverFramed.items[0].layouts = {
+  cover: { fit: true, x: 50, y: 50, zoom: 1, autoFrame: false },
+};
+for (const n of [0, 1]) {
+  const a = canvas(),
+    b = canvas();
+  await renderPost(a, carousel, restaurant, "carousel", n);
+  await renderPost(b, coverFramed, restaurant, "carousel", n);
+  assert.equal(
+    a.toBuffer("image/png").equals(b.toBuffer("image/png")),
+    n === 1,
+    n ? "The dish slide keeps its framing" : "The cover takes its own framing",
+  );
+  checks++;
+}
+// Without a cover, the first slide carries the price, date and call to action.
+const uncovered = {
+  ...carousel,
+  carouselCover: false,
+  carouselClosing: "",
+  cta: "Book a table",
+};
+assert.equal(postSlideCount(uncovered, "carousel"), 2);
+const [opening, next] = [
+  await renderPost(canvas(), uncovered, restaurant, "carousel", 0),
+  await renderPost(canvas(), uncovered, restaurant, "carousel", 1),
+];
+assert(
+  opening.renderedText.some(
+    (t) =>
+      t.includes("$18.50") &&
+      t.includes(base.validity) &&
+      t.includes("Book a table"),
+  ),
+  "The first slide shows the offer when there is no cover",
+);
+assert(!next.renderedText.some((t) => t.includes("$18.50")));
+checks += 2;
 console.log(
   `PASS: ${checks} new composition/export cases, phone-size type and Story safety, independent carousel framing. Artifacts: ${root}`,
 );

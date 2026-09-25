@@ -1,4 +1,5 @@
 import { money, type Row } from "./client";
+import { loadPostFonts } from "./post-fonts";
 import { defaultStyle, localToInstant, scheduleLabel } from "./promotions";
 export const exportFormats = {
   feed: { label: "Instagram feed", width: 1080, height: 1350 },
@@ -92,7 +93,7 @@ function textBlock(
 ) {
   let rows: string[] = [];
   for (; size >= 10; size -= 1) {
-    ctx.font = `${weight} ${size}px Arial`;
+    ctx.font = `${weight} ${size}px "Post Sans", sans-serif`;
     rows = lines(ctx, text, w);
     if (rows.length * size * 1.2 <= h) break;
   }
@@ -145,6 +146,7 @@ export async function renderOffer(
   }
   const logo = restaurant.logo_id || restaurant.logoId;
   const logoImage = logo ? await loadImage(logo) : null;
+  await loadPostFonts(["Post Sans"]);
   canvas.width = w;
   canvas.height = h;
   const ctx = canvas.getContext("2d")!;
@@ -153,14 +155,17 @@ export async function renderOffer(
   ctx.fillStyle = style.primary;
   ctx.fillRect(0, 0, w, h);
   ctx.fillStyle = contrast(style.primary);
-  const head = h * 0.105;
+  // A Story keeps its words between Instagram's profile row and reply bar.
+  const top = format === "story" ? 270 : 0,
+    tall = format === "story" ? 1540 - top : h;
+  const head = tall * 0.105;
   if (logoImage) {
     const size = head * 0.65,
       scale = Math.min(size / logoImage.width, size / logoImage.height);
     ctx.drawImage(
       logoImage,
       pad,
-      head * 0.17,
+      top + head * 0.17,
       logoImage.width * scale,
       logoImage.height * scale,
     );
@@ -169,14 +174,14 @@ export async function renderOffer(
     ctx,
     restaurant.name || "Your restaurant",
     pad + (logoImage ? head * 0.8 : 0),
-    head * 0.33,
+    top + head * 0.33,
     w - pad * 2 - (logoImage ? head * 0.8 : 0),
     head * 0.55,
     w * 0.031,
     600,
   );
-  const photoTop = head,
-    photoH = h * (format === "story" ? 0.48 : 0.43),
+  const photoTop = top + head,
+    photoH = tall * 0.43,
     cols = items.length > 1 ? 2 : 1,
     rows = Math.max(1, Math.ceil(items.length / cols)),
     gap = w * 0.008;
@@ -223,7 +228,7 @@ export async function renderOffer(
   ctx.fillRect(0, bottom, w, h - bottom);
   ctx.fillStyle =
     draft.template === "bold" ? contrast(style.accent) : "#202820";
-  const remaining = h - bottom;
+  const remaining = top + tall - bottom;
   textBlock(
     ctx,
     draft.title || "Tonight’s special",
@@ -234,9 +239,10 @@ export async function renderOffer(
     w * 0.065,
     700,
   );
+  // No price yet shows nothing, never $0.00; approval asks for one.
   textBlock(
     ctx,
-    money(draft.price, restaurant.currency),
+    draft.price > 0 ? money(draft.price, restaurant.currency) : "",
     pad,
     bottom + remaining * 0.29,
     w - pad * 2,

@@ -321,6 +321,8 @@ export async function promotionRoute(req: Request, p: string[], r: Row) {
       400,
       "Add a title and at least one dish.",
     );
+    // A draft may wait for its price; guests never see a special at $0.00.
+    assert(draft.price > 0, 400, "Add the offer price before approving.");
     let startsAt: number, endsAt: number;
     try {
       startsAt = localToInstant(
