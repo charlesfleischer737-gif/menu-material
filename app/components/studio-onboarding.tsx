@@ -107,11 +107,14 @@ export function StudioCreating({
   sentAt,
   typicalMs,
   jobId,
+  held = "",
   children,
 }: {
   source: string;
   style: PhotoStyle;
   queued: boolean;
+  /** Why a held image waits to start (the daily AI budget or a pause). */
+  held?: string;
   /** When Create was pressed, by this device's clock. */
   requestedAt?: number;
   /** When the job was saved, by the server's clock. */
@@ -128,6 +131,9 @@ export function StudioCreating({
     queuedFor: 0,
     sentFor: null as number | null,
   });
+  // The furthest the bar has been for this image (one screen per image): a
+  // refreshed estimate never moves it back.
+  const [shown, setShown] = useState(0);
   // Only promise background progress while the background worker checks in.
   const workerHealthy = useSyncExternalStore(
     subscribeWorkerHealth,
@@ -141,18 +147,23 @@ export function StudioCreating({
       const queuedFor = createdAt
         ? server - createdAt
         : local - (Number(requestedAt) || (fallbackStart.current ||= local));
-      setTimes({
+      const next = {
         queuedFor,
         // A running image without a send time counts from its request.
         sentFor: sentAt ? server - sentAt : queued ? null : queuedFor,
-      });
+      };
+      setTimes(next);
+      const { value } = creationProgress({ ...next, typical: typicalMs });
+      setShown((furthest) => Math.max(furthest, value));
     };
     tick();
     const timer = window.setInterval(tick, 1000);
     return () => clearInterval(timer);
-  }, [requestedAt, createdAt, sentAt, queued, jobId]);
-  const takingLonger = times.queuedFor > 120000;
+  }, [requestedAt, createdAt, sentAt, queued, jobId, typicalMs]);
   const progress = creationProgress({ ...times, typical: typicalMs });
+  const value = Math.max(progress.value, shown);
+  // The side panel and the card say it's taking longer at the same moment.
+  const takingLonger = progress.late;
   // Time-based shimmer is decoration only; status comes from the saved job.
   return (
     <div className="st-studio st-creating" aria-busy="true">
@@ -175,10 +186,10 @@ export function StudioCreating({
               --progress value fills the bar and moves the kitty's eyes. */}
           <div
             className="st-progress-card"
-            style={{ "--progress": progress.value } as CSSProperties}
+            style={{ "--progress": value } as CSSProperties}
           >
             <div className="st-progress-head" aria-hidden="true">
-              <b>{progress.stage}</b>
+              <b>{held ? "On hold" : progress.stage}</b>
               {progress.time && <span>{progress.time}</span>}
             </div>
             {/* Waits at the end of the track, watching the bar fill. */}
@@ -189,8 +200,10 @@ export function StudioCreating({
               aria-label="Photo progress"
               aria-valuemin={0}
               aria-valuemax={100}
-              aria-valuenow={Math.round(progress.value * 20) * 5}
-              aria-valuetext={progress.time || progress.stage}
+              aria-valuenow={Math.round(value * 20) * 5}
+              aria-valuetext={
+                held ? "On hold" : progress.time || progress.stage
+              }
             >
               <span />
             </div>
@@ -207,21 +220,25 @@ export function StudioCreating({
         <div className="st-section">
           <span className="st-badge">
             <span className="st-pulse" aria-hidden="true" />
-            {queued ? "Waiting to start" : "Creating"}
+            {held ? "On hold" : queued ? "Waiting to start" : "Creating"}
           </span>
           <h2 className="st-result-title">
-            {queued
-              ? "Your photo is next in line."
-              : "Your photo is taking shape."}
+            {held
+              ? "Your photo is on hold."
+              : queued
+                ? "Your photo is next in line."
+                : "Your photo is taking shape."}
           </h2>
           <p className="st-result-copy" role="status">
-            {queued
-              ? takingLonger
-                ? "Still waiting for the studio. Your photo and choices are safely saved."
-                : "Your photo is saved. The studio starts in a moment."
-              : takingLonger
-                ? "Still creating. Some images take a little longer."
-                : `Most photos are ready in ${typicalWait(typicalMs)}.`}
+            {held
+              ? held
+              : queued
+                ? takingLonger
+                  ? "Still waiting for the studio. Your photo and choices are safely saved."
+                  : "Your photo is saved. The studio starts in a moment."
+                : takingLonger
+                  ? "Still creating. Some images take a little longer."
+                  : `Most photos are ready in ${typicalWait(typicalMs)}.`}
           </p>
         </div>
         <div className="st-creating-look">
@@ -232,11 +249,13 @@ export function StudioCreating({
           </div>
           <Sparkles size={16} aria-hidden="true" />
         </div>
-        <p className="st-result-copy">
-          {workerHealthy
-            ? "You can leave this page. We’ll keep working, and your result will be waiting here."
-            : "Keep this page open until your photo is ready."}
-        </p>
+        {!held && (
+          <p className="st-result-copy">
+            {workerHealthy
+              ? "You can leave this page. We’ll keep working, and your result will be waiting here."
+              : "Keep this page open until your photo is ready."}
+          </p>
+        )}
         {children}
       </aside>
     </div>

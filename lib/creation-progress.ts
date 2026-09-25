@@ -52,12 +52,16 @@ export function creationProgress({
   sentFor: number | null;
   typical?: number;
 }) {
+  // `late` is the one moment every part of the waiting screen says it is
+  // taking longer: a wait to start past ten seconds, or a render past the
+  // typical time.
   if (sentFor === null) {
     const waited = Math.max(0, queuedFor);
     return {
       value: STARTED * Math.min(1, waited / 3000),
       stage: waited > 10000 ? "Waiting for the studio" : "Getting started",
       time: "",
+      late: waited > 10000,
     };
   }
   const elapsed = Math.max(0, sentFor),
@@ -75,7 +79,27 @@ export function creationProgress({
         : left <= 5000
           ? "Almost done"
           : `About ${duration(left)} left`,
+    late: left <= 0,
   };
+}
+/**
+ * What to say about an image held back before it starts. The server returns
+ * a held image to the queue with its reason: the day's AI budget is used up
+ * (work resumes after the reset at 00:00 UTC) or image creation is paused.
+ * Either way it starts by itself, so the page never asks to be kept open.
+ */
+export function heldImageMessage(
+  outputs: { status?: string; error?: string | null }[],
+) {
+  const reason = outputs.find(
+    (output) => output.status === "queued" && output.error,
+  )?.error;
+  if (!reason) return "";
+  return /budget/i.test(reason)
+    ? "Starts automatically when the daily AI budget resets at 00:00 UTC. Cancel to keep your image."
+    : /pause/i.test(reason)
+      ? "Starts automatically when image creation resumes. Cancel to keep your image."
+      : reason;
 }
 /**
  * An image the owner cancelled while it waited to start. The server records

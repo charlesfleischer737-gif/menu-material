@@ -83,7 +83,7 @@ import {
 } from "@/lib/studio-reference";
 import { useInspirationAvailability } from "./use-inspiration-availability";
 import { PhotoComparison, StudioCreating } from "./studio-onboarding";
-import { cancelledError } from "@/lib/creation-progress";
+import { cancelledError, heldImageMessage } from "@/lib/creation-progress";
 import { StudioWorkbench } from "./studio-workbench";
 import { radioKeys, radioTab } from "./radio-keys";
 import {
@@ -1101,6 +1101,7 @@ export default function PhotoStudio({
         (!resultId ? (
           creating ? (
             <StudioCreating
+              key={b.jobId}
               source={source}
               style={{ ...selected, image: styleImage }}
               queued={!job || job.status === "queued"}
@@ -1109,9 +1110,15 @@ export default function PhotoStudio({
               sentAt={sentTimes.length ? Math.min(...sentTimes) : undefined}
               typicalMs={job?.estimate_ms}
               jobId={b.jobId}
+              held={heldImageMessage(
+                state.outputs.filter((o: Row) => o.job_id === b.jobId),
+              )}
             >
               {state.outputs
-                .filter((o: Row) => o.job_id === b.jobId && o.error)
+                .filter(
+                  (o: Row) =>
+                    o.job_id === b.jobId && o.error && o.status !== "queued",
+                )
                 .map((o: Row) => (
                   <p className="st-alert" role="status" key={o.id}>
                     {o.error}
