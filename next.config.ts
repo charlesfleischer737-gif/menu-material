@@ -10,6 +10,59 @@ const nextConfig: NextConfig = {
       bodySizeLimit: "32mb",
     },
   },
+  // Security headers for pages and API responses. There is deliberately no
+  // script-src policy: pages carry inline React Server Components scripts.
+  // vinext reads each `source` as a regular expression, so the rules below
+  // avoid nested groups and never set the same header twice for one path.
+  async headers() {
+    return [
+      {
+        source: "/(.*)",
+        headers: [
+          { key: "X-Content-Type-Options", value: "nosniff" },
+          { key: "Referrer-Policy", value: "strict-origin-when-cross-origin" },
+          {
+            key: "Permissions-Policy",
+            value: "camera=(), microphone=(), geolocation=()",
+          },
+          {
+            key: "Strict-Transport-Security",
+            value: "max-age=31536000; includeSubDomains",
+          },
+        ],
+      },
+      // Nothing may frame the site, except as allowed below.
+      {
+        source: "/(?!m/|api/imports/)(.*)",
+        headers: [
+          { key: "X-Frame-Options", value: "DENY" },
+          {
+            key: "Content-Security-Policy",
+            value: "frame-ancestors 'none'; base-uri 'self'; object-src 'none'",
+          },
+        ],
+      },
+      // Restaurants may embed their guest menu on their own website.
+      {
+        source: "/m/(.*)",
+        headers: [
+          {
+            key: "Content-Security-Policy",
+            value: "base-uri 'self'; object-src 'none'",
+          },
+        ],
+      },
+      // The menu importer shows the uploaded original (a PDF or photo) in a
+      // frame inside the workspace.
+      {
+        source: "/api/imports/(.*)",
+        headers: [
+          { key: "X-Frame-Options", value: "SAMEORIGIN" },
+          { key: "Content-Security-Policy", value: "frame-ancestors 'self'" },
+        ],
+      },
+    ];
+  },
 };
 
 export default nextConfig;
