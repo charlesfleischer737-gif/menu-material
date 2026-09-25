@@ -3,13 +3,13 @@ import Link from "next/link";
 import Brand from "./brand";
 import Kitty from "./kitty";
 
-// Shared public-site chrome: a translucent sticky bar and a quiet footer.
+// Shared public-site chrome: an evergreen sticky bar and a quiet footer.
 export function SiteHeader({ children }: { children: ReactNode }) {
   return (
     <header className="pw-header">
       <div className="pw-header-inner">
         <Link className="pw-brand" href="/" aria-label="Menu Material home">
-          <Brand />
+          <Brand reversed />
         </Link>
         {children}
       </div>

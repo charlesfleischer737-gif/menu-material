@@ -23,7 +23,7 @@
   --text-title2: 1.625rem;
   --text-title1: 2rem;
   --text-display: clamp(2.25rem, 4.6vw, 3.5rem);
-  --text-hero: clamp(2.75rem, 7vw, 5rem);
+  --text-hero: clamp(2.125rem, 5vw, 3.5rem);
   --tracking-tight: -0.006em;
   --tracking-display: -0.012em;
   --tracking-hero: -0.018em;

@@ -9,7 +9,7 @@ The interface separated areas with three near-whites: white, `#fbfbfd` and `#f5f
 ## Rules
 
 - **Two light tones.** White for cards, panels and dialogs; warm stone `#efede8` for the canvas and for any tinted area on white. No other near-white is used as a surface. White cards on stone carry a hairline and a soft warm shadow (`--shadow-card`).
-- **One dark color.** Evergreen ink `#12211a`, a near-black with the logo's green in it, is used for the workspace sidebar, the phone tab bar, primary buttons, selected chips, the homepage closing band, the Explore closing card and the Pro plan card.
+- **One dark color.** Evergreen ink `#12211a`, a near-black with the logo's green in it, is used for the workspace sidebar, the phone tab bar, primary buttons, selected chips, the public site header, the homepage hero, showcase and closing bands, the Explore closing card and the Pro plan card.
 - **Bright green on dark only.** The logo's `#3fbf7f` marks the sidebar avatar, Pro checkmarks, focus rings on dark surfaces and a soft glow at the top of dark bands (`--green-glow`). On light surfaces, evergreen `#1a7045` stays the color for links, eyebrows and success.
 - **No more than one light step.** A white surface on the stone canvas is the deepest light stack. Large areas inside a white panel stay white: drop targets are outlined, not filled. Only small controls (segmented tracks, search wells, chips, short notes) use a stone fill inside white. A feature panel on the canvas is either evergreen or its own full color, never a paler off-white.
 - **Artwork on a dark stage.** Post and menu previews sit on `--artwork-stage` (`#1b2922`), a step lighter than the navigation, so light artwork stands out; `--artwork-edge` adds a hairline so dark artwork stays separate. Stage controls use the on-dark colors; white cards and the zoom pill keep ink text.
@@ -44,7 +44,7 @@ The text grays from `--gray-400` to `--gray-900` are unchanged.
 - **Post Maker and Menus:** the preview stages are dark, with the Post/Story and Print/Phone switches, page controls, hints, design strip and review strip in on-dark colors. This includes the phone preview, Focus preview and phone layouts.
 - **My Dishes:** white search beside the white Filters and Select buttons.
 - **Post Maker:** the empty state's main action and Photo Studio link now sit in one spaced row (they previously touched).
-- **Public site:** faint green glow behind the hero, stone use-case band with white cards, evergreen closing band, stone footer, stone Free card and evergreen Pro card. The visitor Photo Studio header is frosted stone.
+- **Public site:** an evergreen header with the reversed logo on every public page. On the homepage it runs straight into an evergreen hero (green glow at the top) that continues into the showcase wall; actions on evergreen are light stone pills and focus rings there are bright green. Then a stone use-case band with white cards, a white style gallery, the evergreen closing band and a stone footer. Pricing has a stone Free card and an evergreen Pro card. The visitor Photo Studio header stays frosted stone with ink links, and the phone menu is solid white.
 - **Kitties:** evergreen cats with bright-green eyes (on their dark fur) in a few empty and waiting moments, on white or stone only. See [Kitties](KITTIES.md).
 
 ## Contrast (calculated)

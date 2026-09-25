@@ -121,7 +121,7 @@ function StylePicker({
                 ? undefined
                 : `/homepage/styles/cheesecake-${style.asset}-160.webp 160w, /homepage/styles/cheesecake-${style.asset}-320.webp 320w`
             }
-            sizes={compact ? "48px" : "(max-width: 760px) 56px, 72px"}
+            sizes={compact ? "48px" : "(max-width: 760px) 56px, 48px"}
             alt=""
             width={style.id === "original" ? 320 : 160}
             height={style.id === "original" ? 240 : 160}
@@ -175,7 +175,8 @@ function StyledPhoto({
             sizes={
               enlarged
                 ? "(max-width: 700px) min(calc(100vw - 58px), 66vh), min(698px, 66vh)"
-                : "(max-width: 760px) calc(100vw - 40px), 760px"
+                : // From 761px the photo takes 7/12 of the row, beside the list.
+                  "(max-width: 760px) calc(100vw - 40px), (max-width: 1163px) calc(56vw - 26px), 626px"
             }
             alt={
               photo.id === style.id
@@ -255,10 +256,6 @@ export default function HomepageStyleGallery() {
 
   return (
     <section className="pw-style-gallery" aria-labelledby="style-gallery-title">
-      <div className="pw-section-heading">
-        <h2 id="style-gallery-title">One photo. Endless possibilities.</h2>
-        <p>The same dish, reimagined. Find your favorite look.</p>
-      </div>
       <Dialog
         onOpenChange={() => {
           selectionRequest.current += 1;
@@ -267,6 +264,10 @@ export default function HomepageStyleGallery() {
         }}
       >
         <div className="pw-style-workbench">
+          <div className="pw-section-heading">
+            <h2 id="style-gallery-title">One photo. Endless possibilities.</h2>
+            <p>The same dish, reimagined. Find your favorite look.</p>
+          </div>
           <figure className="pw-style-result" aria-busy={pending !== null}>
             <DialogTrigger asChild>
               <button

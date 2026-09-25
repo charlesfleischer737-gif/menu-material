@@ -37,6 +37,8 @@ Before, the hero served lossless WebP (and, for the before photo, the 2592 px JP
 
 Adding the showcase wall, measured the same way the same day: the desktop page loads 628 KB of images (the wall's share is 264 KB: 11 of its 400 px previews) and the phone page 944 KB (the wall's share is 352 KB: 7 of its 640 px copies). A visitor who keeps the wall in view for about two minutes eventually loads all 22: 533 KB of previews or 1,141 KB of 640 px copies. On a phone the wall starts within the browser's lazy-loading distance of the first screen, so its first photos load alongside the hero; they are `fetchpriority="low"`, like the style gallery's. On the local dev server with a 4 Mbit/s, 150 ms connection (390 × 844 @3x), the hero's phone photo stays the largest paint, at about 2.2 s against 2.1 s without the wall.
 
+Moving the comparison beside the headline, measured the same way on September 25, 2026: from 1001 px the frame is 5:4 and at most 655 px wide, so a 1440 × 900 desktop loads the 960 px hero copies (136 KB for the pair, down from 210 KB of 1280 px copies) and 610 KB of images in all. The wall's tiles are at most 240 px, still served from the 400 px previews. A 390 × 844 @3x phone keeps its 4:5 frame and loads 949 KB (944 KB before).
+
 ### Earlier assets
 
 `public/homepage/cafes.webp`, `food-trucks.webp`, `delivery.webp`, `social.webp`, `burger-original.webp` and `burger-enhanced.webp` are not shown on the current homepage and are left unchanged. `social.webp` is the photo inside `social-post-example.webp`, and the prompts below produced `restaurants.webp`, `cafes.webp` and `food-trucks.webp` for an earlier six-use-case homepage.

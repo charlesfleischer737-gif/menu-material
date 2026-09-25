@@ -7,8 +7,11 @@
   --pw-line: var(--workspace-line);
   --pw-width: 1120px;
   --pw-gutter: max(22px, calc((100% - var(--pw-width)) / 2));
-  --pw-band: clamp(64px, 7vw, 96px);
+  --pw-band: clamp(48px, 5.5vw, 72px);
   --pw-lead: clamp(1.1875rem, 2vw, 1.375rem);
+  /* Homepage section titles and their one-line leads. */
+  --pw-heading: clamp(1.75rem, 3.2vw, 2.625rem);
+  --pw-section-lead: clamp(1.0625rem, 1.5vw, 1.1875rem);
   min-height: 100vh;
   background: var(--workspace-surface);
   color: var(--pw-ink);
@@ -31,15 +34,16 @@
   overflow: hidden;
 }
 
-/* Header: a translucent bar that stays with the page. */
+/* Header: an evergreen bar that stays with the page. On the homepage it runs
+   straight into the hero. The visitor Photo Studio turns it stone
+   (app/launch.css). */
 .pw-header {
   position: sticky;
   top: 0;
   z-index: 50;
-  background: var(--glass);
+  background: var(--nav-surface);
   -webkit-backdrop-filter: var(--glass-blur);
   backdrop-filter: var(--glass-blur);
-  box-shadow: 0 1px 0 rgb(0 0 0 / 6%);
 }
 .pw-header-inner {
   display: flex;
@@ -71,13 +75,13 @@
   padding: 12px 0;
   border: 0;
   background: none;
-  color: rgb(29 29 31 / 80%);
+  color: var(--on-dark-muted);
   font: inherit;
   transition: color var(--duration-fast) var(--ease);
 }
 .pw-nav > a:hover,
 .pw-nav > .pw-login:hover {
-  color: var(--pw-ink);
+  color: var(--on-dark);
 }
 .pw-nav > .pw-header-cta[data-ui-button] {
   min-height: 34px;
@@ -93,9 +97,31 @@
   border: 0;
   border-radius: 50%;
   background: none;
-  color: var(--pw-ink);
+  color: var(--on-dark);
 }
-.pw-mobile-menu {
+/* On evergreen the main action is a light pill, and focus rings turn bright
+   green so they stay visible. */
+:is(.pw-hero, .pw-start) [data-ui-button],
+.pw-nav > .pw-header-cta[data-ui-button] {
+  background: var(--gray-100);
+  color: var(--green-ink);
+}
+:is(.pw-hero, .pw-start) [data-ui-button]:not(:disabled):hover,
+.pw-nav > .pw-header-cta[data-ui-button]:not(:disabled):hover {
+  background: #fff;
+}
+:is(.pw-hero, .pw-start) [data-ui-button]:not(:disabled):active,
+.pw-nav > .pw-header-cta[data-ui-button]:not(:disabled):active {
+  background: var(--gray-200);
+}
+.pw-site
+  :is(.pw-header, .pw-hero, .pw-showcase, .pw-start)
+  :is(a, button):focus-visible {
+  outline-color: var(--green-bright);
+}
+/* Solid white rather than the shared frosted glass, which the evergreen hero
+   would tint gray. */
+.pw-mobile-menu[data-state] {
   min-width: 200px;
   padding: 6px;
   border: 0;
@@ -112,59 +138,59 @@
   font-size: var(--text-callout);
 }
 
-/* Hero: headline, one action, then the before-and-after slider, under a
-   faint glow of the logo's green. */
+/* Hero: a short pitch and the before-and-after on an evergreen band that runs
+   on from the header and into the showcase. Stacked, the photo sits between
+   the pitch and its action; from 1001px it sits beside them, sized to fit the
+   first screen. */
 .pw-hero {
-  display: flex;
-  flex-direction: column;
-  align-items: center;
-  padding: clamp(56px, 9vw, 112px) var(--pw-gutter) clamp(56px, 6vw, 88px);
-  background: radial-gradient(
-    60% 55% at 50% 0%,
-    rgb(63 191 127 / 9%),
-    transparent 70%
-  );
+  display: grid;
+  grid-template-columns: minmax(0, 1fr);
+  grid-template-areas: "intro" "compare" "actions";
+  justify-items: center;
+  padding: clamp(28px, 4vw, 48px) var(--pw-gutter) clamp(48px, 5.5vw, 72px);
+  background: var(--green-glow), var(--green-ink);
+  color: var(--on-dark);
   text-align: center;
 }
 .pw-hero-intro {
-  order: 1;
+  grid-area: intro;
 }
 .pw-hero h1 {
   max-width: 20ch;
   margin-inline: auto;
   font-size: var(--text-hero);
   font-weight: 700;
-  line-height: 1.04;
+  line-height: 1.05;
   letter-spacing: var(--tracking-hero);
   text-wrap: balance;
 }
 .pw-hero-intro > p {
-  max-width: 34ch;
-  margin: 20px auto 0;
-  font-size: clamp(1.1875rem, 2.1vw, 1.5rem);
-  line-height: 1.4;
-  letter-spacing: -0.016em;
-  color: var(--pw-muted);
+  max-width: 36ch;
+  margin: 16px auto 0;
+  font-size: clamp(1.0625rem, 1.6vw, 1.25rem);
+  line-height: 1.45;
+  letter-spacing: -0.012em;
+  color: var(--on-dark-muted);
   text-wrap: pretty;
 }
 .pw-hero-actions {
-  order: 2;
+  grid-area: actions;
   display: flex;
   flex-direction: column;
   align-items: center;
-  gap: 14px;
-  margin-top: 32px;
+  gap: 12px;
+  margin-top: 24px;
 }
 .pw-free-note {
   font-size: var(--text-footnote);
-  color: var(--pw-muted);
+  color: var(--on-dark-muted);
 }
 
 /* Phone photo vs. studio result: drag or use the keyboard. */
 .pw-compare-block {
-  order: 3;
+  grid-area: compare;
   width: 100%;
-  margin-top: clamp(48px, 6vw, 72px);
+  margin-top: clamp(24px, 3.5vw, 36px);
   scroll-margin-top: 80px;
 }
 .pw-compare {
@@ -175,12 +201,44 @@
   aspect-ratio: 16 / 10;
   overflow: hidden;
   border-radius: var(--radius-media);
-  background: var(--gray-100);
-  box-shadow: 0 30px 60px -30px rgb(0 0 0 / 30%);
+  background: var(--artwork-stage);
+  box-shadow: var(--artwork-edge);
   cursor: ew-resize;
   touch-action: pan-y;
   user-select: none;
   -webkit-user-select: none;
+}
+@media (min-width: 1001px) {
+  .pw-hero {
+    grid-template-columns: minmax(0, 5fr) minmax(0, 8fr);
+    grid-template-areas: "intro compare" "actions compare";
+    column-gap: 56px;
+    justify-items: start;
+    text-align: left;
+  }
+  .pw-hero-intro {
+    align-self: end;
+  }
+  .pw-hero h1,
+  .pw-hero-intro > p {
+    margin-inline: 0;
+  }
+  .pw-hero-actions {
+    align-self: start;
+    flex-flow: row wrap;
+    gap: 12px 20px;
+    margin-top: 32px;
+  }
+  .pw-compare-block {
+    align-self: center;
+    margin-top: 0;
+  }
+  /* 5:4, no taller than the screen leaves below the header. */
+  .pw-compare {
+    width: min(100%, calc((100svh - 128px) * 1.25));
+    margin-right: 0;
+    aspect-ratio: 5 / 4;
+  }
 }
 .pw-compare > img {
   position: absolute;
@@ -260,35 +318,35 @@
 
 /* Shared section heading. */
 .pw-section-heading {
-  max-width: 760px;
-  margin: 0 auto clamp(40px, 5vw, 64px);
+  max-width: 920px;
+  margin: 0 auto clamp(28px, 3.5vw, 44px);
   text-align: center;
 }
 .pw-section-heading h2 {
-  font-size: var(--text-display);
+  font-size: var(--pw-heading);
   font-weight: 700;
-  line-height: 1.06;
+  line-height: 1.08;
   letter-spacing: var(--tracking-display);
   text-wrap: balance;
 }
 .pw-section-heading p {
-  margin-top: 16px;
-  font-size: var(--pw-lead);
-  line-height: 1.4;
-  letter-spacing: -0.016em;
+  margin-top: 12px;
+  font-size: var(--pw-section-lead);
+  line-height: 1.45;
+  letter-spacing: -0.012em;
   color: var(--pw-muted);
   text-wrap: pretty;
 }
 
-/* Showcase: a full-width wall of style examples on an evergreen band, two
-   rows drifting in opposite directions and fading out at the page edges.
-   Each row repeats its photos once, so moving it by half its width loops
-   without a seam. */
+/* Showcase: a full-width wall of style examples that continues the hero's
+   evergreen band, two rows drifting in opposite directions and fading out at
+   the page edges. Each row repeats its photos once, so moving it by half its
+   width loops without a seam. */
 .pw-showcase {
-  --pw-tile: clamp(172px, 22vw, 300px);
-  --pw-tile-gap: clamp(12px, 1.2vw, 16px);
-  padding-block: var(--pw-band) clamp(40px, 4.5vw, 64px);
-  background: var(--green-glow), var(--green-ink);
+  --pw-tile: clamp(156px, 17vw, 240px);
+  --pw-tile-gap: clamp(10px, 1vw, 14px);
+  padding-block: 0 clamp(36px, 4vw, 52px);
+  background: var(--green-ink);
   color: var(--on-dark);
 }
 .pw-showcase > .pw-section-heading {
@@ -401,7 +459,7 @@
   display: flex;
   justify-content: flex-end;
   width: min(var(--pw-width), calc(100% - 44px));
-  margin: 24px auto 0;
+  margin: 14px auto 0;
 }
 .pw-showcase-toggle {
   display: grid;
@@ -417,9 +475,6 @@
 }
 .pw-showcase-toggle:hover {
   background: rgb(255 255 255 / 18%);
-}
-.pw-site .pw-showcase-toggle:focus-visible {
-  outline-color: var(--green-bright);
 }
 @keyframes pw-showcase-drift {
   to {
@@ -480,7 +535,7 @@
   box-shadow: var(--shadow-card);
 }
 .pw-use-case-copy {
-  padding: 8px 28px 32px;
+  padding: 4px 24px 26px;
 }
 .pw-use-case h3 {
   font-size: var(--text-title3);
@@ -497,13 +552,28 @@
 .pw-gallery-controls {
   display: none;
 }
+/* Side by side, the cards share their two rows, so the illustrations match
+   in height and every title starts on the same line. */
+@media (min-width: 1001px) {
+  .pw-use-case-slides {
+    grid-template-rows: auto auto;
+    row-gap: 0;
+  }
+  .pw-use-case-slide,
+  .pw-use-case {
+    display: grid;
+    grid-row: span 2;
+    grid-template-rows: subgrid;
+  }
+}
 
-/* Illustrations inside the use-case cards. */
+/* Illustrations inside the use-case cards. In the phone carousel the stage
+   takes up any slack, keeping the copy at the foot of the card. */
 .pw-output-stage {
+  flex: 1;
   display: grid;
   place-items: center;
-  min-height: 410px;
-  padding: 36px 28px 24px;
+  padding: 28px 24px 16px;
 }
 .pw-output-stage img {
   display: block;
@@ -527,7 +597,7 @@
   position: relative;
 }
 .pw-output-stage .pw-delivery-photo img {
-  height: 168px;
+  height: 150px;
   object-position: center 54%;
 }
 .pw-delivery-photo-toolbar {
@@ -907,47 +977,122 @@
 .is-compact .pw-style-option-copy .pw-style-name-short {
   display: block;
 }
+/* From 761px the photo sits beside the heading and a list of looks, each
+   with its one-line description; the list shows what the caption would. */
+@media (min-width: 761px) {
+  .pw-style-workbench {
+    display: grid;
+    grid-template-columns: minmax(0, 7fr) minmax(0, 5fr);
+    grid-template-areas: "photo heading" "photo picker";
+    column-gap: clamp(28px, 4vw, 56px);
+    align-items: start;
+    max-width: var(--pw-width);
+    margin-inline: auto;
+  }
+  .pw-style-workbench > .pw-section-heading {
+    grid-area: heading;
+    align-self: end;
+    max-width: none;
+    margin: 0;
+    text-align: left;
+  }
+  .pw-style-result {
+    grid-area: photo;
+    align-self: center;
+    width: 100%;
+  }
+  .pw-style-result figcaption {
+    position: absolute;
+    width: 1px;
+    height: 1px;
+    margin: 0;
+    overflow: hidden;
+    clip-path: inset(50%);
+    white-space: nowrap;
+  }
+  .pw-style-workbench > .pw-style-picker {
+    grid-area: picker;
+    flex-direction: column;
+    gap: 2px;
+    margin-top: 24px;
+  }
+  .pw-style-workbench .pw-style-option {
+    flex-direction: row;
+    gap: 14px;
+    min-width: 0;
+    padding: 6px 14px 6px 6px;
+    border-radius: 16px;
+    text-align: left;
+    white-space: normal;
+    transition: background-color var(--duration-fast) var(--ease);
+  }
+  .pw-style-workbench .pw-style-option[data-selected="true"] {
+    background: var(--gray-100);
+  }
+  .pw-style-workbench .pw-style-option > img,
+  .pw-style-workbench .pw-style-option[data-selected="true"] > img,
+  .pw-style-workbench .pw-style-option:has(:focus-visible) > img {
+    width: 48px;
+    height: 48px;
+    border-radius: 12px;
+    box-shadow: 0 0 0 1px rgb(0 0 0 / 6%);
+  }
+  .pw-style-workbench .pw-style-option:has(:focus-visible) {
+    outline: 2px solid var(--workspace-focus);
+    outline-offset: 2px;
+  }
+  .pw-style-workbench .pw-style-option-copy strong {
+    font-size: var(--text-callout);
+    color: var(--workspace-ink);
+  }
+  .pw-style-workbench .pw-style-option-copy > span {
+    display: block;
+    margin-top: 1px;
+    font-size: var(--text-footnote);
+    line-height: 1.35;
+    color: var(--workspace-muted);
+  }
+  .pw-style-workbench .pw-style-selected-mark {
+    display: block;
+    margin-left: auto;
+    color: var(--workspace-ink);
+    visibility: hidden;
+  }
+  .pw-style-workbench
+    .pw-style-option[data-selected="true"]
+    .pw-style-selected-mark {
+    visibility: visible;
+  }
+}
 
 /* Closing call to action: an evergreen band lit from the top edge. */
 .pw-start {
   display: flex;
   flex-direction: column;
   align-items: center;
-  padding: clamp(72px, 8.5vw, 120px) var(--pw-gutter);
+  padding: clamp(56px, 6.5vw, 88px) var(--pw-gutter);
   background: var(--green-glow), var(--green-ink);
   color: var(--on-dark);
   text-align: center;
 }
 .pw-start h2 {
-  max-width: 16ch;
-  font-size: var(--text-display);
+  font-size: var(--pw-heading);
   font-weight: 700;
-  line-height: 1.06;
+  line-height: 1.08;
   letter-spacing: var(--tracking-display);
   text-wrap: balance;
 }
 .pw-start p {
-  max-width: 40ch;
-  margin-top: 18px;
-  font-size: var(--pw-lead);
-  line-height: 1.4;
-  letter-spacing: -0.016em;
+  max-width: 48ch;
+  margin-top: 12px;
+  font-size: var(--pw-section-lead);
+  line-height: 1.45;
+  letter-spacing: -0.012em;
   color: var(--on-dark-muted);
   text-wrap: pretty;
 }
 .pw-start [data-ui-button] {
-  margin-top: 36px;
-  background: var(--gray-100);
-  color: var(--green-ink);
-}
-.pw-start [data-ui-button]:not(:disabled):hover {
-  background: #fff;
-}
-.pw-start [data-ui-button]:not(:disabled):active {
-  background: var(--gray-200);
-}
-.pw-site .pw-start [data-ui-button]:focus-visible {
-  outline-color: var(--green-bright);
+  margin-top: 28px;
 }
 
 /* Footer */
@@ -1324,34 +1469,16 @@
   .pw-mobile-menu-trigger {
     display: grid;
   }
-  .pw-hero h1 {
-    font-size: 2.5rem;
-    line-height: 1.06;
-  }
-  .pw-hero-intro > p {
-    font-size: var(--text-title3);
-  }
-  .pw-compare-block {
-    order: 2;
-    margin-top: 32px;
-  }
-  .pw-hero-actions {
-    order: 3;
-    margin-top: 28px;
-  }
   .pw-compare {
     aspect-ratio: 4 / 5;
     border-radius: var(--radius-card);
   }
-  .pw-section-heading h2,
-  .pw-start h2,
   .pw-information-header h1 {
     font-size: var(--text-title1);
     line-height: 1.1;
   }
   .pw-output-stage {
-    min-height: 380px;
-    padding: 28px 20px 16px;
+    padding: 24px 20px 12px;
   }
   .pw-use-case-copy {
     padding: 4px 22px 26px;

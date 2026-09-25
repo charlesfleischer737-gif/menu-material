@@ -7,12 +7,15 @@ const variants = (name: string) =>
   [640, 960, 1280, 1536]
     .map((w) => `/homepage/optimized/${name}-${w}.webp ${w}w`)
     .join(", ");
-// The frame is 16:10 and at most 1080px wide (22px page gutters). On phones it
-// turns 4:5, so object-fit: cover draws each photo wider than the frame: the
-// 3:2 result at 1.875× and the 4:3 phone photo at 1.667× the frame width.
-const frameWidth = "(max-width: 1124px) calc(100vw - 44px), 1080px";
-const afterSizes = `(max-width: 760px) calc(187.5vw - 83px), ${frameWidth}`;
-const beforeSizes = `(max-width: 760px) calc(166.7vw - 73px), ${frameWidth}`;
+// Stacked, the frame spans the page (22px gutters): 4:5 on phones and 16:10 up
+// to 1000px. From 1001px it is 5:4 in the hero's photo column, 8/13 of the
+// 1120px content less a 56px gap (655px at most). object-fit: cover draws a
+// photo wider than a frame that is narrower than the photo's own shape: in 4:5
+// the 3:2 result at 1.875× and the 4:3 phone photo at 1.667× the frame width,
+// in 5:4 at 1.2× and 1.067×.
+const stackedWidth = "(max-width: 1000px) calc(100vw - 44px)";
+const afterSizes = `(max-width: 760px) calc(187.5vw - 83px), ${stackedWidth}, (max-width: 1163px) calc(73.8vw - 74px), 786px`;
+const beforeSizes = `(max-width: 760px) calc(166.7vw - 73px), ${stackedWidth}, (max-width: 1163px) calc(65.6vw - 66px), 698px`;
 
 export default function PhotoComparison() {
   const frame = useRef<HTMLDivElement>(null);
