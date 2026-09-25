@@ -133,6 +133,8 @@
    with the studio column below it. */
 .cx-guest .pw-header {
   background: var(--canvas-glass);
+  -webkit-backdrop-filter: var(--glass-blur);
+  backdrop-filter: var(--glass-blur);
   box-shadow: 0 1px 0 rgb(0 0 0 / 6%);
 }
 .cx-guest .pw-nav > :is(a, .pw-login) {

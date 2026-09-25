@@ -34,16 +34,14 @@
   overflow: hidden;
 }
 
-/* Header: an evergreen bar that stays with the page. On the homepage it runs
-   straight into the hero. The visitor Photo Studio turns it stone
-   (app/launch.css). */
+/* Header: a solid evergreen bar that stays with the page. On the homepage it
+   runs into the hero's top edge, the same flat color. The visitor Photo Studio
+   turns it frosted stone (app/launch.css). */
 .pw-header {
   position: sticky;
   top: 0;
   z-index: 50;
-  background: var(--nav-surface);
-  -webkit-backdrop-filter: var(--glass-blur);
-  backdrop-filter: var(--glass-blur);
+  background: var(--green-ink);
 }
 .pw-header-inner {
   display: flex;
@@ -139,16 +137,19 @@
 }
 
 /* Hero: a short pitch and the before-and-after on an evergreen band that runs
-   on from the header and into the showcase. Stacked, the photo sits between
-   the pitch and its action; from 1001px it sits beside them, sized to fit the
-   first screen. */
+   on from the header and into the showcase. Its glow sits inside the band,
+   clear of both edges, so it meets the header and the showcase in one flat
+   evergreen. Stacked, the photo sits between the pitch and its action; from
+   1001px it sits beside them, sized to fit the first screen. */
 .pw-hero {
   display: grid;
   grid-template-columns: minmax(0, 1fr);
   grid-template-areas: "intro" "compare" "actions";
   justify-items: center;
   padding: clamp(28px, 4vw, 48px) var(--pw-gutter) clamp(48px, 5.5vw, 72px);
-  background: var(--green-glow), var(--green-ink);
+  background:
+    radial-gradient(60% 60% at 50% 50%, rgb(63 191 127 / 16%), transparent 70%),
+    var(--green-ink);
   color: var(--on-dark);
   text-align: center;
 }

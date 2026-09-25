@@ -268,7 +268,6 @@ export default function HomepageStyleGallery() {
         <div className="pw-style-workbench">
           <div className="pw-section-heading">
             <h2 id="style-gallery-title">One photo. Endless possibilities.</h2>
-            <p>The same dish, reimagined. Find your favorite look.</p>
           </div>
           <figure className="pw-style-result" aria-busy={pending !== null}>
             <DialogTrigger asChild>

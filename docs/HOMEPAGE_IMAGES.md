@@ -43,7 +43,7 @@ Moving the comparison beside the headline, measured the same way on September 25
 
 `cafes.webp`, `food-trucks.webp`, `delivery.webp`, `burger-original.webp` and `burger-enhanced.webp` are not shown on the current homepage; they moved unchanged from `public/homepage/` to `docs/images/` so the site no longer serves them. `public/homepage/social.webp` is the photo inside `social-post-example.webp`, and the prompts below produced `restaurants.webp`, `cafes.webp` and `food-trucks.webp` for an earlier six-use-case homepage.
 
-The existing cyclonebill / CC BY-SA 2.0 burger attribution remains in the homepage footer and applies to its optimized derivatives. Newly generated images are illustrative category photography, not customer testimonials or documented results from a live restaurant account.
+The credits for the cyclonebill burger (CC BY-SA 2.0) and the Pilauricey cheesecake (CC BY-SA 3.0) are on the usage guidelines page (`/guidelines#credits`), linked as "Photo credits" from the homepage footer. They cover the optimized copies and the AI edits of both photos. Newly generated images are illustrative category photography, not customer testimonials or documented results from a live restaurant account.
 
 ## Final generation prompts
 
