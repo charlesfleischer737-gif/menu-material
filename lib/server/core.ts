@@ -272,6 +272,121 @@ export async function admin(req: Request) {
   assert(u?.role === "admin", 403, "Administrator access is required.");
   return u!;
 }
+/**
+ * Delete an owner's account: every row that belongs to their restaurant, its
+ * stored files (private and public copies), their sessions and the user.
+ * AI spend rows stay for budget and invoice reconciliation; they hold no
+ * personal details.
+ */
+export async function deleteAccount(u: Row, r: Row) {
+  assert(
+    u.role !== "admin" ||
+      (await one("SELECT id FROM users WHERE role='admin' AND id!=?", u.id)),
+    409,
+    "The only administrator’s account can’t be deleted.",
+  );
+  // Payment records are handled by support, never deleted from here.
+  assert(
+    !(await one(
+      "SELECT 1 AS found FROM billing_accounts WHERE restaurant_id=? AND (customer_id IS NOT NULL OR subscription_id IS NOT NULL) UNION ALL SELECT 1 FROM billing_periods WHERE restaurant_id=? LIMIT 1",
+      r.id,
+      r.id,
+    )),
+    409,
+    "This account has billing records. Contact support to close it.",
+  );
+  const rid = r.id,
+    keys = new Set<string>();
+  for (const a of await all(
+    "SELECT id,key,working_key FROM assets WHERE restaurant_id=?",
+    rid,
+  ))
+    for (const key of [a.key, a.working_key, `public/${rid}/${a.id}`])
+      if (key) keys.add(key);
+  for (const m of await all(
+    "SELECT key FROM menu_imports WHERE restaurant_id=? AND key IS NOT NULL",
+    rid,
+  ))
+    keys.add(m.key);
+  // Files of unfinished uploads and images, as housekeeping names them.
+  for (const { id: sid } of await all(
+    "SELECT id FROM storage_reservations WHERE restaurant_id=?",
+    rid,
+  ))
+    for (const key of [
+      `private/${rid}/source/${sid}`,
+      `private/${rid}/working/${sid}.jpg`,
+      `private/${rid}/generated/${sid}.jpg`,
+      `private/${rid}/generated/${sid}.png`,
+      `private/${rid}/edits/${sid}.jpg`,
+      `private/${rid}/imports/${sid}`,
+      `public/${rid}/${sid}`,
+    ])
+      keys.add(key);
+  const owned = (table: string) =>
+    db().prepare(`DELETE FROM ${table} WHERE restaurant_id=?`).bind(rid);
+  const assetsOf = "SELECT id FROM assets WHERE restaurant_id=?",
+    jobsOf = "SELECT id FROM jobs WHERE restaurant_id=?";
+  // Children before parents, in one transaction.
+  await db().batch([
+    db()
+      .prepare(
+        `DELETE FROM asset_edits WHERE asset_id IN (${assetsOf}) OR parent_id IN (${assetsOf}) OR source_id IN (${assetsOf})`,
+      )
+      .bind(rid, rid, rid),
+    db()
+      .prepare(
+        `DELETE FROM studio_look_uses WHERE restaurant_id=? OR job_id IN (${jobsOf})`,
+      )
+      .bind(rid, rid),
+    db()
+      .prepare(
+        `DELETE FROM outputs WHERE restaurant_id=? OR job_id IN (${jobsOf})`,
+      )
+      .bind(rid, rid),
+    ...[
+      "photo_corrections",
+      "batch_items",
+      "captions",
+      "jobs",
+      "menu_publication_history",
+      "menu_documents",
+      "promotions",
+      "menu_imports",
+      "creation_drafts",
+      "studio_libraries",
+      "staff_links",
+      "slug_redirects",
+      "storage_reservations",
+      "events",
+      "assets",
+      "dishes",
+      "billing_accounts",
+    ].map(owned),
+    db().prepare("DELETE FROM restaurants WHERE id=?").bind(rid),
+    db().prepare("DELETE FROM sessions WHERE user_id=?").bind(u.id),
+    db().prepare("DELETE FROM invites WHERE email=?").bind(u.email),
+    db().prepare("DELETE FROM launch_requests WHERE email=?").bind(u.email),
+    db().prepare("DELETE FROM users WHERE id=?").bind(u.id),
+  ]);
+  // Files last: a leftover file nothing points to is safer than rows
+  // pointing to missing files.
+  const store = bucket(),
+    list = [...keys];
+  for (let n = 0; n < list.length; n += 1000)
+    await store.delete(list.slice(n, n + 1000));
+  // R2 can also list anything else left under the restaurant's prefixes.
+  if (typeof store.list === "function")
+    for (const prefix of [`private/${rid}/`, `public/${rid}/`]) {
+      let cursor: string | undefined;
+      do {
+        const page = await store.list({ prefix, cursor });
+        if (page.objects.length)
+          await store.delete(page.objects.map((o) => o.key));
+        cursor = page.truncated ? page.cursor : undefined;
+      } while (cursor);
+    }
+}
 export async function remaining(restaurantId: string) {
   const { imageEntitlement } = await import("./entitlements");
   return (await imageEntitlement(restaurantId)).remaining;

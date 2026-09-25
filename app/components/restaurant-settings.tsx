@@ -21,6 +21,7 @@ import {
 import { api, normalizePhoto, type Row } from "@/lib/client";
 import { menuAddressProblem } from "@/lib/restaurant-identity";
 import RestaurantStyle from "./restaurant-style";
+import AccountDeletion from "./account-deletion";
 
 /** Change the address guests' links and QR codes use; old ones keep working. */
 function MenuAddressField({
@@ -359,6 +360,7 @@ export default function RestaurantSettings({
                     restaurant={state.restaurant}
                     refresh={refresh}
                   />
+                  <AccountDeletion />
                 </TabsContent>
                 <TabsContent
                   forceMount

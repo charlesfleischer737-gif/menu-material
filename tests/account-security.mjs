@@ -1,6 +1,13 @@
 import assert from "node:assert/strict";
 import { scryptSync } from "node:crypto";
-import { mkdtempSync, readFileSync, rmSync } from "node:fs";
+import {
+  existsSync,
+  mkdtempSync,
+  readdirSync,
+  readFileSync,
+  rmSync,
+  statSync,
+} from "node:fs";
 import { tmpdir } from "node:os";
 import { join } from "node:path";
 const root = mkdtempSync(join(tmpdir(), "menu-material-account-security-"));
@@ -1042,8 +1049,224 @@ try {
     "America/New_York",
   );
 
+  // 12. Deleting an account needs the password and a typed confirmation. It
+  // removes every row and stored file of the restaurant, signs it out and
+  // leaves other restaurants alone; the only administrator can't delete.
+  const filesUnder = (prefix) => {
+    const dir = join(root, "objects", prefix);
+    return existsSync(dir)
+      ? readdirSync(dir, { recursive: true }).filter((name) =>
+          statSync(join(dir, name)).isFile(),
+        )
+      : [];
+  };
+  const joePhoto = (
+    await expect("assets", 201, { body: photoForm(joeDish), ...joeOpts })
+  ).json.id;
+  const freeUser = (
+    await one("SELECT id FROM users WHERE email='free@example.test'")
+  ).id;
+  const t0 = Date.now(),
+    documentId = crypto.randomUUID(),
+    importId = crypto.randomUUID();
+  await run(
+    "INSERT INTO creation_drafts (id,restaurant_id,kind,draft,updated_at) VALUES (?,?,'menu','{}',?)",
+    crypto.randomUUID(),
+    freeRid,
+    t0,
+  );
+  await run(
+    "INSERT INTO studio_libraries (restaurant_id,updated_at) VALUES (?,?)",
+    freeRid,
+    t0,
+  );
+  await run(
+    "INSERT INTO menu_documents (id,restaurant_id,draft,published,created_at,updated_at) VALUES (?,?,'{}','{}',?,?)",
+    documentId,
+    freeRid,
+    t0,
+    t0,
+  );
+  await run(
+    "INSERT INTO menu_publication_history (id,menu_id,restaurant_id,snapshot,revision,created_at) VALUES (?,?,?,'{}',1,?)",
+    crypto.randomUUID(),
+    documentId,
+    freeRid,
+    t0,
+  );
+  await run(
+    "INSERT INTO promotions (id,restaurant_id,draft,created_at,updated_at) VALUES (?,?,'{}',?,?)",
+    crypto.randomUUID(),
+    freeRid,
+    t0,
+    t0,
+  );
+  await run(
+    "INSERT INTO batch_items (id,restaurant_id,batch_id,dish_id,created_at) VALUES (?,?,?,?,?)",
+    crypto.randomUUID(),
+    freeRid,
+    crypto.randomUUID(),
+    pasta,
+    t0,
+  );
+  await run(
+    "INSERT INTO asset_edits (asset_id,parent_id,source_id,edits) VALUES (?,?,?,'{}')",
+    webpUpload.json.id,
+    source,
+    source,
+  );
+  await run(
+    "INSERT INTO menu_imports (id,restaurant_id,name,key,mime,created_at) VALUES (?,?,'menu.jpg',?,'image/jpeg',?)",
+    importId,
+    freeRid,
+    `private/${freeRid}/imports/${importId}`,
+    t0,
+  );
+  await bucket().put(`private/${freeRid}/imports/${importId}`, photo, {
+    httpMetadata: { contentType: "image/jpeg" },
+  });
+  await expect("restaurant/address", 200, {
+    body: { address: "free-kitchen-moved" },
+    ...freeOpts,
+  });
+  await expect("plan-waitlist", 200, { body: {}, ...freeOpts });
+  await expect("admin/invite", 200, {
+    body: { email: "free@example.test", reset: true },
+    cookie: adminCookie,
+  });
+  const scoped = (
+    await all(
+      "SELECT name FROM sqlite_master WHERE type='table' AND sql LIKE '%restaurant_id%'",
+    )
+  ).map((row) => row.name);
+  const leftovers = async () => {
+    const found = {};
+    for (const table of [...scoped, "restaurants"]) {
+      const { n } = await one(
+        `SELECT count(*) AS n FROM ${table} WHERE ${table === "restaurants" ? "id" : "restaurant_id"}=?`,
+        freeRid,
+      );
+      if (n) found[table] = n;
+    }
+    return found;
+  };
+  const before = await leftovers();
+  for (const table of [
+    "restaurants",
+    "dishes",
+    "assets",
+    "jobs",
+    "outputs",
+    "photo_corrections",
+    "captions",
+    "staff_links",
+    "slug_redirects",
+    "storage_reservations",
+    "events",
+    "studio_look_uses",
+    "billing_accounts",
+    "ai_spend",
+  ])
+    assert(before[table], `fixture has ${table} rows`);
+  assert(filesUnder(`private/${freeRid}`).length > 5);
+  assert(filesUnder(`public/${freeRid}`).length > 0);
+  const joeFiles = filesUnder(`private/${joeRid}`).length;
+  assert(joeFiles >= 2);
+  const joeRows = await one(
+    "SELECT (SELECT count(*) FROM dishes WHERE restaurant_id=?) AS dishes,(SELECT count(*) FROM assets WHERE restaurant_id=?) AS assets",
+    joeRid,
+    joeRid,
+  );
+  const deletion = (body, cookie = free.cookie) => ({
+    body,
+    cookie,
+    ip: "192.0.2.60",
+  });
+  await expect(
+    "account/delete",
+    401,
+    deletion({ password, confirm: "DELETE" }, ""),
+  );
+  await expect(
+    "account/delete",
+    400,
+    deletion({ password, confirm: "delete it" }),
+  );
+  await expect("account/delete", 400, deletion({ password }));
+  const wrong = await expect(
+    "account/delete",
+    403,
+    deletion({ password: "not the password", confirm: "DELETE" }),
+  );
+  assert.equal(wrong.json.error, "That password is incorrect.");
+  const billed = await expect(
+    "account/delete",
+    409,
+    deletion({ password, confirm: "DELETE" }),
+  );
+  assert.match(billed.json.error, /billing records/);
+  // The payment records above are test fixtures; support would handle them.
+  await run("DELETE FROM billing_periods WHERE restaurant_id=?", freeRid);
+  await run(
+    "UPDATE billing_accounts SET customer_id=NULL,subscription_id=NULL WHERE restaurant_id=?",
+    freeRid,
+  );
+  const lastAdmin = await expect(
+    "account/delete",
+    409,
+    deletion({ password, confirm: "DELETE" }, adminCookie),
+  );
+  assert.match(lastAdmin.json.error, /only administrator/);
+  const deleted = await expect(
+    "account/delete",
+    200,
+    deletion({ password, confirm: " delete " }),
+  );
+  assert.equal(
+    deleted.setCookie,
+    "menu_material_session=; Path=/; HttpOnly; SameSite=Lax; Max-Age=0",
+  );
+  assert.deepEqual(await leftovers(), { ai_spend: before.ai_spend });
+  assert.deepEqual(filesUnder(`private/${freeRid}`), []);
+  assert.deepEqual(filesUnder(`public/${freeRid}`), []);
+  assert.equal(await one("SELECT id FROM users WHERE id=?", freeUser), null);
+  for (const [table, column, value] of [
+    ["sessions", "user_id", freeUser],
+    ["invites", "email", "free@example.test"],
+    ["launch_requests", "email", "free@example.test"],
+  ])
+    assert.equal(
+      (await one(`SELECT count(*) AS n FROM ${table} WHERE ${column}=?`, value))
+        .n,
+      0,
+      table,
+    );
+  await expect("dishes", 401, {
+    body: { name: "Soup", description: "Tomato soup" },
+    ...freeOpts,
+  });
+  await expect("auth/login", 401, {
+    body: { email: "free@example.test", password },
+    ip: "192.0.2.64",
+  });
+  await expect(`public/${slug}`, 404, guest);
+  await expect("public/free-kitchen-moved", 404, guest);
+  // Other restaurants keep everything.
+  assert.equal(filesUnder(`private/${joeRid}`).length, joeFiles);
+  assert.deepEqual(
+    await one(
+      "SELECT (SELECT count(*) FROM dishes WHERE restaurant_id=?) AS dishes,(SELECT count(*) FROM assets WHERE restaurant_id=?) AS assets",
+      joeRid,
+      joeRid,
+    ),
+    joeRows,
+  );
+  await expect(`assets/${joePhoto}`, 200, joeOpts);
+  await expect("state", 200, { cookie: adminCookie });
+  checks++;
+
   console.log(
-    `PASS: ${checks} account security checks: per-network limits on the IPv6 /64 with no site-wide lockout, a per-account sign-in slowdown, versioned password hashes, sliding sessions, revocable reset and setup links, the Pro waitlist, once-only free images, ID validation, lenient saved looks, staff link scope and limits, WebP and AVIF uploads, transparent logos, cacheable public images, admin takedown, menu-address squatting, signup time zones;`,
+    `PASS: ${checks} account security checks: per-network limits on the IPv6 /64 with no site-wide lockout, a per-account sign-in slowdown, versioned password hashes, sliding sessions, revocable reset and setup links, the Pro waitlist, once-only free images, ID validation, lenient saved looks, staff link scope and limits, WebP and AVIF uploads, transparent logos, cacheable public images, admin takedown, menu-address squatting, signup time zones and account deletion.`,
   );
 } finally {
   rmSync(root, { recursive: true, force: true });

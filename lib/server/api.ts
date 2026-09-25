@@ -55,6 +55,7 @@ import {
   config,
   createSession,
   db,
+  deleteAccount,
   digest,
   event,
   hashPassword,
@@ -1207,6 +1208,34 @@ async function route(req: Request) {
         return response({ ok: true });
       }
       throw new AppError(404, "Not found.");
+    }
+    if (p[0] === "account" && p[1] === "delete" && method === "POST") {
+      const { u, r } = await owner(req);
+      await limit("account-delete:" + u.id, 5);
+      const input = z
+        .object({
+          password: z.string().max(128),
+          confirm: z
+            .string()
+            .refine(
+              (v) => v.trim().toUpperCase() === "DELETE",
+              "Type DELETE to confirm.",
+            ),
+        })
+        .parse(await body(req));
+      const account = await one("SELECT password FROM users WHERE id=?", u.id);
+      // 403, not 401: the owner is signed in; only the password is wrong.
+      assert(
+        checkPassword(input.password, account?.password),
+        403,
+        "That password is incorrect.",
+      );
+      await deleteAccount(u, r);
+      await event(null, "account_deleted");
+      return response({ ok: true }, 200, {
+        "Set-Cookie":
+          "menu_material_session=; Path=/; HttpOnly; SameSite=Lax; Max-Age=0",
+      });
     }
     if (p[0] === "plan-waitlist" && method === "POST") {
       // One entry per owner; asking again changes nothing.
