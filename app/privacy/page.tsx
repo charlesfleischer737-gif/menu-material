@@ -10,7 +10,7 @@ export default function Privacy() {
   return (
     <PublicInformation
       title="Your photos, drafts and public menu."
-      intro="This page explains Menu Material’s current data handling. Updated September 16, 2026."
+      intro="This page explains Menu Material’s current data handling. Updated September 25, 2026."
       sections={[
         { id: "information", label: "Information we store" },
         { id: "publishing", label: "Publishing & sharing" },
@@ -27,10 +27,12 @@ export default function Privacy() {
         <p>
           Menu Material stores your account email, protected password record,
           restaurant details, uploaded photos, menu files, drafts, generated
-          images and usage records. Photos chosen before signup stay in the
-          current browser tab until you create an account or sign in and
-          generate. Closing that tab discards photos that have not been saved to
-          an account.
+          images and usage records. Photos chosen before signup are kept only in
+          this browser, where they survive a reload or a closed tab, until you
+          create an account or sign in and generate. They are then saved to your
+          account and removed from the browser. Photos not saved to an account
+          expire after 24 hours and are deleted the next time Photo Studio
+          opens.
         </p>
         <p>
           Usage records include creation status, approvals, exports and support
@@ -62,10 +64,11 @@ export default function Privacy() {
         </h2>
         <p>
           When you request AI work, the relevant photos, dish details and
-          instructions are sent to OpenAI. Background image requests retain a
-          provider response so an interrupted job can be recovered. Other AI
-          features use the details needed for their task. The site uses the
-          Sites hosting service with Cloudflare database and file storage.
+          instructions are sent to OpenAI. Each image is made by a direct
+          request, and the finished image is saved to your workspace when it
+          arrives; an interrupted request is not resumed or recovered later.
+          Other AI features use the details needed for their task. The site uses
+          the Sites hosting service with Cloudflare database and file storage.
         </p>
         <p>
           Do not upload private customer information or photos you lack
@@ -104,10 +107,13 @@ export default function Privacy() {
           screen yet.
         </p>
         <p>
-          The browser uses a sign-in cookie, workspace preferences, temporary
-          unsaved-work recovery for the current tab, and a menu-session
-          identifier. Unsaved recovery data is cleared after a successful save.
-          On a shared device, sign out and close your browser tab when finished.
+          The browser uses a sign-in cookie, workspace preferences and a
+          menu-session identifier. It also keeps copies of unsaved work so it
+          can be recovered: menu drafts in this browser’s storage, where they
+          remain after the tab is closed, and Photo Studio, post and campaign
+          drafts for the current tab only. Recovery data is cleared after a
+          successful save. On a shared device, sign out and close your browser
+          tab when finished.
         </p>
       </section>
       <section>
