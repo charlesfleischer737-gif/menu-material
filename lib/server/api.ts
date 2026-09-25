@@ -393,10 +393,14 @@ async function snapshot(r: Row, draft: Row) {
       r.id,
     );
     if (a) {
-      const obj = await bucket().get(a.working_key || a.key);
+      const obj = await bucket().get(
+        transparentLogo(a) ? a.key : a.working_key || a.key,
+      );
       if (obj) {
         await bucket().put(`public/${r.id}/${a.id}`, await obj.arrayBuffer(), {
-          httpMetadata: { contentType: "image/jpeg" },
+          httpMetadata: {
+            contentType: transparentLogo(a) ? a.mime : "image/jpeg",
+          },
         });
         logoId = a.id;
       }
@@ -437,6 +441,10 @@ function assetIsPublished(menu: Row, assetId: string) {
     )
   );
 }
+// Logos keep their transparency: a PNG or WebP original is used as it is,
+// not the white-filled JPEG working copy made for photos.
+const transparentLogo = (a: Row) =>
+  a.kind === "logo" && ["image/png", "image/webp"].includes(a.mime);
 function imageMime(bytes: Uint8Array) {
   if (bytes[0] === 255 && bytes[1] === 216 && bytes[2] === 255)
     return "image/jpeg";
@@ -624,6 +632,8 @@ async function downloadAsset(
   key: string,
   publicImage = false,
 ) {
+  // Whichever copy a menu published, including JPEG copies made elsewhere.
+  if (transparentLogo(a)) key = a.key;
   const obj = await bucket().get(key);
   assert(obj, 404, "Image not found.");
   const type =

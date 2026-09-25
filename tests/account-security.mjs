@@ -14,7 +14,7 @@ let offset = 0;
 Date.now = () => realNow() + offset;
 const { handle } = await import("../lib/server/api.ts");
 const { caller } = await import("../lib/server/safeguards.ts");
-const { digest, one, run } = await import("../lib/server/core.ts");
+const { bucket, digest, one, run } = await import("../lib/server/core.ts");
 const { validateImageDimensions } =
   await import("../lib/server/image-validation.ts");
 
@@ -764,8 +764,53 @@ try {
     "image/heic",
   );
 
+  // 16. A transparent PNG logo stays a PNG: in the workspace (and Post
+  // Maker), in what publishing copies, and on the guest menu, even when a
+  // menu published a JPEG copy of it.
+  const logoPng = readFileSync("public/apple-touch-icon.png");
+  const logo = (
+    await expect("assets", 201, {
+      body: originalForm(logoPng, "logo.png", { kind: "logo" }),
+      ...freeOpts,
+    })
+  ).json.id;
+  const bytesOf = async (result) => Buffer.from(await result.res.arrayBuffer());
+  let logoFile = await expect(`assets/${logo}`, 200, freeOpts);
+  assert.equal(logoFile.res.headers.get("content-type"), "image/png");
+  assert((await bytesOf(logoFile)).equals(logoPng));
+  await expect("menu", 200, {
+    body: {
+      sections: [{ id: "mains", name: "Mains", items: [{ dishId: pasta }] }],
+    },
+    ...freeOpts,
+  });
+  const menuPath = (
+    await expect("menu/publish", 200, { body: {}, ...freeOpts })
+  ).json.path;
+  const slug = menuPath.split("/").pop();
+  const published = await bucket().get(`public/${freeRid}/${logo}`);
+  assert.equal(published.httpMetadata.contentType, "image/png");
+  assert(Buffer.from(await published.arrayBuffer()).equals(logoPng));
+  await bucket().put(`public/${freeRid}/${logo}`, photo, {
+    httpMetadata: { contentType: "image/jpeg" },
+  });
+  logoFile = await expect(`public/${slug}/assets/${logo}`, 200, {
+    ip: "192.0.2.62",
+  });
+  assert.equal(logoFile.res.headers.get("content-type"), "image/png");
+  assert((await bytesOf(logoFile)).equals(logoPng));
+  // A JPEG logo is still served from its working copy.
+  const jpegLogo = (
+    await expect("assets", 201, {
+      body: originalForm(photo, "logo.jpg", { kind: "logo" }),
+      ...freeOpts,
+    })
+  ).json.id;
+  logoFile = await expect(`assets/${jpegLogo}`, 200, freeOpts);
+  assert.equal(logoFile.res.headers.get("content-type"), "image/jpeg");
+
   console.log(
-    `PASS: ${checks} account security checks: per-network limits on the IPv6 /64 with no site-wide lockout, a per-account sign-in slowdown, versioned password hashes, sliding sessions, revocable reset and setup links, the Pro waitlist, once-only free images, ID validation, lenient saved looks, staff link scope and limits, WebP and AVIF uploads;`,
+    `PASS: ${checks} account security checks: per-network limits on the IPv6 /64 with no site-wide lockout, a per-account sign-in slowdown, versioned password hashes, sliding sessions, revocable reset and setup links, the Pro waitlist, once-only free images, ID validation, lenient saved looks, staff link scope and limits, WebP and AVIF uploads, transparent logos;`,
   );
 } finally {
   rmSync(root, { recursive: true, force: true });
