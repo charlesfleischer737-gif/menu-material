@@ -313,7 +313,12 @@ export default function GuestStudio({
         </div>
       </header>
       <main id="creation-main" className="cx-main cx-feature-main">
-        <section className="cx-tool cx-feature-page cx-guided-studio">
+        {/* data-action-layout: on phones the fixed Create bar reserves its
+            height, so it never covers Details or Format. */}
+        <section
+          className="cx-tool cx-feature-page cx-guided-studio"
+          data-action-layout
+        >
           <header className="st-header">
             <div className="st-header-copy">
               <h1>Photo Studio</h1>

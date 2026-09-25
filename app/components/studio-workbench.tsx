@@ -1282,7 +1282,7 @@ export function StudioWorkbench({
                 Format
               </h2>
               <div
-                className="st-segmented"
+                className="st-segmented st-format-choice"
                 role="radiogroup"
                 aria-labelledby="st-format-title"
                 onKeyDown={radioKeys}

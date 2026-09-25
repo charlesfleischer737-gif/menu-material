@@ -2407,6 +2407,15 @@ textarea.st-input {
   font-size: var(--text-caption);
   font-weight: 400;
 }
+/* With enlarged text, the format choices wrap onto another row instead of
+   overlapping each other. */
+.st-studio .st-format-choice {
+  flex-wrap: wrap;
+  border-radius: 22px;
+}
+.st-studio .st-format-choice > button {
+  min-width: max-content;
+}
 
 /* The finished photo is the hub: Download, then posts, menus and a pack. */
 /* The status and More sit on one row, centered on each other. */
