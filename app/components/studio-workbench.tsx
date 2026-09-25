@@ -178,8 +178,9 @@ export function StudioWorkbench({
     state.studioAvailability?.disabledStyleIds || [];
   const creationBlock = studioCreationBlock(b, state.studioAvailability);
   const creationPaused = state.studioAvailability?.creationEnabled === false;
+  // Activity names a draft only once it is saved on the server.
   const measurementContext = {
-    ...(state.studioDraftId ? { draftId: state.studioDraftId } : {}),
+    ...(state.studioSavedDraftId ? { draftId: state.studioSavedDraftId } : {}),
     ...(b.sourceId ? { sourceId: b.sourceId } : {}),
   };
   // A fresh draft starts from the restaurant's default saved look.

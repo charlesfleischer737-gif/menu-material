@@ -260,8 +260,13 @@ export default function PhotoStudio({
     inspirationIds,
     ready && active && b.step <= 3,
   );
+  // Activity is recorded against a draft only once it exists on the server:
+  // an unsaved draft's id is "unavailable work" there.
+  const measuredDraft = draftStore.storedId
+    ? { draftId: draftStore.storedId }
+    : {};
   useStudioTiming(
-    ready && active ? draftStore.id : "",
+    ready && active ? draftStore.storedId : "",
     b.sourceId || "",
     exporting
       ? "export"
@@ -307,7 +312,8 @@ export default function PhotoStudio({
         track(
           "studio_opened",
           undefined,
-          { draftId, guest: false },
+          // A new, empty draft isn't saved yet: the open still counts.
+          draftStore.stored() ? { draftId, guest: false } : { guest: false },
           `${session}:${draftId}`,
         ),
       )
@@ -888,7 +894,7 @@ export default function PhotoStudio({
     setPackOpen(false);
     track("handoff_started", resultId, {
       destination: target,
-      draftId: draftStore.id,
+      ...measuredDraft,
       ...(b.sourceId ? { sourceId: b.sourceId } : {}),
     });
     onDestination(
@@ -1050,7 +1056,11 @@ export default function PhotoStudio({
       {b.step <= 3 && (
         <StudioWorkbench
           draft={b}
-          state={{ ...state, studioDraftId: draftStore.id }}
+          state={{
+            ...state,
+            studioDraftId: draftStore.id,
+            studioSavedDraftId: draftStore.storedId,
+          }}
           selected={selected}
           styleImage={styleImage}
           source={source}
@@ -1679,7 +1689,7 @@ export default function PhotoStudio({
       {resultId && (
         <PhotoFinishSheet
           measurementContext={{
-            draftId: draftStore.id,
+            ...measuredDraft,
             ...(b.sourceId ? { sourceId: b.sourceId } : {}),
           }}
           onBusyChange={setExporting}
@@ -1705,7 +1715,7 @@ export default function PhotoStudio({
         <PhotoPackSheet
           key={`pack-${resultId}`}
           measurementContext={{
-            draftId: draftStore.id,
+            ...measuredDraft,
             ...(b.sourceId ? { sourceId: b.sourceId } : {}),
           }}
           onCloseAutoFocus={returnToResult}
