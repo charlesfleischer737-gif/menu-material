@@ -1,7 +1,10 @@
 "use client";
 import type { ReactNode } from "react";
-import Link from "next/link";
 import { Check } from "lucide-react";
+/* eslint-disable @next/next/no-html-link-for-pages --
+   Plain links on purpose: next/link's client navigation throws in the vinext
+   production build ("navigateClientSide is not a function"), so a <Link>
+   click there does nothing. These are separate server-rendered pages anyway. */
 
 function Features({ items }: { items: string[] }) {
   return (
@@ -53,9 +56,9 @@ export default function PlanCards({
               Continue free
             </button>
           ) : (
-            <Link className="cx-btn" href="/#studio">
+            <a className="cx-btn" href="/#studio">
               Try it free
-            </Link>
+            </a>
           )}
         </div>
       </article>
@@ -87,9 +90,9 @@ export default function PlanCards({
                 {busy ? "Opening secure checkout…" : "Get Pro — $9.99/month"}
               </button>
             ) : (
-              <Link className="cx-btn" href="/?upgrade=1">
+              <a className="cx-btn" href="/?upgrade=1">
                 Get Pro — $9.99/month
-              </Link>
+              </a>
             )
           ) : (
             (comingSoon ?? (

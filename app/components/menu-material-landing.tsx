@@ -1,6 +1,5 @@
 "use client";
 import { useRef, type MouseEvent } from "react";
-import Link from "next/link";
 import { ArrowRight, Menu } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import {
@@ -13,6 +12,10 @@ import HomepageSections from "./homepage-sections";
 import HomepageShowcase from "./homepage-showcase";
 import PhotoComparison from "./photo-comparison";
 import { SiteFooter, SiteHeader } from "./site-chrome";
+/* eslint-disable @next/next/no-html-link-for-pages --
+   Plain links on purpose: next/link's client navigation throws in the vinext
+   production build ("navigateClientSide is not a function"), so a <Link>
+   click there does nothing. These are separate server-rendered pages anyway. */
 
 const credits = (
   <>
@@ -92,19 +95,14 @@ export default function Landing({
           <a href="#use-cases">Use cases</a>
           <a href="/pricing">Pricing</a>
           {!signedIn && (
-            <Link
-              className="pw-login"
-              href="/?login"
-              prefetch={false}
-              onClick={signIn}
-            >
+            <a className="pw-login" href="/?login" onClick={signIn}>
               Log in
-            </Link>
+            </a>
           )}
           <Button className="pw-header-cta" asChild>
-            <Link href="/#studio" prefetch={false} onClick={start}>
+            <a href="/#studio" onClick={start}>
               {signedIn ? "My studio" : "Try it free"}
-            </Link>
+            </a>
           </Button>
           <DropdownMenu>
             <DropdownMenuTrigger asChild>
@@ -156,10 +154,10 @@ export default function Landing({
           </div>
           <div className="pw-hero-actions">
             <Button size="marketing" asChild>
-              <Link href="/#studio" prefetch={false} onClick={start}>
+              <a href="/#studio" onClick={start}>
                 {signedIn ? "Open my studio" : "Try it free"}
                 <ArrowRight size={17} />
-              </Link>
+              </a>
             </Button>
             <span className="pw-free-note">5 free images · No credit card</span>
           </div>
@@ -174,10 +172,10 @@ export default function Landing({
             presentation it deserves. Your first 5 images are free.
           </p>
           <Button size="marketing" asChild>
-            <Link href="/#studio" prefetch={false} onClick={start}>
+            <a href="/#studio" onClick={start}>
               {signedIn ? "Open my studio" : "Try it free"}
               <ArrowRight size={17} />
-            </Link>
+            </a>
           </Button>
         </section>
       </main>

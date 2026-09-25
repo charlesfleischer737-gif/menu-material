@@ -1,8 +1,11 @@
 import type { Metadata } from "next";
-import Link from "next/link";
 import { Button } from "@/components/ui/button";
 import Kitty from "./components/kitty";
 import PublicInformation from "./components/public-information";
+/* eslint-disable @next/next/no-html-link-for-pages --
+   Plain links on purpose: next/link's client navigation throws in the vinext
+   production build ("navigateClientSide is not a function"), so a <Link>
+   click there does nothing. These are separate server-rendered pages anyway. */
 
 // Rendered for unknown URLs and for notFound() from any page, with HTTP 404.
 export const metadata: Metadata = {
@@ -20,10 +23,10 @@ export default function NotFound() {
     >
       <div className="pw-status-actions">
         <Button size="marketing" asChild>
-          <Link href="/">Go to home</Link>
+          <a href="/">Go to home</a>
         </Button>
         <Button size="marketing" variant="outline" asChild>
-          <Link href="/pricing">See pricing</Link>
+          <a href="/pricing">See pricing</a>
         </Button>
       </div>
     </PublicInformation>

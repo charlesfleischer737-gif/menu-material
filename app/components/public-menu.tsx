@@ -1,5 +1,4 @@
 "use client";
-import Link from "next/link";
 import { Menu } from "lucide-react";
 import {
   DropdownMenu,
@@ -9,7 +8,8 @@ import {
 } from "@/components/ui/dropdown-menu";
 
 // Phone navigation for the information pages, whose header links hide below
-// 760px (marketing.css). The homepage has its own, with in-page links.
+// 760px (marketing.css). The homepage has its own, with in-page links. Plain
+// links, like the rest of the public chrome (see site-chrome.tsx).
 export default function PublicMenu({
   links,
 }: {
@@ -29,7 +29,7 @@ export default function PublicMenu({
       >
         {links.map((link) => (
           <DropdownMenuItem asChild key={link.href}>
-            <Link href={link.href}>{link.label}</Link>
+            <a href={link.href}>{link.label}</a>
           </DropdownMenuItem>
         ))}
       </DropdownMenuContent>

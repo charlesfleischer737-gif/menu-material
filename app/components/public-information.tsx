@@ -1,8 +1,11 @@
 import type { ReactNode } from "react";
-import Link from "next/link";
 import { Button } from "@/components/ui/button";
 import PublicMenu from "./public-menu";
 import { SiteFooter, SiteHeader } from "./site-chrome";
+/* eslint-disable @next/next/no-html-link-for-pages --
+   Plain links on purpose: next/link's client navigation throws in the vinext
+   production build ("navigateClientSide is not a function"), so a <Link>
+   click there does nothing. These are separate server-rendered pages anyway. */
 export default function PublicInformation({
   title,
   intro,
@@ -26,11 +29,11 @@ export default function PublicInformation({
         <nav className="pw-nav" aria-label="Main navigation">
           <a href="/pricing">Pricing</a>
           {/* The homepage opens sign-in for /?login. */}
-          <Link className="pw-login" href="/?login">
+          <a className="pw-login" href="/?login">
             Log in
-          </Link>
+          </a>
           <Button className="pw-header-cta" asChild>
-            <Link href="/#studio">Try it free</Link>
+            <a href="/#studio">Try it free</a>
           </Button>
           <PublicMenu
             links={[
