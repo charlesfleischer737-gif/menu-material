@@ -1060,11 +1060,12 @@ export function MenuDeliveryDialog({
   const isPrint = mode === "export",
     blocking = checks.filter((c) => c.level === "block"),
     warnings = checks.filter((c) => c.level === "warn"),
-    // The first publication chooses the menu address that QR codes will use.
+    // The first publication chooses the menu address that QR codes will use
+    // (a special published first leaves a stand-in with no dishes).
     choosingAddress =
       !isPrint &&
       !record.published &&
-      !restaurant.published &&
+      !restaurant.published?.sections?.length &&
       isAutomaticAddress(restaurant) &&
       !isPlaceholderRestaurantName(restaurant.name),
     addressProblem = choosingAddress ? menuAddressProblem(address) : "",

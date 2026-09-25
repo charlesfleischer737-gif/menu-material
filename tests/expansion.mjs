@@ -11,8 +11,10 @@ const root = mkdtempSync(join(tmpdir(), "menu-material-expansion-"));
 process.env.MENU_MATERIAL_DATA_DIR = root;
 process.env.OPENAI_API_KEY = "fixture-only";
 const { handle } = await import("../lib/server/api.ts");
-const { all, one } = await import("../lib/server/core.ts");
+const { all, one, run } = await import("../lib/server/core.ts");
 const { publicMenu } = await import("../lib/server/promotions.ts");
+const { newMenuDocument, newMenuEntry } =
+  await import("../lib/menu-document.ts");
 const { localToInstant, localTime, defaultStyle } =
   await import("../lib/promotions.ts");
 const jpg = readFileSync("public/pasta.jpg"),
@@ -307,6 +309,68 @@ try {
   await call("dishes/" + dish, { ...dishInput, available: false });
   assert.equal((await call("public/" + r.slug)).menu.specials.length, 0);
   await call("dishes/" + dish, dishInput);
+
+  // Specials need the restaurant's real name, like menus.
+  await run("UPDATE restaurants SET name='Your restaurant' WHERE id=?", r.id);
+  assert.match(
+    (
+      await call(
+        "promotions/" + pid + "/publish",
+        { revision: promo.revision },
+        400,
+      )
+    ).error,
+    /restaurant’s name/,
+  );
+  await run("UPDATE restaurants SET name=? WHERE id=?", profile.name, r.id);
+  // A special published before any menu doesn't take the main menu's place:
+  // the first menu published becomes the main menu and still chooses the
+  // menu address, and the special stays on.
+  assert.equal((await call("public/" + r.slug)).menu.sections.length, 0);
+  const firstMenu = await call("menus", {
+    id: crypto.randomUUID(),
+    draft: newMenuDocument({
+      sections: [
+        {
+          id: crypto.randomUUID(),
+          name: "Pasta",
+          description: "",
+          pageBreakBefore: false,
+          items: [
+            newMenuEntry({
+              dishId: dish,
+              name: "Pasta",
+              description: "Tomatoes and basil",
+              price: 1400,
+            }),
+          ],
+        },
+      ],
+    }),
+  });
+  const firstLive = await call(`menus/${firstMenu.id}/publish`, {
+    revision: firstMenu.revision,
+    address: "qa-kitchen-first",
+  });
+  assert(firstLive.isPrimary, "the first menu is the main menu");
+  assert.equal(
+    (await call("state")).restaurant.slug,
+    "qa-kitchen-first",
+    "the first menu still chooses the address",
+  );
+  const withMenu = (await call("public/" + r.slug)).menu;
+  assert.equal(withMenu.documentId, firstMenu.id, "old links redirect");
+  assert.equal(withMenu.sections.length, 1);
+  assert.equal(withMenu.specials.length, 1);
+  // Taking the only menu offline leaves the special open to guests.
+  await call(`menus/${firstMenu.id}/unpublish`, {
+    revision: firstLive.revision,
+    confirmed: true,
+  });
+  const specialsLeft = (await call("public/qa-kitchen-first")).menu;
+  assert.equal(specialsLeft.sections.length, 0);
+  assert.equal(specialsLeft.specials.length, 1);
+  assert.equal(specialsLeft.restaurant.name, profile.name);
   cookie = foreignCookie;
   await call("promotions/" + pid, undefined, 404);
   await call(

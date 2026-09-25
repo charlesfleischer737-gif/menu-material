@@ -192,6 +192,25 @@ async function publication(r: Row, documentId: string, draft: MenuDocument) {
     },
   };
 }
+/** The menu address shows only specials: a stand-in with no dishes. */
+const specialsOnly = (published: string | null) =>
+  !!published && !JSON.parse(published).sections?.length;
+/** A stand-in with no dishes, so live specials stay open to guests. */
+function specialsPage(r: Row, snapshot: string | null) {
+  return JSON.stringify({
+    restaurant: snapshot
+      ? JSON.parse(snapshot).restaurant
+      : {
+          name: r.name,
+          cuisine: r.cuisine,
+          currency: r.currency,
+          logoId: null,
+          orderingUrl: r.ordering_url,
+          style: publicBrandStyle(JSON.parse(r.style || "{}")),
+        },
+    sections: [],
+  });
+}
 export async function publicMenuDocuments(rid: string) {
   return (
     await all(
@@ -970,7 +989,11 @@ export async function menuDocumentsRoute(req: Request, p: string[], r: Row) {
     const draft = menuDocumentSchema.parse(JSON.parse(row.draft));
     // Check before choosing an address, so a blocked publish changes nothing.
     await assertMenuReady(r, draft);
-    await firstPublicationAddress(r, b.address || undefined);
+    // A special published before any menu leaves a stand-in with no dishes;
+    // the first real menu still chooses the address (old links redirect).
+    const addressed = specialsOnly(r.published) ? { ...r, published: null } : r;
+    await firstPublicationAddress(addressed, b.address || undefined);
+    r.slug = addressed.slug;
     const content = await publication(r, row.id, draft),
       serialized = JSON.stringify(content),
       t = now(),
@@ -988,10 +1011,11 @@ export async function menuDocumentsRoute(req: Request, p: string[], r: Row) {
         .bind(hid, t, row.id, t, b.revision),
       // Resolve the main menu inside the transaction, after any concurrent
       // choice. A main menu taken offline (-1) becomes main again; one
-      // published while nothing else is live leaves that memory in place.
+      // published while no menu is live (at most a specials-only page with
+      // no dishes) leaves that memory in place.
       db()
         .prepare(
-          "UPDATE menu_documents SET is_primary=CASE WHEN id=? THEN 1 WHEN is_primary=-1 THEN -1 ELSE 0 END WHERE restaurant_id=? AND EXISTS(SELECT 1 FROM menu_documents WHERE id=? AND published_at=? AND revision=? AND (is_primary<>0 OR (SELECT published FROM restaurants WHERE id=?) IS NULL))",
+          "UPDATE menu_documents SET is_primary=CASE WHEN id=? THEN 1 WHEN is_primary=-1 THEN -1 ELSE 0 END WHERE restaurant_id=? AND EXISTS(SELECT 1 FROM menu_documents WHERE id=? AND published_at=? AND revision=? AND (is_primary<>0 OR (SELECT COALESCE(json_array_length(published,'$.sections'),0) FROM restaurants WHERE id=?)=0))",
         )
         .bind(row.id, r.id, row.id, t, b.revision, r.id),
       db()
@@ -1083,12 +1107,24 @@ export async function menuDocumentsRoute(req: Request, p: string[], r: Row) {
           "UPDATE menu_documents SET published=NULL,published_revision=NULL,published_at=NULL,archived_at=?,revision=revision+1,updated_at=? WHERE id=? AND restaurant_id=? AND revision=? AND archived_at IS NULL RETURNING id",
         )
         .bind(p[2] === "archive" ? t : null, t, row.id, r.id, b.revision),
-      // Derive the fallback from transaction-time state, retaining any other published primary.
+      // Derive the fallback from transaction-time state, retaining any other
+      // published primary. With no menu left live, a special that's still on
+      // keeps the menu address open as a specials-only page.
       db()
         .prepare(
-          `UPDATE restaurants SET published=(SELECT published FROM menu_documents WHERE restaurant_id=? AND published IS NOT NULL AND archived_at IS NULL ORDER BY is_primary DESC,updated_at DESC,id LIMIT 1),published_at=? WHERE id=? AND ${offlineGuard}`,
+          `UPDATE restaurants SET published=COALESCE((SELECT published FROM menu_documents WHERE restaurant_id=? AND published IS NOT NULL AND archived_at IS NULL ORDER BY is_primary DESC,updated_at DESC,id LIMIT 1),CASE WHEN EXISTS(SELECT 1 FROM promotions WHERE restaurant_id=? AND published IS NOT NULL AND sold_out=0 AND ends_at>?) THEN CASE WHEN COALESCE(json_array_length(published,'$.sections'),-1)=0 THEN published ELSE ? END END),published_at=? WHERE id=? AND ${offlineGuard}`,
         )
-        .bind(r.id, t, r.id, row.id, r.id, b.revision + 1),
+        .bind(
+          r.id,
+          r.id,
+          t,
+          specialsPage(r, row.published),
+          t,
+          r.id,
+          row.id,
+          r.id,
+          b.revision + 1,
+        ),
       // A main menu taken offline is remembered (-1) and becomes main again
       // when it's republished, unless the owner chooses another main menu
       // first. Only the owner's own choice is remembered, not a fallback.
