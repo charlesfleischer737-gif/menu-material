@@ -14,6 +14,16 @@ const fontPaths: Record<MenuFont, string> = {
   display: "/fonts/social/BarlowCondensed-Bold.ttf",
   italic: "/fonts/social/CormorantGaramond-Italic.ttf",
 };
+/**
+ * Characters that locale number formats use but the menu fonts lack: the
+ * full-width yen of Japanese prices, the narrow and thin no-break spaces of
+ * French ones ("1 200,00 €"), and invisible direction marks.
+ */
+const printable = (text: string) =>
+  text
+    .replace(/￥/g, "¥")
+    .replace(/[ -  ]/g, " ")
+    .replace(/[‎‏؜]/g, "");
 const fonts = new Map<string, Promise<ArrayBuffer>>();
 function fontBytes(path: string) {
   if (!fonts.has(path))
@@ -72,11 +82,12 @@ export async function renderDesignedMenuPdf(
     entries.map(([key, font]) => [key, new Set(font.getCharacterSet())]),
   );
   const layout = composeMenu(menu, (text, font, size) =>
-    embedded[font].widthOfTextAtSize(text, size),
+    embedded[font].widthOfTextAtSize(printable(text), size),
   );
   for (const page of layout.pages)
     for (const el of page.elements)
       if (el.kind === "text") {
+        el.text = printable(el.text);
         const missing = [...el.text].find(
           (ch) => ch.trim() && !charsets[el.font].has(ch.codePointAt(0)!),
         );

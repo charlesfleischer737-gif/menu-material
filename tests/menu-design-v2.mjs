@@ -549,6 +549,31 @@ await assert.rejects(
   () => renderDesignedMenuPdf(unsupported),
   /cannot display/,
 );
+// Japanese and French prices use a full-width yen and narrow no-break spaces
+// that the menu fonts lack; the PDF prints characters the fonts have.
+for (const [language, currency, expected] of [
+  ["ja", "JPY", "¥1,200"],
+  ["fr", "EUR", "1 200,00 €"],
+]) {
+  const localMenu = {
+    ...newMenuDocument({ language, sections: content(3) }),
+    restaurant: { ...restaurant, currency },
+  };
+  localMenu.sections[0].items[0].price = 120000;
+  const localPdf = await renderDesignedMenuPdf(localMenu);
+  const texts = localPdf.layout.pages
+    .flatMap((page) => page.elements)
+    .filter((el) => el.kind === "text")
+    .map((el) => el.text.replace(/ /g, " "));
+  assert(
+    texts.includes(expected),
+    `${language}: the price stays on one line: ${JSON.stringify(texts)}`,
+  );
+  assert(
+    !texts.some((text) => /[￥ ]/.test(text)),
+    `${language} prints only characters the fonts have`,
+  );
+}
 writeFileSync(`${root}/collection.jpg`, collection.toBuffer("image/jpeg"));
 writeFileSync(
   `${root}/report.json`,
