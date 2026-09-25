@@ -1,6 +1,6 @@
 import assert from "node:assert/strict";
 import { scryptSync } from "node:crypto";
-import { mkdtempSync, rmSync } from "node:fs";
+import { mkdtempSync, readFileSync, rmSync } from "node:fs";
 import { tmpdir } from "node:os";
 import { join } from "node:path";
 const root = mkdtempSync(join(tmpdir(), "menu-material-account-security-"));
@@ -16,11 +16,23 @@ const { handle } = await import("../lib/server/api.ts");
 const { caller } = await import("../lib/server/safeguards.ts");
 const { digest, one, run } = await import("../lib/server/core.ts");
 
-const webhooks = [];
-globalThis.fetch = async (url, init = {}) => {
-  if (String(url).startsWith("https://hooks.example.test/")) {
-    webhooks.push(JSON.parse(init.body));
+const photo = readFileSync("public/pasta.jpg");
+let imageCalls = 0,
+  imagesFail = false;
+globalThis.fetch = async (url) => {
+  if (String(url).startsWith("https://hooks.example.test/"))
     return new Response("ok");
+  if (String(url).startsWith("https://api.openai.com/v1/images/")) {
+    imageCalls++;
+    return imagesFail
+      ? Response.json(
+          { error: { message: "Fixture failure" } },
+          { status: 400 },
+        )
+      : Response.json({
+          data: [{ b64_json: photo.toString("base64") }],
+          usage: {},
+        });
   }
   if (String(url).startsWith("https://api.openai.com/v1/responses"))
     return Response.json({
@@ -426,8 +438,142 @@ try {
   );
   checks++;
 
+  // 4. "5 free images, once per account": on the free plan a correction
+  // reported as still wrong goes to the team, and a queued correction can't
+  // be cancelled for an image back. A correction the service fails still
+  // gives one back, and Pro keeps its automatic restorations.
+  const free = await signup("free@example.test", "Free Kitchen", "192.0.2.60");
+  const freeOpts = { cookie: free.cookie, ip: "192.0.2.60" };
+  const freeRid = (await expect("state", 200, freeOpts)).json.restaurant.id;
+  await run(
+    "UPDATE restaurants SET daily_budget_cents=100000 WHERE id=?",
+    freeRid,
+  );
+  const pasta = (
+    await expect("dishes", 200, {
+      body: { name: "Pasta", description: "Tomato pasta", confirmed: true },
+      ...freeOpts,
+    })
+  ).json.id;
+  const upload = new FormData();
+  upload.set("file", new File([photo], "pasta.jpg", { type: "image/jpeg" }));
+  upload.set(
+    "normalized",
+    new File([photo], "dish.jpg", { type: "image/jpeg" }),
+  );
+  upload.set("dishId", pasta);
+  const source = (await expect("assets", 201, { body: upload, ...freeOpts }))
+    .json.id;
+  const remaining = async () =>
+    (await expect("state", 200, freeOpts)).json.remaining;
+  async function settled(jobId, status = "completed") {
+    for (let n = 0; n < 5; n++) {
+      offset += 31000;
+      await expect("jobs/tick", 200, { body: {}, ...freeOpts });
+      const state = (await expect("state", 200, freeOpts)).json;
+      const output = state.outputs.find(
+        (o) => o.job_id === jobId && o.status === status,
+      );
+      if (output) return output.asset_id;
+    }
+    throw new Error(`Job ${jobId} never became ${status}`);
+  }
+  async function reportedPhoto() {
+    const job = await expect("jobs", 202, {
+      body: {
+        dishId: pasta,
+        sourceId: source,
+        requestKey: crypto.randomUUID(),
+        candidateCount: 1,
+      },
+      ...freeOpts,
+    });
+    const asset = await settled(job.json.id);
+    await expect(`photo-corrections/${asset}`, 200, {
+      body: { reason: "ingredients", detail: "Wrong garnish" },
+      ...freeOpts,
+    });
+    const created = await expect(`photo-corrections/${asset}/create`, 200, {
+      body: {},
+      ...freeOpts,
+    });
+    return { asset, correction: created.json.jobId };
+  }
+  assert.equal(await remaining(), 5);
+  for (let n = 0; n < 4; n++) {
+    const { correction } = await reportedPhoto();
+    const corrected = await settled(correction);
+    const again = await expect(`photo-corrections/${corrected}`, 200, {
+      body: { reason: "portion", detail: "Still too small" },
+      ...freeOpts,
+    });
+    assert.equal(again.json.status, "review");
+  }
+  assert.equal(await remaining(), 1, "8 images made, 4 of the 5 used");
+  const queued = await reportedPhoto();
+  const refused = await expect(`jobs/${queued.correction}/cancel`, 409, {
+    body: {},
+    ...freeOpts,
+  });
+  assert.match(refused.json.error, /can’t be cancelled/);
+  await settled(queued.correction);
+  assert.equal(await remaining(), 0);
+  // An owner cancellation recorded before this change is not a failure.
+  await run(
+    "UPDATE outputs SET status='failed',error='Cancelled before creation. No images used.' WHERE job_id=?",
+    queued.correction,
+  );
+  await run("UPDATE jobs SET status='failed' WHERE id=?", queued.correction);
+  await run(
+    "UPDATE photo_corrections SET status='queued' WHERE correction_job_id=?",
+    queued.correction,
+  );
+  const cancelledView = await expect(
+    `photo-corrections/${queued.asset}`,
+    200,
+    freeOpts,
+  );
+  assert.equal(cancelledView.json.status, "review");
+  assert.equal(await remaining(), 0);
+  // The service failing to make a correction gives the image back.
+  await run("UPDATE restaurants SET allowance=allowance+1 WHERE id=?", freeRid);
+  const failing = await reportedPhoto();
+  imagesFail = true;
+  await settled(failing.correction, "failed");
+  imagesFail = false;
+  const failedView = await expect(
+    `photo-corrections/${failing.asset}`,
+    200,
+    freeOpts,
+  );
+  assert.equal(failedView.json.status, "credited");
+  assert.equal(await remaining(), 1);
+  // On Pro, reporting a correction as still wrong restores automatically.
+  const t = Date.now();
+  await run(
+    "INSERT INTO billing_accounts (restaurant_id,customer_id,subscription_id,status) VALUES (?,'cus_fixture','sub_fixture','active')",
+    freeRid,
+  );
+  await run(
+    "INSERT INTO billing_periods (id,restaurant_id,subscription_id,invoice_id,starts_at,ends_at,allowance) VALUES ('sub_fixture:1',?,'sub_fixture','in_fixture',?,?,10)",
+    freeRid,
+    t - 86400000,
+    t + 29 * 86400000,
+  );
+  assert.equal(await remaining(), 10);
+  const pro = await reportedPhoto();
+  const proCorrected = await settled(pro.correction);
+  const proReport = await expect(`photo-corrections/${proCorrected}`, 200, {
+    body: { reason: "portion", detail: "Still too small" },
+    ...freeOpts,
+  });
+  assert.equal(proReport.json.status, "credited");
+  assert.equal(await remaining(), 10);
+  assert.equal(imageCalls, 14);
+  checks++;
+
   console.log(
-    `PASS: ${checks} account security checks: per-network limits on the IPv6 /64 with no site-wide lockout, a per-account sign-in slowdown, versioned password hashes, sliding sessions, revocable reset and setup links, the Pro waitlist;`,
+    `PASS: ${checks} account security checks: per-network limits on the IPv6 /64 with no site-wide lockout, a per-account sign-in slowdown, versioned password hashes, sliding sessions, revocable reset and setup links, the Pro waitlist, once-only free images;`,
   );
 } finally {
   rmSync(root, { recursive: true, force: true });

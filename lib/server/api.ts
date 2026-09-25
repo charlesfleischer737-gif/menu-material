@@ -1520,11 +1520,18 @@ async function route(req: Request) {
       }
       if (p[1] && p[2] === "cancel") {
         const job = await one(
-          "SELECT id FROM jobs WHERE id=? AND restaurant_id=?",
+          "SELECT id,credit_period FROM jobs WHERE id=? AND restaurant_id=?",
           z.string().uuid().parse(p[1]),
           r.id,
         );
         assert(job, 404, "Generation not found.");
+        // A correction uses none of the owner's images; cancelling it must
+        // not count as a failed correction that gives one back.
+        assert(
+          !String(job.credit_period).startsWith("complimentary:"),
+          409,
+          "A complimentary correction can’t be cancelled once requested. It doesn’t use any of your images.",
+        );
         const cancelled = await run(
           "UPDATE outputs SET status='failed',error='Cancelled before creation. No images used.',lease_until=0 WHERE job_id=? AND status='queued' AND response_id IS NULL AND lease_until<?",
           job.id,
