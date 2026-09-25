@@ -40,7 +40,7 @@ import {
   type PhotoFormat,
 } from "@/lib/studio";
 import { canvasBlob, drawPhoto, imageBitmap } from "@/lib/photo-export";
-import { photoLineage } from "@/lib/photo-destinations";
+import { statePhotoHistory } from "@/lib/photo-destinations";
 import { lookProfile } from "@/lib/photo-pack";
 import { PhotoFinishSheet } from "./photo-finish-sheet";
 import { PhotoPackSheet } from "./photo-pack-sheet";
@@ -194,6 +194,14 @@ export default function PhotoStudio({
         ? ""
         : dish.name
       : b.name || "";
+  // The shown photo's own history, never the editable draft, decides its size
+  // and whether it can go to delivery apps and Google (illustrations can't).
+  // Only a version saved a moment ago, before the page reloads, borrows the
+  // draft's size for its frame.
+  const history = asset ? statePhotoHistory(state, asset) : null,
+    resultFormat: PhotoFormat =
+      history?.format || (b.format in formats ? b.format : "menu"),
+    illustrated = !!history && !history.fromPhoto;
   const running = job && ["queued", "processing"].includes(job.status),
     sentTimes: number[] = state.outputs
       .filter(
@@ -206,7 +214,7 @@ export default function PhotoStudio({
     creating =
       !!running ||
       ["Creating your photo", "Applying your changes"].includes(busy),
-    format = formats[b.format as PhotoFormat] || formats.menu;
+    format = formats[resultFormat];
   const inspirationIds = activeInspirationIds(b, state.restaurant);
   const inspirationId = inspirationIds[0] || "";
   const inspirationAvailability = useInspirationAvailability(
@@ -500,7 +508,12 @@ export default function PhotoStudio({
     const session = {
       id: crypto.randomUUID(),
       assetId,
-      format: (b.format in formats ? b.format : "menu") as PhotoFormat,
+      // A saved photo is adjusted from its own size; an original from the
+      // size chosen for it.
+      format:
+        assetId === resultId
+          ? resultFormat
+          : ((b.format in formats ? b.format : "menu") as PhotoFormat),
       adjustments: { ...emptyAdjustments },
     };
     quickTrigger.current =
@@ -735,7 +748,7 @@ export default function PhotoStudio({
       ...recipe,
       ...(reuse
         ? {
-            format: b.format,
+            format: resultFormat,
             referenceId: resultRecipe?.referenceId,
             savedLookId: resultRecipe?.savedLookId,
             savedLookName: resultRecipe?.savedLookName,
@@ -792,13 +805,12 @@ export default function PhotoStudio({
     return false;
   }
   if (!ready) return <DraftRecovery store={draftStore} title="Photo Studio" />;
-  const lineage = photoLineage(state, asset);
   const resultStyle = lookProfile(
-    lineage.lookId || b.look,
+    history?.lookId || b.look,
     state.restaurant.style,
   );
   // Description-only illustrations stay out of delivery apps and Google.
-  const resultFromPhoto = b.mode === "photo";
+  const resultFromPhoto = !!history?.fromPhoto;
   const failedRetry = !state.aiConnected
     ? "Photo creation is temporarily unavailable. Your work is saved."
     : state.remaining < 1
@@ -819,7 +831,7 @@ export default function PhotoStudio({
   const shownLabel =
     before || resultIsOriginal
       ? "Your original"
-      : b.mode === "description"
+      : illustrated
         ? illustration
         : asset?.kind === "edited"
           ? "Adjusted version"
@@ -836,7 +848,7 @@ export default function PhotoStudio({
     ? ""
     : resultIsOriginal
       ? "Your original"
-      : b.mode === "description"
+      : illustrated
         ? illustration
         : "";
   const versions = state.assets.filter(
@@ -1145,6 +1157,11 @@ export default function PhotoStudio({
                             const context = await api(`assets/${a.id}/context`);
                             change({
                               ...capturedPhotoRecipe(context),
+                              // A saved crop keeps its own size, not the
+                              // size of the request it was cropped from.
+                              ...(context.jobId
+                                ? { format: statePhotoHistory(state, a).format }
+                                : {}),
                               resultId: a.id,
                               jobId: context.jobId || "",
                               step: 4,
@@ -1468,7 +1485,7 @@ export default function PhotoStudio({
           name={dishName}
           fromPhoto={resultFromPhoto}
           approved={!!asset?.approved_at}
-          initialFormat={b.format}
+          initialFormat={resultFormat}
           style={resultStyle}
           onApprove={() => approve(true)}
           onPack={() => {
