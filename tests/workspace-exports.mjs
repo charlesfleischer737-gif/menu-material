@@ -70,6 +70,10 @@ globalThis.fetch = async (url) => {
     return new Response("Image not found.", { status: 404 });
   if (path === "/api/assets/wide-logo")
     return new Response(wideLogo, { headers: { "Content-Type": "image/png" } });
+  if (path === "/api/assets/phone-burger")
+    return new Response(readFileSync("public/burger-phone-original.jpg"), {
+      headers: { "Content-Type": "image/jpeg" },
+    });
   if (path.startsWith("/api/assets/"))
     return new Response(path.includes("pasta") ? pasta : jpg, {
       headers: { "Content-Type": "image/jpeg" },
@@ -287,6 +291,24 @@ for (const [photoId, channel, feedShape] of [
   checks++;
 }
 PostKit.prototype.photo = drawPhoto;
+// A busy phone photo shown whole on a Story keeps its dish clear of the bars.
+for (const template of ["editorial", "afterdark"])
+  for (const textMode of ["minimal", "photo"]) {
+    const draft = {
+      ...base,
+      ...applyPostTemplate(base, template),
+      textMode,
+      items: [{ ...base.items[0], photoId: "phone-burger" }],
+    };
+    const result = await renderPost(canvas(), draft, restaurant, "story");
+    assert(result.dishBoxes.length);
+    for (const box of result.dishBoxes)
+      assert(
+        box.y >= 269 && box.y + box.h <= 1541,
+        `${template}/${textMode}: the dish sits between Instagram's bars ${JSON.stringify(box)}`,
+      );
+    checks++;
+  }
 // Ordinary prices never block the Daily special: a long one leaves the seal.
 assert.equal(money(1850, "CAD"), "$18.50", "A narrow symbol, not CA$");
 for (const [currency, price] of [

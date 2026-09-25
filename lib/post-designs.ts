@@ -395,6 +395,7 @@ function photos(d: Design, box: Box, o: PhotoOptions = {}) {
       radius,
       keyline: undefined,
       maxCrop: 0.3,
+      band: undefined,
     });
     first ||= p;
   }
@@ -402,6 +403,18 @@ function photos(d: Design, box: Box, o: PhotoOptions = {}) {
 }
 function minPhoto(d: Design) {
   return d.images.length > 1 ? 380 : 420;
+}
+/**
+ * On a Story, a photo shown whole sits in the band clear of Instagram's bars,
+ * between the words (`above` and `below` them, gaps included). Words that
+ * leave it too little room share the band with it instead.
+ */
+function storyBand(d: Design, above: number, below: number) {
+  if (d.format !== "story") return undefined;
+  const { top, bottom } = d.safe;
+  return bottom - below - (top + above) >= minPhoto(d)
+    ? { top: top + above, bottom: bottom - below }
+    : { top, bottom };
 }
 function photoBackdrop(d: Design) {
   return rgbToHex(d.analyses[0].backdrop);
@@ -609,7 +622,15 @@ async function editorial(d: Design) {
   ];
   const blockH = stackHeight(pieces);
   let edge = plan.edge;
-  const photo = photos(d, plan.box, plan.options);
+  const taken = blockH ? blockH + 48 : 0;
+  const photo = photos(d, plan.box, {
+    ...plan.options,
+    band: storyBand(
+      d,
+      (brand ? brand.h + 40 : 0) + (edge === "top" ? taken : 0),
+      edge === "bottom" ? taken : 0,
+    ),
+  });
   if (
     blockH &&
     d.placement === "auto" &&
@@ -919,7 +940,15 @@ async function afterdark(d: Design) {
   ];
   const blockH = stackHeight(pieces) + (brand ? brand.h + 34 : 0);
   let edge = plan.edge;
-  const photo = photos(d, plan.box, plan.options);
+  const taken = blockH ? blockH + 48 : 0;
+  const photo = photos(d, plan.box, {
+    ...plan.options,
+    band: storyBand(
+      d,
+      edge === "top" ? taken : 0,
+      edge === "bottom" ? taken : 0,
+    ),
+  });
   if (
     blockH &&
     d.placement === "auto" &&

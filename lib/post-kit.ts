@@ -381,6 +381,8 @@ export function placePhoto(
     minCover?: number;
     /** Shows a dish on a plain backdrop smaller, the backdrop extended all round. */
     shrink?: number;
+    /** Where a photo shown whole goes, such as a Story's band clear of the bars and words. */
+    band?: { top: number; bottom: number };
   } = {},
 ): Placement {
   const iw = a.width,
@@ -538,12 +540,15 @@ export function placePhoto(
       });
   }
   if (kept < (options.minCover ?? 0)) {
-    const s = Math.min(box.w / iw, box.h / ih);
+    const top = Math.max(box.y, options.band?.top ?? box.y),
+      room =
+        Math.min(box.y + box.h, options.band?.bottom ?? box.y + box.h) - top;
+    const s = Math.min(box.w / iw, room / ih);
     return finish(
       "contain",
       s,
       box.x + (box.w - iw * s) * (options.anchor?.x ?? 0.5),
-      box.y + (box.h - ih * s) * (options.anchor?.y ?? 0.5),
+      top + (room - ih * s) * (options.anchor?.y ?? 0.5),
       false,
     );
   }
@@ -1269,6 +1274,7 @@ export class PostKit {
       minKept?: number;
       minCover?: number;
       shrink?: number;
+      band?: { top: number; bottom: number };
       fade?: { top?: number; bottom?: number };
       backdrop?: string;
       quiet?: boolean;
@@ -1377,10 +1383,10 @@ export class PostKit {
         left: p.x - box.x,
         right: box.x + box.w - p.x - p.w,
       };
-      const feather = (edge: Edge) => {
+      const feather = (edge: Edge, most = 150) => {
         const f =
           Math.min(
-            150,
+            most,
             (edge === "top" || edge === "bottom" ? p.h : p.w) * 0.22,
             Math.max(28, room[edge] * 1.2),
           ) * s;
@@ -1403,8 +1409,15 @@ export class PostKit {
           if (p.extend[e]) feather(e);
         });
       else if (plainAll)
-        (["top", "bottom", "left", "right"] as Edge[]).forEach(feather);
-      if (p.mode === "contain" && !plainAll) {
+        (["top", "bottom", "left", "right"] as Edge[]).forEach((e) =>
+          feather(e),
+        );
+      // A whole photo set in a band softens into its own copy where they meet.
+      else if (o.band)
+        (["top", "bottom", "left", "right"] as Edge[]).forEach((e) => {
+          if (room[e] > 0.5) feather(e, 56);
+        });
+      if (p.mode === "contain" && !plainAll && !o.band) {
         lc.save();
         lc.shadowColor = "rgba(0,0,0,0.5)";
         lc.shadowBlur = this.px(56);
