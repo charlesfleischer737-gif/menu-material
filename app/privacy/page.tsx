@@ -102,9 +102,13 @@ export default function Privacy() {
         <p>
           Photos and drafts are retained to let you return to your work.
           Archiving a draft hides it from the active list; it does not delete
-          the draft or its photos. Account and workspace removal requests are
-          handled by an administrator. There is no automatic account-deletion
-          screen yet.
+          the draft or its photos. You can delete your account in Settings,
+          under Details: it permanently removes your restaurant’s workspace,
+          including dishes, photos, drafts, menus (published ones too), posts
+          and captions, and signs you out everywhere. Copies you already
+          downloaded or shared can’t be recalled. A record of AI usage costs,
+          without your photos or text, is kept for accounting. Accounts with
+          billing records are removed by an administrator.
         </p>
         <p>
           The browser uses a sign-in cookie, workspace preferences and a
