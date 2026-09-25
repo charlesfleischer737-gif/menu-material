@@ -12,18 +12,23 @@ import Landing from "./menu-material-landing";
 import Brand from "./brand";
 import WorkspacePlaceholder from "./workspace-placeholder";
 import { api, type Row } from "@/lib/client";
+import { loadFresh, reloadOnPreloadError } from "@/lib/chunk-reload";
 import { watchJobs } from "@/lib/job-progress";
 import { rememberScroll } from "@/lib/scroll-memory";
-const GuestStudio = lazy(() => import("./guest-studio"));
-const PlanDialog = lazy(() => import("./plan-dialog"));
-const CoreWorkspace = lazy(() => import("./core-workspace"));
+// loadFresh reloads the page when a tab from before a deploy asks for a
+// screen's file that the deploy removed.
+const GuestStudio = lazy(() => loadFresh(() => import("./guest-studio")));
+const PlanDialog = lazy(() => loadFresh(() => import("./plan-dialog")));
+const CoreWorkspace = lazy(() => loadFresh(() => import("./core-workspace")));
 const SettingsPanel = lazy(() =>
-  import("./account-panels").then((m) => ({
+  loadFresh(() => import("./account-panels")).then((m) => ({
     default: m.SettingsPanel,
   })),
 );
 const Admin = lazy(() =>
-  import("./account-panels").then((m) => ({ default: m.Admin })),
+  loadFresh(() => import("./account-panels")).then((m) => ({
+    default: m.Admin,
+  })),
 );
 // Drops a one-time query parameter from the address once it has been handled.
 function forgetParam(name: string) {
@@ -109,6 +114,8 @@ export default function HomeClient({ hasSession }: { hasSession: boolean }) {
   useEffect(() => {
     void load();
   }, [load]);
+  // Any other code-split file that fails to load after a deploy.
+  useEffect(() => reloadOnPreloadError(), []);
   useEffect(() => {
     if (state.user?.id) void api("events", { kind: "visit" }).catch(() => {});
   }, [state.user?.id]);

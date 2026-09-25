@@ -6,6 +6,7 @@ import {
   useState,
   type ComponentType,
 } from "react";
+import { isChunkLoadError, reloadForNewVersion } from "@/lib/chunk-reload";
 import { deferredResource } from "@/lib/deferred-resource";
 import WorkspacePlaceholder from "./workspace-placeholder";
 
@@ -19,7 +20,9 @@ export function deferredWorkspace<Props extends object>(
     const [Loaded, setLoaded] = useState(
       () => resource.peek()?.default || null,
     );
-    const [failed, setFailed] = useState(false);
+    // "update": this screen's file is gone after a deploy, and a reload
+    // (which the loader tries once by itself) is what brings it back.
+    const [failed, setFailed] = useState<false | "network" | "update">(false);
     const [attempt, setAttempt] = useState(0);
     const root = useRef<HTMLDivElement>(null);
     const returnFocus = useRef(false);
@@ -36,8 +39,12 @@ export function deferredWorkspace<Props extends object>(
             setLoaded(() => module.default);
           }
         },
-        () => {
-          if (active) setFailed(true);
+        (error) => {
+          if (!active) return;
+          const stale = isChunkLoadError(error) && navigator.onLine !== false;
+          // While the page reloads, keep showing that the screen is opening.
+          if (stale && reloadForNewVersion()) return;
+          setFailed(stale ? "update" : "network");
         },
       );
       return () => {
@@ -83,13 +90,24 @@ export function deferredWorkspace<Props extends object>(
           <WorkspacePlaceholder
             title={name}
             contentOnly={contentOnly}
-            failed={failed}
+            failed={!!failed}
             message={
-              failed
-                ? `${name} couldn’t open. Check your connection and try again.`
-                : `Opening ${name}…`
+              failed === "update"
+                ? `A new version of Menu Material is available. Reload the page to open ${name}.`
+                : failed
+                  ? `${name} couldn’t open. Check your connection and try again.`
+                  : `Opening ${name}…`
+            }
+            failureDetail={
+              failed === "update"
+                ? "Your saved work is kept. Trying again reloads the page."
+                : undefined
             }
             onRetry={() => {
+              if (failed === "update") {
+                location.reload();
+                return;
+              }
               setFailed(false);
               setAttempt((value) => value + 1);
             }}
