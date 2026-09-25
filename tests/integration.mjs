@@ -446,24 +446,21 @@ try {
       .every((o) => /interrupted/.test(o.error)),
   );
   assert.equal(state.remaining, 5, "dropped images are not counted");
-  // A direct result cannot be fetched again later, so an image that arrives
-  // while storage is full fails at once and is not counted.
+  // A direct result cannot be fetched again later, so a full workspace is
+  // refused before any image is paid for, and nothing is counted.
   phase = "success";
   env.WORKSPACE_STORAGE_MB = "0.001";
+  const beforeFull = providerCalls;
   const full = await call(
     "jobs",
     { dishId, requestKey: crypto.randomUUID() },
-    202,
+    413,
   );
+  assert.match(full.error, /storage is full/);
   await call("jobs/tick", {});
   delete env.WORKSPACE_STORAGE_MB;
+  assert.equal(providerCalls, beforeFull, "no image call for a full workspace");
   state = await call("state");
-  assert.equal(state.jobs.find((j) => j.id === full.id).status, "failed");
-  assert(
-    state.outputs
-      .filter((o) => o.job_id === full.id)
-      .every((o) => /storage is full/.test(o.error)),
-  );
   assert.equal(state.remaining, 5, "unsaved images are not counted");
   const independent = new DatabaseSync(join(root, "menu-material.sqlite"));
   assert.equal(

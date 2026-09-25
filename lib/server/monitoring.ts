@@ -271,7 +271,10 @@ async function deliverError(
   const settings = monitoringSettings();
   // 503s are deliberate "not connected" gates or outages readiness already
   // reports, so repeated clicks on a disabled feature cannot fake a burst.
-  if (record.kind !== "client" && record.status !== 503) {
+  // A 4xx, such as the image provider refusing a request, is no server error.
+  const refused =
+    !!record.status && record.status >= 400 && record.status < 500;
+  if (record.kind !== "client" && record.status !== 503 && !refused) {
     const withinBurst = await allowed(
       "monitor:server-errors",
       settings.errorBurstCount - 1,
