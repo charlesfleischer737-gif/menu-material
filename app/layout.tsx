@@ -2,6 +2,7 @@ import type { Metadata } from "next";
 import { config } from "@/lib/server/core";
 import ErrorReporter from "./components/error-reporter";
 import ScrollMemory from "./components/scroll-memory";
+import UpdateRecovery from "./components/update-recovery";
 // Imported here rather than from CSS so the build bundles the font files.
 import "@fontsource-variable/inter/opsz.css";
 import "./globals.css";
@@ -68,6 +69,7 @@ export default function RootLayout({
       <body>
         <ErrorReporter />
         <ScrollMemory />
+        <UpdateRecovery />
         {children}
       </body>
     </html>
