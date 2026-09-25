@@ -659,7 +659,7 @@ try {
   assert.equal(
     requests.at(-1).size,
     "1536x1536",
-    "Flare retains full menu dimensions",
+    "Menu photos stay large enough for a DoorDash crop (1400 × 800 minimum)",
   );
   assert.equal(
     requests.at(-1).form.getAll("image[]").length,

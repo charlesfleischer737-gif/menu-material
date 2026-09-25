@@ -39,6 +39,8 @@ function imageSettings(
   const modern = model.startsWith("gpt-image-2");
   return {
     model,
+    // Squares stay 1536 x 1536 so their DoorDash crop (1536 x 864) meets
+    // DoorDash's 1400 x 800 minimum; exports never enlarge a photo.
     size: ["toast", "door", "doordash", "uber"].includes(format)
       ? modern
         ? "2048x1152"
