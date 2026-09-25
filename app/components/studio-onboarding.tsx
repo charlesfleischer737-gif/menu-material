@@ -9,6 +9,8 @@ import {
 } from "react";
 import { Check, ChevronsLeftRight, Sparkles } from "lucide-react";
 import { styleThumbnail, type PhotoStyle } from "@/lib/photo-styles";
+import { creationProgress, typicalWait } from "@/lib/creation-progress";
+import { serverNow } from "@/lib/server-clock";
 import {
   subscribeWorkerHealth,
   workerHealthServerSnapshot,
@@ -98,19 +100,32 @@ export function StudioCreating({
   source,
   style,
   queued,
-  startedAt,
+  requestedAt,
+  createdAt,
+  sentAt,
+  typicalMs,
   jobId,
   children,
 }: {
   source: string;
   style: PhotoStyle;
   queued: boolean;
-  startedAt?: number;
+  /** When Create was pressed, by this device's clock. */
+  requestedAt?: number;
+  /** When the job was saved, by the server's clock. */
+  createdAt?: number;
+  /** When the image was sent for creation, by the server's clock. */
+  sentAt?: number;
+  /** How long most recent images with these settings took. */
+  typicalMs?: number;
   jobId: string;
   children?: ReactNode;
 }) {
   const fallbackStart = useRef(0);
-  const [elapsed, setElapsed] = useState(0);
+  const [times, setTimes] = useState({
+    queuedFor: 0,
+    sentFor: null as number | null,
+  });
   // Only promise background progress while the background worker checks in.
   const workerHealthy = useSyncExternalStore(
     subscribeWorkerHealth,
@@ -118,13 +133,24 @@ export function StudioCreating({
     workerHealthServerSnapshot,
   );
   useEffect(() => {
-    const start = Number(startedAt) || (fallbackStart.current ||= Date.now());
-    const tick = () => setElapsed(Math.max(0, (Date.now() - start) / 1000));
+    const tick = () => {
+      const local = Date.now(),
+        server = serverNow();
+      const queuedFor = createdAt
+        ? server - createdAt
+        : local - (Number(requestedAt) || (fallbackStart.current ||= local));
+      setTimes({
+        queuedFor,
+        // A running image without a send time counts from its request.
+        sentFor: sentAt ? server - sentAt : queued ? null : queuedFor,
+      });
+    };
     tick();
     const timer = window.setInterval(tick, 1000);
     return () => clearInterval(timer);
-  }, [startedAt, jobId]);
-  const takingLonger = elapsed > 120;
+  }, [requestedAt, createdAt, sentAt, queued, jobId]);
+  const takingLonger = times.queuedFor > 120000;
+  const progress = creationProgress({ ...times, typical: typicalMs });
   // Time-based shimmer is decoration only; status comes from the saved job.
   return (
     <div className="st-studio st-creating" aria-busy="true">
@@ -143,6 +169,28 @@ export function StudioCreating({
             {source ? "Your original" : "Style example"}
           </span>
           <span className="st-develop" aria-hidden="true" />
+          {/* On the photo, so it stays in view on a phone as well. */}
+          <div className="st-progress-card">
+            <div className="st-progress-head" aria-hidden="true">
+              <b>{progress.stage}</b>
+              {progress.time && <span>{progress.time}</span>}
+            </div>
+            <div
+              className="st-progress"
+              role="progressbar"
+              aria-label="Photo progress"
+              aria-valuemin={0}
+              aria-valuemax={100}
+              aria-valuenow={Math.round(progress.value * 20) * 5}
+              aria-valuetext={progress.time || progress.stage}
+            >
+              <span
+                style={{
+                  transform: `translateX(${(progress.value - 1) * 100}%)`,
+                }}
+              />
+            </div>
+          </div>
         </div>
         <div className="st-stage-foot">
           <span>
@@ -169,7 +217,7 @@ export function StudioCreating({
                 : "Your photo is saved. The studio starts in a moment."
               : takingLonger
                 ? "Still creating. Some images take a little longer."
-                : "Creation time varies with the image and service demand."}
+                : `Most photos are ready in ${typicalWait(typicalMs)}.`}
           </p>
         </div>
         <div className="st-creating-look">
@@ -179,9 +227,6 @@ export function StudioCreating({
             <b>{style.name}</b>
           </div>
           <Sparkles size={16} aria-hidden="true" />
-        </div>
-        <div className="st-progress" aria-hidden="true">
-          <span />
         </div>
         <p className="st-result-copy">
           {workerHealthy

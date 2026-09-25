@@ -370,10 +370,41 @@ try {
     [[workerJob.id, "queued"]],
   );
   checks++;
-  await call("internal/tick", {}, 200, {
+  // During the worker's render the page learns when it was sent, a typical
+  // time for its settings and the server's clock, for the progress bar.
+  holdImages = true;
+  const workerRender = call("internal/tick", {}, 200, {
     headers: { authorization: "Bearer fixture-runner-secret" },
   });
+  await until(() => held.length === 1);
+  const during = await call("state");
+  const sentOutput = during.outputs.find((o) => o.job_id === workerJob.id);
+  const runningJob = during.jobs.find((j) => j.id === workerJob.id);
+  assert.equal(runningJob.status, "processing");
+  assert(sentOutput.submitted_at <= Date.now());
+  assert(Math.abs(during.serverTime - Date.now()) < 1000);
+  assert(runningJob.estimate_ms >= 10000 && runningJob.estimate_ms <= 150000);
+  checks++;
+  offset += 30000;
+  held.shift()();
+  await workerRender;
+  holdImages = false;
   assert.equal(submitted, beforeWorker + 1, "The worker starts them");
+  checks++;
+  // Its time from sending to saving is kept for later estimates.
+  const timing = JSON.parse(
+    (
+      await one(
+        "SELECT details FROM events WHERE kind='image_completed' AND entity_id=?",
+        sentOutput.id,
+      )
+    ).details,
+  );
+  assert(timing.renderMs >= 30000 && timing.renderMs < 35000);
+  assert.deepEqual(
+    [timing.model, timing.quality, timing.size],
+    ["gpt-image-2.5-flare", "high", "1536x1536"],
+  );
   checks++;
   assert.equal(
     (await one("SELECT status FROM jobs WHERE id=?", workerJob.id)).status,

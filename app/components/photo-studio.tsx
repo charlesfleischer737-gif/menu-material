@@ -187,6 +187,14 @@ export default function PhotoStudio({
     resultId = b.resultId || output?.asset_id,
     asset = state.assets.find((a: Row) => a.id === resultId);
   const running = job && ["queued", "processing"].includes(job.status),
+    sentTimes: number[] = state.outputs
+      .filter(
+        (o: Row) =>
+          o.job_id === b.jobId &&
+          o.submitted_at &&
+          !["completed", "failed"].includes(o.status),
+      )
+      .map((o: Row) => Number(o.submitted_at)),
     creating =
       !!running ||
       ["Creating your photo", "Applying your changes"].includes(busy),
@@ -963,7 +971,10 @@ export default function PhotoStudio({
               source={source}
               style={{ ...selected, image: styleImage }}
               queued={!job || job.status === "queued"}
-              startedAt={job?.created_at || b.generationStartedAt}
+              requestedAt={b.generationStartedAt}
+              createdAt={job?.created_at}
+              sentAt={sentTimes.length ? Math.min(...sentTimes) : undefined}
+              typicalMs={job?.estimate_ms}
               jobId={b.jobId}
             >
               {state.outputs
