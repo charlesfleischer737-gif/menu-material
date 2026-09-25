@@ -36,6 +36,7 @@ import {
 } from "@/lib/photo-styles";
 import { orderedOccasions } from "@/lib/studio-occasions";
 import { maximumStyleQueryLength, searchStyles } from "@/lib/studio-search";
+import Kitty from "./kitty";
 import { radioKeys, radioTab } from "./radio-keys";
 
 // Ends the placeholder shimmer and fades the photo in once it has arrived.
@@ -483,7 +484,7 @@ export default function ExploreGallery({
       )}
       {search && !search.styles.length && (
         <div className="ex-empty" role="status">
-          <Search size={24} aria-hidden="true" />
+          <Kitty pose="peek" className="ex-empty-kitty" />
           <h2 className="ex-empty-title">
             No looks match “{text}”{scopeName ? ` in ${scopeName}` : ""}
           </h2>
