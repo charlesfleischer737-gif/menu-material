@@ -699,7 +699,14 @@ export default function PostMaker({
                         onChange={(e) => update({ title: e.target.value })}
                       />
                     </Field>
-                    <Field label="Description for your caption">
+                    <Field
+                      label="Description"
+                      hint={
+                        b.textMode === "full"
+                          ? "In your caption, and on the image while Design includes a short description."
+                          : "In your caption. Design can also show it on the image."
+                      }
+                    >
                       <textarea
                         rows={3}
                         maxLength={2000}
