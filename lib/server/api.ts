@@ -69,6 +69,7 @@ import {
   sameOrigin,
   token,
   viewer,
+  withRenewedSession,
 } from "./core";
 import {
   enqueue,
@@ -578,6 +579,9 @@ async function downloadAsset(
   return new Response(obj.body, { headers: h });
 }
 export async function handle(req: Request) {
+  return withRenewedSession(req, await route(req));
+}
+async function route(req: Request) {
   try {
     const url = new URL(req.url),
       p = url.pathname

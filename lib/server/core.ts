@@ -200,6 +200,13 @@ export async function limit(key: string, max = 20, seconds = 900) {
     "Too many attempts. Please try again in a few minutes.",
   );
 }
+const sessionDays = 7;
+function sessionCookie(req: Request, value: string) {
+  return `menu_material_session=${value}; Path=/; HttpOnly; SameSite=Lax; Max-Age=${sessionDays * 86400}${new URL(req.url).protocol === "https:" ? "; Secure" : ""}`;
+}
+// Sessions in use stay signed in: at most once a day, a session is renewed
+// for another seven days and its cookie is sent again with the response.
+const renewedSessions = new WeakMap<Request, string>();
 export async function viewer(req: Request) {
   const raw = req.headers
     .get("cookie")
@@ -208,11 +215,38 @@ export async function viewer(req: Request) {
     .find((s) => s.startsWith("menu_material_session="))
     ?.split("=")[1];
   if (!raw) return null;
-  return one(
-    "SELECT u.id,u.email,u.role FROM users u JOIN sessions s ON s.user_id=u.id WHERE s.hash=? AND s.expires_at>?",
+  const found = await one(
+    "SELECT u.id,u.email,u.role,s.expires_at FROM users u JOIN sessions s ON s.user_id=u.id WHERE s.hash=? AND s.expires_at>?",
     digest(raw),
     now(),
   );
+  if (!found) return null;
+  const { expires_at: expiresAt, ...user } = found;
+  const renewBefore = now() + (sessionDays - 1) * 86400000;
+  if (expiresAt < renewBefore) {
+    const renewed = await run(
+      "UPDATE sessions SET expires_at=? WHERE hash=? AND expires_at<?",
+      now() + sessionDays * 86400000,
+      digest(raw),
+      renewBefore,
+    );
+    if (renewed.meta.changes) renewedSessions.set(req, raw);
+  }
+  return user;
+}
+export function withRenewedSession(req: Request, res: Response) {
+  const raw = renewedSessions.get(req);
+  // Sign-in and sign-out responses set the cookie themselves.
+  if (!raw || res.headers.get("set-cookie")?.includes("menu_material_session="))
+    return res;
+  try {
+    res.headers.append("Set-Cookie", sessionCookie(req, raw));
+    return res;
+  } catch {
+    const copy = new Response(res.body, res);
+    copy.headers.append("Set-Cookie", sessionCookie(req, raw));
+    return copy;
+  }
 }
 export async function createSession(req: Request, userId: string) {
   const s = token();
@@ -220,10 +254,10 @@ export async function createSession(req: Request, userId: string) {
     "INSERT INTO sessions (hash,user_id,expires_at) VALUES (?,?,?)",
     digest(s),
     userId,
-    now() + 7 * 86400000,
+    now() + sessionDays * 86400000,
   );
   return response({ ok: true }, 200, {
-    "Set-Cookie": `menu_material_session=${s}; Path=/; HttpOnly; SameSite=Lax; Max-Age=604800${new URL(req.url).protocol === "https:" ? "; Secure" : ""}`,
+    "Set-Cookie": sessionCookie(req, s),
   });
 }
 export async function owner(req: Request) {

@@ -14,7 +14,7 @@ let offset = 0;
 Date.now = () => realNow() + offset;
 const { handle } = await import("../lib/server/api.ts");
 const { caller } = await import("../lib/server/safeguards.ts");
-const { one, run } = await import("../lib/server/core.ts");
+const { digest, one, run } = await import("../lib/server/core.ts");
 
 const webhooks = [];
 globalThis.fetch = async (url, init = {}) => {
@@ -234,8 +234,59 @@ try {
     ip: "192.0.2.31",
   });
 
+  // 11. Sessions in use stay signed in: once a day at most, a session is
+  // renewed for seven days and its cookie is sent again.
+  const session = await expect("auth/login", 200, {
+    body: { email: "owner@example.test", password },
+    ip: "192.0.2.40",
+  });
+  const cookieAttributes = "; Path=/; HttpOnly; SameSite=Lax; Max-Age=604800";
+  assert.equal(session.setCookie, session.cookie + cookieAttributes);
+  const expiresAt = async () =>
+    (
+      await one(
+        "SELECT expires_at FROM sessions WHERE hash=?",
+        digest(session.cookie.split("=")[1]),
+      )
+    ).expires_at;
+  let visit = await expect("state", 200, { cookie: session.cookie });
+  assert.equal(visit.json.user.email, "owner@example.test");
+  assert.equal(visit.setCookie, "", "a new session is not rewritten");
+  offset += 2 * 86400000;
+  visit = await expect("state", 200, { cookie: session.cookie });
+  assert.equal(visit.setCookie, session.cookie + cookieAttributes);
+  assert((await expiresAt()) > Date.now() + 6.9 * 86400000);
+  visit = await expect("state", 200, { cookie: session.cookie });
+  assert.equal(visit.setCookie, "", "renewed at most once a day");
+  // Used every few days, it outlives its first seven.
+  for (let day = 0; day < 4; day++) {
+    offset += 3 * 86400000;
+    await expect("dishes", 200, {
+      body: { name: "Soup", description: "Tomato soup" },
+      cookie: session.cookie,
+    });
+  }
+  offset += 2 * 86400000;
+  const secure = await handle(
+    new Request("https://localhost/api/state", {
+      headers: { cookie: session.cookie, "cf-connecting-ip": "192.0.2.40" },
+    }),
+  );
+  assert.equal(
+    secure.headers.get("set-cookie"),
+    session.cookie + cookieAttributes + "; Secure",
+  );
+  // An unused session still ends seven days after its last renewal.
+  offset += 7 * 86400000 + 60000;
+  visit = await expect("state", 200, { cookie: session.cookie });
+  assert.equal(visit.json.user, null);
+  await expect("dishes", 401, {
+    body: { name: "Soup", description: "Tomato soup" },
+    cookie: session.cookie,
+  });
+
   console.log(
-    `PASS: ${checks} account security checks: per-network limits on the IPv6 /64 with no site-wide lockout, a per-account sign-in slowdown, versioned password hashes;`,
+    `PASS: ${checks} account security checks: per-network limits on the IPv6 /64 with no site-wide lockout, a per-account sign-in slowdown, versioned password hashes, sliding sessions;`,
   );
 } finally {
   rmSync(root, { recursive: true, force: true });
