@@ -21,6 +21,8 @@ export type GuestTransfer = {
   sourceRequestKey?: string;
   referenceRequestKey?: string;
 };
+// `create: false` hands the draft over without creating the image: after a
+// guest signs in, their work continues in the workspace Photo Studio.
 export async function transferGuestPhoto(
   draft: Row,
   photo: GuestPhoto | null,
@@ -28,6 +30,7 @@ export async function transferGuestPhoto(
   state: Row,
   transfer: GuestTransfer,
   persistProgress: () => Promise<void> = async () => {},
+  { create = true }: { create?: boolean } = {},
 ) {
   const activeReference = activeInspirationId(draft, state.restaurant);
   if ((draft.look === "reference" || activeReference) && !reference)
@@ -113,6 +116,11 @@ export async function transferGuestPhoto(
   const workspace = workspacePreferenceKey(state.user.id, state.restaurant.id);
   rememberPreference(workspace, "studio");
   rememberPreference(workspace + ":draft:studio", transfer.id);
+  if (!create) {
+    await importGuestFavorites();
+    history.replaceState(null, "", "/#studio");
+    return;
+  }
   if (!transfer.jobId)
     transfer.jobId = (
       await api("jobs", {
@@ -150,6 +158,10 @@ export async function transferGuestPhoto(
     generationStartedAt: transfer.startedAt,
     adjustments: { ...emptyAdjustments },
   });
+  await importGuestFavorites();
+  history.replaceState(null, "", "/#studio");
+}
+async function importGuestFavorites() {
   try {
     const favorites = JSON.parse(
       localStorage.getItem("menu-material:guest-look-favorites") || "[]",
@@ -161,5 +173,4 @@ export async function transferGuestPhoto(
   } catch {
     /* Keep device favorites for the next safe transfer attempt. */
   }
-  history.replaceState(null, "", "/#studio");
 }

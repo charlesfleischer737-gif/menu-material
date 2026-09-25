@@ -471,13 +471,16 @@ export function StudioWorkbench({
         : !!b.name?.trim() && !!b.description?.trim();
   const vesselConflict = b.family === "Drinks" && b.plate !== "keep";
   const inspirationBlock = inspirationStatusMessage(inspirationStatus);
+  // A guest who has signed in (the guest studio hands their work over) sees
+  // their account's real allowance and availability.
+  const signedOutGuest = !!state.guest && !state.user;
   const canCreate =
     !creationBlock &&
     !inspirationBlock &&
     photoReady &&
     !vesselConflict &&
     !busy &&
-    (state.guest || state.aiConnected) &&
+    (signedOutGuest || state.aiConnected) &&
     state.remaining > 0 &&
     (b.look !== "reference" || !!referencePhoto) &&
     !b.menuDocument;
@@ -496,11 +499,11 @@ export function StudioWorkbench({
               : "Add a dish name and description."
           : b.look === "reference" && !referencePhoto
             ? "Add an inspiration photo to use this look."
-            : !state.guest && !state.aiConnected
+            : !signedOutGuest && !state.aiConnected
               ? "Photo creation is temporarily unavailable. Your work is saved."
               : state.remaining <= 0
                 ? "You’ve used your available images."
-                : state.guest
+                : signedOutGuest
                   ? "Create a free account to continue · 5 free images"
                   : `Uses 1 image · ${state.remaining} left`);
   const showImage =
@@ -998,7 +1001,9 @@ export function StudioWorkbench({
               <span>
                 <ShieldCheck size={14} aria-hidden="true" />
                 {state.guest
-                  ? "Your photo stays on this device until you sign up."
+                  ? state.user
+                    ? "Your photo is saved to your account when you create it."
+                    : "Your photo stays on this device until you sign up."
                   : b.mode === "description"
                     ? "Illustrations are labeled as illustrations."
                     : "Your original photo is always kept."}
@@ -1390,7 +1395,7 @@ export function StudioWorkbench({
               {createButton}
               <p className="st-action-note">
                 {reason}
-                {!state.guest && state.remaining <= 0 && (
+                {!signedOutGuest && state.remaining <= 0 && (
                   <button
                     className="st-text-button"
                     onClick={() =>

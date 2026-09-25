@@ -81,8 +81,38 @@ try {
     "A guest's own photo is a real dish",
   );
   checks++;
+  // Signing in without pressing Create hands the draft to the workspace
+  // Photo Studio: the photo and choices are saved, and no image is made.
+  const jobsBefore = (await one("SELECT count(*) n FROM jobs")).n;
+  const handOff = { id: id(), revision: 0, requestKey: id() };
+  await transferGuestPhoto(
+    {
+      ...photoBrief(),
+      mode: "photo",
+      look: "menu-stone",
+      note: "Keep the bowl",
+    },
+    photo,
+    null,
+    state,
+    handOff,
+    undefined,
+    { create: false },
+  );
+  assert.equal(handOff.jobId, undefined);
+  assert.equal((await one("SELECT count(*) n FROM jobs")).n, jobsBefore);
+  const handed = JSON.parse(
+    (await one("SELECT draft FROM creation_drafts WHERE id=?", handOff.id))
+      .draft,
+  );
+  assert.equal(handed.step, 1);
+  assert.equal(handed.sourceId, handOff.sourceId);
+  assert.equal(handed.dishId, handOff.dishId);
+  assert.equal(handed.look, "menu-stone");
+  assert.equal(handed.note, "Keep the bowl");
+  checks++;
   console.log(
-    `Guest studio: ${checks} checks passed (samples stay samples after signup).`,
+    `Guest studio: ${checks} checks passed (samples stay samples after signup; sign-in hands the draft to the workspace without making an image).`,
   );
 } finally {
   rmSync(root, { recursive: true, force: true });
