@@ -1,6 +1,6 @@
 "use client";
 import { useEffect, useId, useRef, useState, type FormEvent } from "react";
-import { Check, X } from "lucide-react";
+import { Check, ImagePlus, X } from "lucide-react";
 import {
   Dialog,
   DialogContent,
@@ -162,6 +162,7 @@ export default function RestaurantSettings({
   const previouslyOpen = useRef(false);
   const saveLock = useRef(false);
   const closeButtonRef = useRef<HTMLButtonElement>(null);
+  const logoInput = useRef<HTMLInputElement>(null);
   const formId = useId();
   const dirty = JSON.stringify(profile) !== baseline;
   const working = saving || logo.saving || !!busy;
@@ -191,6 +192,12 @@ export default function RestaurantSettings({
     if (dirty) setDiscard(true);
     else close();
   }
+  // Focus a field that needs attention, opening the section it is folded in.
+  function reveal(field: HTMLElement) {
+    const section = field.closest("details");
+    if (section) section.open = true;
+    requestAnimationFrame(() => field.focus());
+  }
   async function save(event: FormEvent<HTMLFormElement>) {
     event.preventDefault();
     if (saveLock.current || working) return;
@@ -203,7 +210,7 @@ export default function RestaurantSettings({
         ?.dataset.settingsGroup;
       if (nextGroup) setGroup(nextGroup as Group);
       setError(invalid.validationMessage);
-      requestAnimationFrame(() => invalid.focus());
+      reveal(invalid);
       return;
     }
     if (!String(profile.name).trim()) {
@@ -325,8 +332,8 @@ export default function RestaurantSettings({
                       )}
                     </select>
                   </label>
-                  <label className="field">
-                    Logo (optional)
+                  <div className="field">
+                    <span id={`${formId}-logo`}>Logo (optional)</span>
                     {state.restaurant.logo_id && (
                       <img
                         className="rs-logo"
@@ -335,9 +342,10 @@ export default function RestaurantSettings({
                       />
                     )}
                     <input
+                      ref={logoInput}
+                      hidden
                       type="file"
                       accept="image/jpeg,image/png,image/heic,.heic"
-                      disabled={working}
                       onChange={async (event) => {
                         const input = event.currentTarget;
                         const file = input.files?.[0];
@@ -367,22 +375,39 @@ export default function RestaurantSettings({
                         }
                       }}
                     />
+                    <button
+                      type="button"
+                      className="cx-btn cx-secondary rs-file-button"
+                      aria-describedby={`${formId}-logo ${formId}-logo-status`}
+                      disabled={working}
+                      onClick={() => logoInput.current?.click()}
+                    >
+                      <ImagePlus size={16} aria-hidden="true" />
+                      {logo.saving
+                        ? "Uploading…"
+                        : state.restaurant.logo_id
+                          ? "Replace logo"
+                          : "Choose a logo"}
+                    </button>
                     {logo.error ? (
-                      <small className="rs-field-error" role="alert">
+                      <small
+                        id={`${formId}-logo-status`}
+                        className="rs-field-error"
+                        role="alert"
+                      >
                         {logo.error}
                       </small>
                     ) : (
-                      <small role="status">
+                      <small id={`${formId}-logo-status`} role="status">
                         {logo.saving
                           ? "Uploading your logo…"
                           : logo.saved
                             ? "Logo saved."
-                            : "Logo uploads save immediately."}
+                            : "JPG, PNG or HEIC. Logo uploads save immediately."}
                       </small>
                     )}
-                  </label>
+                  </div>
                   <MenuAddressField
-                    key={state.restaurant.slug}
                     restaurant={state.restaurant}
                     refresh={refresh}
                   />
