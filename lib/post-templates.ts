@@ -186,22 +186,40 @@ const retiredHeadlines = [
   "Better, together.",
   "A little craft. A lot of flavor.",
 ];
+/**
+ * Text-on-image settings the owner picked on the Design tab, which a new design
+ * keeps. Saved drafts count any setting that differs from their design's own.
+ */
+export function ownerChoices(draft: Row): string[] {
+  if (draft.chosen) return draft.chosen;
+  const t = getPostTemplate(draft.template);
+  return (["textMode", "showBrand"] as const).filter(
+    (key) => draft[key] != null && draft[key] !== t[key],
+  );
+}
 export function applyPostTemplate(draft: Row, id: string) {
-  const t = getPostTemplate(id);
+  const t = getPostTemplate(id),
+    current = getPostTemplate(draft.template);
+  const chosen = ownerChoices(draft);
+  // The restaurant's colors, or the owner's own, carry through every design.
+  const own = draft.brandMode === "restaurant" || draft.brandMode === "custom";
   return {
     template: t.id,
     ...(!draft.title || retiredHeadlines.includes(draft.title)
       ? { title: postHeadline(draft.items || []) }
       : {}),
-    color: draft.brandMode === "restaurant" ? draft.color : t.color,
-    accent: draft.brandMode === "restaurant" ? draft.accent : t.accent,
-    ...(draft.brandMode === "restaurant" ? { brandMode: "restaurant" } : {}),
-    kicker: t.kicker,
-    cta: t.cta,
-    textMode: t.textMode,
-    showBrand: t.showBrand,
+    color: own ? draft.color : t.color,
+    accent: own ? draft.accent : t.accent,
+    ...(own ? { brandMode: draft.brandMode } : {}),
+    // The owner's words stay; only a design's own suggestion is replaced.
+    kicker:
+      draft.kicker && draft.kicker !== current.kicker ? draft.kicker : t.kicker,
+    cta: draft.cta && draft.cta !== current.cta ? draft.cta : t.cta,
+    textMode: chosen.includes("textMode") ? draft.textMode : t.textMode,
+    showBrand: chosen.includes("showBrand") ? draft.showBrand : t.showBrand,
+    chosen,
     textY: 0,
-    typography: "template",
+    typography: draft.typography || "template",
     layouts: Object.fromEntries(
       ["feed", "story", "carousel"].map((c) => [
         c,

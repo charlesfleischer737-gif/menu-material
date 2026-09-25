@@ -33,7 +33,11 @@ import {
   postPhotoError,
   updatePost,
 } from "@/lib/post-flow";
-import { postTemplates, applyPostTemplate } from "@/lib/post-templates";
+import {
+  postTemplates,
+  applyPostTemplate,
+  ownerChoices,
+} from "@/lib/post-templates";
 import {
   carouselSlides,
   postSize,
@@ -812,7 +816,14 @@ export default function PostMaker({
                     <Field label="Text on the image">
                       <select
                         value={b.textMode || "minimal"}
-                        onChange={(e) => update({ textMode: e.target.value })}
+                        onChange={(e) =>
+                          update({
+                            textMode: e.target.value,
+                            chosen: [
+                              ...new Set([...ownerChoices(b), "textMode"]),
+                            ],
+                          })
+                        }
                       >
                         <option value="photo">Photo only</option>
                         <option value="minimal">Headline & essentials</option>
@@ -826,7 +837,12 @@ export default function PostMaker({
                         type="checkbox"
                         checked={b.showBrand ?? true}
                         onChange={(e) =>
-                          update({ showBrand: e.target.checked })
+                          update({
+                            showBrand: e.target.checked,
+                            chosen: [
+                              ...new Set([...ownerChoices(b), "showBrand"]),
+                            ],
+                          })
                         }
                       />
                       Restaurant name & logo
@@ -892,10 +908,7 @@ export default function PostMaker({
                         <select
                           value={b.typography || "template"}
                           onChange={(e) =>
-                            update({
-                              typography: e.target.value,
-                              brandMode: "custom",
-                            })
+                            update({ typography: e.target.value })
                           }
                         >
                           <option value="template">

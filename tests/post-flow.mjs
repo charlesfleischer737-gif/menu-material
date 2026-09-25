@@ -9,6 +9,7 @@ import {
   captionPlaceholder,
   currentCaption,
 } from "../lib/post-flow.ts";
+import { applyPostTemplate } from "../lib/post-templates.ts";
 
 const restaurant = { name: "The Orchard Kitchen", currency: "USD" };
 const item = {
@@ -341,5 +342,70 @@ assert.match(
 assert.match(
   postDetailError({ ...base, occasion: "event", validity: "" }, assets),
   /date and time/,
+);
+
+// Switching designs keeps the owner's words, choices and colors.
+const designed = {
+  template: "chef",
+  kicker: "Tonight only",
+  cta: "Book a table",
+  textMode: "full",
+  showBrand: false,
+  typography: "bold",
+  color: "#235b48",
+  accent: "#e7efb7",
+  brandMode: "custom",
+  chosen: ["textMode", "showBrand"],
+};
+const kept = (draft) =>
+  [
+    "kicker",
+    "cta",
+    "textMode",
+    "showBrand",
+    "typography",
+    "color",
+    "accent",
+  ].map((key) => draft[key]);
+let redesigned = designed;
+for (const id of ["special", "launch", "afterdark", "chef"])
+  redesigned = { ...redesigned, ...applyPostTemplate(redesigned, id) };
+assert.deepEqual(
+  kept(redesigned),
+  kept(designed),
+  "A new design keeps the small heading, call to action, text, name toggle, typeface and colors",
+);
+const plain = {
+  template: "chef",
+  kicker: "",
+  cta: "",
+  textMode: "minimal",
+  showBrand: true,
+  typography: "template",
+  color: "#235b48",
+  accent: "#e7efb7",
+  brandMode: "restaurant",
+};
+const launch = { ...plain, ...applyPostTemplate(plain, "launch") };
+assert.deepEqual(
+  [launch.kicker, launch.textMode, launch.showBrand, launch.color],
+  ["ON THE MENU", "minimal", false, "#235b48"],
+  "Unchanged settings follow each design; the restaurant’s colors stay",
+);
+const photoFirst = { ...launch, ...applyPostTemplate(launch, "editorial") };
+assert.deepEqual(
+  [photoFirst.kicker, photoFirst.textMode],
+  ["", "photo"],
+  "A design’s own suggestion doesn’t follow the owner to the next design",
+);
+assert.deepEqual(
+  kept({ ...plain, ...applyPostTemplate(plain, "special") }).slice(5),
+  ["#235b48", "#e7efb7"],
+);
+const savedDraft = { ...plain, textMode: "full" };
+assert.equal(
+  applyPostTemplate(savedDraft, "launch").textMode,
+  "full",
+  "A saved draft’s own text choice counts as the owner’s",
 );
 console.log("Post flow: 18 assertions passed");
