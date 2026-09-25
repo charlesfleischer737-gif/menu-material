@@ -8,12 +8,17 @@ export default function RestaurantStyle({
   profile,
   setProfile,
   state,
-  act,
   refresh,
   busy,
   section = "all",
 }: Row) {
-  const [uploaded, setUploaded] = useState("");
+  // Style-reference uploads report here, next to the field, so the result
+  // is visible inside the settings dialog.
+  const [reference, setReference] = useState({
+    uploading: false,
+    message: "",
+    error: "",
+  });
   const style = { ...defaultStyle, ...profile.style };
   const change = (k: string, v: unknown) =>
     setProfile({ ...profile, style: { ...style, [k]: v } });
@@ -45,36 +50,65 @@ export default function RestaurantStyle({
             <input
               type="file"
               accept="image/jpeg,image/png,image/heic,.heic"
-              disabled={!!busy}
-              onChange={(e) => {
-                const f = e.target.files?.[0];
-                if (f)
-                  act("Saving style reference", async () => {
-                    const form = new FormData();
-                    form.set("file", f);
-                    form.set(
-                      "normalized",
-                      await normalizePhoto(f),
-                      "reference.jpg",
-                    );
-                    form.set("kind", "reference");
-                    const a = await api("assets", form);
-                    change(
-                      "referenceIds",
-                      [...style.referenceIds, a.id].slice(-3),
-                    );
-                    setUploaded(
-                      "Reference uploaded. Save your restaurant to apply it.",
-                    );
-                    await refresh();
+              disabled={!!busy || reference.uploading}
+              onChange={async (e) => {
+                const input = e.currentTarget;
+                const f = input.files?.[0];
+                if (!f) return;
+                setReference({ uploading: true, message: "", error: "" });
+                try {
+                  const form = new FormData();
+                  form.set("file", f);
+                  form.set(
+                    "normalized",
+                    await normalizePhoto(f),
+                    "reference.jpg",
+                  );
+                  form.set("kind", "reference");
+                  const a = await api("assets", form);
+                  // Other fields may have changed during the upload.
+                  setProfile((current: Row) => {
+                    const latest = { ...defaultStyle, ...current.style };
+                    return {
+                      ...current,
+                      style: {
+                        ...latest,
+                        referenceIds: [...latest.referenceIds, a.id].slice(-3),
+                      },
+                    };
                   });
+                  setReference({
+                    uploading: false,
+                    message:
+                      "Reference uploaded. Save your restaurant to apply it.",
+                    error: "",
+                  });
+                  await refresh();
+                } catch (reason) {
+                  setReference({
+                    uploading: false,
+                    message: "",
+                    error: (reason as Error).message,
+                  });
+                } finally {
+                  // The same file can be chosen again after an error.
+                  input.value = "";
+                }
               }}
             />
           </label>
-          {uploaded && (
-            <p role="status" className="fine">
-              {uploaded}
+          {reference.error ? (
+            <p role="alert" className="rs-field-error">
+              {reference.error}
             </p>
+          ) : (
+            (reference.uploading || reference.message) && (
+              <p role="status" className="fine">
+                {reference.uploading
+                  ? "Uploading your reference…"
+                  : reference.message}
+              </p>
+            )
           )}
           <div className="reference-grid">
             {state.assets

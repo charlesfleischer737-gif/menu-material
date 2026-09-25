@@ -190,6 +190,13 @@
   font-size: var(--text-subhead);
   color: var(--workspace-error);
 }
+/* An upload or field problem, shown beside the field it belongs to. */
+.rs-dialog .rs-field-error,
+.rs-dialog .field small.rs-field-error {
+  margin: 0;
+  font-size: var(--text-footnote);
+  color: var(--workspace-error);
+}
 .rs-dialog :focus-visible {
   outline: 2px solid var(--workspace-focus);
   outline-offset: 3px;

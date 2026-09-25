@@ -276,7 +276,16 @@ export default function HomeClient({ hasSession }: { hasSession: boolean }) {
         </Suspense>
       )}
       {error && (
-        <div className="landing-error error" role="alert">
+        <div
+          className="landing-error error"
+          role="alert"
+          // The banner can show over an open dialog; using it must not count
+          // as a click outside that closes the dialog. React and the dialog
+          // both listen on the document, and React's listener runs first.
+          onPointerDown={(event) =>
+            event.nativeEvent.stopImmediatePropagation()
+          }
+        >
           {error}
           <button onClick={() => setError("")} aria-label="Dismiss error">
             ×

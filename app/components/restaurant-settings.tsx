@@ -144,7 +144,6 @@ export default function RestaurantSettings({
   open,
   close,
   state,
-  act,
   refresh,
   busy,
 }: Props) {
@@ -157,12 +156,15 @@ export default function RestaurantSettings({
   const [saving, setSaving] = useState(false);
   const [error, setError] = useState("");
   const [saved, setSaved] = useState(false);
+  // Logo uploads save on their own; their progress and errors show here, in
+  // the dialog, rather than in the page's banner behind it.
+  const [logo, setLogo] = useState({ saving: false, saved: false, error: "" });
   const previouslyOpen = useRef(false);
   const saveLock = useRef(false);
   const closeButtonRef = useRef<HTMLButtonElement>(null);
   const formId = useId();
   const dirty = JSON.stringify(profile) !== baseline;
-  const working = saving || !!busy;
+  const working = saving || logo.saving || !!busy;
   useEffect(() => {
     if (open && !previouslyOpen.current) {
       const next = restaurantProfile(state.restaurant);
@@ -171,6 +173,7 @@ export default function RestaurantSettings({
       setGroup("details");
       setError("");
       setSaved(false);
+      setLogo({ saving: false, saved: false, error: "" });
       setDiscard(false);
     }
     previouslyOpen.current = open;
@@ -335,24 +338,48 @@ export default function RestaurantSettings({
                       type="file"
                       accept="image/jpeg,image/png,image/heic,.heic"
                       disabled={working}
-                      onChange={(event) => {
-                        const file = event.target.files?.[0];
-                        if (file)
-                          act("Saving logo", async () => {
-                            const form = new FormData();
-                            form.set("file", file);
-                            form.set(
-                              "normalized",
-                              await normalizePhoto(file),
-                              "logo.jpg",
-                            );
-                            form.set("kind", "logo");
-                            await api("assets", form);
-                            await refresh();
+                      onChange={async (event) => {
+                        const input = event.currentTarget;
+                        const file = input.files?.[0];
+                        if (!file) return;
+                        setLogo({ saving: true, saved: false, error: "" });
+                        try {
+                          const form = new FormData();
+                          form.set("file", file);
+                          form.set(
+                            "normalized",
+                            await normalizePhoto(file),
+                            "logo.jpg",
+                          );
+                          form.set("kind", "logo");
+                          await api("assets", form);
+                          await refresh();
+                          setLogo({ saving: false, saved: true, error: "" });
+                        } catch (reason) {
+                          setLogo({
+                            saving: false,
+                            saved: false,
+                            error: (reason as Error).message,
                           });
+                        } finally {
+                          // The same file can be chosen again after an error.
+                          input.value = "";
+                        }
                       }}
                     />
-                    <small>Logo uploads save immediately.</small>
+                    {logo.error ? (
+                      <small className="rs-field-error" role="alert">
+                        {logo.error}
+                      </small>
+                    ) : (
+                      <small role="status">
+                        {logo.saving
+                          ? "Uploading your logo…"
+                          : logo.saved
+                            ? "Logo saved."
+                            : "Logo uploads save immediately."}
+                      </small>
+                    )}
                   </label>
                   <MenuAddressField
                     key={state.restaurant.slug}
@@ -368,7 +395,7 @@ export default function RestaurantSettings({
                   className="rs-panel"
                 >
                   <RestaurantStyle
-                    {...{ profile, setProfile, state, act, refresh }}
+                    {...{ profile, setProfile, state, refresh }}
                     busy={working}
                     section="look"
                   />
@@ -381,7 +408,7 @@ export default function RestaurantSettings({
                   className="rs-panel"
                 >
                   <RestaurantStyle
-                    {...{ profile, setProfile, state, act, refresh }}
+                    {...{ profile, setProfile, state, refresh }}
                     busy={working}
                     section="ordering"
                   />
