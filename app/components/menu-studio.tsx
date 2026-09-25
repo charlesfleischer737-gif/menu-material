@@ -295,6 +295,27 @@ export default function MenuStudio({
       const hadPhotos = before.sections.some((s) =>
         s.items.some((i) => i.photoId),
       );
+      // Dishes join the menu's section of the same name instead of repeating
+      // its heading, while it has room (a section holds up to 100 dishes).
+      let merged = before.sections;
+      for (const section of sections) {
+        const key = section.name.trim().toLowerCase();
+        const index = key
+          ? merged.findIndex(
+              (s) =>
+                s.name.trim().toLowerCase() === key &&
+                s.items.length + section.items.length <= 100,
+            )
+          : -1;
+        merged =
+          index < 0
+            ? [...merged, section]
+            : merged.map((s, i) =>
+                i === index
+                  ? { ...s, items: [...s.items, ...section.items] }
+                  : s,
+              );
+      }
       const next: MenuDocument = {
         ...before,
         ...typed,
@@ -305,7 +326,7 @@ export default function MenuStudio({
           withPhotos && !hadPhotos && before.layout === "classic"
             ? "featured"
             : before.layout,
-        sections: [...before.sections, ...sections],
+        sections: merged,
       };
       // An untouched new menu starts in the design that best fits its type.
       if (typed && before.design === "bistro")
@@ -1302,6 +1323,7 @@ export default function MenuStudio({
             close={() => setDialog("")}
             append={append}
             refresh={refresh}
+            onMenu={items.flatMap((i) => (i.dishId ? [i.dishId] : []))}
           />
         )}
         {(dialog === "export" || dialog === "publish") && (

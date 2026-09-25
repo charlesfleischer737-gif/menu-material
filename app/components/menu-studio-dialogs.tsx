@@ -165,6 +165,7 @@ export function MenuSourceDialog({
   close,
   append,
   refresh,
+  onMenu = [],
 }: {
   mode: string;
   setMode: (mode: string) => void;
@@ -176,6 +177,8 @@ export function MenuSourceDialog({
     originalText?: string,
   ) => void;
   refresh: () => Promise<void>;
+  /** Library dishes already on this menu. */
+  onMenu?: string[];
 }) {
   const [text, setText] = useState(""),
     [chosen, setChosen] = useState<string[]>([]),
@@ -201,6 +204,7 @@ export function MenuSourceDialog({
       !d.archived_at &&
       `${d.name} ${d.category}`.toLowerCase().includes(search.toLowerCase()),
   );
+  const newDishes = dishes.filter((d) => !onMenu.includes(d.id));
   function group(rows: Row[], imported = false) {
     const sections: MenuSection[] = [];
     let featured = 0;
@@ -610,6 +614,7 @@ export function MenuSourceDialog({
                         <small>
                           {d.category}
                           {d.description ? ` · ${d.description}` : ""}
+                          {onMenu.includes(d.id) ? " · On this menu" : ""}
                         </small>
                       </span>
                       <span>
@@ -645,12 +650,14 @@ export function MenuSourceDialog({
                   Add {chosen.length || "selected"}{" "}
                   {chosen.length === 1 ? "dish" : "dishes"}
                 </button>
-                {dishes.length > 0 && (
+                {newDishes.length > 0 && (
                   <button
                     className="md-text-button"
-                    onClick={() => setChosen(dishes.map((d) => d.id))}
+                    onClick={() => setChosen(newDishes.map((d) => d.id))}
                   >
-                    Select all shown
+                    {newDishes.length < dishes.length
+                      ? "Select all not on this menu"
+                      : "Select all shown"}
                   </button>
                 )}
               </div>
