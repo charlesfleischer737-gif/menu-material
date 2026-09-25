@@ -782,6 +782,45 @@ try {
   assert.deepEqual(scans, [], "every outputs query uses an index");
   checks++;
 
+  // 12. A full workspace is refused before any image is paid for.
+  const store = await restaurant("full-storage");
+  sent = imageCalls.length;
+  env.WORKSPACE_STORAGE_MB = "1";
+  const full = await call("jobs", {
+    body: { dishId: store.dishId, requestKey: id() },
+    cookie: store.cookie,
+  });
+  delete env.WORKSPACE_STORAGE_MB;
+  assert.equal(full.status, 413);
+  assert.match(full.data.error, /storage is full/);
+  assert.equal(
+    (
+      await one(
+        "SELECT COUNT(*) AS n FROM jobs WHERE restaurant_id=?",
+        store.rid,
+      )
+    ).n,
+    0,
+  );
+  const filling = await newJob(store);
+  env.WORKSPACE_STORAGE_MB = "1";
+  await tick(store.rid);
+  delete env.WORKSPACE_STORAGE_MB;
+  out = await output(filling.id);
+  assert.equal(out.status, "failed");
+  assert.match(out.error, /storage is full, so this image wasn't created/);
+  assert.equal(imageCalls.length, sent, "no image call");
+  assert.equal(await counted(store.rid), 0, "nothing is counted");
+  assert.equal(
+    (
+      await one(
+        "SELECT COUNT(*) AS n FROM storage_reservations WHERE id LIKE 'headroom:%'",
+      )
+    ).n,
+    0,
+  );
+  checks++;
+
   // 13. While the daily budget is spent, queued images are held without being
   // claimed or sent, say why honestly, and start by themselves later.
   await run("DELETE FROM ai_spend");
@@ -815,7 +854,7 @@ try {
   checks++;
 
   console.log(
-    `PASS: ${checks} AI budget and job checks: settled spend, free daily cap, paid-plan image budget, stuck-job repair, provider retries and refusals, independent image settling, uncertain spend, legacy deadlines on an index and budget holds. Provider calls and webhooks are fixtures.`,
+    `PASS: ${checks} AI budget and job checks: settled spend, free daily cap, paid-plan image budget, stuck-job repair, provider retries and refusals, independent image settling, uncertain spend, legacy deadlines on an index, storage before calls and budget holds. Provider calls and webhooks are fixtures.`,
   );
 } finally {
   console.error = originalError;

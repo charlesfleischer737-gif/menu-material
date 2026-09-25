@@ -18,6 +18,7 @@ import {
   aiBudgetRoom,
   aiControls,
   reserveStorage,
+  releaseStorage,
 } from "./safeguards";
 import {
   all,
@@ -109,6 +110,15 @@ Requested adjustment: ${JSON.stringify(revision)}
 
 FINISH
 Appetizing editorial food photography with believable texture, natural highlights and realistic depth. No plastic textures, excessive gloss, impossible geometry or illustration. Do not add promotional text, prices, watermarks, new logos or invented branded packaging. Preserve existing branding visible on the original drink vessel as required above. Before finishing, ensure the setting and light clearly express the chosen style, the food is still the same serving, explicit food serving ware is realized unless an owner control or subject compatibility requires retaining it, and any drink retains its original vessel and visible branding. Produce the image only.`;
+}
+// Room for one image's private and public copies, with margin.
+const IMAGE_STORAGE_BYTES = 8 * 1024 * 1024;
+// Throws the storage-full error unless the workspace has room for this many
+// new images. Nothing stays reserved; the result reserves its actual size.
+async function assertImageStorage(restaurantId: string, images: number) {
+  const key = `headroom:${id()}`;
+  await reserveStorage(restaurantId, key, IMAGE_STORAGE_BYTES * images);
+  await releaseStorage(key);
 }
 export async function enqueue(
   r: Row,
@@ -372,6 +382,9 @@ export async function enqueue(
   // Accepted work and reusable completed results above do not need their
   // references again. New work must have every reference before reserving quota.
   await requireStudioReferences(r.id, style.referenceIds);
+  // A result that cannot be saved is lost, so a full workspace is refused
+  // before any image is paid for.
+  await assertImageStorage(r.id, count);
   const jobId = id(),
     t = now();
   try {
@@ -1056,6 +1069,20 @@ export async function tick(restaurantId?: string, { startNew = true } = {}) {
           await run(
             "UPDATE outputs SET status='failed',error=?,lease_until=0 WHERE id=? AND lease_token=?",
             `${error.message} No image was created; the reserved allowance is available again.`,
+            o.id,
+            lease,
+          );
+          return;
+        }
+        // Checked again before paying for the call: storage may have filled
+        // since the job was accepted.
+        try {
+          await assertImageStorage(o.restaurant_id, 1);
+        } catch (error) {
+          if (!(error instanceof AppError) || error.status !== 413) throw error;
+          await run(
+            "UPDATE outputs SET status='failed',error=?,lease_until=0 WHERE id=? AND lease_token=?",
+            "Your workspace storage is full, so this image wasn't created. It was not counted. Remove unneeded photos, then try again.",
             o.id,
             lease,
           );
