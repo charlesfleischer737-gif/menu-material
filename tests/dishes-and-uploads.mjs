@@ -34,7 +34,8 @@ same(normalizeDietary('["df"]'), ["dairy-free"], "stored rows still map");
  * Mounts a real component from app/components with a minimal, shallow hooks
  * runtime: enough to render it, fire its handlers and re-render after each
  * event (or settled promise), the way React does. Child components aren't
- * run; `modules` stands in for the component's imports.
+ * run; `modules` stands in for the component's imports (or builds them from
+ * the hooks, for stubs that are hooks themselves).
  */
 function mount(file, modules) {
   const source = readFileSync(
@@ -97,7 +98,7 @@ function mount(file, modules) {
   const imports = {
     react: hooks,
     "react/jsx-runtime": { jsx: element, jsxs: element, Fragment: "fragment" },
-    ...modules,
+    ...(typeof modules === "function" ? modules(hooks) : modules),
   };
   const compiled = { exports: {} };
   new Function("require", "module", "exports", outputText)(
@@ -129,7 +130,7 @@ function mount(file, modules) {
   }
   return {
     render,
-    find: (test) => [...walk(tree)].filter(test),
+    find: (test, within = tree) => [...walk(within)].filter(test),
     fire(handler, event) {
       handler(event);
       render();
@@ -467,6 +468,226 @@ reply(
     alert() === "Please try again shortly." && retry(),
     "service errors retry",
   );
+}
+
+// My Dishes: the real DishLibrary, with the service and its dialogs stubbed.
+const dishLibrary = await import("../lib/dish-library.ts");
+ok(dishLibrary.dishSection({ category: "  " }) === "Dishes");
+ok(dishLibrary.dishSection({ category: " Mains " }) === "Mains");
+for (const [typed, price] of [
+  ["", 0],
+  ["12.5", 12.5],
+  [0, 0],
+  ["-1", null],
+  ["1000001", null],
+  ["abc", null],
+])
+  ok(dishLibrary.typedPrice(typed) === price, `price "${typed}"`);
+globalThis.window = { confirm: () => true, dispatchEvent: () => true };
+const Stub = () => null,
+  FeedbackStub = () => null;
+function myDishes(dishes, clientOverrides = {}) {
+  const calls = [];
+  const page = mount("dish-library.tsx", (hooks) => ({
+    "lucide-react": new Proxy({}, { get: () => Stub }),
+    "@/lib/client": {
+      ...client,
+      ...clientOverrides,
+      api: async (path, body) => {
+        calls.push({ path, body });
+        if (path === "dishes") return { id: `dish-${calls.length}` };
+        if (path.startsWith("dishes/")) return { revision: 2, menus: [] };
+        if (path === "assets") return { id: `asset-${calls.length}` };
+        return { usage: [] };
+      },
+    },
+    "@/lib/dish-library": dishLibrary,
+    "@/lib/photo-destinations": {
+      downloadPhotoItem: () => ({}),
+      photoLineage: () => ({ format: "menu", lookId: "" }),
+    },
+    "@/lib/photo-pack": { lookProfile: () => ({}) },
+    "./photo-finish-sheet": { PhotoFinishSheet: Stub },
+    "./photo-pack-sheet": { PhotoPackSheet: Stub },
+    "./photo-hub-actions": { photoActionLabels: {} },
+    "@/lib/workspace-navigation": { workspacePreferenceKey: () => "key" },
+    "@/components/ui/sheet": {
+      Sheet: Stub,
+      SheetContent: Stub,
+      SheetTitle: Stub,
+    },
+    "@/components/ui/dialog": {
+      Dialog: Stub,
+      DialogContent: Stub,
+      DialogTitle: Stub,
+    },
+    "@/components/ui/dropdown-menu": {
+      DropdownMenu: Stub,
+      DropdownMenuTrigger: Stub,
+      DropdownMenuContent: Stub,
+      DropdownMenuItem: Stub,
+    },
+    "./creation-shared": {
+      Feedback: FeedbackStub,
+      Field: Stub,
+      useAction() {
+        const [busy, setBusy] = hooks.useState(""),
+          [error, setError] = hooks.useState(""),
+          [notice, setNotice] = hooks.useState("");
+        async function act(label, fn) {
+          setBusy(label);
+          setError("");
+          setNotice("");
+          try {
+            await fn();
+          } catch (e) {
+            setError(e.message);
+          } finally {
+            setBusy("");
+          }
+        }
+        return { busy, error, notice, setError, setNotice, act };
+      },
+    },
+    "./dietary-picker": { default: Stub },
+    "./controls": { ConfirmDelete: Stub },
+    "./creative-header": { default: Stub },
+    "./photo-downloads": { default: Stub },
+    "./kitty": { default: Stub },
+  }));
+  page.render({
+    state: {
+      dishes,
+      assets: [],
+      restaurant: { id: "r", currency: "USD", style: {} },
+      user: { id: "u" },
+    },
+    refresh: async () => {},
+    onPhoto() {},
+    onDestination() {},
+    onImports() {},
+    onOpenWork() {},
+  });
+  const feedback = () => page.find((n) => n.type === FeedbackStub)[0].props;
+  const button = (words) =>
+    page.find((n) => n.type === "button" && text(n) === words)[0];
+  const input = (test) =>
+    page.find((n) => n.type === "input" && test(n.props))[0]?.props;
+  return { page, calls, feedback, button, input };
+}
+const dish = (id, name, category, price) => ({
+  id,
+  name,
+  description: "",
+  category,
+  price,
+  available: 1,
+  created_at: 1,
+});
+{
+  const { page, calls, feedback, button, input } = myDishes([
+    dish("d1", "Untitled dish", "", 0),
+    dish("d2", "Burger", "Mains", 1250),
+  ]);
+  const card = (name) =>
+    page.find((n) => n.props?.["aria-label"] === `Open ${name}`)[0];
+  const cardText = (name, className) =>
+    text(page.find((n) => n.props?.className === className, card(name)));
+  ok(cardText("Untitled dish", "mm-dish-price") === "No price yet");
+  ok(cardText("Burger", "mm-dish-price") === "$12.50");
+  ok(
+    text(page.find((n) => n.type === "small", card("Untitled dish"))) ===
+      "Dishes",
+  );
+  const sections = page.find((n) => n.type === "select")[0];
+  same(
+    page.find((n) => n.type === "option", sections).map(text),
+    ["All sections", "Dishes", "Mains"],
+    "no blank Section filter",
+  );
+  page.fire(card("Untitled dish").props.onClick);
+  const price = input((p) => p.type === "number");
+  ok(
+    price.value === "" && price.placeholder === "No price yet",
+    "0 shows empty",
+  );
+  page.fire(input((p) => p.value === "Untitled dish").onChange, {
+    target: { value: "  " },
+  });
+  page.fire(button("Save details").props.onClick);
+  await page.settle();
+  ok(feedback().error === "Give your dish a name.", feedback().error);
+  ok(!calls.some((c) => c.path === "dishes/d1"), "nothing saved");
+  page.fire(input((p) => p.value === "  ").onChange, {
+    target: { value: "Soup" },
+  });
+  input((p) => p.type === "number").ref.current = {
+    validity: { badInput: true },
+  };
+  page.fire(button("Save details").props.onClick);
+  await page.settle();
+  ok(
+    feedback().error.startsWith("Enter a price"),
+    "an unreadable price isn't 0",
+  );
+  input((p) => p.type === "number").ref.current = { validity: {} };
+  page.fire(button("Save details").props.onClick);
+  await page.settle();
+  const saved = calls.find((c) => c.path === "dishes/d1");
+  ok(saved && saved.body.price === 0, "an empty price saves as 0");
+  ok(saved.body.category === "Dishes", "a blank section saves as Dishes");
+  ok(!feedback().error && feedback().notice === "Dish details saved.");
+}
+// Uploads: a file that can't be used is flagged at once and never becomes a
+// dish; a good one is prepared before its dish is created.
+const jpeg = file("soup.jpg", samples.jpeg, "image/jpeg"),
+  gif = file("party.gif", samples.gif, "image/gif");
+for (const prepared of [false, true]) {
+  const { page, calls, feedback, button, input } = myDishes(
+    [],
+    prepared
+      ? {
+          normalizePhoto: async () => {
+            calls.push({ path: "prepared" });
+            return new Blob(["jpeg"]);
+          },
+        }
+      : {},
+  );
+  page.fire(input((p) => p.type === "file").onChange, {
+    target: { files: [gif, jpeg], value: "" },
+  });
+  await page.settle();
+  const statuses = () =>
+    page
+      .find((n) => n.props?.className === "mm-upload-row")
+      .map((row) => text(page.find((n) => n.props?.role === "status", row)));
+  same(statuses(), [
+    `GIF files can’t be uploaded. ${choose}`,
+    "Ready to upload",
+  ]);
+  page.fire(button("Upload photos").props.onClick);
+  await page.settle();
+  if (prepared) {
+    same(
+      calls.map((c) => c.path),
+      ["prepared", "dishes", "assets"],
+      "the photo is prepared before its dish is created",
+    );
+    same(statuses(), [
+      `GIF files can’t be uploaded. ${choose}`,
+      "Needs review",
+    ]);
+    ok(feedback().notice.startsWith("Photos uploaded."));
+  } else {
+    ok(!calls.length, "no dish is created for a photo that can't be used");
+    same(statuses(), [
+      `GIF files can’t be uploaded. ${choose}`,
+      `This photo couldn’t be opened. It may be damaged. ${choose}`,
+    ]);
+    ok(!feedback().notice && !feedback().error);
+  }
+  ok(button("Done"), "the dialog can be closed");
 }
 
 // Looks aim to keep the food as served; AI results can still change it (the

@@ -24,7 +24,13 @@ import {
   photoFileError,
   type Row,
 } from "@/lib/client";
-import { preferredPhoto, dishPhotos, dishStatus } from "@/lib/dish-library";
+import {
+  preferredPhoto,
+  dishPhotos,
+  dishSection,
+  dishStatus,
+  typedPrice,
+} from "@/lib/dish-library";
 import { downloadPhotoItem, photoLineage } from "@/lib/photo-destinations";
 import { lookProfile } from "@/lib/photo-pack";
 import { PhotoFinishSheet } from "./photo-finish-sheet";
@@ -87,6 +93,7 @@ export default function DishLibrary({
     [newName, setNewName] = useState(""),
     [uploads, setUploads] = useState<Row[]>([]);
   const files = useRef<HTMLInputElement>(null),
+    priceInput = useRef<HTMLInputElement>(null),
     uploadRows = useRef<Row[]>([]);
   useEffect(() => {
     uploadRows.current = uploads;
@@ -116,7 +123,7 @@ export default function DishLibrary({
     .filter(
       (d) =>
         !!d.archived_at === archived &&
-        (!section || d.category === section) &&
+        (!section || dishSection(d) === section) &&
         (!status || dishStatus(d, state.assets) === status) &&
         `${d.name} ${d.description} ${d.category}`
           .toLowerCase()
@@ -150,7 +157,12 @@ export default function DishLibrary({
   function open(d: Row) {
     action.setNotice("");
     action.setError("");
-    setDetail({ ...d, price: d.price / 100, available: !!d.available });
+    // A price of 0 means none has been set yet: show an empty field.
+    setDetail({
+      ...d,
+      price: d.price ? d.price / 100 : "",
+      available: !!d.available,
+    });
     setChosen(preferredPhoto(d, state.assets)?.id || "");
     setDirty(false);
   }
@@ -404,11 +416,9 @@ export default function DishLibrary({
                 onChange={(event) => setSection(event.target.value)}
               >
                 <option value="">All sections</option>
-                {[...new Set(allDishes.map((dish) => dish.category))].map(
-                  (name) => (
-                    <option key={name}>{name}</option>
-                  ),
-                )}
+                {[...new Set(allDishes.map(dishSection))].map((name) => (
+                  <option key={name}>{name}</option>
+                ))}
               </select>
             </Field>
             <Field label="Photo status">
@@ -575,14 +585,18 @@ export default function DishLibrary({
                   <span>
                     <span className="mm-dish-title">
                       <strong>{d.name}</strong>
-                      {Number.isFinite(d.price) && (
+                      {d.price > 0 ? (
                         <span className="mm-dish-price">
                           {money(d.price, state.restaurant.currency)}
+                        </span>
+                      ) : (
+                        <span className="mm-dish-price" data-empty="true">
+                          No price yet
                         </span>
                       )}
                     </span>
                     <small>
-                      {d.sample ? "Sample · stays off menus" : d.category}
+                      {d.sample ? "Sample · stays off menus" : dishSection(d)}
                     </small>
                   </span>
                 </button>
@@ -834,10 +848,12 @@ export default function DishLibrary({
                     </Field>
                     <Field label={`Price (${state.restaurant.currency})`}>
                       <input
+                        ref={priceInput}
                         type="number"
                         min="0"
                         max="1000000"
                         step=".01"
+                        placeholder="No price yet"
                         value={detail.price}
                         onChange={(e) => edit({ price: e.target.value })}
                       />
@@ -853,6 +869,7 @@ export default function DishLibrary({
                     <Field label="Section">
                       <input
                         maxLength={100}
+                        placeholder="Dishes"
                         value={detail.category}
                         onChange={(e) => edit({ category: e.target.value })}
                       />
@@ -928,22 +945,28 @@ export default function DishLibrary({
                 disabled={!dirty || !!action.busy}
                 onClick={() =>
                   action.act("Saving dish", async () => {
-                    if (
-                      detail.price === "" ||
-                      !Number.isFinite(Number(detail.price)) ||
-                      Number(detail.price) < 0 ||
-                      Number(detail.price) > 1000000
-                    )
+                    if (!detail.name.trim())
+                      throw Error("Give your dish a name.");
+                    // An unreadable number also reads as empty; don't save it as 0.
+                    const price = priceInput.current?.validity.badInput
+                      ? null
+                      : typedPrice(detail.price);
+                    if (price === null)
                       throw Error(
                         "Enter a price from 0 to 1,000,000. Use 0 only if this dish is free.",
                       );
                     const saved = await api(`dishes/${detail.id}`, {
                       ...detail,
-                      price: Number(detail.price),
+                      price,
+                      category: dishSection(detail),
                       confirmed: true,
                     });
                     await refresh();
-                    setDetail((d) => ({ ...d, revision: saved.revision }));
+                    setDetail((d) => ({
+                      ...d,
+                      category: dishSection(d || {}),
+                      revision: saved.revision,
+                    }));
                     setDirty(false);
                     const menus = (saved.menus || []) as Row[];
                     if (menus.length)
