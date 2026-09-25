@@ -45,7 +45,7 @@ import {
   type MenuPlacement,
 } from "@/lib/menu-placements";
 import { preferredPhoto } from "@/lib/dish-library";
-import type { MenuCheck } from "@/lib/menu-checks";
+import { restaurantSettingsChanged, type MenuCheck } from "@/lib/menu-checks";
 import {
   isPlaceholderRestaurantName,
   menuAddressProblem,
@@ -837,7 +837,11 @@ export function MenuImportReview({
   );
 }
 
-function publicationChanges(before: Row | null, menu: DesignedMenu) {
+function publicationChanges(
+  before: Row | null,
+  menu: DesignedMenu,
+  restaurant: Row,
+) {
   if (!before)
     return [
       "Your first published version. Guests will see the dishes and details shown here.",
@@ -899,6 +903,8 @@ function publicationChanges(before: Row | null, menu: DesignedMenu) {
     ].some((key) => before[key] !== menu[key as keyof DesignedMenu])
   )
     notes.push("Menu design or guest notes updated");
+  if (restaurantSettingsChanged(before, restaurant))
+    notes.push("Your restaurant’s name, logo, colors or currency updated");
   if (!notes.length)
     notes.push("Republish the current menu and restaurant details.");
   return notes;
@@ -1063,8 +1069,8 @@ export function MenuDeliveryDialog({
       !isPlaceholderRestaurantName(restaurant.name),
     addressProblem = choosingAddress ? menuAddressProblem(address) : "",
     changes = useMemo(
-      () => publicationChanges(record.published, menu),
-      [record.published, menu],
+      () => publicationChanges(record.published, menu, restaurant),
+      [record.published, menu, restaurant],
     );
   useEffect(() => {
     if (!choosingAddress) return;

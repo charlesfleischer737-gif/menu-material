@@ -15,6 +15,7 @@ const {
   applyDishUpdate,
   dishFacts,
   withLibraryLinks,
+  restaurantSettingsChanged,
 } = await import("../lib/menu-checks.ts");
 const { isPlaceholderRestaurantName, slugify, menuAddressProblem } =
   await import("../lib/restaurant-identity.ts");
@@ -814,6 +815,44 @@ try {
   });
   assert.equal(republished.isPrimary, false);
   assert.equal(await mainNow(), lunchMenu.id, "the owner's newer choice wins");
+
+  // A live menu keeps the restaurant details it was published with, so a
+  // change in settings is reported until the menu is published again.
+  const livePublished = (await call(`menus/${lunchMenu.id}`)).published;
+  const settings = (await call("state")).restaurant;
+  assert.equal(restaurantSettingsChanged(livePublished, settings), false);
+  for (const change of [
+    { name: "Corner House Kitchen" },
+    { currency: "EUR" },
+    { cuisine: "Diner" },
+    { ordering_url: "https://order.example.test" },
+    { logo_id: crypto.randomUUID() },
+    { style: { ...settings.style, primary: "#123456" } },
+    { style: { ...settings.style, typography: "bold" } },
+  ])
+    assert(
+      restaurantSettingsChanged(livePublished, { ...settings, ...change }),
+      JSON.stringify(change),
+    );
+  assert.equal(
+    restaurantSettingsChanged(
+      { ...livePublished, showLogo: false },
+      { ...settings, logo_id: crypto.randomUUID() },
+    ),
+    false,
+    "a menu that hides the logo doesn't need it",
+  );
+  await call("restaurant/name", { name: "Corner House Kitchen" });
+  const renamed = (await call("state")).restaurant;
+  assert(restaurantSettingsChanged(livePublished, renamed));
+  const lunchLatest = await call(`menus/${lunchMenu.id}`);
+  const lunchRepublished = await call(`menus/${lunchMenu.id}/publish`, {
+    revision: lunchLatest.revision,
+  });
+  assert.equal(
+    restaurantSettingsChanged(lunchRepublished.published, renamed),
+    false,
+  );
   console.log(
     `PASS: ${checks} menu publishing checks: placeholder names, sample dishes, zero prices, automatic checks without an I-checked box, first-publication menu address, address changes with redirects, and dish edits reaching draft and live menus.`,
   );

@@ -11,6 +11,8 @@ import {
   isPlaceholderRestaurantName,
   restaurantNameMessage,
 } from "./restaurant-identity";
+import { publicBrandStyle } from "./restaurant-look";
+import type { Row } from "./client";
 
 export type MenuCheck = {
   id: string;
@@ -226,6 +228,32 @@ export function attachAddonToDishAbove<T extends { sections: MenuSection[] }>(
 
 export const blockingChecks = (checks: MenuCheck[]) =>
   checks.filter((check) => check.level === "block");
+
+/**
+ * A published menu keeps the restaurant's name, logo, colors, currency,
+ * cuisine and ordering link from when it was published. True when the
+ * owner's settings have changed since, so publishing again would show them.
+ */
+export function restaurantSettingsChanged(
+  published: Row | null | undefined,
+  restaurant: Row,
+) {
+  const shown = published?.restaurant;
+  if (!shown) return false;
+  const look = shown.style || {},
+    style = publicBrandStyle(restaurant.style || {});
+  return (
+    shown.name !== restaurant.name ||
+    shown.currency !== restaurant.currency ||
+    (shown.cuisine || "") !== (restaurant.cuisine || "") ||
+    (shown.orderingUrl || "") !== (restaurant.ordering_url || "") ||
+    (shown.logoId || null) !==
+      ((published.showLogo !== false && restaurant.logo_id) || null) ||
+    look.primary !== style.primary ||
+    look.accent !== style.accent ||
+    look.typography !== style.typography
+  );
+}
 
 export type DishFacts = {
   id: string;

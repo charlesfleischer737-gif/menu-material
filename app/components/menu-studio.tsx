@@ -47,6 +47,7 @@ import {
   attachAddonToDishAbove,
   blockingChecks,
   menuPublishChecks,
+  restaurantSettingsChanged,
   withLibraryLinks,
 } from "@/lib/menu-checks";
 import { addonLabel, inferMenuPurpose, isAddonName } from "@/lib/menu-paste";
@@ -575,11 +576,18 @@ export default function MenuStudio({
         </div>
       </section>
     );
-  // Nothing new to publish: the live menu shows this draft.
-  const upToDate =
+  // The live menu keeps the name, logo, colors and currency it was published
+  // with until it's published again.
+  const settingsChanged = restaurantSettingsChanged(
+    record.published,
+    state.restaurant,
+  );
+  const draftLive =
     !!record.published &&
     !store.hasUnsavedChanges &&
     record.publishedRevision === record.revision;
+  // Nothing new to publish: the live menu shows this draft.
+  const upToDate = draftLive && !settingsChanged;
   return (
     <MenuActionContext.Provider value={{ busy, error: error || store.error }}>
       <section
@@ -611,10 +619,11 @@ export default function MenuStudio({
                 {record.published && (
                   <span>
                     ·{" "}
-                    {!store.hasUnsavedChanges &&
-                    record.publishedRevision === record.revision
+                    {upToDate
                       ? "Published"
-                      : "Live menu has an older version"}
+                      : draftLive
+                        ? "Republish to apply your restaurant settings"
+                        : "Live menu has an older version"}
                   </span>
                 )}
               </span>
@@ -717,7 +726,9 @@ export default function MenuStudio({
               title={
                 upToDate
                   ? "Your live menu is up to date. Open to republish it."
-                  : undefined
+                  : draftLive
+                    ? "Republish to apply your restaurant settings."
+                    : undefined
               }
               onClick={() => setDialog("publish")}
             >
@@ -1402,6 +1413,9 @@ export default function MenuStudio({
                       {m.draft.sections.reduce((n, s) => n + s.items.length, 0)}{" "}
                       dishes · {m.published ? "Published" : "Draft"}
                       {m.isPrimary ? " · Main menu" : ""}
+                      {restaurantSettingsChanged(m.published, state.restaurant)
+                        ? " · Republish to apply your restaurant settings"
+                        : ""}
                     </small>
                   </span>
                   {m.id === record.id && <Check size={17} />}
