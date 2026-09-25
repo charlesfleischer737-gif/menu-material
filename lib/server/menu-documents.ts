@@ -316,8 +316,9 @@ async function linkEntriesToLibrary(r: Row, row: Row, input: unknown) {
     "SELECT id,name,category,preferred_photo_id,dietary FROM dishes WHERE restaurant_id=? AND archived_at IS NULL AND sample=0 ORDER BY created_at",
     r.id,
   );
+  // Photos the owner reported as inaccurate never join a menu on their own.
   const photos = await all(
-    "SELECT id,dish_id FROM assets WHERE restaurant_id=? AND dish_id IS NOT NULL AND approved_at IS NOT NULL AND deleted_at IS NULL ORDER BY created_at DESC",
+    "SELECT id,dish_id FROM assets WHERE restaurant_id=? AND dish_id IS NOT NULL AND approved_at IS NOT NULL AND needs_correction=0 AND deleted_at IS NULL ORDER BY created_at DESC",
     r.id,
   );
   const photoFor = (dish: Row) =>

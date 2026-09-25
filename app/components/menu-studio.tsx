@@ -150,6 +150,9 @@ export default function MenuStudio({
     checks = menuPublishChecks(draft, {
       restaurantName: state.restaurant.name,
       sampleDishIds,
+      correctionPhotoIds: (state.assets as Row[])
+        .filter((a) => a.needs_correction)
+        .map((a) => a.id as string),
     }),
     issues = blockingChecks(checks),
     spec = menuDesignSpec(draft.design);

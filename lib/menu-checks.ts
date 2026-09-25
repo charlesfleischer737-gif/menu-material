@@ -55,7 +55,12 @@ export function menuPublishChecks(
     "sections" | "showUnavailable" | "title" | "fixedPrice"
   > &
     Partial<Pick<MenuDocument, "purpose">>,
-  context: { restaurantName: string; sampleDishIds?: Iterable<string> },
+  context: {
+    restaurantName: string;
+    sampleDishIds?: Iterable<string>;
+    /** Photos the owner reported as inaccurate. */
+    correctionPhotoIds?: Iterable<string>;
+  },
 ): MenuCheck[] {
   const checks: MenuCheck[] = [];
   if (isPlaceholderRestaurantName(context.restaurantName))
@@ -73,7 +78,8 @@ export function menuPublishChecks(
       ...issue,
     }),
   );
-  const samples = new Set(context.sampleDishIds || []);
+  const samples = new Set(context.sampleDishIds || []),
+    reported = new Set(context.correctionPhotoIds || []);
   const names = new Map<string, number>();
   const undescribed: { id: string; name: string; sectionId: string }[] = [];
   const soldOut: string[] = [];
@@ -111,6 +117,15 @@ export function menuPublishChecks(
           entryId: item.id,
           sectionId: section.id,
           fix: "remove",
+        });
+      if (item.photoId && reported.has(item.photoId))
+        checks.push({
+          id: `photo-reported:${item.id}`,
+          level: "warn",
+          message: `${label} has a photo you reported as inaccurate. Choose another photo or remove it.`,
+          entryId: item.id,
+          sectionId: section.id,
+          fix: "edit",
         });
       if (item.priceMode === "single" && item.price === 0)
         checks.push({

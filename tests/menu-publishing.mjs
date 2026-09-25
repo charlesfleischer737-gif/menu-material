@@ -6,7 +6,7 @@ const root = mkdtempSync(join(tmpdir(), "menu-publishing-"));
 process.env.MENU_MATERIAL_DATA_DIR = root;
 process.env.APP_ORIGIN = "http://localhost";
 const { handle } = await import("../lib/server/api.ts");
-const { one } = await import("../lib/server/core.ts");
+const { one, run } = await import("../lib/server/core.ts");
 const { newMenuDocument, newMenuEntry } =
   await import("../lib/menu-document.ts");
 const {
@@ -613,6 +613,66 @@ try {
     ).menu.sections[0].items[0].dietary,
     ["contains-peanuts", "contains-sesame"],
     "an empty tag list counts as not set",
+  );
+
+  // A photo the owner reported as inaccurate never joins a menu on its own,
+  // and a menu showing one gets a warning before publishing.
+  const accurate = crypto.randomUUID(),
+    reported = crypto.randomUUID();
+  for (const [assetId, flagged, age] of [
+    [accurate, 0, 2000],
+    [reported, 1, 1000],
+  ])
+    await run(
+      "INSERT INTO assets (id,restaurant_id,dish_id,kind,key,mime,name,approved_at,needs_correction,created_at) VALUES (?,?,?,'source',?,'image/png','satay.png',?,?,?)",
+      assetId,
+      rid,
+      satayDish.id,
+      `restaurants/${rid}/${assetId}.png`,
+      Date.now() - age,
+      flagged,
+      Date.now() - age,
+    );
+  await run(
+    "UPDATE dishes SET preferred_photo_id=? WHERE id=?",
+    reported,
+    satayDish.id,
+  );
+  const photoEntry = newMenuEntry({ name: "Satay skewers", price: 900 });
+  const photoMenu = await call("menus", {
+    id: crypto.randomUUID(),
+    draft: newMenuDocument({
+      sections: [section([photoEntry], "Small plates")],
+    }),
+  });
+  const { links: photoLinks } = await call(`menus/${photoMenu.id}/library`, {
+    entries: [
+      {
+        id: photoEntry.id,
+        name: "Satay skewers",
+        category: "Small plates",
+        price: 900,
+      },
+    ],
+  });
+  assert.equal(
+    photoLinks[0].photoId,
+    accurate,
+    "the reported photo is skipped, even as the dish's main photo",
+  );
+  const reportedMenu = newMenuDocument({
+    sections: [section([{ ...photoEntry, photoId: reported }])],
+  });
+  const photoCheck = menuPublishChecks(reportedMenu, {
+    restaurantName: "Corner House",
+    correctionPhotoIds: [reported],
+  }).find((c) => c.id === `photo-reported:${photoEntry.id}`);
+  assert.equal(photoCheck?.level, "warn");
+  assert.match(photoCheck.message, /reported as inaccurate/);
+  assert(
+    !menuPublishChecks(reportedMenu, { restaurantName: "Corner House" }).some(
+      (c) => c.id.startsWith("photo-reported"),
+    ),
   );
   console.log(
     `PASS: ${checks} menu publishing checks: placeholder names, sample dishes, zero prices, automatic checks without an I-checked box, first-publication menu address, address changes with redirects, and dish edits reaching draft and live menus.`,

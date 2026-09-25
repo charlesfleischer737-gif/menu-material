@@ -1219,7 +1219,7 @@ export function MenuDeliveryDialog({
             )}
             <small>
               Checked: restaurant name, dish names, prices, sample dishes,
-              duplicates and descriptions.
+              reported photos, duplicates and descriptions.
             </small>
           </div>
           {isPrint ? (
