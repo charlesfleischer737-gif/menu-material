@@ -28,6 +28,8 @@ export function slugify(value: string) {
       .replace(/[̀-ͯ]/g, "")
       .toLowerCase()
       .replace(/&/g, " and ")
+      // "Joe's Pizza" reads as joes-pizza, not joe-s-pizza.
+      .replace(/['’]/g, "")
       .replace(/[^a-z0-9]+/g, "-")
       .replace(/^-|-$/g, "")
       .slice(0, 40)

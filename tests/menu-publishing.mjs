@@ -52,6 +52,8 @@ try {
   for (const name of ["Corner House", "Bo", "Café Olé"])
     assert(!isPlaceholderRestaurantName(name), name);
   assert.equal(slugify("Café Olé & Grill"), "cafe-ole-and-grill");
+  assert.equal(slugify("Joe's Pizza"), "joes-pizza");
+  assert.equal(slugify("Joe’s Diner"), "joes-diner");
   assert.equal(menuAddressProblem("ab"), "Use at least 3 characters.");
   assert.match(menuAddressProblem("Bad Address"), /lowercase/);
   assert.match(menuAddressProblem("double--hyphen"), /single hyphens/);
