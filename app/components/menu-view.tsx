@@ -15,30 +15,47 @@ export default function MenuView({
   preview = false,
   serverNow = 0,
   onSelect,
+  structuredData,
 }: {
   menu: Row;
   slug?: string;
   preview?: boolean;
   serverNow?: number;
   onSelect?: (dishId: string) => void;
+  /**
+   * The page's schema.org JSON-LD. It's rendered here, beside the menu, so
+   * the page has a single root: as a separately streamed sibling on the page
+   * it hydrated in a different tree position, and every generated id
+   * (aria-controls, section anchors) mismatched the server's.
+   */
+  structuredData?: string;
 }) {
-  if (menu.version === 2)
-    return (
+  const view =
+    menu.version === 2 ? (
       <MenuDocumentView
         menu={menu as DesignedMenu}
         slug={slug}
         preview={preview}
         onSelect={onSelect}
       />
+    ) : (
+      <LegacyMenuView
+        menu={menu}
+        slug={slug}
+        preview={preview}
+        serverNow={serverNow}
+        onSelect={onSelect}
+      />
     );
+  if (!structuredData) return view;
   return (
-    <LegacyMenuView
-      menu={menu}
-      slug={slug}
-      preview={preview}
-      serverNow={serverNow}
-      onSelect={onSelect}
-    />
+    <>
+      {view}
+      <script
+        type="application/ld+json"
+        dangerouslySetInnerHTML={{ __html: structuredData }}
+      />
+    </>
   );
 }
 function LegacyMenuView({

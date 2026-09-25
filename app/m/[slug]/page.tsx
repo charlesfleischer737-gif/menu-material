@@ -101,19 +101,14 @@ export default async function PublicMenu({
   const origin = config("APP_ORIGIN"),
     url = origin ? new URL(`/m/${slug}`, origin).href : undefined,
     image = origin ? menuPreviewImage(result.menu, slug, origin) : null;
+  // One root element: the view renders the structured data itself, so the
+  // server and browser trees (and the ids React generates) match.
   return (
-    <>
-      <MenuView
-        menu={result.menu}
-        slug={slug}
-        serverNow={result.menu.serverNow}
-      />
-      <script
-        type="application/ld+json"
-        dangerouslySetInnerHTML={{
-          __html: jsonLd(menuStructuredData(result.menu, url, image?.url)),
-        }}
-      />
-    </>
+    <MenuView
+      menu={result.menu}
+      slug={slug}
+      serverNow={result.menu.serverNow}
+      structuredData={jsonLd(menuStructuredData(result.menu, url, image?.url))}
+    />
   );
 }
