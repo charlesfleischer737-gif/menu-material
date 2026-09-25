@@ -120,6 +120,13 @@
       "when": 1790290987710,
       "tag": "0016_guest_contact_and_dietary",
       "breakpoints": true
+    },
+    {
+      "idx": 17,
+      "version": "6",
+      "when": 1790342411977,
+      "tag": "0017_public_takedown_and_address_history",
+      "breakpoints": true
     }
   ]
 }
