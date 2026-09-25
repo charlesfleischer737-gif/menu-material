@@ -943,7 +943,8 @@ try {
   // A live menu keeps up to five earlier addresses working.
   const joeRid = (await expect("state", 200, joeOpts)).json.restaurant.id;
   const [joeStart] = await kept(joeRid);
-  assert.match(joeStart, /^joe-s-pizza-[0-9a-f]{8}$/);
+  // Possessive names drop the apostrophe: "Joe's Pizza" → joes-pizza.
+  assert.match(joeStart, /^joes-pizza-[0-9a-f]{8}$/);
   const joeDish = (
     await expect("dishes", 200, {
       body: { name: "Margherita", description: "Tomato and basil" },
@@ -962,13 +963,16 @@ try {
       body: { address: `joes-pizza-${n}` },
       ...joeOpts,
     });
-  assert.deepEqual(await kept(joeRid), [
-    joeStart,
-    "joes-pizza",
-    "joes-pizza-1",
-    "joes-pizza-2",
-    "joes-pizza-3",
-  ]);
+  assert.deepEqual(
+    await kept(joeRid),
+    [
+      joeStart,
+      "joes-pizza",
+      "joes-pizza-1",
+      "joes-pizza-2",
+      "joes-pizza-3",
+    ].sort(),
+  );
   assert.equal(
     (await expect("public/joes-pizza-2", 200, guest)).json.menu.restaurant.name,
     "Joe's Pizza",

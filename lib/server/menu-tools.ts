@@ -7,6 +7,7 @@ import {
   reserveStorage,
   releaseStorage,
   aiControls,
+  caller,
 } from "./safeguards";
 import {
   all,
@@ -77,11 +78,7 @@ export async function staffAccess(
       ),
     });
   assert(req.method === "POST" && p[2] === "upload", 404, "Not found.");
-  await limit(
-    "staff-ip:" + req.headers.get("cf-connecting-ip") + ":" + link.hash,
-    20,
-    3600,
-  );
+  await limit("staff-ip:" + caller(req) + ":" + link.hash, 20, 3600);
   await limit("staff-link:" + link.hash, 100, 86400);
   const result = await upload(req, r, "staff");
   await event(r.id, "staff_upload_submitted");
@@ -828,8 +825,9 @@ export async function publicEvent(
     assert(menu.contact?.reservationUrl, 400, "No reservation link.");
   // Dish views have their own allowance, so a dining room of guests
   // scrolling on the restaurant's Wi-Fi never crowds out visits and taps.
-  // One address also has a cap across all restaurants.
-  const ip = req.headers.get("cf-connecting-ip"),
+  // One network (an IPv6 /64 counts as one) also has a cap across all
+  // restaurants.
+  const ip = caller(req),
     group = b.kind === "dish_view" ? "views" : "guests";
   await limit(
     `public-event-ip:${group}:${ip}`,
