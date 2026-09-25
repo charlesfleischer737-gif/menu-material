@@ -4,6 +4,7 @@ import { Check, Copy, Download, Share2 } from "lucide-react";
 import { canvasBlob, renderPost } from "@/lib/creation-export";
 import { downloadBlob, type Row } from "@/lib/client";
 import {
+  postFileName,
   postFormatDetail,
   postShape,
   postShareFormats,
@@ -91,7 +92,7 @@ export default function PostSharing({
         outputs.push(
           new File(
             [await canvasBlob(canvas, "image/png")],
-            `${data.restaurant.slug}-${data.channel}${length > 1 ? "-" + (i + 1) : ""}.png`,
+            `${data.restaurant.slug}-${postFileName(data.channel)}${length > 1 ? "-" + (i + 1) : ""}.png`,
             { type: "image/png" },
           ),
         );

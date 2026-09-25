@@ -1343,6 +1343,17 @@ export default function PostMaker({
                   await campaignZip(b, state.restaurant),
                   `${state.restaurant.slug}-post-pack.zip`,
                 );
+                // The pack counts like any other download in the owner's report.
+                track("export_complete", items[0]?.photoId, {
+                  tool: "post",
+                  method: "download",
+                  design: String(b.template || "chef"),
+                  count: b.channels.reduce(
+                    (n: number, c: string) => n + postSlideCount(b, c),
+                    0,
+                  ),
+                  ...(store.id ? { draftId: store.id } : {}),
+                });
                 action.setNotice("Your post pack download has started.");
               })
             }

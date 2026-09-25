@@ -75,6 +75,10 @@ export const postShareFormats: Record<
   story: { label: "Story", detail: "1080 × 1920" },
   carousel: { label: "Carousel", detail: "One dish per slide" },
 };
+/** The word downloads use for a format: post.png, story.png, carousel-1.png. */
+export function postFileName(channel: string) {
+  return channel === "feed" ? "post" : channel;
+}
 /** A post's shape: 3:4 when chosen, though drafts from before the improved composition stay 4:5. */
 export function postShape(draft: Row) {
   return draft.compositionVersion === 2 && draft.feedShape === "3:4"

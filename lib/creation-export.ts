@@ -1,5 +1,6 @@
 import { renderPost } from "./post-render";
 import { postSlideCount } from "./post-composition";
+import { postFileName } from "./sharing";
 import { type Row } from "./client";
 import { canvasBlob } from "./photo-export";
 export { canvasBlob, photoExport, masterPhotoExport } from "./photo-export";
@@ -12,9 +13,10 @@ export async function campaignZip(draft: Row, restaurant: Row) {
     for (let i = 0; i < n; i++) {
       const canvas = document.createElement("canvas");
       await renderPost(canvas, draft, restaurant, channel, i);
-      files[`${channel}${n > 1 ? "-" + (i + 1) : ""}.png`] = new Uint8Array(
-        await (await canvasBlob(canvas, "image/png")).arrayBuffer(),
-      );
+      files[`${postFileName(channel)}${n > 1 ? "-" + (i + 1) : ""}.png`] =
+        new Uint8Array(
+          await (await canvasBlob(canvas, "image/png")).arrayBuffer(),
+        );
     }
   }
   files["caption.txt"] = strToU8(draft.caption || "");

@@ -470,6 +470,17 @@ const zip = unzipSync(
 );
 assert.equal(Object.keys(zip).filter((k) => k.endsWith(".png")).length, 4);
 checks++;
+// Downloads use owner-facing names: a post, not a "feed".
+const pack = unzipSync(
+  new Uint8Array(await (await campaignZip(base, restaurant)).arrayBuffer()),
+);
+assert.deepEqual(Object.keys(pack).sort(), [
+  "caption.txt",
+  "post.png",
+  "story.png",
+]);
+assert(Object.keys(zip).every((k) => /^(carousel-\d|caption)/.test(k)));
+checks++;
 // Per-slide framing must change only the selected slide's pixels.
 const revised = structuredClone(carousel);
 revised.items[1].layouts.carousel.x = 90;
