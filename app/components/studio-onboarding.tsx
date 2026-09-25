@@ -253,7 +253,7 @@ export function StudioCreating({
           <p className="st-result-copy">
             {workerHealthy
               ? "You can leave this page. We’ll keep working, and your result will be waiting here."
-              : "Keep this page open until your photo is ready."}
+              : "Keep this page open until your photo is ready. It can stay in a background tab."}
           </p>
         )}
         {children}
