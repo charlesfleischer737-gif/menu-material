@@ -102,14 +102,30 @@ export function dietaryParts(values: unknown) {
     notes: normalized.filter((value) => !byId.has(value)),
   };
 }
+// A vegan dish also suits vegetarians and dairy-free diets, unless the owner
+// tagged an allergen that says otherwise.
+const veganAlsoSuits: Record<string, string[]> = {
+  vegetarian: ["contains-fish", "contains-shellfish", "contains-molluscs"],
+  "dairy-free": ["contains-milk"],
+};
+/** Whether a dish's tags meet a guest's "Suitable for" choice. */
+export function suitsDiet(values: unknown, diet: string) {
+  const tags = normalizeDietary(values);
+  return (
+    tags.includes(diet) ||
+    (tags.includes("vegan") &&
+      !!veganAlsoSuits[diet] &&
+      !veganAlsoSuits[diet].some((id) => tags.includes(id)))
+  );
+}
 const lower = (text: string) => text.charAt(0).toLowerCase() + text.slice(1);
-/** "Contains milk, egg" */
+/** "Contains: milk, egg" */
 export function containsText(allergens: DietaryTag[]) {
   return allergens.length
-    ? `Contains ${allergens.map((tag) => lower(tag.label)).join(", ")}`
+    ? `Contains: ${allergens.map((tag) => lower(tag.label)).join(", ")}`
     : "";
 }
-/** Printed under a dish: "V · GF · Contains milk, egg". */
+/** Printed under a dish: "V · GF · Contains: milk, egg". */
 export function printedDietary(values: unknown) {
   const { diets, allergens, notes } = dietaryParts(values);
   return [...diets.map((tag) => tag.code!), containsText(allergens), ...notes]

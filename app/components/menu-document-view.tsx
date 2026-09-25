@@ -19,7 +19,7 @@ import {
   containsText,
   dietTags,
   dietaryParts,
-  normalizeDietary,
+  suitsDiet,
 } from "@/lib/dietary";
 import CustomerMenuSwitcher from "./customer-menu-switcher";
 import {
@@ -40,12 +40,30 @@ import {
 } from "@/lib/restaurant-contact";
 import { isMenuPlacement } from "@/lib/menu-placements";
 
-/** "Vegetarian · Gluten-free · Contains milk, egg" */
+/** "Vegetarian · Gluten-free · Contains: milk, egg", for search. */
 function guestDietary(values: string[]) {
   const { diets, allergens, notes } = dietaryParts(values);
   return [...diets.map((tag) => tag.label), containsText(allergens), ...notes]
     .filter(Boolean)
     .join(" · ");
+}
+/**
+ * A dish's tags as guests read them: what it suits (with the owner's own
+ * notes), then its allergens on a line of their own, "Contains: milk, egg".
+ */
+function DishDietary({ values }: { values: string[] }) {
+  const { diets, allergens, notes } = dietaryParts(values);
+  const suits = [...diets.map((tag) => tag.label), ...notes].join(" · ");
+  return (
+    <>
+      {suits && <p className="md-guest-dietary">{suits}</p>}
+      {!!allergens.length && (
+        <p className="md-guest-dietary md-guest-contains">
+          {containsText(allergens)}
+        </p>
+      )}
+    </>
+  );
 }
 type GuestMenu = DesignedMenu & {
   contact?: MenuContact;
@@ -290,11 +308,10 @@ export default function MenuDocumentView({
         {slug && <a href={`/m/${slug}`}>View the restaurant’s current menu</a>}
       </main>
     );
-  // Guests can narrow to dishes the restaurant marked suitable for them.
+  // Guests can narrow to dishes the restaurant marked suitable for them
+  // (vegan dishes count as vegetarian and dairy-free).
   const offeredDiets = dietTags.filter((tag) =>
-    sections.some((s) =>
-      s.items.some((i) => normalizeDietary(i.dietary).includes(tag.id)),
-    ),
+    sections.some((s) => s.items.some((i) => suitsDiet(i.dietary, tag.id))),
   );
   const chosenDiets = diets.filter((id) =>
     offeredDiets.some((tag) => tag.id === id),
@@ -304,7 +321,7 @@ export default function MenuDocumentView({
       ...s,
       items: s.items.filter(
         (i) =>
-          chosenDiets.every((id) => normalizeDietary(i.dietary).includes(id)) &&
+          chosenDiets.every((id) => suitsDiet(i.dietary, id)) &&
           `${s.name} ${i.name} ${i.description} ${guestDietary(i.dietary)}`
             .toLocaleLowerCase(menu.language)
             .includes(query.toLocaleLowerCase(menu.language)),
@@ -313,10 +330,11 @@ export default function MenuDocumentView({
     .filter((s) => s.items.length);
   const resultCount = filtered.reduce((n, s) => n + s.items.length, 0);
   const narrowed = !!query || chosenDiets.length > 0;
+  // Wherever the menu shows diet or allergen details, remind guests to tell
+  // the restaurant, unless the owner's own footer already does.
   const allergyNote =
-    sections.some((s) =>
-      s.items.some((i) => dietaryParts(i.dietary).allergens.length),
-    ) && !/allerg/i.test(menu.footer);
+    sections.some((s) => s.items.some((i) => i.dietary.length)) &&
+    !/allerg/i.test(menu.footer);
   const searchInput = (
     <input
       type="search"
@@ -531,9 +549,7 @@ export default function MenuDocumentView({
                     // Show the section even if a dietary filter hides it.
                     if (
                       !s.items.some((i) =>
-                        chosenDiets.every((id) =>
-                          normalizeDietary(i.dietary).includes(id),
-                        ),
+                        chosenDiets.every((id) => suitsDiet(i.dietary, id)),
                       )
                     )
                       setDiets([]);
@@ -704,9 +720,7 @@ export default function MenuDocumentView({
                     </dl>
                   )}
                   {!!item.dietary.length && (
-                    <p className="md-guest-dietary">
-                      {guestDietary(item.dietary)}
-                    </p>
+                    <DishDietary values={item.dietary} />
                   )}
                   {!item.available && (
                     <p className="md-guest-unavailable">

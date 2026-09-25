@@ -2422,6 +2422,9 @@
   color: var(--md-accent);
   margin-top: 7px;
 }
+.md-guest-item > p.md-guest-dietary + p.md-guest-contains {
+  margin-top: 2px;
+}
 .md-guest-item > p.md-guest-unavailable {
   font-size: 0.8125rem;
   font-style: italic;

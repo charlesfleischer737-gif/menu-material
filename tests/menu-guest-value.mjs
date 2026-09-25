@@ -23,8 +23,14 @@ const {
   applyDishUpdate,
   dishFacts,
 } = await import("../lib/menu-checks.ts");
-const { normalizeDietary, printedDietary, dietaryKey, dietaryParts } =
-  await import("../lib/dietary.ts");
+const {
+  normalizeDietary,
+  printedDietary,
+  dietaryKey,
+  dietaryParts,
+  containsText,
+  suitsDiet,
+} = await import("../lib/dietary.ts");
 const { composeMenu } = await import("../lib/menu-layout.ts");
 const { openingStatus, telephoneHref, directionsHref } =
   await import("../lib/restaurant-contact.ts");
@@ -328,8 +334,25 @@ Ramen 1,200`);
   assert.deepEqual(normalizeDietary("not json"), []);
   assert.equal(
     printedDietary(["vegetarian", "contains-milk", "contains-egg", "Spicy"]),
-    "V · Contains milk, egg · Spicy",
+    "V · Contains: milk, egg · Spicy",
   );
+  // Allergens are labeled as such, in one consistent case.
+  assert.equal(
+    containsText(dietaryParts(["contains-gluten", "contains-soy"]).allergens),
+    "Contains: gluten, soy",
+  );
+  assert.equal(containsText([]), "");
+  // A vegan dish suits vegetarians and dairy-free diets too…
+  assert(suitsDiet(["vegan"], "vegan"));
+  assert(suitsDiet(["vegan"], "vegetarian"), "vegan counts as vegetarian");
+  assert(suitsDiet('["vegan"]', "dairy-free"), "vegan counts as dairy-free");
+  assert(!suitsDiet(["vegan"], "gluten-free"));
+  assert(!suitsDiet(["vegetarian"], "vegan"));
+  assert(suitsDiet(["dairy-free"], "dairy-free"));
+  // …unless an allergen tag says otherwise.
+  assert(!suitsDiet(["vegan", "contains-milk"], "dairy-free"));
+  assert(!suitsDiet(["vegan", "contains-fish"], "vegetarian"));
+  assert(!suitsDiet(["Vegan option on request"], "vegetarian"), "notes");
   assert.equal(
     dietaryKey([{ dietary: ["vegan"] }, { dietary: ["contains-sesame"] }]),
     "VG vegan. Please tell us about any allergies before you order.",
@@ -361,7 +384,7 @@ Ramen 1,200`);
   const texts = layout.pages[0].elements.filter((e) => e.kind === "text");
   assert.equal(
     texts.find((t) => t.role === "dietary").text,
-    "VG · GF · Contains sesame",
+    "VG · GF · Contains: sesame",
   );
   assert.equal(
     texts
