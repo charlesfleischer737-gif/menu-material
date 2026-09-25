@@ -1,5 +1,5 @@
 "use client";
-import { useCallback, useEffect, useState } from "react";
+import { useCallback, useEffect, useRef, useState } from "react";
 import {
   Dialog,
   DialogContent,
@@ -23,7 +23,14 @@ export default function PlanDialog({
   const [billing, setBilling] = useState<Row>(state.billing || {}),
     [busy, setBusy] = useState(false),
     [error, setError] = useState(""),
-    [notice, setNotice] = useState("");
+    [notice, setNotice] = useState(""),
+    // While subscriptions are closed: "joined" once the request is recorded,
+    // "noted" when this server has no waitlist to record it in.
+    [waitlist, setWaitlist] = useState<"" | "sending" | "joined" | "noted">("");
+  const waitlistStatus = useRef<HTMLParagraphElement>(null),
+    waitlistButton = useRef<HTMLButtonElement>(null);
+  const allowance = billing.allowance ?? 5,
+    left = billing.remaining ?? state.remaining;
   const sync = useCallback(async () => {
     setBusy(true);
     setError("");
@@ -64,6 +71,26 @@ export default function PlanDialog({
       live = false;
     };
   }, [open, sync]);
+  async function joinWaitlist() {
+    if (waitlist) return;
+    setWaitlist("sending");
+    setError("");
+    try {
+      await api("plan-waitlist", {});
+      setWaitlist("joined");
+    } catch (e) {
+      if ((e as { status?: number }).status === 404) setWaitlist("noted");
+      else {
+        setError((e as Error).message);
+        setWaitlist("");
+        // Back on the button, which was disabled while sending.
+        requestAnimationFrame(() => waitlistButton.current?.focus());
+        return;
+      }
+    }
+    // The button is gone; keep keyboard focus on the answer.
+    requestAnimationFrame(() => waitlistStatus.current?.focus());
+  }
   async function visit(action: string) {
     if (busy) return;
     setBusy(true);
@@ -106,15 +133,18 @@ export default function PlanDialog({
       >
         <DialogHeader>
           <DialogTitle>
-            {billing.plan === "pro" ? "Your Pro plan" : "Get more images"}
+            {billing.plan === "pro"
+              ? "Your Pro plan"
+              : billing.enabled
+                ? "Get more images"
+                : "Plans"}
           </DialogTitle>
           <DialogDescription>
-            {billing.remaining ?? state.remaining} of {billing.allowance ?? 5}{" "}
-            images left
-            {billing.plan === "pro"
-              ? " this billing period"
-              : " on the free plan"}
-            .
+            {billing.plan === "pro" || billing.enabled
+              ? `${left} of ${allowance} images left${billing.plan === "pro" ? " this billing period" : " on the free plan"}.`
+              : left > 0
+                ? `${left} of ${allowance} free images left. Pro is coming soon.`
+                : `You’ve used your ${allowance} free images. Pro is coming soon.`}
           </DialogDescription>
         </DialogHeader>
         <div className="pw-plans-body">
@@ -151,6 +181,34 @@ export default function PlanDialog({
               onUpgrade={() => void visit("checkout")}
               onFree={close}
               busy={busy}
+              comingSoon={
+                <>
+                  <p
+                    className="pw-plan-soon"
+                    role="status"
+                    ref={waitlistStatus}
+                    tabIndex={-1}
+                  >
+                    {waitlist === "joined"
+                      ? "You’re on the list. We’ll let you know when Pro opens."
+                      : waitlist === "noted"
+                        ? "Thanks. Pro isn’t open yet; we’ll let you know here in Plans when it is."
+                        : "Pro is coming soon."}
+                  </p>
+                  {(waitlist === "" || waitlist === "sending") && (
+                    <button
+                      ref={waitlistButton}
+                      className="cx-btn"
+                      disabled={busy || waitlist === "sending"}
+                      onClick={() => void joinWaitlist()}
+                    >
+                      {waitlist === "sending"
+                        ? "Adding you…"
+                        : "Tell me when Pro opens"}
+                    </button>
+                  )}
+                </>
+              }
             />
           )}
           {billing.canManage && billing.plan !== "pro" && (
@@ -171,11 +229,15 @@ export default function PlanDialog({
               Refresh payment status
             </button>
           )}
-          <p className="fine">
-            Prices in USD. Pro renews monthly until cancelled. Unused monthly
-            images don’t roll over. Images that fail to create are returned.
-            Your saved work remains available when you cancel.
-          </p>
+          {billing.enabled ? (
+            <p className="fine">
+              Prices in USD. Pro renews monthly until cancelled. Unused monthly
+              images don’t roll over. Images that fail to create are returned.
+              Your saved work remains available when you cancel.
+            </p>
+          ) : (
+            <p className="fine">Images that fail to create are returned.</p>
+          )}
         </div>
       </DialogContent>
     </Dialog>

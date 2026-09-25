@@ -17,7 +17,7 @@ import {
 } from "../lib/menu-document.ts";
 import { menuDesignCollection } from "../lib/menu-design-system.ts";
 import { renderDesignedMenuPdf } from "../lib/menu-pdf-v2.ts";
-const root = "/private/tmp/menu-design-v2";
+const root = (await import("node:os")).tmpdir() + "/menu-design-v2";
 mkdirSync(root, { recursive: true });
 GlobalFonts.registerFromPath("public/fonts/MenuSans-Regular.ttf", "Menu QA");
 Object.assign(globalThis, { DOMMatrix, Path2D, ImageData });

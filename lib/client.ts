@@ -24,6 +24,13 @@ export async function api(
           ? body
           : JSON.stringify(body),
   });
+  // The session has lapsed: tell the page, which asks the person to sign in
+  // again in place. Sign-in itself (a wrong password is also a 401) and the
+  // initial state check handle their own answers.
+  if (res.status === 401 && path !== "state" && !path.startsWith("auth/"))
+    window.dispatchEvent(
+      new CustomEvent("menu-material:signed-out", { detail: { path } }),
+    );
   const data = (await res.json().catch(() => null)) as Row | null;
   if (!res.ok)
     throw Object.assign(
