@@ -115,6 +115,15 @@
   border-color: var(--cx-green);
   background: var(--workspace-canvas);
 }
+/* Dish names and "Download for …" can be wider than a phone: wrap them
+   instead of letting the text run out of the button. */
+.cx-batch-review .cx-btn,
+.cx-export-workspace .cx-btn {
+  white-space: normal;
+  text-wrap: balance;
+  overflow-wrap: anywhere;
+  padding-block: 8px;
+}
 .cx-secondary-actions {
   margin-top: 26px;
   align-items: center;
@@ -141,7 +150,7 @@
 }
 @media (max-width: 760px) {
   .cx-export-workspace {
-    grid-template-columns: 1fr;
+    grid-template-columns: minmax(0, 1fr);
     gap: 18px;
   }
   .cx-export-destinations {
