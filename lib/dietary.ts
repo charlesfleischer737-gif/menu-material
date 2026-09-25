@@ -67,8 +67,15 @@ const synonyms: Record<string, string> = {
   "contains shellfish": "contains-shellfish",
 };
 
-/** Tag ids first (in vocabulary order), then any free-text notes. */
-export function normalizeDietary(values: unknown): string[] {
+/**
+ * Tag ids first (in vocabulary order), then any free-text notes. Stored and
+ * legacy values read exact synonyms ("V", "gluten free") as tags; pass
+ * `synonyms: false` for text the owner is typing, so it is kept as written.
+ */
+export function normalizeDietary(
+  values: unknown,
+  { synonyms: mapSynonyms = true }: { synonyms?: boolean } = {},
+): string[] {
   let list: unknown = values;
   if (typeof list === "string") {
     try {
@@ -84,7 +91,11 @@ export function normalizeDietary(values: unknown): string[] {
     if (typeof raw !== "string") continue;
     const value = raw.trim().slice(0, 40);
     if (!value) continue;
-    const id = byId.has(value) ? value : synonyms[value.toLowerCase()];
+    const id = byId.has(value)
+      ? value
+      : mapSynonyms
+        ? synonyms[value.toLowerCase()]
+        : undefined;
     if (id) tags.add(id);
     else if (!notes.some((n) => n.toLowerCase() === value.toLowerCase()))
       notes.push(value);

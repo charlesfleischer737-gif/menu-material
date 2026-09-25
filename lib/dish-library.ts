@@ -19,6 +19,20 @@ export function dishStatus(dish: Row, assets: Row[]) {
   const photo = preferredPhoto(dish, assets);
   return photo?.approved_at ? "Approved" : photo ? "Needs review" : "No photo";
 }
+/** A dish's section; a blank one reads as "Dishes", as it does on menus. */
+export function dishSection(dish: Row): string {
+  return String(dish.category || "").trim() || "Dishes";
+}
+/**
+ * A price typed in the currency's major units: empty means no price yet (0).
+ * Null when it isn't a price from 0 to 1,000,000.
+ */
+export function typedPrice(value: unknown): number | null {
+  const price = value === "" || value == null ? 0 : Number(value);
+  return Number.isFinite(price) && price >= 0 && price <= 1000000
+    ? price
+    : null;
+}
 export function dishSnapshot(dish: Row): Row {
   return {
     name: dish.name,

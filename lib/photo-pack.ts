@@ -12,9 +12,13 @@ import {
   type ChannelRule,
   type StyleProfile,
 } from "./channel-rules";
-import { exportDimensions } from "./photo-export";
+import {
+  downloadFormats,
+  exportDimensions,
+  type DownloadFormat,
+} from "./photo-export";
 import { photoFileStem } from "./photo-destinations";
-import { formats, looks, type PhotoFormat } from "./studio";
+import { formats, looks } from "./studio";
 
 /**
  * One tap, every channel: a ZIP of photos sized and checked for where they go.
@@ -26,6 +30,7 @@ export type PackEntryId =
   | "uber"
   | "google"
   | "instagram-post"
+  | "instagram-post-3x4"
   | "instagram-story"
   | "website";
 export type PackEntry = {
@@ -78,6 +83,16 @@ export const packEntries: PackEntry[] = [
     slug: "instagram-post",
     width: formats.feed.width,
     height: formats.feed.height,
+    fill: "auto",
+  },
+  {
+    id: "instagram-post-3x4",
+    channel: channelRules.instagram,
+    label: "Instagram post",
+    use: "Portrait · 3:4",
+    slug: "instagram-post-3x4",
+    width: downloadFormats["feed-3x4"].width,
+    height: downloadFormats["feed-3x4"].height,
     fill: "auto",
   },
   {
@@ -203,7 +218,7 @@ export function downloadWarnings(
   const warnings: string[] = [];
   const backdrop = styleWarning(rule, style);
   if (backdrop) warnings.push(backdrop);
-  const format = formats[destination as PhotoFormat];
+  const format = downloadFormats[destination as DownloadFormat];
   if (source && format && (rule.minWidth || rule.minHeight)) {
     const turned = edits.rotate && edits.rotate % 180 !== 0;
     const { width, height } = exportDimensions(

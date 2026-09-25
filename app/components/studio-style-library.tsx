@@ -293,7 +293,7 @@ export function StudioStyleLibrary({
               Styles
             </DialogTitle>
             <DialogDescription>
-              {available.length} looks · your food stays your food
+              {available.length} looks · designed to keep your food as served
             </DialogDescription>
           </div>
           <div className="st-search" role="search">
@@ -579,8 +579,9 @@ export function StudioStyleLibrary({
                       )}
                   </div>
                   <p className="st-library-hint">
-                    Seasonal touches change the scene, never your food. Add
-                    promotional words later in Post Maker.
+                    Seasonal touches are designed to change the scene, not your
+                    food. Check each result before sharing, and add promotional
+                    words later in Post Maker.
                   </p>
                 </>
               ) : category ? (
@@ -687,7 +688,7 @@ export function StudioStyleLibrary({
                           <p className="st-fidelity">
                             <ShieldCheck size={15} aria-hidden="true" />
                             {detailInfo.fromPhoto
-                              ? "Your food and portion stay the same."
+                              ? "Designed to keep your food and portion as served — check each result before sharing."
                               : "Review the result against the real dish."}
                           </p>
                         </section>

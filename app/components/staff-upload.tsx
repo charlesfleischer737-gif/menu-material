@@ -2,7 +2,13 @@
 import { useCallback, useEffect, useRef, useState } from "react";
 import { Button } from "@/components/ui/button";
 import Brand from "./brand";
-import { api, normalizePhoto, type Row } from "@/lib/client";
+import {
+  api,
+  normalizePhoto,
+  photoAccept,
+  photoFileError,
+  type Row,
+} from "@/lib/client";
 import { photoAdvice } from "@/lib/photo-advice";
 export default function StaffUpload({ token }: { token: string }) {
   const [data, setData] = useState<Row | null>(null),
@@ -10,7 +16,8 @@ export default function StaffUpload({ token }: { token: string }) {
     [file, setFile] = useState<File | null>(null),
     [busy, setBusy] = useState(false),
     [error, setError] = useState(""),
-    [notice, setNotice] = useState("");
+    [notice, setNotice] = useState(""),
+    [canRetry, setCanRetry] = useState(true);
   const photoInput = useRef<HTMLInputElement>(null);
   const load = useCallback(
     () =>
@@ -19,7 +26,20 @@ export default function StaffUpload({ token }: { token: string }) {
           setData(next);
           setError("");
         })
-        .catch((e) => setError(e.message)),
+        .catch((e) => {
+          // Only a dropped connection or a service error can pass on a
+          // retry; any other refusal means the link itself is unusable.
+          const retry =
+            !e.status || e.status >= 500 || [408, 429].includes(e.status);
+          setCanRetry(retry);
+          setError(
+            !e.status
+              ? "The photo drop couldn’t be opened. Check your connection and try again."
+              : retry
+                ? e.message
+                : "This upload link has expired or isn’t valid.",
+          );
+        }),
     [token],
   );
   useEffect(() => {
@@ -47,17 +67,21 @@ export default function StaffUpload({ token }: { token: string }) {
             <span aria-hidden="true" />
           </div>
         )}
-        {!data && error && (
-          <Button
-            variant="outline"
-            onClick={() => {
-              setError("");
-              void load();
-            }}
-          >
-            Try opening again
-          </Button>
-        )}
+        {!data &&
+          error &&
+          (canRetry ? (
+            <Button
+              variant="outline"
+              onClick={() => {
+                setError("");
+                void load();
+              }}
+            >
+              Try opening again
+            </Button>
+          ) : (
+            <p className="fine">Ask the restaurant for a new link.</p>
+          ))}
         {notice && (
           <p className="notice" role="status">
             {notice}
@@ -81,11 +105,21 @@ export default function StaffUpload({ token }: { token: string }) {
               <input
                 ref={photoInput}
                 type="file"
-                accept="image/jpeg,image/png,image/heic,.heic"
+                accept={photoAccept}
                 onChange={(e) => {
-                  setFile(e.target.files?.[0] || null);
+                  const chosen = e.target.files?.[0] || null;
+                  setFile(chosen);
                   setNotice("");
                   setError("");
+                  // Say straight away if this file can't be sent.
+                  if (chosen)
+                    void photoFileError(chosen).then((problem) => {
+                      const input = photoInput.current;
+                      if (!problem || input?.files?.[0] !== chosen) return;
+                      setError(problem);
+                      setFile(null);
+                      input.value = "";
+                    });
                 }}
               />
             </label>

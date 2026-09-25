@@ -23,29 +23,28 @@ import {
 } from "@/components/ui/collapsible";
 import { downloadBlob } from "@/lib/client";
 import {
+  downloadFormats,
+  eventDestination,
   masterPhotoExport,
   openOriginalPhoto,
   photoExport,
+  type DownloadFormat,
 } from "@/lib/photo-export";
 import { photoExportEventKey } from "@/lib/photo-export-identity";
-import {
-  emptyAdjustments,
-  formats,
-  type PhotoFormat,
-  type Adjustments,
-} from "@/lib/studio";
+import { emptyAdjustments, type Adjustments } from "@/lib/studio";
 import { isCatalogDestination, photoFilename } from "@/lib/photo-destinations";
 import { destinationChannel, type StyleProfile } from "@/lib/channel-rules";
 import { downloadWarnings } from "@/lib/photo-pack";
 import { CropControls, Field, PhotoFrame, track } from "./creation-shared";
 import { radioKeys, radioTab } from "./radio-keys";
 
-type Destination = PhotoFormat | "master";
+type Destination = DownloadFormat | "master";
 // Labeled by use. The photo's own format is the default; the rest are a
 // secondary "Different size" choice.
 export const sizeChoices: { id: Destination; label: string; hint: string }[] = [
   { id: "menu", label: "Menu & website", hint: "Square · 1:1" },
   { id: "feed", label: "Instagram post", hint: "Portrait · 4:5" },
+  { id: "feed-3x4", label: "Instagram post", hint: "Portrait · 3:4" },
   { id: "story", label: "Story", hint: "Full screen · 9:16" },
   { id: "doordash", label: "DoorDash", hint: "Wide · 16:9" },
   { id: "uber", label: "Uber Eats", hint: "Item photo · 5:4" },
@@ -54,7 +53,9 @@ export const sizeChoices: { id: Destination; label: string; hint: string }[] = [
   { id: "master", label: "Full-quality image", hint: "Original size, no crop" },
 ];
 const validDestination = (value: string): Destination =>
-  value === "master" || value in formats ? (value as Destination) : "menu";
+  value === "master" || value in downloadFormats
+    ? (value as Destination)
+    : "menu";
 export function PhotoFinishSheet({
   open,
   onOpenChange,
@@ -192,7 +193,7 @@ export function PhotoFinishSheet({
     ).catch(() => undefined);
     const eventDetails = {
       ...measurementContext,
-      destination,
+      destination: eventDestination(destination),
       ...(exportKey ? { exportKey } : {}),
     };
     try {
@@ -273,16 +274,16 @@ export function PhotoFinishSheet({
             ) : (
               <PhotoFrame
                 src={`/api/assets/${assetId}`}
-                ratio={formats[destination].ratio}
+                ratio={downloadFormats[destination].ratio}
                 edits={edits}
-                label={`${formats[destination].label} · download preview`}
+                label={`${downloadFormats[destination].label} · download preview`}
               />
             )}
           </div>
           <p className="ps2-control-help ps2-finish-size">
             {master
               ? `${dimensions ? `${dimensions.width} × ${dimensions.height} pixels · ` : ""}No resizing or recompression`
-              : `Up to ${formats[destination].width} × ${formats[destination].height} pixels · JPG · No image used`}
+              : `Up to ${downloadFormats[destination].width} × ${downloadFormats[destination].height} pixels · JPG · No image used`}
           </p>
           {warnings.length > 0 && (
             <div className="ps2-finish-warning" role="note">
