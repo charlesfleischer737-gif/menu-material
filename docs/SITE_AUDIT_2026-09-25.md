@@ -2,6 +2,109 @@
 
 Review date: September 25, 2026. Source: `63d31f7` (main after #12, "Show photo progress and default to medium image quality"). This follows the [September 24 site audit](SITE_AUDIT_2026-09-24.md) and the [Post Maker review](POST_MAKER_REVIEW_2026-09-24.md). Appendix A tracks every September 24 item.
 
+## Fix status — added after the fixes
+
+The fixes are on branch `claude/relaxed-feynman-7i5npi`, not yet merged into main. The rest of this document describes the site as reviewed, before these fixes.
+
+**In short:** nearly every finding is fixed. The main gaps left in code are the stylesheet split, resized guest-menu photos and the remaining lint errors. The rest needs you: payments, an email provider, Terms and a support address, CAPTCHA keys, and a few product decisions.
+
+### How the fixes were checked
+
+- `typecheck` passes. All 45 test suites pass, including 8 new ones, and `npm test` now runs them.
+- Lint: 58 errors, down from 63; no new errors in changed code.
+- `build` passes. On the production build under wrangler, with migrations applied:
+  - security headers on pages and the API, with guest menus left embeddable;
+  - `robots.txt`, `sitemap.xml` and `favicon.ico`;
+  - real 404s for unknown menus;
+  - signup, workspace navigation, publishing, and a guest menu with "Contains" labels, JSON-LD and 0 axe violations.
+- In the browser, on the dev server:
+  - guest sample → signup: the 875 KB sample transfers and stays a sample, and the time zone is saved;
+  - a 2 MB phone photo uploads, and a GIF is refused before anything is created;
+  - typed notes stay notes;
+  - Menus: the sample isn't offered, the address field is labelled, and Share opens by itself only on the first publish;
+  - the guest menu from a QR link: no hydration errors, one view per dish, allergens and the vegan filter, axe clean;
+  - a lapsed session asks for sign-in in place and keeps unsaved edits;
+  - account deletion;
+  - axe on the public pages, including the showcase with reduced motion.
+- A new browser check, `tests/menu-accessibility-guest.mjs` (15 checks, run by hand), covers the published guest menu.
+
+### Status by section
+
+| Section | Status |
+|---|---|
+| §2 H1–H6 | Fixed |
+| §3 B1 Accounts | Partly fixed. Sessions renew while in use, and a 401 reopens sign-in in place. **Left for you:** password-reset and verification emails, a support address |
+| §3 B2 Terms, deletion, privacy | Partly fixed. Account deletion is in Settings → Details, and the privacy page is accurate. **Left for you:** Terms and signup consent |
+| §3 B3 AI budget | Fixed in code. Spend settles at measured cost, free accounts get 40 text AI calls a day, budgets follow the plan, and limits are keyed on the IPv6 /64. **Left for you:** CAPTCHA and email verification before the first AI call |
+| §3 B6 Paying | Partly fixed. Plans is honest while billing is off and has a "Tell me when Pro opens" waitlist, and Pro is no longer capped at about 10 images a day. **Left for you:** payments |
+| §3 Headers, takedown, README | Fixed |
+| §4 Abuse and account security | Fixed |
+| §5 Image creation and operations | Fixed |
+| §6 Photo Studio and My Dishes | Fixed, except a Grubhub export: no verified size spec was found |
+| §7 Menus and the guest menu | Fixed, with a few gaps: see "Still open in code" |
+| §8 Post Maker and Campaigns | Fixed. Prices still use the browser's number format, because restaurants have no locale setting |
+| §9 Marketing, SEO, settings | Fixed, except the stylesheet split |
+| §10 Accessibility | Fixed |
+| §11 Engineering | Fixed, except lint: see "Still open in code" |
+
+### Found and fixed along the way
+
+- **Links did nothing in production.** In the vinext production build, every `next/link` click fails (`navigateClientSide` is undefined). All of them are now plain links. Don't add `next/link` until vinext fixes it.
+- **Adding dishes to a menu repeated section headings.** Dishes added from My Dishes now join the menu's section of the same name. The picker marks dishes already on the menu.
+- **Shared menu links had no preview image** without `APP_ORIGIN`. They now fall back to the request's host, like the other public pages.
+- **QR codes used whatever address the owner was on.** They now use `APP_ORIGIN`.
+- **The homepage showcase couldn't be scrolled from the keyboard** with reduced motion on.
+
+### Behavior changes to know
+
+- In the menu builder, "Update dish library" now changes My Dishes only. Other menus and live copies keep their own wording and prices.
+- A $0 price saved in My Dishes reaches drafts, where the publish checks stop it, but not live menus.
+- Pasted and imported dishes stay unreviewed until the owner confirms them.
+- Photo Studio never renames or rewrites an existing dish.
+- WebP photos are accepted. GIF and AVIF are refused before anything is created.
+- An old menu address keeps redirecting only if a menu was live on it, or if it's the signup address. An administrator can release one.
+
+### Before deploying
+
+- Set `APP_ORIGIN` in production. Canonical links, QR codes and link previews use it; without it they fall back to the request's host.
+- Migration `0017` adds two columns. Sites applies checked-in migrations on deploy.
+- New optional settings are documented in `.env.example`:
+  - `IMAGE_COST_ESTIMATE_USD`;
+  - `AI_TEXT_INPUT_USD_PER_MILLION_TOKENS` and `AI_TEXT_OUTPUT_USD_PER_MILLION_TOKENS`;
+  - `AI_FREE_DAILY_TEXT_CALLS`;
+  - `RUNNER_ONCE_SECONDS`.
+- Files Cloudflare serves directly from `public/` don't get the new security headers; only worker responses do.
+
+### Left for you
+
+1. **Payments:** a Stripe account, products and keys, then turn billing on. Checkout, webhooks and plan budgets are already built.
+2. **Email:** a transactional email provider, for password-reset and verification emails.
+3. **Terms and support:** Terms of Service text and a support address. Signup consent and a `/terms` page follow from them.
+4. **CAPTCHA:** Turnstile keys for signup and before the first AI call.
+5. **Product decisions:**
+   - fold Campaigns into Post Maker;
+   - settle the four destinations;
+   - settle the words Style and Brand;
+   - add a restaurant locale setting for price formats.
+
+### Still open in code
+
+- **Stylesheet split by route:** skipped. The cascade depends on the order of 22 stylesheet imports.
+- **Guest menus:**
+  - Photos are now cacheable, but not yet resized or given a `srcset`.
+  - A menu that fails to load still returns 200, because vinext gives pages no way to return a 5xx.
+  - Guest session IDs are still chosen by the browser. Per-network caps limit inflation.
+  - "Most seen dish" still favors dishes near the top; the stats now say so.
+- **Lint:** 58 errors remain (the hook rules and `no-explicit-any`), and lint doesn't block CI yet.
+- **Opportunities in §12:**
+  - an activity log with undo for live changes;
+  - an allergen filter and a printable allergen chart;
+  - Post Maker from any photo;
+  - server-issued guest sessions and a weekly digest;
+  - a how-it-works strip and trust FAQ;
+  - provenance metadata.
+- **Dev server only:** it sometimes reports a `useId` hydration mismatch on public pages. The production build showed none in 20 loads.
+
 ## Bottom line
 
 The site took a big step in a day:
@@ -599,6 +702,8 @@ Effort is relative: **S** = a focused change, **M** = a coordinated feature, **L
 4. **Then:** the opportunities in §12.
 
 ## Appendix A — status of September 24 items
+
+As of the review, before the fixes. See "Fix status" at the top for what has changed.
 
 **Launch blockers**
 
