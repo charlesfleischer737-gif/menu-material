@@ -18,6 +18,11 @@ const root = "/private/tmp/menu-workspace-export-qa";
 mkdirSync(root, { recursive: true });
 const jpg = readFileSync("public/burger.jpg"),
   pasta = readFileSync("public/pasta.jpg");
+// A 5:1 magenta wordmark, so the drawn logo's shape can be measured.
+const wordmark = createCanvas(500, 100);
+wordmark.getContext("2d").fillStyle = "#ff00ff";
+wordmark.getContext("2d").fillRect(0, 0, 500, 100);
+const wideLogo = wordmark.toBuffer("image/png");
 Object.assign(globalThis, { DOMMatrix, Path2D, ImageData });
 function canvas() {
   const c = createCanvas(1, 1);
@@ -63,6 +68,8 @@ globalThis.fetch = async (url) => {
     });
   if (path.startsWith("/api/assets/deleted-"))
     return new Response("Image not found.", { status: 404 });
+  if (path === "/api/assets/wide-logo")
+    return new Response(wideLogo, { headers: { "Content-Type": "image/png" } });
   if (path.startsWith("/api/assets/"))
     return new Response(path.includes("pasta") ? pasta : jpg, {
       headers: { "Content-Type": "image/jpeg" },
@@ -256,6 +263,34 @@ const noLogo = await renderPost(
 );
 assert(noLogo.renderedText.includes(restaurant.name));
 checks += 2;
+// A wide wordmark keeps its 5:1 shape instead of being squashed.
+const branded = canvas();
+await renderPost(
+  branded,
+  { ...base, template: "chef", showBrand: true, textMode: "minimal" },
+  { ...restaurant, logo_id: "wide-logo" },
+);
+const pixels = branded
+  .getContext("2d")
+  .getImageData(0, 0, branded.width, branded.height).data;
+let [left, right, top, bottom] = [Infinity, -1, Infinity, -1];
+for (let i = 0; i < pixels.length; i += 4)
+  if (pixels[i] > 200 && pixels[i + 1] < 60 && pixels[i + 2] > 200) {
+    const x = (i / 4) % branded.width,
+      y = Math.floor(i / 4 / branded.width);
+    [left, right, top, bottom] = [
+      Math.min(left, x),
+      Math.max(right, x),
+      Math.min(top, y),
+      Math.max(bottom, y),
+    ];
+  }
+const logoShape = (right - left + 1) / (bottom - top + 1);
+assert(
+  logoShape > 4.6 && logoShape < 5.4,
+  `A wide logo keeps its shape (drawn at ${logoShape.toFixed(2)}:1)`,
+);
+checks++;
 const carousel = {
   ...base,
   template: "chef",

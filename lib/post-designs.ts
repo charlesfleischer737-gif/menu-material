@@ -225,10 +225,10 @@ function brandLayout(
   style: TextStyle = LABEL,
 ): BrandLayout | null {
   if (!d.showBrand || (!d.brandName && !d.logo)) return null;
-  const logoH = d.logo ? 64 : 0,
-    logoW = d.logo
-      ? Math.min(220, (d.logo.im.width / d.logo.im.height) * logoH)
-      : 0;
+  // A wide wordmark keeps its shape: capping its width lowers its height too.
+  const ratio = d.logo ? d.logo.im.width / d.logo.im.height : 0,
+    logoW = d.logo ? Math.min(220, ratio * 64) : 0,
+    logoH = d.logo ? logoW / ratio : 0;
   const t = d.brandName
     ? d.k.layout(d.brandName, column - (logoW ? logoW + 22 : 0), style)
     : null;
