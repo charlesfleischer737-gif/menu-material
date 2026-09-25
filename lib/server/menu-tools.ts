@@ -69,8 +69,9 @@ export async function staffAccess(
   if (req.method === "GET" && !p[2])
     return response({
       name: r.name,
+      // Staff see the restaurant's current dishes, not archived or sample ones.
       dishes: await all(
-        "SELECT id,name FROM dishes WHERE restaurant_id=? ORDER BY name",
+        "SELECT id,name FROM dishes WHERE restaurant_id=? AND archived_at IS NULL AND sample=0 ORDER BY name",
         r.id,
       ),
     });

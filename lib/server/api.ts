@@ -454,7 +454,12 @@ function imageMime(bytes: Uint8Array) {
   return null;
 }
 async function upload(req: Request, r: Row, forcedKind?: string) {
-  await limit("uploads:" + r.id, 100, 3600);
+  // Staff links have their own hourly allowance, so they never use up the owner's.
+  await limit(
+    (forcedKind === "staff" ? "staff-uploads:" : "uploads:") + r.id,
+    100,
+    3600,
+  );
   assert(
     Number(req.headers.get("content-length") || 0) <= 30 * 1024 * 1024,
     413,
@@ -499,9 +504,10 @@ async function upload(req: Request, r: Row, forcedKind?: string) {
   if (dishId)
     assert(
       await one(
-        "SELECT 1 FROM dishes WHERE id=? AND restaurant_id=?",
+        "SELECT 1 FROM dishes WHERE id=? AND restaurant_id=? AND (?!='staff' OR (archived_at IS NULL AND sample=0))",
         dishId,
         r.id,
+        kind,
       ),
       404,
       "Dish not found.",

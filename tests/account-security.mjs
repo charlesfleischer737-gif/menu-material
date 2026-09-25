@@ -616,8 +616,62 @@ try {
   assert.equal(look.photoPreset, "");
   await run("UPDATE restaurants SET style='{}' WHERE id=?", freeRid);
 
+  // 10. Staff links list only current dishes, and staff uploads have their
+  // own hourly allowance.
+  const staffToken = (
+    await expect("staff-links", 200, { body: {}, ...freeOpts })
+  ).json.path
+    .split("/")
+    .pop();
+  const retired = (
+    await expect("dishes", 200, {
+      body: { name: "Old soup", description: "Retired" },
+      ...freeOpts,
+    })
+  ).json.id;
+  await run("UPDATE dishes SET archived_at=? WHERE id=?", Date.now(), retired);
+  const sampleDish = (
+    await expect("dishes", 200, {
+      body: { name: "Sample burger", description: "Sample", sample: true },
+      ...freeOpts,
+    })
+  ).json.id;
+  const staffDishes = (
+    await expect(`staff/${staffToken}`, 200, { ip: "192.0.2.61" })
+  ).json.dishes.map((d) => d.id);
+  assert(staffDishes.includes(pasta));
+  assert(!staffDishes.includes(retired) && !staffDishes.includes(sampleDish));
+  const photoForm = (dishId) => {
+    const form = new FormData();
+    form.set("file", new File([photo], "pasta.jpg", { type: "image/jpeg" }));
+    form.set(
+      "normalized",
+      new File([photo], "dish.jpg", { type: "image/jpeg" }),
+    );
+    form.set("dishId", dishId);
+    return form;
+  };
+  await expect(`staff/${staffToken}/upload`, 404, {
+    body: photoForm(retired),
+    ip: "192.0.2.61",
+  });
+  await run(
+    "INSERT INTO rate_limits (key,count,expires_at) VALUES (?,100,?) ON CONFLICT(key) DO UPDATE SET count=100,expires_at=excluded.expires_at",
+    digest("uploads:" + freeRid),
+    Date.now() + 3600000,
+  );
+  await expect("assets", 429, { body: photoForm(pasta), ...freeOpts });
+  await expect(`staff/${staffToken}/upload`, 201, {
+    body: photoForm(pasta),
+    ip: "192.0.2.61",
+  });
+  await run(
+    "DELETE FROM rate_limits WHERE key=?",
+    digest("uploads:" + freeRid),
+  );
+
   console.log(
-    `PASS: ${checks} account security checks: per-network limits on the IPv6 /64 with no site-wide lockout, a per-account sign-in slowdown, versioned password hashes, sliding sessions, revocable reset and setup links, the Pro waitlist, once-only free images, ID validation, lenient saved looks;`,
+    `PASS: ${checks} account security checks: per-network limits on the IPv6 /64 with no site-wide lockout, a per-account sign-in slowdown, versioned password hashes, sliding sessions, revocable reset and setup links, the Pro waitlist, once-only free images, ID validation, lenient saved looks, staff link scope and limits;`,
   );
 } finally {
   rmSync(root, { recursive: true, force: true });
