@@ -44,6 +44,8 @@ import {
 import {
   emptyAdjustments,
   foodFamilies,
+  formatNames,
+  formatShapes,
   formats,
   looks,
   photoStyles,
@@ -93,24 +95,8 @@ import {
 // shapes owners reach for. Other saved destinations stay selectable.
 const formatChoices: PhotoFormat[] = ["menu", "feed", "story", "doordash"];
 // Named by use first; the ratio is secondary.
-const formatName: Record<string, string> = {
-  menu: "Square",
-  feed: "Portrait",
-  story: "Story",
-  doordash: "Wide",
-  toast: "Toast",
-  uber: "Uber Eats",
-  print: "Print",
-};
-const formatShape: Record<string, string> = {
-  menu: "1:1",
-  feed: "4:5",
-  story: "9:16",
-  doordash: "16:9",
-  toast: "5:3",
-  uber: "5:4",
-  print: "1:1",
-};
+const formatName: Record<string, string> = formatNames;
+const formatShape: Record<string, string> = formatShapes;
 const formatUse: Record<string, string> = {
   menu: "Menus, websites and listings",
   feed: "Instagram and Facebook posts",

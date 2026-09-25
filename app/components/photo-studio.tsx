@@ -38,6 +38,8 @@ import {
   samplePhoto,
   studioDishRequest,
   adjustedPhotoSize,
+  formatNames,
+  formatShapes,
   type PhotoFormat,
 } from "@/lib/studio";
 import {
@@ -75,6 +77,7 @@ import {
 } from "@/lib/studio-reference";
 import { useInspirationAvailability } from "./use-inspiration-availability";
 import { PhotoComparison, StudioCreating } from "./studio-onboarding";
+import { cancelledError } from "@/lib/creation-progress";
 import { StudioWorkbench } from "./studio-workbench";
 import { radioKeys, radioTab } from "./radio-keys";
 import {
@@ -827,6 +830,11 @@ export default function PhotoStudio({
     : state.remaining < 1
       ? "You’ve used your available images."
       : "";
+  // Why the latest image stopped: cancelled by the owner while it waited, or
+  // it couldn't be created.
+  const failureText: string =
+    state.outputs.find((o: Row) => o.job_id === b.jobId)?.error || "";
+  const cancelled = cancelledError(failureText);
   const hour = new Date().getHours();
   const greeting =
     hour >= 5 && hour < 12
@@ -1047,16 +1055,23 @@ export default function PhotoStudio({
               </section>
               <aside className="st-inspector" aria-label="Image creation">
                 <div className="st-section">
-                  <span className="st-badge st-badge-warning">
-                    Needs attention
+                  <span
+                    className={
+                      cancelled ? "st-badge" : "st-badge st-badge-warning"
+                    }
+                  >
+                    {cancelled ? "Cancelled" : "Needs attention"}
                   </span>
                   <h2 className="st-result-title">
-                    This photo couldn’t be created.
+                    {cancelled
+                      ? "You cancelled this image."
+                      : "This photo couldn’t be created."}
                   </h2>
                   <p className="st-result-copy">
-                    {state.outputs.find((o: Row) => o.job_id === b.jobId)
-                      ?.error ||
-                      "You don’t need to do anything else. Your original and choices are saved."}
+                    {cancelled
+                      ? "No images were used. Your photo and choices are saved."
+                      : failureText ||
+                        "You don’t need to do anything else. Your original and choices are saved."}
                   </p>
                 </div>
                 <div className="st-action st-action-inline">
@@ -1065,8 +1080,12 @@ export default function PhotoStudio({
                     disabled={!!busy || !!failedRetry}
                     onClick={() => void act("Creating your photo", retry)}
                   >
-                    <RotateCcw size={18} aria-hidden="true" />
-                    Try again
+                    {cancelled ? (
+                      <Sparkles size={18} aria-hidden="true" />
+                    ) : (
+                      <RotateCcw size={18} aria-hidden="true" />
+                    )}
+                    {cancelled ? "Create photo" : "Try again"}
                   </button>
                   <button
                     className="st-pill st-pill-quiet st-pill-wide"
@@ -1397,7 +1416,7 @@ export default function PhotoStudio({
                   adjust === "quick"
                     ? "Save this version before using your adjusted photo."
                     : asset?.approved_at
-                      ? `Sized for ${format.label} · No image used`
+                      ? `${formatNames[resultFormat]} · ${formatShapes[resultFormat]} · No image used`
                       : "You’ll confirm the photo once · No image used"
                 }
                 onApprove={() => approve(true)}

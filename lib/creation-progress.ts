@@ -77,3 +77,9 @@ export function creationProgress({
           : `About ${duration(left)} left`,
   };
 }
+/**
+ * An image the owner cancelled while it waited to start. The server records
+ * that as a failed image whose reason starts with "Cancelled".
+ */
+export const cancelledError = (error?: string | null) =>
+  /^cancell?ed\b/i.test((error || "").trim());

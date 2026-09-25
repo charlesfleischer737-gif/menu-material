@@ -12,7 +12,7 @@ export const photoActionLabels: Record<PhotoAction, string> = {
   menu: "Add to menu",
 };
 const confirmLabels: Record<PhotoAction, string> = {
-  download: "Approve and download",
+  download: "Approve and choose a size",
   pack: "Approve and make a pack",
   post: "Approve and make a post",
   menu: "Approve and add to menu",

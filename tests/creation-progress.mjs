@@ -4,8 +4,13 @@ import { tmpdir } from "node:os";
 import { join } from "node:path";
 const root = mkdtempSync(join(tmpdir(), "menu-creation-progress-"));
 process.env.MENU_MATERIAL_DATA_DIR = root;
-const { creationProgress, typicalRenderMs, typicalWait, TYPICAL_RENDER_MS } =
-  await import("../lib/creation-progress.ts");
+const {
+  creationProgress,
+  typicalRenderMs,
+  typicalWait,
+  cancelledError,
+  TYPICAL_RENDER_MS,
+} = await import("../lib/creation-progress.ts");
 const { syncServerClock, serverNow } = await import("../lib/server-clock.ts");
 const { withRenderEstimates } = await import("../lib/server/generation.ts");
 const { run, id } = await import("../lib/server/core.ts");
@@ -75,6 +80,18 @@ assert.equal(typicalRenderMs([], "low"), 30000);
 assert.equal(typicalRenderMs([], "high"), TYPICAL_RENDER_MS);
 assert.equal(typicalRenderMs([], "max"), 90000);
 assert.equal(typicalRenderMs([], "auto"), TYPICAL_RENDER_MS);
+checks++;
+// A queued image the owner cancelled reads as cancelled, not as a failure.
+assert.equal(
+  cancelledError("Cancelled before creation. No images used."),
+  true,
+);
+assert.equal(
+  cancelledError("Image creation failed. This image was not counted."),
+  false,
+);
+assert.equal(cancelledError(""), false);
+assert.equal(cancelledError(undefined), false);
 checks++;
 // Server times are read against the server's clock, not a wrong device clock.
 syncServerClock(Date.now() + 120000);

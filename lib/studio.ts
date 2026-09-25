@@ -183,6 +183,26 @@ export const formats = {
   },
 } as const;
 export type PhotoFormat = keyof typeof formats;
+// The Format picker's names, named by use first, and their shapes: the same
+// words wherever a photo's size is shown.
+export const formatNames: Record<PhotoFormat, string> = {
+  menu: "Square",
+  feed: "Portrait",
+  story: "Story",
+  doordash: "Wide",
+  toast: "Toast",
+  uber: "Uber Eats",
+  print: "Print",
+};
+export const formatShapes: Record<PhotoFormat, string> = {
+  menu: "1:1",
+  feed: "4:5",
+  story: "9:16",
+  doordash: "16:9",
+  toast: "5:3",
+  uber: "5:4",
+  print: "1:1",
+};
 // Catalog export limits come from the channel rules (lib/channel-rules.ts).
 function catalogProfile(rule: ChannelRule) {
   return {
