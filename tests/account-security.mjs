@@ -593,8 +593,31 @@ try {
     ...freeOpts,
   });
 
+  // 8. A saved look naming a photo style that was since removed still opens
+  // the workspace: unknown values fall back to defaults, valid ones stay.
+  await run(
+    "UPDATE restaurants SET style=? WHERE id=?",
+    JSON.stringify({
+      primary: "#123456",
+      photoPreset: "retired-style-id",
+      referenceIds: ["not-an-id"],
+      photoDefaults: { surface: "Marble", lighting: "Soft daylight" },
+    }),
+    freeRid,
+  );
+  let look = (await expect("state", 200, freeOpts)).json.restaurant.style;
+  assert.equal(look.primary, "#123456");
+  assert.equal(look.photoPreset, "");
+  assert.deepEqual(look.referenceIds, []);
+  assert.equal(look.photoDefaults.surface, "As shown");
+  assert.equal(look.photoDefaults.lighting, "Soft daylight");
+  await run("UPDATE restaurants SET style='not json' WHERE id=?", freeRid);
+  look = (await expect("state", 200, freeOpts)).json.restaurant.style;
+  assert.equal(look.photoPreset, "");
+  await run("UPDATE restaurants SET style='{}' WHERE id=?", freeRid);
+
   console.log(
-    `PASS: ${checks} account security checks: per-network limits on the IPv6 /64 with no site-wide lockout, a per-account sign-in slowdown, versioned password hashes, sliding sessions, revocable reset and setup links, the Pro waitlist, once-only free images, ID validation;`,
+    `PASS: ${checks} account security checks: per-network limits on the IPv6 /64 with no site-wide lockout, a per-account sign-in slowdown, versioned password hashes, sliding sessions, revocable reset and setup links, the Pro waitlist, once-only free images, ID validation, lenient saved looks;`,
   );
 } finally {
   rmSync(root, { recursive: true, force: true });

@@ -178,6 +178,33 @@ const menuSchema = z.object({
     )
     .max(30),
 });
+// A saved look can outlive what it names (a photo style later removed from
+// the catalog). Keep the values that are still valid and use defaults for
+// the rest, rather than refusing to open the workspace.
+function validParts(schema: z.AnyZodObject, value: unknown): Row {
+  if (!value || typeof value !== "object") return {};
+  return Object.fromEntries(
+    Object.entries(value).flatMap(([key, entry]) => {
+      const field = schema.shape[key] as z.ZodTypeAny | undefined;
+      if (!field) return [];
+      if (field.safeParse(entry).success) return [[key, entry]];
+      const inner = field instanceof z.ZodOptional ? field.unwrap() : field;
+      return inner instanceof z.ZodObject
+        ? [[key, validParts(inner, entry)]]
+        : [];
+    }),
+  );
+}
+function storedStyle(raw: string) {
+  let saved: unknown = {};
+  try {
+    saved = JSON.parse(raw);
+  } catch {}
+  const parsed = styleSchema.safeParse(saved);
+  return parsed.success
+    ? parsed.data
+    : styleSchema.parse(validParts(styleSchema, saved));
+}
 async function signup(req: Request, b: Row) {
   const email = emailSchema.parse(b.email),
     password = passwordSchema.parse(b.password),
@@ -831,7 +858,7 @@ async function route(req: Request) {
         studioAvailability: await studioAvailability(r.id),
         restaurant: {
           ...r,
-          style: styleSchema.parse(JSON.parse(r.style)),
+          style: storedStyle(r.style),
           hours: JSON.parse(r.hours),
           menuDraft: JSON.parse(r.menu_draft),
           published: r.published ? JSON.parse(r.published) : null,
