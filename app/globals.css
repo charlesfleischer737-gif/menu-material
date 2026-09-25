@@ -53,6 +53,14 @@
   --on-dark-muted: rgb(255 255 255 / 70%);
   --on-dark-hover: rgb(255 255 255 / 8%);
   --on-dark-selected: rgb(255 255 255 / 11%);
+  --on-dark-line: rgb(255 255 255 / 12%);
+  --on-dark-warning: #f2c57c;
+  /* Posts and menus are previewed on a dark stage, a step lighter than the
+     navigation, so light artwork stands out; a hairline keeps dark artwork
+     apart from it. */
+  --artwork-stage: #1b2922;
+  --artwork-edge:
+    0 0 0 1px rgb(255 255 255 / 10%), 0 24px 48px -16px rgb(0 0 0 / 55%);
   /* The bright green glowing from the top edge of a dark band. */
   --green-glow: radial-gradient(
     70% 90% at 50% 0%,

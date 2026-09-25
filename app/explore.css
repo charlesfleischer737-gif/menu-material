@@ -218,7 +218,9 @@
   margin: 16px 0 32px;
   padding: 36px 40px;
   border-radius: var(--radius-media);
-  background: color-mix(in srgb, var(--ex-tint) 42%, #fff);
+  /* The collection's full color, so the panel reads as color rather than
+     another off-white on the stone page. */
+  background: var(--ex-tint);
   animation: ex-fade-up var(--duration-slow) var(--ease);
 }
 .cx-app .ex-collection-title {
@@ -418,13 +420,16 @@
   }
 }
 
-/* Occasions: a band of ready-made sets inside the lookbook. */
+/* Occasions: an evergreen band of ready-made sets inside the lookbook, so
+   the white cards stand out from the stone page. */
 .ex-occasions {
+  --workspace-focus: var(--green-bright);
   grid-column: 1 / -1;
   margin-block: 8px;
   padding: 40px;
   border-radius: var(--radius-media);
-  background: #f7f2ec;
+  background: var(--green-glow), var(--green-ink);
+  color: var(--on-dark);
 }
 .ex-occasions-heading {
   margin-bottom: 28px;
@@ -435,7 +440,7 @@
 }
 .cx-app .ex-occasions-heading p {
   margin-top: 6px;
-  color: var(--workspace-muted);
+  color: var(--on-dark-muted);
   font-size: var(--text-callout);
 }
 .ex-occasion-list {

@@ -1966,3 +1966,97 @@
 }
 /* Interface labels read in sentence case, never tracked-out capitals.
    Menu and post artwork keep their own typography. */
+
+/* ---------- Artwork stage ---------- */
+/* Posts and menus are previewed on a dark stage, so light artwork stands out
+   instead of stacking on the stone canvas. Controls on the stage switch to
+   their on-dark colors; white cards and the zoom pill keep ink text. */
+:is(.mm-stage, .md-stage) {
+  --workspace-focus: var(--green-bright);
+  background: var(--artwork-stage);
+  color: var(--on-dark);
+}
+.mm-stage {
+  border-radius: var(--radius-card);
+}
+:is(.mm-stage, .md-stage)
+  :is(.mm-muted, .md-preview-hint, .md-proof-toolbar, .md-proof-placeholder) {
+  color: var(--on-dark-muted);
+}
+.cx-app :is(.mm-stage, .md-stage) .cx-link {
+  color: var(--green-bright);
+}
+:is(.mm-stage, .md-stage) :is(.mm-segments, .md-segment) {
+  background: rgb(255 255 255 / 10%);
+}
+:is(.mm-stage, .md-stage) :is(.mm-segments, .md-segment) > button {
+  color: var(--on-dark-muted);
+}
+:is(.mm-stage, .md-stage)
+  :is(.mm-segments, .md-segment)
+  > button:not(:disabled, [aria-pressed="true"]):hover {
+  background: var(--on-dark-hover);
+  color: var(--on-dark);
+}
+:is(.mm-stage, .md-stage)
+  :is(.mm-segments, .md-segment)
+  > button[aria-pressed="true"] {
+  background: var(--workspace-surface);
+  color: var(--green-ink);
+}
+.mm-stage .mm-main-canvas,
+.md-stage .md-proof-scroll .md-proof-page {
+  box-shadow: var(--artwork-edge);
+}
+.mm-stage :is(.mm-design-choice, .mm-slide-strip button) {
+  color: var(--workspace-ink);
+}
+.mm-stage :is(.mm-design-choice, .mm-slide-strip button)[aria-pressed="true"] {
+  border-color: var(--green-bright);
+  box-shadow: 0 0 0 1px var(--green-bright);
+}
+.mm-stage .mm-output-notes {
+  color: var(--workspace-ink);
+}
+.md-studio .md-stage :is(.md-focus-toggle, .md-design-label) {
+  color: var(--on-dark);
+}
+.md-studio .md-stage :is(.md-focus-toggle, .md-design-label):hover {
+  background: var(--on-dark-hover);
+  text-decoration: none;
+}
+.md-stage .md-proof-toolbar > div:first-child button:is(:enabled, :disabled) {
+  color: var(--on-dark);
+}
+.md-stage .md-proof-toolbar > div:first-child button:hover:not(:disabled) {
+  background: var(--on-dark-hover);
+}
+.md-stage .md-page-thumbnails > button {
+  color: var(--on-dark-muted);
+}
+.md-stage .md-page-thumbnails > button[aria-pressed="true"] .md-proof-page {
+  border-color: var(--green-bright);
+}
+.md-stage :is(.md-phone-frame, .md-phone-speaker) {
+  border-color: #34443b;
+}
+.md-stage .md-phone-frame {
+  box-shadow: var(--artwork-edge);
+}
+.md-stage .md-phone-speaker {
+  background: #34443b;
+}
+.md-stage .md-quality-strip {
+  border-color: var(--on-dark-line);
+  background: rgb(255 255 255 / 4%);
+  color: var(--on-dark-muted);
+}
+.cx-app .md-stage .md-quality-strip > button {
+  color: var(--on-dark-warning);
+}
+.cx-app .md-stage .md-quality-strip > button.md-photo-prompt {
+  color: var(--on-dark);
+}
+.md-stage .md-attention-dot {
+  background: var(--on-dark-warning);
+}

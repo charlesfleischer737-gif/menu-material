@@ -112,7 +112,8 @@
   background: rgb(255 255 255 / 94%);
 }
 
-/* The empty canvas is one big, calm target. */
+/* The empty canvas is one big, calm target: white inside the white card,
+   outlined, with the evergreen icon as the focal point. */
 .st-canvas .st-dropzone {
   display: flex;
   flex-direction: column;
@@ -122,9 +123,9 @@
   width: 100%;
   height: 100%;
   padding: 32px;
-  border: 1.5px dashed rgb(40 30 10 / 18%);
+  border: 1.5px dashed var(--gray-400);
   border-radius: 20px;
-  background: var(--gray-100);
+  background: var(--st-surface);
   color: var(--st-ink);
   text-align: center;
   cursor: pointer;
@@ -133,8 +134,8 @@
     border-color var(--duration) var(--ease);
 }
 .st-canvas .st-dropzone:hover:not(:disabled) {
-  border-color: rgb(40 30 10 / 30%);
-  background: var(--gray-200);
+  border-color: var(--st-accent);
+  background: color-mix(in srgb, var(--green-soft) 55%, var(--st-surface));
 }
 .st-canvas.is-dragging .st-dropzone {
   border-color: var(--st-accent);
@@ -147,17 +148,17 @@
   height: 72px;
   margin-bottom: 12px;
   border-radius: 22px;
-  background: var(--st-surface);
-  box-shadow:
-    0 8px 24px -8px rgb(0 0 0 / 18%),
-    0 0 0 1px rgb(0 0 0 / 4%);
-  color: var(--st-muted);
+  background: var(--green-ink);
+  box-shadow: 0 12px 24px -10px rgb(18 33 26 / 45%);
   transition: transform var(--duration) var(--ease);
+}
+/* Outranks the hint text's muted color below. */
+.st-dropzone > .st-dropzone-icon {
+  color: var(--on-dark);
 }
 .st-canvas .st-dropzone:hover:not(:disabled) .st-dropzone-icon,
 .st-canvas.is-dragging .st-dropzone-icon {
   transform: translateY(-3px);
-  color: var(--st-ink);
 }
 .st-dropzone b {
   font-size: var(--text-title3);
