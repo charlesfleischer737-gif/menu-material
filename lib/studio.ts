@@ -183,6 +183,26 @@ export const formats = {
   },
 } as const;
 export type PhotoFormat = keyof typeof formats;
+// The Format picker's names, named by use first, and their shapes: the same
+// words wherever a photo's size is shown.
+export const formatNames: Record<PhotoFormat, string> = {
+  menu: "Square",
+  feed: "Portrait",
+  story: "Story",
+  doordash: "Wide",
+  toast: "Toast",
+  uber: "Uber Eats",
+  print: "Print",
+};
+export const formatShapes: Record<PhotoFormat, string> = {
+  menu: "1:1",
+  feed: "4:5",
+  story: "9:16",
+  doordash: "16:9",
+  toast: "5:3",
+  uber: "5:4",
+  print: "1:1",
+};
 // Catalog export limits come from the channel rules (lib/channel-rules.ts).
 function catalogProfile(rule: ChannelRule) {
   return {
@@ -217,6 +237,37 @@ export const emptyAdjustments = {
   fit: true,
 };
 export type Adjustments = typeof emptyAdjustments;
+const divisor = (a: number, b: number): number => (b ? divisor(b, a % b) : a);
+/**
+ * The size of a saved quick adjustment: the format's exact shape, at most
+ * `longest` pixels on its long side and never larger than the photo's own
+ * pixels in the frame. Enlarging adds no detail, and later downloads trust
+ * these pixels, so an enlarged crop could pass a delivery app's minimum size.
+ * `source` is the photo's size after any rotation.
+ */
+export function adjustedPhotoSize(
+  format: PhotoFormat,
+  source: { width: number; height: number },
+  edits: { fit?: boolean; zoom?: number } = {},
+  longest = 2048,
+) {
+  const shape = formats[format] || formats.menu,
+    unit = divisor(shape.width, shape.height),
+    across = shape.width / unit,
+    down = shape.height / unit;
+  // Photo pixels per unit of the shape at full scale: filling the frame
+  // crops to the tighter side, fitting keeps the whole photo inside it.
+  const pixels =
+    (edits.fit ? Math.max : Math.min)(
+      source.width / across,
+      source.height / down,
+    ) / Math.max(1, edits.zoom || 1);
+  const k = Math.max(
+    1,
+    Math.floor(Math.min(pixels, longest / Math.max(across, down)) + 1e-9),
+  );
+  return { width: across * k, height: down * k };
+}
 export const foodFamilies = [
   "Plated mains",
   "Burgers & sandwiches",
@@ -302,5 +353,67 @@ export function styleFor(
         : brief.look === "restaurant"
           ? base.referenceIds || []
           : []),
+  };
+}
+/**
+ * The dish Photo Studio saves for a photo: a new, confirmed dish, or nothing
+ * when the photo already belongs to one. My Dishes owns an existing dish's
+ * name and description, and live menus follow them, so the studio never
+ * rewrites them. `fresh` starts a new dish, so a sample and a real photo never
+ * share one.
+ */
+export function studioDishRequest(
+  brief: Parameters<typeof styleFor>[0],
+  restaurant: Parameters<typeof styleFor>[1],
+  fresh?: { name: string; sample?: boolean },
+) {
+  if (!fresh && brief.dishId) return null;
+  return {
+    name:
+      String(fresh ? fresh.name : brief.name || "").trim() || "Untitled dish",
+    description: fresh ? "" : String(brief.description || ""),
+    confirmed: true,
+    // Sample dishes stay out of guest menus.
+    ...(fresh?.sample ? { sample: true } : {}),
+    setting: resolvePhotoLook(brief)
+      ? styleFor(brief, restaurant).photoStyle
+      : "",
+  };
+}
+/**
+ * A Photo Studio draft without photos removed in My Dishes, and what to tell
+ * the owner, or null when the draft uses none of them. A removed result
+ * returns to the original; a removed original leaves any saved result, or
+ * an empty photo slot.
+ */
+export function withoutRemovedPhotos(
+  brief: { sourceId?: string; resultId?: string },
+  removed: string[],
+): { patch: Record<string, unknown>; notice: string } | null {
+  const sourceGone = !!brief.sourceId && removed.includes(brief.sourceId),
+    resultGone = !!brief.resultId && removed.includes(brief.resultId);
+  if (!sourceGone && !resultGone) return null;
+  const original = !!brief.sourceId && !sourceGone,
+    result = !!brief.resultId && !resultGone;
+  return {
+    patch: {
+      ...(sourceGone
+        ? {
+            sourceId: "",
+            analysisSourceId: "",
+            analysisStatus: "none",
+            analysisSubject: "",
+            analysisAdvice: "",
+            recommendationFamily: "",
+          }
+        : {}),
+      ...(resultGone ? { resultId: "", jobId: "" } : {}),
+      ...(!result ? { step: 1 } : {}),
+    },
+    notice: result
+      ? "Your original photo was removed in My Dishes. Your saved photo is still here."
+      : original
+        ? "This photo was removed in My Dishes. Your original is still here."
+        : "This photo was removed in My Dishes.",
   };
 }
