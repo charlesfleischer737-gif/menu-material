@@ -964,8 +964,45 @@ try {
   );
   checks++;
 
+  // A once-a-day budget alert that fails to deliver is retried within
+  // minutes, not the next day, and is still sent only once that day.
+  {
+    const { evaluateAlerts } = await import("../lib/server/monitoring.ts");
+    const tomorrow = new Date(Date.now() + 86400000).toISOString().slice(0, 10);
+    const start = Date.parse(`${tomorrow}T14:00:00.000Z`);
+    const at = (minutes) => (offset = start + minutes * 60000 - realNow());
+    const check = async (minutes) => {
+      at(minutes);
+      await evaluateAlerts();
+      await flushMonitoring();
+    };
+    at(0);
+    const spent = await restaurant("budget-alert");
+    await siteBudget(1000);
+    await run(
+      "INSERT INTO ai_spend (id,restaurant_id,kind,budget_day,reserved_cents,status,created_at) VALUES (?,?,'image',?,1000,'submitted',?)",
+      id(),
+      spent.rid,
+      day(),
+      Date.now(),
+    );
+    const usedUp = () =>
+      posts.filter((p) => /budget is used up/.test(p.text)).length;
+    const before = usedUp();
+    webhookFails = true;
+    await check(0);
+    webhookFails = false;
+    await check(2);
+    assert.equal(usedUp(), before, "waits about five minutes to retry");
+    await check(6);
+    assert.equal(usedUp(), before + 1, "retries a failed daily alert");
+    await check(30);
+    assert.equal(usedUp(), before + 1, "sends a daily alert once");
+    checks++;
+  }
+
   console.log(
-    `PASS: ${checks} AI budget and job checks: settled spend, free daily cap, paid-plan image budget, stuck-job repair, provider retries and refusals, independent image settling, --once window and runner capacity, uncertain spend, legacy deadlines on an index, storage before calls, budget holds, description prompts and lenient saved styles. Provider calls and webhooks are fixtures.`,
+    `PASS: ${checks} AI budget and job checks: settled spend, free daily cap, paid-plan image budget, stuck-job repair, provider retries and refusals, independent image settling, --once window and runner capacity, uncertain spend, legacy deadlines on an index, storage before calls, budget holds, description prompts, lenient saved styles and same-day retries of failed daily alerts. Provider calls and webhooks are fixtures.`,
   );
 } finally {
   runner?.kill();

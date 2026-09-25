@@ -340,7 +340,8 @@ async function send(kind: "alert" | "error", message: string) {
 }
 
 // Condition alerts: one row per condition in app_settings, holding the time it
-// last notified. A conditional upsert lets exactly one caller claim each send.
+// last notified, or "retry:<time>" after a failed delivery. A conditional
+// upsert lets exactly one caller claim each send.
 const alertKey = (condition: string) => `monitor:alert:${condition}`;
 async function raiseAlert(
   condition: string,
@@ -350,9 +351,10 @@ async function raiseAlert(
   let stored = true;
   try {
     const claim = await run(
-      "INSERT INTO app_settings (key,value) VALUES (?,?) ON CONFLICT(key) DO UPDATE SET value=excluded.value WHERE CAST(app_settings.value AS INTEGER)<?",
+      "INSERT INTO app_settings (key,value) VALUES (?,?) ON CONFLICT(key) DO UPDATE SET value=excluded.value WHERE CASE WHEN app_settings.value LIKE 'retry:%' THEN CAST(substr(app_settings.value,7) AS INTEGER)<=? ELSE CAST(app_settings.value AS INTEGER)<? END",
       alertKey(condition),
       String(now()),
+      now(),
       notBefore,
     );
     if (!claim.meta.changes) return false;
@@ -364,10 +366,11 @@ async function raiseAlert(
   }
   log("warn", "alert", { condition, message });
   if (webhook("alert") && !(await send("alert", message)) && stored)
-    // Retry a failed delivery in about five minutes rather than a full window.
+    // Retry a failed delivery in about five minutes, rather than a full
+    // window or, for once-a-day alerts, the next day.
     await run(
       "UPDATE app_settings SET value=? WHERE key=?",
-      String(now() - monitoringSettings().repeatMs + 5 * 60000),
+      `retry:${now() + 5 * 60000}`,
       alertKey(condition),
     ).catch(() => {});
   return true;
