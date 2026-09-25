@@ -11,6 +11,7 @@ import {
   run,
   type Row,
 } from "./core";
+import { imageEntitlement } from "./entitlements";
 
 export type AiCharge = {
   restaurantId: string;
@@ -34,6 +35,55 @@ function setting(key: string, fallback: number) {
   const value = raw ? Number(raw) : fallback;
   return Number.isFinite(value) && value >= 0 ? value : fallback;
 }
+// The schema default for restaurants.daily_budget_cents ($20).
+const DEFAULT_RESTAURANT_BUDGET_CENTS = 2000;
+// What a new reservation must satisfy, checked atomically when it is
+// inserted. Daily budgets count finished calls at their settled cost. Free
+// plans also have a daily cap on calls other than images. On an active paid plan the default restaurant budget never
+// holds images below what the plan's allowance could use in a day; an
+// administrator's own restaurant budget and the site-wide budget still apply.
+async function reservationTerms(charge: AiCharge, restaurant: Row) {
+  const rid = charge.restaurantId;
+  const cents = Math.max(
+    1,
+    Math.round(
+      Number(
+        config(
+          `AI_${charge.kind.toUpperCase()}_RESERVE_USD`,
+          charge.kind === "image"
+            ? "2"
+            : charge.kind === "import"
+              ? "0.50"
+              : "0.10",
+        ),
+      ) * 100,
+    ),
+  );
+  const plan = await imageEntitlement(rid);
+  const paid = plan.plan !== "free";
+  const floor =
+    paid &&
+    charge.kind === "image" &&
+    Number(restaurant.daily_budget_cents) === DEFAULT_RESTAURANT_BUDGET_CENTS
+      ? plan.allowance * cents
+      : 0;
+  const cap =
+    !paid && charge.kind !== "image"
+      ? Math.floor(setting("AI_FREE_DAILY_TEXT_CALLS", 40))
+      : null;
+  const day = budgetDay();
+  return {
+    cents,
+    cap,
+    day,
+    sql: `EXISTS(SELECT 1 FROM restaurants WHERE id=? AND paused=0)
+     AND COALESCE((SELECT json_extract(value,'$.paused') FROM app_settings WHERE key='ai-controls'),0)=0
+     AND COALESCE((SELECT SUM(reserved_cents) FROM ai_spend WHERE budget_day=? AND status!='rejected'),0)+?<=COALESCE((SELECT json_extract(value,'$.dailyBudgetCents') FROM app_settings WHERE key='ai-controls'),10000)
+     AND COALESCE((SELECT SUM(reserved_cents) FROM ai_spend WHERE budget_day=? AND restaurant_id=? AND status!='rejected'),0)+?<=MAX((SELECT daily_budget_cents FROM restaurants WHERE id=?),?)
+     AND (? IS NULL OR (SELECT COUNT(*) FROM ai_spend WHERE budget_day=? AND restaurant_id=? AND kind!='image' AND status!='rejected')<?)`,
+    args: [rid, day, cents, day, rid, cents, rid, floor, cap, day, rid, cap],
+  };
+}
 export async function reserveAi(charge: AiCharge) {
   const controls = await aiControls();
   assert(
@@ -51,47 +101,36 @@ export async function reserveAi(charge: AiCharge) {
     423,
     "AI creation is paused for this restaurant. Your queued work is saved.",
   );
-  const cents = Math.max(
-    1,
-    Math.round(
-      Number(
-        config(
-          `AI_${charge.kind.toUpperCase()}_RESERVE_USD`,
-          charge.kind === "image"
-            ? "2"
-            : charge.kind === "import"
-              ? "0.50"
-              : "0.10",
-        ),
-      ) * 100,
-    ),
-  );
+  const terms = await reservationTerms(charge, r);
   assert(
-    Number.isSafeInteger(cents),
+    Number.isSafeInteger(terms.cents),
     503,
     "AI budget settings need attention.",
   );
   const key = charge.key || id();
   const inserted = await run(
     `INSERT OR IGNORE INTO ai_spend (id,restaurant_id,kind,budget_day,reserved_cents,created_at)
-     SELECT ?,?,?,?,?,? WHERE EXISTS(SELECT 1 FROM restaurants WHERE id=? AND paused=0)
-     AND COALESCE((SELECT json_extract(value,'$.paused') FROM app_settings WHERE key='ai-controls'),0)=0
-     AND COALESCE((SELECT SUM(reserved_cents) FROM ai_spend WHERE budget_day=? AND status!='rejected'),0)+?<=COALESCE((SELECT json_extract(value,'$.dailyBudgetCents') FROM app_settings WHERE key='ai-controls'),10000)
-     AND COALESCE((SELECT SUM(reserved_cents) FROM ai_spend WHERE budget_day=? AND restaurant_id=? AND status!='rejected'),0)+?<=(SELECT daily_budget_cents FROM restaurants WHERE id=?)`,
+     SELECT ?,?,?,?,?,? WHERE ${terms.sql}`,
     key,
     rid,
     charge.kind,
-    budgetDay(),
-    cents,
+    terms.day,
+    terms.cents,
     now(),
-    rid,
-    budgetDay(),
-    cents,
-    budgetDay(),
-    rid,
-    cents,
-    rid,
+    ...terms.args,
   );
+  if (!inserted.meta.changes && terms.cap !== null) {
+    const used = await one(
+      "SELECT COUNT(*) AS n FROM ai_spend WHERE budget_day=? AND restaurant_id=? AND kind!='image' AND status!='rejected'",
+      terms.day,
+      rid,
+    );
+    assert(
+      Number(used?.n) < terms.cap,
+      429,
+      `The free plan's ${terms.cap} AI requests for today (captions, photo checks and menu reading) are used up. They reset at 00:00 UTC. Your work is saved, and you can still write and edit yourself.`,
+    );
+  }
   assert(
     inserted.meta.changes,
     429,
