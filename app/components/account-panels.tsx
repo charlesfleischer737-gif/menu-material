@@ -241,6 +241,22 @@ export function Admin({ act, refresh, busy }: AdminProps) {
         </section>
       )}
       {data && (
+        <OpenLinks
+          invites={data.invites}
+          busy={busy || (loading ? "Refreshing administration" : "")}
+          act={act}
+          done={load}
+        />
+      )}
+      {data && (
+        <LaunchRequests
+          requests={data.requests}
+          busy={busy || (loading ? "Refreshing administration" : "")}
+          act={act}
+          done={load}
+        />
+      )}
+      {data && (
         <h2 className="admin-section-title">
           Restaurants <span>{data.restaurants.length}</span>
         </h2>
@@ -308,6 +324,171 @@ export function Admin({ act, refresh, busy }: AdminProps) {
         </details>
       )}
     </section>
+  );
+}
+const linkKinds: Record<string, string> = {
+  owner: "Invitation",
+  reset: "Password reset",
+  admin: "Administrator setup",
+};
+/** Links that still work, so a link shared by mistake can be stopped. */
+function OpenLinks({
+  invites,
+  busy,
+  act,
+  done,
+}: {
+  invites: Row[];
+  busy: string;
+  act: AdminAction;
+  done: () => Promise<void>;
+}) {
+  const operation = useAdminOperation(act, busy);
+  return (
+    <details className="admin-details">
+      <summary>Open invitations and reset links ({invites.length})</summary>
+      {invites.length ? (
+        <div
+          className="table-scroll"
+          role="region"
+          aria-label="Open invitations and reset links"
+          tabIndex={0}
+        >
+          <table>
+            <thead>
+              <tr>
+                <th>Email</th>
+                <th>Link</th>
+                <th>Expires</th>
+                <th>
+                  <span className="sr-only">Action</span>
+                </th>
+              </tr>
+            </thead>
+            <tbody>
+              {invites.map((invite) => (
+                <tr key={invite.id}>
+                  <td>{invite.email}</td>
+                  <td>
+                    {linkKinds[invite.role] || invite.role}
+                    {invite.role === "owner" &&
+                      ` · ${invite.allowance} free images`}
+                  </td>
+                  <td>{new Date(invite.expires_at).toLocaleString()}</td>
+                  <td>
+                    <Button
+                      variant="outline"
+                      disabled={!!busy}
+                      aria-label={`Revoke ${(linkKinds[invite.role] || "link").toLowerCase()} for ${invite.email}`}
+                      onClick={() =>
+                        operation.run(
+                          "Revoking link",
+                          "Link revoked. It no longer works.",
+                          async () => {
+                            await api("admin/invite-revoke", { id: invite.id });
+                            await done();
+                          },
+                        )
+                      }
+                    >
+                      Revoke
+                    </Button>
+                  </td>
+                </tr>
+              ))}
+            </tbody>
+          </table>
+        </div>
+      ) : (
+        <p className="admin-empty-note">No open invitations or reset links.</p>
+      )}
+      <AdminOperationStatus feedback={operation.feedback} />
+    </details>
+  );
+}
+const requestKinds: Record<string, string> = {
+  access: "Early access",
+  pro: "Pro waitlist",
+};
+function LaunchRequests({
+  requests,
+  busy,
+  act,
+  done,
+}: {
+  requests: Row[];
+  busy: string;
+  act: AdminAction;
+  done: () => Promise<void>;
+}) {
+  const operation = useAdminOperation(act, busy);
+  const fresh = requests.filter((request) => request.status === "new").length;
+  return (
+    <details className="admin-details">
+      <summary>
+        Requests ({fresh} new of {requests.length})
+      </summary>
+      {requests.length ? (
+        <div
+          className="table-scroll"
+          role="region"
+          aria-label="Requests"
+          tabIndex={0}
+        >
+          <table>
+            <thead>
+              <tr>
+                <th>Received</th>
+                <th>Request</th>
+                <th>Email</th>
+                <th>Restaurant</th>
+                <th>Status</th>
+                <th>
+                  <span className="sr-only">Action</span>
+                </th>
+              </tr>
+            </thead>
+            <tbody>
+              {requests.map((request) => (
+                <tr key={request.id}>
+                  <td>{new Date(request.created_at).toLocaleString()}</td>
+                  <td>{requestKinds[request.kind] || request.kind}</td>
+                  <td>{request.email}</td>
+                  <td>{request.restaurant}</td>
+                  <td>{request.status === "new" ? "New" : "Reviewed"}</td>
+                  <td>
+                    <Button
+                      variant="outline"
+                      disabled={!!busy}
+                      aria-label={`Mark the request from ${request.email} as ${request.status === "new" ? "reviewed" : "new"}`}
+                      onClick={() =>
+                        operation.run(
+                          "Updating request",
+                          "Request updated.",
+                          async () => {
+                            await api("admin/access-request", {
+                              id: request.id,
+                              status:
+                                request.status === "new" ? "reviewed" : "new",
+                            });
+                            await done();
+                          },
+                        )
+                      }
+                    >
+                      {request.status === "new" ? "Mark reviewed" : "Mark new"}
+                    </Button>
+                  </td>
+                </tr>
+              ))}
+            </tbody>
+          </table>
+        </div>
+      ) : (
+        <p className="admin-empty-note">No requests yet.</p>
+      )}
+      <AdminOperationStatus feedback={operation.feedback} />
+    </details>
   );
 }
 function FoodReportReview({

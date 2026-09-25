@@ -285,8 +285,116 @@ try {
     cookie: session.cookie,
   });
 
+  // 2. Setup invitations made before the first administrator stop working
+  // once one exists; a new or used reset link voids the others; open links
+  // can be listed and revoked.
+  const setupKey = process.env.ADMIN_SETUP_KEY;
+  const setup1 = await expect("auth/bootstrap", 200, {
+    body: { email: "ops1@example.test", setupKey },
+    ip: "192.0.2.50",
+  });
+  const setup2 = await expect("auth/bootstrap", 200, {
+    body: { email: "ops2@example.test", setupKey },
+    ip: "192.0.2.50",
+  });
+  const adminSignup = await signup(
+    "ops1@example.test",
+    "Ops Diner",
+    "192.0.2.51",
+    {
+      invite: setup1.json.invite,
+    },
+  );
+  const adminCookie = adminSignup.cookie;
+  const stale = await expect("auth/signup", 409, {
+    body: {
+      email: "ops2@example.test",
+      password,
+      restaurant: "Ops Two",
+      invite: setup2.json.invite,
+    },
+    ip: "192.0.2.52",
+  });
+  assert.match(stale.json.error, /administrator already exists/);
+  assert.equal(
+    await one("SELECT id FROM users WHERE email='ops2@example.test'"),
+    null,
+  );
+  const reset = (email) =>
+    expect("admin/invite", 200, {
+      body: { email, reset: true },
+      cookie: adminCookie,
+      ip: "192.0.2.51",
+    });
+  const redeemReset = (email, invite, status, newPassword = password) =>
+    expect("auth/signup", status, {
+      body: { email, password: newPassword, invite },
+      ip: "192.0.2.53",
+    });
+  const firstReset = await reset("owner@example.test");
+  const secondReset = await reset("owner@example.test");
+  await redeemReset("owner@example.test", firstReset.json.invite, 403);
+  // A reset left over from before still dies when another one is used.
+  const leftover = "leftover-reset-link-0123456789abcdefghijk";
+  await run(
+    "INSERT INTO invites (hash,email,role,allowance,expires_at,created_at) VALUES (?,?,'reset',0,?,?)",
+    digest(leftover),
+    "owner@example.test",
+    Date.now() + 86400000,
+    Date.now(),
+  );
+  const reclaimed = await redeemReset(
+    "owner@example.test",
+    secondReset.json.invite,
+    200,
+  );
+  await redeemReset("owner@example.test", leftover, 403, "attacker password 1");
+  await expect("auth/login", 200, {
+    body: { email: "owner@example.test", password },
+    ip: "192.0.2.54",
+  });
+  await expect("state", 200, { cookie: reclaimed.cookie });
+  // Open links are listed with an id and can be revoked.
+  const invitation = await expect("admin/invite", 200, {
+    body: { email: "guest@example.test", allowance: 3 },
+    cookie: adminCookie,
+    ip: "192.0.2.51",
+  });
+  const pendingReset = await reset("newcomer@example.test");
+  let adminData = (await expect("admin", 200, { cookie: adminCookie })).json;
+  assert.deepEqual(adminData.invites.map((i) => [i.email, i.role]).sort(), [
+    ["guest@example.test", "owner"],
+    ["newcomer@example.test", "reset"],
+    ["ops2@example.test", "admin"],
+  ]);
+  const openReset = adminData.invites.find((i) => i.role === "reset");
+  assert.equal(openReset.id, digest(pendingReset.json.invite));
+  await expect("admin/invite-revoke", 200, {
+    body: { id: openReset.id },
+    cookie: adminCookie,
+  });
+  await expect("admin/invite-revoke", 404, {
+    body: { id: openReset.id },
+    cookie: adminCookie,
+  });
+  await expect("admin/invite-revoke", 400, {
+    body: { id: "not-a-link" },
+    cookie: adminCookie,
+  });
+  await expect("admin/invite-revoke", 403, {
+    body: { id: openReset.id },
+    cookie: reclaimed.cookie,
+  });
+  await redeemReset("newcomer@example.test", pendingReset.json.invite, 403);
+  adminData = (await expect("admin", 200, { cookie: adminCookie })).json;
+  assert.equal(adminData.invites.length, 2);
+  assert(
+    adminData.invites.some((i) => i.id === digest(invitation.json.invite)),
+  );
+  checks++;
+
   console.log(
-    `PASS: ${checks} account security checks: per-network limits on the IPv6 /64 with no site-wide lockout, a per-account sign-in slowdown, versioned password hashes, sliding sessions;`,
+    `PASS: ${checks} account security checks: per-network limits on the IPv6 /64 with no site-wide lockout, a per-account sign-in slowdown, versioned password hashes, sliding sessions, revocable reset and setup links;`,
   );
 } finally {
   rmSync(root, { recursive: true, force: true });

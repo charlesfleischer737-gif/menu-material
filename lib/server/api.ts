@@ -218,6 +218,12 @@ async function signup(req: Request, b: Row) {
           "UPDATE invites SET used_by=? WHERE hash=? AND used_by IS NULL",
         )
         .bind(resetClaim, hash),
+      // Any other reset link for this account stops working too.
+      db()
+        .prepare(
+          "UPDATE invites SET used_by='superseded' WHERE email=? AND role='reset' AND used_by IS NULL AND EXISTS(SELECT 1 FROM invites WHERE hash=? AND used_by=?)",
+        )
+        .bind(email, hash, resetClaim),
     ]);
     assert(
       (await one("SELECT used_by FROM invites WHERE hash=?", hash))?.used_by ===
@@ -232,6 +238,13 @@ async function signup(req: Request, b: Row) {
     409,
     "You already have an account. Please sign in.",
   );
+  // Setup invitations only make the first administrator.
+  assert(
+    invite.role !== "admin" ||
+      !(await one("SELECT id FROM users WHERE role='admin'")),
+    409,
+    "An administrator already exists. Ask them for an invitation.",
+  );
   const userId = id(),
     rid = id(),
     restaurant = z
@@ -244,7 +257,7 @@ async function signup(req: Request, b: Row) {
   await db().batch([
     db()
       .prepare(
-        "INSERT INTO users (id,email,password,role,created_at) SELECT ?,?,?,?,? WHERE ?=0 OR EXISTS(SELECT 1 FROM invites WHERE hash=? AND used_by IS NULL AND expires_at>?)",
+        "INSERT INTO users (id,email,password,role,created_at) SELECT ?,?,?,?,? WHERE (?=0 OR EXISTS(SELECT 1 FROM invites WHERE hash=? AND used_by IS NULL AND expires_at>?)) AND (?!='admin' OR NOT EXISTS(SELECT 1 FROM users WHERE role='admin'))",
       )
       .bind(
         userId,
@@ -255,6 +268,7 @@ async function signup(req: Request, b: Row) {
         invited ? 1 : 0,
         hash,
         t,
+        invite.role,
       ),
     db()
       .prepare(
@@ -285,15 +299,19 @@ async function signup(req: Request, b: Row) {
 }
 async function issueInvite(email: string, allowance: number, role = "owner") {
   const raw = token();
-  await run(
-    "INSERT INTO invites (hash,email,role,allowance,expires_at,created_at) VALUES (?,?,?,?,?,?)",
-    digest(raw),
-    email,
-    role,
-    allowance,
-    now() + 7 * 86400000,
-    now(),
-  );
+  await db().batch([
+    // A new reset link replaces any earlier one for the account.
+    db()
+      .prepare(
+        "UPDATE invites SET used_by='superseded' WHERE email=? AND role='reset' AND ?='reset' AND used_by IS NULL",
+      )
+      .bind(email, role),
+    db()
+      .prepare(
+        "INSERT INTO invites (hash,email,role,allowance,expires_at,created_at) VALUES (?,?,?,?,?,?)",
+      )
+      .bind(digest(raw), email, role, allowance, now() + 7 * 86400000, now()),
+  ]);
   return {
     invite: raw,
     path: `/?invite=${encodeURIComponent(raw)}&email=${encodeURIComponent(email)}${role === "reset" ? "&reset=1" : ""}`,
@@ -928,10 +946,12 @@ async function route(req: Request) {
             new Date(now()).toISOString().slice(0, 10),
           ),
           requests: await all(
-            "SELECT id,email,restaurant,status,created_at FROM launch_requests WHERE kind='access' ORDER BY status='new' DESC,created_at DESC LIMIT 200",
+            "SELECT id,kind,email,restaurant,status,created_at FROM launch_requests WHERE kind='access' ORDER BY status='new' DESC,created_at DESC LIMIT 200",
           ),
+          // Links that still work: invitations, setup invitations and resets.
           invites: await all(
-            "SELECT email,role,allowance,expires_at,used_by FROM invites ORDER BY created_at DESC LIMIT 100",
+            "SELECT hash AS id,email,role,allowance,expires_at,created_at FROM invites WHERE used_by IS NULL AND expires_at>? ORDER BY created_at DESC LIMIT 100",
+            now(),
           ),
           events: await all(
             "SELECT * FROM events ORDER BY created_at DESC LIMIT 100",
@@ -1028,6 +1048,21 @@ async function route(req: Request) {
             b.reset === true ? "reset" : "owner",
           ),
         );
+      }
+      if (p[1] === "invite-revoke") {
+        const revoked = await run(
+          "UPDATE invites SET used_by='revoked' WHERE hash=? AND used_by IS NULL",
+          z
+            .string()
+            .regex(/^[0-9a-f]{64}$/, "Choose a link to revoke.")
+            .parse(b.id),
+        );
+        assert(
+          revoked.meta.changes,
+          404,
+          "This link was already used or revoked.",
+        );
+        return response({ ok: true });
       }
       if (p[1] === "restaurant") {
         const rid = z.string().uuid().parse(b.id);
