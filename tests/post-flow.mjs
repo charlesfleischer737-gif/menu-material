@@ -152,6 +152,30 @@ assert.match(
   postCaption(combo, restaurant),
   /Dinner for two\n2 × Tomato pasta \+ 1 × House burger/,
 );
+// Framing, slide headlines and order never ask for a caption review.
+const customCombo = updatePost(combo, { caption: "Two ways." }, restaurant);
+const [first, second] = customCombo.items;
+for (const items of [
+  [{ ...first, layouts: { feed: { zoom: 1.4, autoFrame: false } } }, second],
+  [first, { ...second, headline: "Stacked high" }],
+  [second, first],
+])
+  assert.equal(
+    updatePost(customCombo, { items }, restaurant).captionNeedsReview,
+    false,
+    "A framing or slide tweak keeps a custom caption ready to export",
+  );
+for (const items of [
+  [first],
+  [{ ...first, quantity: 3 }, second],
+  [first, { ...second, name: "Smash burger" }],
+  [first, { ...second, facts: { price: 1900 } }],
+])
+  assert.equal(
+    updatePost(customCombo, { items }, restaurant).captionNeedsReview,
+    true,
+    "Changed dishes, quantities, names or prices still ask for a review",
+  );
 assert.deepEqual(
   updatePost(combo, { items: [item] }, restaurant).channels,
   ["feed"],

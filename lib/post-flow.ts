@@ -111,17 +111,15 @@ export function updatePost(draft: Row, patch: Row, restaurant: Row) {
       captionMode: patch.captionMode || "custom",
       captionNeedsReview: false,
     };
-  if (
-    [
-      "items",
-      "title",
-      "description",
-      "price",
-      "showPrice",
-      "validity",
-      "occasion",
-    ].some((key) => key in patch)
-  ) {
+  const facts = [
+    "title",
+    "description",
+    "price",
+    "showPrice",
+    "validity",
+    "occasion",
+  ];
+  if (["items", ...facts].some((key) => key in patch)) {
     if (automatic)
       return {
         ...next,
@@ -129,9 +127,25 @@ export function updatePost(draft: Row, patch: Row, restaurant: Row) {
         captionMode: "auto",
         captionNeedsReview: false,
       };
-    return { ...next, captionNeedsReview: true };
+    // Framing, slide headlines and dish order change nothing a caption states.
+    return facts.some((key) => key in patch) ||
+      dishFacts(draft) !== dishFacts(next)
+      ? { ...next, captionNeedsReview: true }
+      : next;
   }
   return next;
+}
+/** The dishes, quantities and prices a caption could mention, in any order. */
+function dishFacts(draft: Row) {
+  return JSON.stringify([
+    (draft.items || [])
+      .map((i: Row) =>
+        JSON.stringify([i.dishId, i.name, i.quantity, i.facts?.price ?? null]),
+      )
+      .sort(),
+    draft.description ?? "",
+    draft.price ?? "",
+  ]);
 }
 export function postDetailError(draft: Row, assets: Row[]) {
   if (!draft.items?.length) return "Choose an approved dish photo to start.";
