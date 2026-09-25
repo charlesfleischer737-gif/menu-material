@@ -26,7 +26,7 @@ globalThis.createImageBitmap = async (blob) => {
 };
 globalThis.fetch = async (path) =>
   new Response(readFileSync(project + "/public" + path));
-const root = "/private/tmp/post-legibility-acceptance";
+const root = (await import("node:os")).tmpdir() + "/post-legibility-acceptance";
 mkdirSync(root, { recursive: true });
 const linear = Array.from({ length: 256 }, (_, v) => {
   v /= 255;

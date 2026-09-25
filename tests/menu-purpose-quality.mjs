@@ -12,7 +12,7 @@ import {
 } from "../lib/menu-design-system.ts";
 
 installWorkerGraphics();
-const root = "/private/tmp/menu-purpose-quality";
+const root = (await import("node:os")).tmpdir() + "/menu-purpose-quality";
 mkdirSync(root, { recursive: true });
 const report = [];
 for (const fixture of purposeFixtures())
