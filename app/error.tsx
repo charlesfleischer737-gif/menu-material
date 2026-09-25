@@ -3,6 +3,7 @@ import { useEffect } from "react";
 import { Button } from "@/components/ui/button";
 import { SiteFooter, SiteHeader } from "./components/site-chrome";
 import { reportClientError } from "./components/error-reporter";
+import Kitty from "./components/kitty";
 
 // Replaces a crashed page (for example the workspace) instead of a blank screen.
 export default function ErrorPage({
@@ -20,6 +21,7 @@ export default function ErrorPage({
       <SiteHeader>{null}</SiteHeader>
       <main id="main" className="pw-information">
         <header className="pw-information-header">
+          <Kitty pose="sit" className="pw-status-kitty" />
           <h1>Something went wrong.</h1>
           <p className="pw-information-intro" role="alert">
             This page ran into a problem. Your saved work is safe. Try again, or

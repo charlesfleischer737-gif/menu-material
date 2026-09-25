@@ -1,6 +1,7 @@
 import type { Metadata } from "next";
 import Link from "next/link";
 import { Button } from "@/components/ui/button";
+import Kitty from "./components/kitty";
 import PublicInformation from "./components/public-information";
 
 // Rendered for unknown URLs and for notFound() from any page, with HTTP 404.
@@ -15,6 +16,7 @@ export default function NotFound() {
     <PublicInformation
       title="We couldn’t find that page."
       intro="The link may be mistyped or out of date, or the page may have moved."
+      art={<Kitty pose="box" className="pw-status-kitty" />}
     >
       <div className="pw-status-actions">
         <Button size="marketing" asChild>

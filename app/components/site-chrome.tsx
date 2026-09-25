@@ -1,6 +1,7 @@
 import type { ReactNode } from "react";
 import Link from "next/link";
 import Brand from "./brand";
+import Kitty from "./kitty";
 
 // Shared public-site chrome: a translucent sticky bar and a quiet footer.
 export function SiteHeader({ children }: { children: ReactNode }) {
@@ -32,7 +33,10 @@ export function SiteFooter({ credits }: { credits?: ReactNode }) {
         </div>
         <div className="pw-footer-bottom">
           {credits && <p className="pw-image-credit">{credits}</p>}
-          <p>© {new Date().getFullYear()} Menu Material</p>
+          <p className="pw-footer-signoff">
+            © {new Date().getFullYear()} Menu Material
+            <Kitty pose="sleep" className="pw-footer-kitty" />
+          </p>
         </div>
       </div>
     </footer>

@@ -14,6 +14,7 @@ import {
   workerHealthServerSnapshot,
   workerHealthSnapshot,
 } from "@/lib/worker-health";
+import Kitty from "./kitty";
 
 export function PhotoComparison({
   original,
@@ -180,6 +181,8 @@ export function StudioCreating({
           </div>
           <Sparkles size={16} aria-hidden="true" />
         </div>
+        {/* Keeps an eye on the progress track while the photo develops. */}
+        <Kitty pose="sit" className="st-progress-kitty" />
         <div className="st-progress" aria-hidden="true">
           <span />
         </div>
