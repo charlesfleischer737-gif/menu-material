@@ -1354,11 +1354,14 @@ export function MenuShareDialog({
   restaurant,
   close,
   action,
+  fallbackName,
 }: {
   record: SavedMenu;
   restaurant: Row;
   close: () => void;
   action: (action: string) => Promise<void>;
+  /** The live menu the main QR code shows while this one is offline. */
+  fallbackName?: string;
 }) {
   const [qr, setQr] = useState(""),
     [url, setUrl] = useState(""),
@@ -1586,6 +1589,15 @@ export function MenuShareDialog({
           Take this menu offline while keeping its saved draft and publication
           history.
         </p>
+        {offline && record.isPrimary && (
+          <p className="md-help">
+            <strong>This is your main menu.</strong>{" "}
+            {fallbackName
+              ? `While it’s offline, your main QR code and menu link show ${fallbackName}.`
+              : "While it’s offline, your main QR code and menu link won’t show a menu."}{" "}
+            Publish it again to make it your main menu again.
+          </p>
+        )}
         {offline ? (
           <div className="md-dialog-actions">
             <button

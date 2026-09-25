@@ -1343,14 +1343,21 @@ export default function MenuStudio({
           <MenuShareDialog
             record={record}
             restaurant={state.restaurant}
+            fallbackName={
+              store.menus.find((m) => m.published && m.id !== record.id)?.draft
+                .name
+            }
             close={() => setDialog("")}
             action={async (action) => {
+              const wasMain = record.isPrimary;
               await documentAction(action, { confirmed: true });
               if (action === "unpublish") setDialog("");
               tell(
                 action === "primary"
                   ? "This is now the menu on your restaurant’s main QR code."
-                  : "This menu is offline. Its draft is saved.",
+                  : wasMain
+                    ? "This menu is offline. Its draft is saved, and it becomes your main menu again when you publish it."
+                    : "This menu is offline. Its draft is saved.",
               );
             }}
           />

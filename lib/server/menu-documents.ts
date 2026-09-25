@@ -40,7 +40,8 @@ function documentRow(row: Row) {
     published: row.published ? JSON.parse(row.published) : null,
     publishedRevision: row.published_revision,
     publishedAt: row.published_at,
-    isPrimary: !!row.is_primary,
+    // -1 marks a main menu that is offline; it's main again once republished.
+    isPrimary: Number(row.is_primary) > 0,
     updatedAt: row.updated_at,
     archivedAt: row.archived_at,
   };
@@ -201,7 +202,7 @@ export async function publicMenuDocuments(rid: string) {
     id: r.id,
     name:
       JSON.parse(r.published).title || JSON.parse(r.published).name || "Menu",
-    isPrimary: !!r.is_primary,
+    isPrimary: Number(r.is_primary) > 0,
   }));
 }
 export async function publicDocumentSnapshot(rid: string, mid: string) {
@@ -985,10 +986,12 @@ export async function menuDocumentsRoute(req: Request, p: string[], r: Row) {
           "INSERT INTO menu_publication_history (id,menu_id,restaurant_id,snapshot,revision,created_at) SELECT ?,id,restaurant_id,published,revision,? FROM menu_documents WHERE id=? AND published_at=? AND revision=?",
         )
         .bind(hid, t, row.id, t, b.revision),
-      // Resolve the main menu inside the transaction, after any concurrent choice.
+      // Resolve the main menu inside the transaction, after any concurrent
+      // choice. A main menu taken offline (-1) becomes main again; one
+      // published while nothing else is live leaves that memory in place.
       db()
         .prepare(
-          "UPDATE menu_documents SET is_primary=CASE WHEN id=? THEN 1 ELSE 0 END WHERE restaurant_id=? AND EXISTS(SELECT 1 FROM menu_documents WHERE id=? AND published_at=? AND revision=? AND (is_primary=1 OR (SELECT published FROM restaurants WHERE id=?) IS NULL))",
+          "UPDATE menu_documents SET is_primary=CASE WHEN id=? THEN 1 WHEN is_primary=-1 THEN -1 ELSE 0 END WHERE restaurant_id=? AND EXISTS(SELECT 1 FROM menu_documents WHERE id=? AND published_at=? AND revision=? AND (is_primary<>0 OR (SELECT published FROM restaurants WHERE id=?) IS NULL))",
         )
         .bind(row.id, r.id, row.id, t, b.revision, r.id),
       db()
@@ -1086,11 +1089,14 @@ export async function menuDocumentsRoute(req: Request, p: string[], r: Row) {
           `UPDATE restaurants SET published=(SELECT published FROM menu_documents WHERE restaurant_id=? AND published IS NOT NULL AND archived_at IS NULL ORDER BY is_primary DESC,updated_at DESC,id LIMIT 1),published_at=? WHERE id=? AND ${offlineGuard}`,
         )
         .bind(r.id, t, r.id, row.id, r.id, b.revision + 1),
+      // A main menu taken offline is remembered (-1) and becomes main again
+      // when it's republished, unless the owner chooses another main menu
+      // first. Only the owner's own choice is remembered, not a fallback.
       db()
         .prepare(
-          `UPDATE menu_documents SET is_primary=CASE WHEN published IS NOT NULL AND published=(SELECT published FROM restaurants WHERE id=?) AND archived_at IS NULL THEN 1 ELSE 0 END WHERE restaurant_id=? AND ${offlineGuard}`,
+          `UPDATE menu_documents SET is_primary=CASE WHEN published IS NOT NULL AND published=(SELECT published FROM restaurants WHERE id=?) AND archived_at IS NULL THEN 1 WHEN archived_at IS NOT NULL THEN 0 WHEN is_primary=-1 THEN -1 WHEN id=? AND is_primary=1 AND NOT EXISTS(SELECT 1 FROM menu_documents WHERE restaurant_id=? AND is_primary=-1) THEN -1 ELSE 0 END WHERE restaurant_id=? AND ${offlineGuard}`,
         )
-        .bind(r.id, r.id, row.id, r.id, b.revision + 1),
+        .bind(r.id, row.id, r.id, r.id, row.id, r.id, b.revision + 1),
     ]);
     assert(
       result[0].results.length,

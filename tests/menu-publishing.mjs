@@ -674,6 +674,41 @@ try {
       (c) => c.id.startsWith("photo-reported"),
     ),
   );
+
+  // Taking the main menu offline and publishing it again makes it the main
+  // menu again; meanwhile another live menu keeps the main QR code working.
+  const mainNow = async () => (await call(`public/${slugNow}`)).menu.documentId;
+  const mainMenu = await call(`menus/${created.id}`);
+  assert(mainMenu.isPrimary);
+  assert.equal(await mainNow(), created.id);
+  await call(`menus/${created.id}/unpublish`, {
+    revision: mainMenu.revision,
+    confirmed: true,
+  });
+  const standIn = await mainNow();
+  assert.notEqual(standIn, created.id, "another live menu stands in");
+  const offlineMain = await call(`menus/${created.id}`);
+  assert.equal(offlineMain.isPrimary, false, "an offline menu isn't main");
+  assert((await call(`menus/${standIn}`)).isPrimary);
+  const backOnline = await call(`menus/${created.id}/publish`, {
+    revision: offlineMain.revision,
+  });
+  assert(backOnline.isPrimary, "republished, it's the main menu again");
+  assert.equal(await mainNow(), created.id);
+  assert.equal((await call(`menus/${standIn}`)).isPrimary, false);
+  // A main menu chosen while it was offline stays the main menu.
+  await call(`menus/${created.id}/unpublish`, {
+    revision: backOnline.revision,
+    confirmed: true,
+  });
+  const chosen = await call(`menus/${lunchMenu.id}`);
+  await call(`menus/${lunchMenu.id}/primary`, { revision: chosen.revision });
+  const offlineAgain = await call(`menus/${created.id}`);
+  const republished = await call(`menus/${created.id}/publish`, {
+    revision: offlineAgain.revision,
+  });
+  assert.equal(republished.isPrimary, false);
+  assert.equal(await mainNow(), lunchMenu.id, "the owner's newer choice wins");
   console.log(
     `PASS: ${checks} menu publishing checks: placeholder names, sample dishes, zero prices, automatic checks without an I-checked box, first-publication menu address, address changes with redirects, and dish edits reaching draft and live menus.`,
   );
