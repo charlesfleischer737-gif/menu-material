@@ -249,6 +249,10 @@ export default function GuestStudio({
         url = URL.createObjectURL(normalized);
       urls.current.push(url);
       const next = { file, normalized, url };
+      // A dish saved by an earlier attempt keeps its sample status, so a
+      // sample and a real photo never share one: start a new dish.
+      if ((options.sample || draft.sample) && transfer.current?.dishId)
+        transfer.current = null;
       setPhoto(next);
       update({
         ...(options.sample || draft.sample

@@ -52,6 +52,8 @@ export async function transferGuestPhoto(
         name: draft.name.trim() || "Untitled dish",
         description: draft.description || "",
         confirmed: true,
+        // The sample stays a sample: out of menus, posts and publishing.
+        sample: !!draft.sample,
         setting: resolvePhotoLook(draft)
           ? styleFor(draft, state.restaurant).photoStyle
           : "",
