@@ -9,6 +9,7 @@ import {
   now,
   one,
   run,
+  type Row,
 } from "./core";
 
 export type AiCharge = {
@@ -26,6 +27,12 @@ export async function aiControls() {
     dailyBudgetCents: 10000,
     ...(row ? JSON.parse(row.value) : {}),
   };
+}
+// A numeric setting, or its fallback when unset, blank or invalid.
+function setting(key: string, fallback: number) {
+  const raw = config(key).trim();
+  const value = raw ? Number(raw) : fallback;
+  return Number.isFinite(value) && value >= 0 ? value : fallback;
 }
 export async function reserveAi(charge: AiCharge) {
   const controls = await aiControls();
@@ -92,15 +99,44 @@ export async function reserveAi(charge: AiCharge) {
   );
   return key;
 }
+// What a finished call counts against the daily budgets, in cents to a
+// hundredth of a cent, rounded up: text calls at their measured token cost,
+// images at IMAGE_COST_ESTIMATE_USD when that is set. null keeps the
+// reservation, for example when usage was not reported.
+export function settledCents(kind: string, usage: unknown) {
+  let usd: number;
+  if (kind === "image") {
+    const estimate = config("IMAGE_COST_ESTIMATE_USD").trim();
+    usd = estimate ? Number(estimate) : NaN;
+  } else {
+    const tokens = (usage || {}) as Row;
+    const input = Number(tokens.input_tokens ?? tokens.prompt_tokens);
+    const output = Number(tokens.output_tokens ?? tokens.completion_tokens);
+    usd =
+      input >= 0 && output >= 0
+        ? (input * setting("AI_TEXT_INPUT_USD_PER_MILLION_TOKENS", 0.4) +
+            output * setting("AI_TEXT_OUTPUT_USD_PER_MILLION_TOKENS", 1.6)) /
+          1e6
+        : NaN;
+  }
+  if (!Number.isFinite(usd) || usd < 0) return null;
+  // Whole micro-dollars first, so float noise never rounds up a cent fraction.
+  return Math.ceil(Math.round(usd * 1e6) / 100) / 100;
+}
 export async function finishAi(
   key: string,
   status: string,
   usage: unknown = null,
 ) {
+  // A finished call is settled at its measured cost, never above its
+  // reservation. Rejected calls stop counting; uncertain ones keep it all.
+  const settled = status === "submitted";
   await run(
-    "UPDATE ai_spend SET status=?,usage=? WHERE id=?",
+    "UPDATE ai_spend SET status=?,usage=?,reserved_cents=MIN(reserved_cents,COALESCE(CASE kind WHEN 'image' THEN ? ELSE ? END,reserved_cents)) WHERE id=?",
     status,
     usage ? JSON.stringify(usage) : null,
+    settled ? settledCents("image", usage) : null,
+    settled ? settledCents("text", usage) : null,
     key,
   );
 }
