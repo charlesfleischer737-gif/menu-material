@@ -853,8 +853,45 @@ try {
   assert.deepEqual([out.status, out.error], ["completed", null]);
   checks++;
 
+  // 14. A description-only image is described, not "kept" from a photo.
+  const described = await restaurant("described");
+  const describedJob = await newJob(described);
+  const describedPrompt = JSON.parse(describedJob.details).generationPrompts[0];
+  assert.doesNotMatch(
+    describedPrompt,
+    /original upload|original camera angle|Keep the original plate|this same dish/,
+  );
+  assert.match(describedPrompt, /No photo of this dish was supplied/);
+  assert.match(describedPrompt, /Three steamed dumplings with chili oil/);
+  await tick(described.rid);
+  assert.equal(imageCalls.at(-1).url.endsWith("/images/generations"), true);
+  assert.equal(imageCalls.at(-1).prompt, describedPrompt);
+  const form = new FormData();
+  form.set("file", new File([image], "dish.jpg", { type: "image/jpeg" }));
+  form.set(
+    "normalized",
+    new File([image], "dish-working.jpg", { type: "image/jpeg" }),
+  );
+  form.set("dishId", described.dishId);
+  const uploaded = await handle(
+    new Request("http://localhost/api/assets", {
+      method: "POST",
+      headers: { cookie: described.cookie },
+      body: form,
+    }),
+  );
+  assert.equal(uploaded.status, 201);
+  const photoJob = await newJob(described, {
+    sourceId: (await uploaded.json()).id,
+  });
+  assert.match(
+    JSON.parse(photoJob.details).generationPrompts[0],
+    /Use the original upload as the source of truth/,
+  );
+  checks++;
+
   console.log(
-    `PASS: ${checks} AI budget and job checks: settled spend, free daily cap, paid-plan image budget, stuck-job repair, provider retries and refusals, independent image settling, uncertain spend, legacy deadlines on an index, storage before calls and budget holds. Provider calls and webhooks are fixtures.`,
+    `PASS: ${checks} AI budget and job checks: settled spend, free daily cap, paid-plan image budget, stuck-job repair, provider retries and refusals, independent image settling, uncertain spend, legacy deadlines on an index, storage before calls, budget holds and description prompts. Provider calls and webhooks are fixtures.`,
   );
 } finally {
   console.error = originalError;
