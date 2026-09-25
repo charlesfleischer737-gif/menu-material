@@ -15,6 +15,8 @@ Date.now = () => realNow() + offset;
 const { handle } = await import("../lib/server/api.ts");
 const { caller } = await import("../lib/server/safeguards.ts");
 const { digest, one, run } = await import("../lib/server/core.ts");
+const { validateImageDimensions } =
+  await import("../lib/server/image-validation.ts");
 
 const photo = readFileSync("public/pasta.jpg");
 let imageCalls = 0,
@@ -670,8 +672,100 @@ try {
     digest("uploads:" + freeRid),
   );
 
+  // 15. WebP originals are accepted with their dimensions checked; AVIF is
+  // refused plainly instead of being stored as HEIC.
+  const webp = (chunk, width, height) => {
+    const bytes = Buffer.alloc(40);
+    bytes.write("RIFF", 0, "latin1");
+    bytes.writeUInt32LE(32, 4);
+    bytes.write("WEBP", 8, "latin1");
+    bytes.write(chunk, 12, "latin1");
+    bytes.writeUInt32LE(20, 16);
+    if (chunk === "VP8 ") {
+      bytes.set([0x9d, 0x01, 0x2a], 23);
+      bytes.writeUInt16LE(width, 26);
+      bytes.writeUInt16LE(height, 28);
+    } else if (chunk === "VP8L") {
+      bytes[20] = 0x2f;
+      bytes.writeUInt32LE((width - 1) | ((height - 1) << 14), 21);
+    } else {
+      bytes.writeUIntLE(width - 1, 24, 3);
+      bytes.writeUIntLE(height - 1, 27, 3);
+    }
+    return bytes;
+  };
+  for (const chunk of ["VP8 ", "VP8L", "VP8X"])
+    validateImageDimensions(webp(chunk, 1200, 800), "image/webp");
+  assert.throws(
+    () => validateImageDimensions(webp("VP8X", 20000, 20000), "image/webp"),
+    (error) => error.status === 413,
+  );
+  assert.throws(
+    () => validateImageDimensions(webp("VP8 ", 0, 0), "image/webp"),
+    (error) => error.status === 400,
+  );
+  checks++;
+  const originalForm = (bytes, name, fields = {}) => {
+    const form = new FormData();
+    form.set("file", new File([bytes], name));
+    form.set(
+      "normalized",
+      new File([photo], "dish.jpg", { type: "image/jpeg" }),
+    );
+    for (const [key, value] of Object.entries(fields)) form.set(key, value);
+    return form;
+  };
+  const webpUpload = await expect("assets", 201, {
+    body: originalForm(webp("VP8X", 1200, 800), "dish.webp", {
+      dishId: pasta,
+    }),
+    ...freeOpts,
+  });
+  const listed = (await expect("state", 200, freeOpts)).json.assets.find(
+    (a) => a.id === webpUpload.json.id,
+  );
+  assert.equal(listed.mime, "image/webp");
+  let file = await expect(
+    `assets/${webpUpload.json.id}?original&download`,
+    200,
+    freeOpts,
+  );
+  assert.equal(file.res.headers.get("content-type"), "image/webp");
+  assert.match(file.res.headers.get("content-disposition"), /\.webp"$/);
+  file = await expect(`assets/${webpUpload.json.id}?download`, 200, freeOpts);
+  assert.equal(file.res.headers.get("content-type"), "image/jpeg");
+  assert.match(file.res.headers.get("content-disposition"), /\.jpg"$/);
+  const isoFile = (brands) =>
+    Buffer.concat([
+      Buffer.from([0, 0, 0, 8 + brands.length]),
+      Buffer.from("ftyp" + brands, "latin1"),
+      Buffer.alloc(32),
+    ]);
+  const avif = await expect("assets", 400, {
+    body: originalForm(isoFile("avif\0\0\0\0mif1miafMA1B"), "dish.avif", {
+      dishId: pasta,
+    }),
+    ...freeOpts,
+  });
+  assert.equal(
+    avif.json.error,
+    "AVIF photos aren’t supported yet. Export a JPEG or PNG.",
+  );
+  const heic = await expect("assets", 201, {
+    body: originalForm(isoFile("heic\0\0\0\0mif1heic"), "dish.heic", {
+      dishId: pasta,
+    }),
+    ...freeOpts,
+  });
+  assert.equal(
+    (await expect("state", 200, freeOpts)).json.assets.find(
+      (a) => a.id === heic.json.id,
+    ).mime,
+    "image/heic",
+  );
+
   console.log(
-    `PASS: ${checks} account security checks: per-network limits on the IPv6 /64 with no site-wide lockout, a per-account sign-in slowdown, versioned password hashes, sliding sessions, revocable reset and setup links, the Pro waitlist, once-only free images, ID validation, lenient saved looks, staff link scope and limits;`,
+    `PASS: ${checks} account security checks: per-network limits on the IPv6 /64 with no site-wide lockout, a per-account sign-in slowdown, versioned password hashes, sliding sessions, revocable reset and setup links, the Pro waitlist, once-only free images, ID validation, lenient saved looks, staff link scope and limits, WebP and AVIF uploads;`,
   );
 } finally {
   rmSync(root, { recursive: true, force: true });

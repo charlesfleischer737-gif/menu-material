@@ -447,10 +447,17 @@ function imageMime(bytes: Uint8Array) {
   )
     return "image/png";
   if (
-    Buffer.from(bytes.slice(4, 8)).toString() === "ftyp" &&
-    /heic|heix|hevc|mif1|msf1/.test(Buffer.from(bytes.slice(8, 32)).toString())
+    Buffer.from(bytes.slice(0, 4)).toString() === "RIFF" &&
+    Buffer.from(bytes.slice(8, 12)).toString() === "WEBP"
   )
-    return "image/heic";
+    return "image/webp";
+  if (Buffer.from(bytes.slice(4, 8)).toString() === "ftyp") {
+    // AVIF files list the same HEIF base brands (mif1) as HEIC photos.
+    const brands = Buffer.from(bytes.slice(8, 32)).toString();
+    if (/avif|avis/.test(brands) && !/heic|heix|hevc/.test(brands))
+      return "image/avif";
+    if (/heic|heix|hevc|mif1|msf1/.test(brands)) return "image/heic";
+  }
   return null;
 }
 async function upload(req: Request, r: Row, forcedKind?: string) {
@@ -478,7 +485,7 @@ async function upload(req: Request, r: Row, forcedKind?: string) {
   assert(
     file instanceof File && file.size > 0 && file.size <= 20 * 1024 * 1024,
     400,
-    "Choose a JPEG, PNG or HEIC file up to 20 MB.",
+    "Choose a JPEG, PNG, WebP or HEIC file up to 20 MB.",
   );
   assert(
     normalized instanceof File &&
@@ -490,6 +497,11 @@ async function upload(req: Request, r: Row, forcedKind?: string) {
   const bytes = new Uint8Array(await file.arrayBuffer()),
     working = new Uint8Array(await normalized.arrayBuffer());
   const mime = imageMime(bytes);
+  assert(
+    mime !== "image/avif",
+    400,
+    "AVIF photos aren’t supported yet. Export a JPEG or PNG.",
+  );
   assert(
     mime && imageMime(working) === "image/jpeg",
     400,
@@ -614,18 +626,20 @@ async function downloadAsset(
 ) {
   const obj = await bucket().get(key);
   assert(obj, 404, "Image not found.");
+  const type =
+    key === a.working_key
+      ? "image/jpeg"
+      : obj.httpMetadata?.contentType || a.mime;
   const h = new Headers({
-    "Content-Type":
-      key === a.working_key
-        ? "image/jpeg"
-        : obj.httpMetadata?.contentType || a.mime,
+    "Content-Type": type,
     "Cache-Control": publicImage ? "no-store" : "private, no-store",
     "X-Content-Type-Options": "nosniff",
   });
+  // Named after what is sent: the working copy of any upload is a JPEG.
   if (new URL(req.url).searchParams.has("download"))
     h.set(
       "Content-Disposition",
-      `attachment; filename="menu-material-${a.id}.${a.mime === "image/png" ? "png" : a.mime === "image/heic" ? "heic" : "jpg"}"`,
+      `attachment; filename="menu-material-${a.id}.${type === "image/png" ? "png" : type === "image/webp" ? "webp" : type === "image/heic" ? "heic" : "jpg"}"`,
     );
   return new Response(obj.body, { headers: h });
 }
