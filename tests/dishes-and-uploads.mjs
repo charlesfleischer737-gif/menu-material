@@ -224,7 +224,7 @@ for (const [typed, expected] of [
 }
 
 // Photo types come from the file's bytes, whatever its name or type says.
-const { normalizePhoto, photoAccept, photoFileError, photoFormat } =
+const { api, normalizePhoto, photoAccept, photoFileError, photoFormat } =
   await import("../lib/client.ts");
 const bytes = (...parts) =>
   new Uint8Array(
@@ -319,6 +319,39 @@ await rejects(normalizePhoto(file("photo.webp", samples.webp)), {
 });
 ok(decoded === 1, "WebP is decoded like any supported photo");
 
+// Errors: the service's own message wins; a bare 413 from the host means the
+// upload was too large.
+const replies = [];
+globalThis.fetch = async () => replies.shift();
+const reply = (body, status, type = "text/plain") =>
+  replies.push(
+    new Response(body, { status, headers: { "Content-Type": type } }),
+  );
+reply("Payload Too Large", 413);
+await rejects(api("assets", new FormData()), {
+  message: "This photo is too large to upload. Choose one under 20 MB.",
+  status: 413,
+});
+reply(
+  JSON.stringify({ error: "Photos must be 20 MB or smaller." }),
+  413,
+  "application/json",
+);
+await rejects(api("assets", new FormData()), {
+  message: "Photos must be 20 MB or smaller.",
+});
+reply("Payload Too Large", 413);
+await rejects(
+  api("menus", { title: "x" }),
+  { message: "The service couldn’t complete that action. Please try again." },
+  "only uploads are told the photo is too large",
+);
+reply("Bad gateway", 502);
+await rejects(api("assets", new FormData()), {
+  message: "The service couldn’t complete that action. Please try again.",
+  status: 502,
+});
+
 console.log(
-  `PASS: ${checks} dish and upload checks: dietary notes typed one character at a time, and photo types refused before anything is created.`,
+  `PASS: ${checks} dish and upload checks: dietary notes typed one character at a time, photo types refused before anything is created, and upload errors.`,
 );

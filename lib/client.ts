@@ -29,7 +29,10 @@ export async function api(
     throw Object.assign(
       new Error(
         data?.error ||
-          "The service couldn’t complete that action. Please try again.",
+          // The host refuses an oversized upload before the app sees it.
+          (res.status === 413 && body instanceof FormData
+            ? "This photo is too large to upload. Choose one under 20 MB."
+            : "The service couldn’t complete that action. Please try again."),
       ),
       {
         status: res.status,
