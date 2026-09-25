@@ -37,6 +37,7 @@ import {
   reserveStorage,
   releaseStorage,
   loginLimit,
+  loginSucceeded,
   publicLimit,
   housekeeping,
   aiControls,
@@ -674,11 +675,15 @@ export async function handle(req: Request) {
       return response({ ok: true });
     }
     if (p[0] === "auth") {
+      // Per network and before the body is read, so malformed floods stay
+      // cheap and only slow their sender.
       if (
         method === "POST" &&
         ["signup", "bootstrap", "owner-invite"].includes(p[1])
       )
         await publicLimit(req, "registration", 20);
+      if (method === "POST" && p[1] === "login")
+        await publicLimit(req, "login", 30);
       if (p[1] === "logout" && method === "POST") {
         const s = req.headers
           .get("cookie")
@@ -738,9 +743,10 @@ export async function handle(req: Request) {
       const b = await body(req);
       if (p[1] === "signup" && method === "POST") return await signup(req, b);
       if (p[1] === "login" && method === "POST") {
-        const email = emailSchema.parse(b.email);
+        const email = emailSchema.parse(b.email),
+          password = z.string().max(128).parse(b.password);
+        // Only well-formed attempts count toward the per-account slowdown.
         await loginLimit(req, email);
-        const password = z.string().max(128).parse(b.password);
         const u = await one("SELECT * FROM users WHERE email=?", email);
         assert(
           checkPassword(password, u?.password || "dummy:" + "00".repeat(64)) &&
@@ -748,10 +754,11 @@ export async function handle(req: Request) {
           401,
           "Email or password is incorrect.",
         );
+        await loginSucceeded(email);
         return await createSession(req, u.id);
       }
       if (p[1] === "bootstrap" && method === "POST") {
-        await limit("bootstrap:" + req.headers.get("cf-connecting-ip"), 5);
+        await limit("bootstrap:" + caller(req), 5);
         assert(
           config("ADMIN_SETUP_KEY") &&
             digest(String(b.setupKey)) === digest(config("ADMIN_SETUP_KEY")),
