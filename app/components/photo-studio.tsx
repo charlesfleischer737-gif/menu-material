@@ -143,7 +143,10 @@ export default function PhotoStudio({
     [saveLookOpen, setSaveLookOpen] = useState(false);
   const [resultRecipe, setResultRecipe] = useState<Row | null>(null);
   const [resultHasGeneration, setResultHasGeneration] = useState(false);
-  const resultAction = useRef<HTMLButtonElement>(null);
+  const resultAction = useRef<HTMLButtonElement>(null),
+    resultHeading = useRef<HTMLHeadingElement>(null),
+    failureHeading = useRef<HTMLHeadingElement>(null),
+    announcer = useRef<HTMLParagraphElement>(null);
   const [quickSession, setQuickSession] =
     useState<PhotoAdjustmentSession | null>(null);
   const quickActive = useRef<string | null>(null),
@@ -472,6 +475,45 @@ export default function PhotoStudio({
       setAccurate(false);
     }
   }, [output?.asset_id, b.jobId]);
+  // When the photo being made is ready or stops, say so to screen readers
+  // and move focus to what replaced the waiting screen.
+  const watchedJob = useRef({ id: "", running: false });
+  useEffect(() => {
+    const was = watchedJob.current;
+    watchedJob.current = { id: b.jobId, running: !!running };
+    if (!ready || !job || running || was.id !== b.jobId || !was.running) return;
+    const reason: string =
+      state.outputs.find((o: Row) => o.job_id === job.id && o.error)?.error ||
+      "";
+    const message = ["completed", "partial"].includes(job.status)
+      ? "Your photo is ready."
+      : cancelledError(reason)
+        ? "Image cancelled. No images were used."
+        : `Your photo couldn’t be created. ${reason}`.trim();
+    const region = announcer.current;
+    if (region) {
+      region.textContent = "";
+      requestAnimationFrame(() => {
+        region.textContent = message;
+      });
+    }
+    requestAnimationFrame(() => {
+      const current = document.activeElement;
+      // Never take focus from somewhere else the owner has moved to.
+      if (
+        !active ||
+        (current &&
+          current !== document.body &&
+          !root.current?.contains(current))
+      )
+        return;
+      (
+        resultHeading.current ||
+        failureHeading.current ||
+        resultAction.current
+      )?.focus({ preventScroll: true });
+    });
+  }, [ready, job, running, b.jobId, state.outputs, active, root]);
   useEffect(() => {
     if (!ready || !b.sourceId || b.mode !== "photo" || b.step > 3) return;
     const sourceId = b.sourceId;
@@ -987,6 +1029,14 @@ export default function PhotoStudio({
         </div>
       </header>
       <DraftRecovery store={draftStore} />
+      {/* Filled when the photo being made is ready or stops. */}
+      <p
+        className="sr-only"
+        role="status"
+        aria-live="polite"
+        aria-atomic="true"
+        ref={announcer}
+      />
       <Feedback {...action} />
       {b.step <= 3 && (
         <StudioWorkbench
@@ -1109,7 +1159,11 @@ export default function PhotoStudio({
                   >
                     {cancelled ? "Cancelled" : "Needs attention"}
                   </span>
-                  <h2 className="st-result-title">
+                  <h2
+                    className="st-result-title"
+                    ref={failureHeading}
+                    tabIndex={-1}
+                  >
                     {cancelled
                       ? "You cancelled this image."
                       : "This photo couldn’t be created."}
@@ -1340,7 +1394,11 @@ export default function PhotoStudio({
                     </DropdownMenuContent>
                   </DropdownMenu>
                 </div>
-                <h2 className="st-result-title">
+                <h2
+                  className="st-result-title"
+                  ref={resultHeading}
+                  tabIndex={-1}
+                >
                   Your food. Beautifully presented.
                 </h2>
                 <p className="st-result-copy">
