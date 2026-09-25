@@ -31,13 +31,14 @@ same(
 same(normalizeDietary('["df"]'), ["dairy-free"], "stored rows still map");
 
 /**
- * Runs the real DietaryPicker (app/components/dietary-picker.tsx) with a
- * minimal hooks runtime: enough to render one component, fire its handlers
- * and re-render with the parent's new value, the way React does per event.
+ * Mounts a real component from app/components with a minimal, shallow hooks
+ * runtime: enough to render it, fire its handlers and re-render after each
+ * event (or settled promise), the way React does. Child components aren't
+ * run; `modules` stands in for the component's imports.
  */
-function renderPicker(initial) {
+function mount(file, modules) {
   const source = readFileSync(
-    new URL("../app/components/dietary-picker.tsx", import.meta.url),
+    new URL(`../app/components/${file}`, import.meta.url),
     "utf8",
   );
   const { outputText } = ts.transpileModule(source, {
@@ -51,7 +52,8 @@ function renderPicker(initial) {
     cursor = 0,
     effects = [],
     dirty = false,
-    tree = null;
+    tree = null,
+    props = {};
   const hooks = {
     useState(init) {
       const slot = (slots[cursor++] ||= {
@@ -83,31 +85,36 @@ function renderPicker(initial) {
           slots[index] = { deps, cleanup: run() };
         });
     },
+    useCallback(callback, deps) {
+      const index = cursor++,
+        previous = slots[index];
+      if (!previous || deps.some((d, i) => !Object.is(d, previous.deps[i])))
+        slots[index] = { deps, callback };
+      return slots[index].callback;
+    },
   };
   const element = (type, props, key) => ({ type, props, key });
-  const modules = {
+  const imports = {
     react: hooks,
     "react/jsx-runtime": { jsx: element, jsxs: element, Fragment: "fragment" },
-    "@/lib/dietary": dietary,
+    ...modules,
   };
   const compiled = { exports: {} };
   new Function("require", "module", "exports", outputText)(
-    (id) => modules[id],
+    (id) => {
+      assert(id in imports, `${file} imports ${id}`);
+      return imports[id];
+    },
     compiled,
     compiled.exports,
   );
-  const Picker = compiled.exports.default;
-  let value = initial;
-  const emitted = [];
-  const onChange = (next) => {
-    value = next;
-    emitted.push(next);
-  };
-  function render() {
+  const Component = compiled.exports.default;
+  function render(next = props) {
+    props = next;
     do {
       dirty = false;
       cursor = 0;
-      tree = Picker({ value, onChange });
+      tree = Component(props);
       const pending = effects;
       effects = [];
       for (const run of pending) run();
@@ -120,13 +127,43 @@ function renderPicker(initial) {
       yield* walk(node.props?.children);
     }
   }
-  const find = (test) => [...walk(tree)].filter(test);
-  const input = () => find((n) => n.type === "input")[0];
-  const fire = (handler, event) => {
-    handler(event);
-    render();
+  return {
+    render,
+    find: (test) => [...walk(tree)].filter(test),
+    fire(handler, event) {
+      handler(event);
+      render();
+    },
+    /** Lets pending promises (requests, file checks) settle, then renders. */
+    async settle() {
+      await new Promise((resolve) => setTimeout(resolve, 0));
+      render();
+    },
   };
-  render();
+}
+/** Plain text inside an element, as a person reads it. */
+const text = (node) =>
+  node == null || typeof node === "boolean"
+    ? ""
+    : typeof node !== "object"
+      ? String(node)
+      : Array.isArray(node)
+        ? node.map(text).join("")
+        : text(node.props?.children);
+
+/** The real DietaryPicker, with its parent keeping whatever it emits. */
+function renderPicker(initial) {
+  const picker = mount("dietary-picker.tsx", { "@/lib/dietary": dietary });
+  let value = initial;
+  const emitted = [];
+  const onChange = (next) => {
+    value = next;
+    emitted.push(next);
+    picker.render({ value, onChange });
+  };
+  picker.render({ value, onChange });
+  const { find, fire } = picker;
+  const input = () => find((n) => n.type === "input")[0];
   return {
     get value() {
       return value;
@@ -145,8 +182,8 @@ function renderPicker(initial) {
           .onClick,
       ),
     /** Types one character at a time, as a keyboard does. */
-    type(text) {
-      for (const character of text) {
+    type(typed) {
+      for (const character of typed) {
         const next = input().props.value + character;
         fire(input().props.onChange, { target: { value: next } });
       }
@@ -159,8 +196,8 @@ function renderPicker(initial) {
     },
   };
 }
-const entries = (text) =>
-  text
+const entries = (value) =>
+  value
     .split(",")
     .map((v) => v.trim())
     .filter(Boolean)
@@ -322,7 +359,11 @@ ok(decoded === 1, "WebP is decoded like any supported photo");
 // Errors: the service's own message wins; a bare 413 from the host means the
 // upload was too large.
 const replies = [];
-globalThis.fetch = async () => replies.shift();
+globalThis.fetch = async () => {
+  const next = replies.shift();
+  if (next instanceof Error) throw next;
+  return next;
+};
 const reply = (body, status, type = "text/plain") =>
   replies.push(
     new Response(body, { status, headers: { "Content-Type": type } }),
@@ -351,6 +392,82 @@ await rejects(api("assets", new FormData()), {
   message: "The service couldn’t complete that action. Please try again.",
   status: 502,
 });
+
+// The staff photo page: a dead link can't be fixed by opening it again.
+const client = await import("../lib/client.ts");
+async function staffPage() {
+  const page = mount("staff-upload.tsx", {
+    "@/components/ui/button": { Button: function Button() {} },
+    "./brand": { default: function Brand() {} },
+    "@/lib/client": client,
+    "@/lib/photo-advice": { photoAdvice: async () => "Nice light." },
+  });
+  page.render({ token: "t".repeat(43) });
+  await page.settle();
+  const alert = () => text(page.find((n) => n.props.role === "alert"));
+  const retry = () =>
+    page.find((n) => text(n) === "Try opening again" && n.props.onClick)[0];
+  const said = (words) => page.find((n) => text(n) === words).length > 0;
+  return { page, alert, retry, said };
+}
+reply(
+  JSON.stringify({
+    error:
+      "This upload link has expired or was revoked. Ask the owner for a new link.",
+  }),
+  404,
+  "application/json",
+);
+{
+  const { alert, retry, said } = await staffPage();
+  ok(alert() === "This upload link has expired or isn’t valid.", alert());
+  ok(!retry(), "no retry for a dead link");
+  ok(said("Ask the restaurant for a new link."));
+}
+replies.push(new TypeError("Failed to fetch"));
+{
+  const { page, alert, retry, said } = await staffPage();
+  ok(
+    alert() ===
+      "The photo drop couldn’t be opened. Check your connection and try again.",
+    alert(),
+  );
+  ok(retry() && !said("Ask the restaurant for a new link."));
+  reply(
+    JSON.stringify({
+      name: "Corner House",
+      dishes: [{ id: "d1", name: "Pie" }],
+    }),
+    200,
+    "application/json",
+  );
+  page.fire(retry().props.onClick);
+  await page.settle();
+  ok(!alert() && !retry(), "a retry opens the page once the network is back");
+  // A GIF is refused as soon as it's chosen, before anything is sent.
+  const input = page.find((n) => n.type === "input")[0];
+  const gif = file("party.gif", samples.gif, "image/gif");
+  input.props.ref.current = { files: [gif], value: "party.gif" };
+  page.fire(input.props.onChange, { target: { files: [gif] } });
+  await page.settle();
+  ok(alert() === `GIF files can’t be uploaded. ${choose}`, alert());
+  ok(input.props.ref.current.value === "", "the refused file is cleared");
+  const send = page.find((n) => text(n) === "Send to owner")[0];
+  ok(send.props.disabled, "nothing to send");
+  ok(replies.length === 0, "no request was made for the GIF");
+}
+reply(
+  JSON.stringify({ error: "Please try again shortly." }),
+  503,
+  "application/json",
+);
+{
+  const { alert, retry } = await staffPage();
+  ok(
+    alert() === "Please try again shortly." && retry(),
+    "service errors retry",
+  );
+}
 
 console.log(
   `PASS: ${checks} dish and upload checks: dietary notes typed one character at a time, photo types refused before anything is created, and upload errors.`,
