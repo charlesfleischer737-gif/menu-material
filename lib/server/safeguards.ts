@@ -37,9 +37,10 @@ function setting(key: string, fallback: number) {
 }
 // The schema default for restaurants.daily_budget_cents ($20).
 const DEFAULT_RESTAURANT_BUDGET_CENTS = 2000;
-// What a new reservation must satisfy, checked atomically when it is
-// inserted. Daily budgets count finished calls at their settled cost. Free
-// plans also have a daily cap on calls other than images. On an active paid plan the default restaurant budget never
+// What a new reservation must satisfy, checked atomically when it is inserted
+// and ahead of time before an image is claimed. Daily budgets count finished
+// calls at their settled cost. Free plans also have a daily cap on calls other
+// than images. On an active paid plan the default restaurant budget never
 // holds images below what the plan's allowance could use in a day; an
 // administrator's own restaurant budget and the site-wide budget still apply.
 async function reservationTerms(charge: AiCharge, restaurant: Row) {
@@ -134,9 +135,24 @@ export async function reserveAi(charge: AiCharge) {
   assert(
     inserted.meta.changes,
     429,
-    "Today's AI budget has been reached. Try again tomorrow or contact support. Your work is saved.",
+    "Today's AI budget has been reached. It resets at 00:00 UTC; try again then or contact support. Your work is saved.",
   );
   return key;
+}
+// Whether a call of this kind could reserve now. Checked before an image is
+// claimed, so a spent budget holds queued images instead of cycling them.
+export async function aiBudgetRoom(
+  restaurantId: string,
+  kind: AiCharge["kind"],
+) {
+  const r = await one(
+    "SELECT paused,daily_budget_cents FROM restaurants WHERE id=?",
+    restaurantId,
+  );
+  if (!r) return false;
+  const terms = await reservationTerms({ restaurantId, kind }, r);
+  if (!Number.isSafeInteger(terms.cents)) return false;
+  return !!(await one(`SELECT 1 AS ok WHERE ${terms.sql}`, ...terms.args));
 }
 // What a finished call counts against the daily budgets, in cents to a
 // hundredth of a cent, rounded up: text calls at their measured token cost,

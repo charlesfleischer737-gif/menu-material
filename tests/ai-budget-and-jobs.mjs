@@ -15,7 +15,8 @@ Date.now = () => realNow() + offset;
 const { handle } = await import("../lib/server/api.ts");
 const { one, all, run, id, digest } = await import("../lib/server/core.ts");
 const { reserveAi, settledCents } = await import("../lib/server/safeguards.ts");
-const { tick, provider, enqueue } = await import("../lib/server/generation.ts");
+const { tick, provider, enqueue, jobStatus } =
+  await import("../lib/server/generation.ts");
 const { flushMonitoring } = await import("../lib/server/monitoring.ts");
 const { env } = await import("../lib/local-runtime.ts");
 
@@ -167,8 +168,11 @@ async function siteBudget(cents) {
     JSON.stringify({ paused: false, dailyBudgetCents: cents }),
   );
 }
+const HELD =
+  "Waiting for the daily AI budget to reset at 00:00 UTC. It will start automatically; cancel it to keep your image.";
 
 try {
+  let sent, out;
   await siteBudget(10000);
 
   // 1. Finished calls count at their measured cost, never above the
@@ -365,8 +369,40 @@ try {
   await run("DELETE FROM ai_spend");
   await siteBudget(10000);
 
+  // 13. While the daily budget is spent, queued images are held without being
+  // claimed or sent, say why honestly, and start by themselves later.
+  await run("DELETE FROM ai_spend");
+  await siteBudget(100);
+  const held = await restaurant("held-kitchen");
+  const heldJob = await newJob(held);
+  sent = imageCalls.length;
+  await tick(held.rid);
+  out = await output(heldJob.id);
+  assert.deepEqual(
+    [out.status, out.attempts, out.lease_until, out.lease_token, out.error],
+    ["queued", 0, 0, null, HELD],
+    "held without being claimed",
+  );
+  assert(out.next_poll_at > Date.now() + 55000);
+  assert.equal(await jobState(heldJob.id), "queued");
+  assert.equal((await one("SELECT COUNT(*) AS n FROM ai_spend")).n, 0);
+  assert.equal(imageCalls.length, sent);
+  assert.equal(
+    (await jobStatus(held.rid)).outputs[0].error,
+    HELD,
+    "the page shows why",
+  );
+  await tick(held.rid);
+  assert.equal((await output(heldJob.id)).next_poll_at, out.next_poll_at);
+  await siteBudget(10000);
+  offset += 61000;
+  await tick(held.rid);
+  out = await output(heldJob.id);
+  assert.deepEqual([out.status, out.error], ["completed", null]);
+  checks++;
+
   console.log(
-    `PASS: ${checks} AI budget and job checks: settled spend, free daily cap and paid-plan image budget. Provider calls and webhooks are fixtures.`,
+    `PASS: ${checks} AI budget and job checks: settled spend, free daily cap, paid-plan image budget and budget holds. Provider calls and webhooks are fixtures.`,
   );
 } finally {
   console.error = originalError;

@@ -15,6 +15,7 @@ import {
   reserveAi,
   finishAi,
   type AiCharge,
+  aiBudgetRoom,
   aiControls,
   reserveStorage,
 } from "./safeguards";
@@ -833,6 +834,12 @@ async function settle(o: Row, res: Row) {
     );
   }
 }
+// Queued images waiting on the daily budget or a pause show why, and start by
+// themselves.
+const BUDGET_HOLD =
+  "Waiting for the daily AI budget to reset at 00:00 UTC. It will start automatically; cancel it to keep your image.";
+const PAUSE_HOLD =
+  "AI creation is paused. It will start automatically when it resumes; cancel it to keep your image.";
 export async function tick(restaurantId?: string, { startNew = true } = {}) {
   if (!config("OPENAI_API_KEY")) return;
   const controls = await aiControls();
@@ -876,6 +883,21 @@ export async function tick(restaurantId?: string, { startNew = true } = {}) {
   // Claims are atomic across browser ticks and worker invocations.
   const processOutput = async (candidate: Row) => {
     let o = candidate;
+    // A spent daily budget holds a queued image without claiming or sending
+    // it; it is checked again in a minute and starts once there is room.
+    if (
+      o.status === "queued" &&
+      !(await aiBudgetRoom(o.restaurant_id, "image"))
+    ) {
+      await run(
+        "UPDATE outputs SET error=?,next_poll_at=? WHERE id=? AND status='queued' AND lease_until<?",
+        BUDGET_HOLD,
+        now() + 60000,
+        o.id,
+        now(),
+      );
+      return;
+    }
     const lease = id();
     const claim = await one(
       `UPDATE outputs SET lease_until=?,lease_token=? WHERE id=? AND lease_until<? AND next_poll_at<=? AND status NOT IN ('completed','failed')
@@ -954,7 +976,7 @@ export async function tick(restaurantId?: string, { startNew = true } = {}) {
         // progress as abandoned.
         const sentAt = now();
         await run(
-          "UPDATE outputs SET status='submitting',submitted_at=?,attempts=attempts+1,lease_until=? WHERE id=? AND lease_token=?",
+          "UPDATE outputs SET status='submitting',submitted_at=?,attempts=attempts+1,lease_until=?,error=NULL WHERE id=? AND lease_token=?",
           sentAt,
           sentAt + IMAGE_TIMEOUT_MS + 60000,
           o.id,
@@ -1010,10 +1032,11 @@ export async function tick(restaurantId?: string, { startNew = true } = {}) {
         !(e as any).providerRejected &&
         !current?.response_id
       ) {
+        // Held by a pause or the daily budget before anything was sent.
         await run(
           "UPDATE outputs SET status='queued',lease_until=0,next_poll_at=?,error=?,attempts=MAX(0,attempts-1),submitted_at=NULL WHERE id=? AND lease_token=?",
           now() + 60000,
-          e.message,
+          e.status === 423 ? PAUSE_HOLD : BUDGET_HOLD,
           o.id,
           lease,
         );
