@@ -16,15 +16,25 @@ export default function MenuPhoto({
   alt?: string;
   priority?: boolean;
 }) {
-  const frame = menuCrop(crop);
+  const frame = menuCrop(crop),
+    src = slug
+      ? `/api/public/${slug}/assets/${photoId}`
+      : `/api/assets/${photoId}`;
   return (
     <div className={`mm-menu-photo ${featured ? "is-featured" : ""}`}>
+      {frame.fit && (
+        // The whole photograph shows; a soft copy of it fills the rest of
+        // the frame instead of grey bars.
+        <img
+          className="mm-menu-photo-backdrop"
+          src={src}
+          alt=""
+          loading={priority ? "eager" : "lazy"}
+          decoding="async"
+        />
+      )}
       <img
-        src={
-          slug
-            ? `/api/public/${slug}/assets/${photoId}`
-            : `/api/assets/${photoId}`
-        }
+        src={src}
         alt={alt}
         loading={priority ? "eager" : "lazy"}
         decoding="async"

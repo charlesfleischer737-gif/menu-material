@@ -2094,6 +2094,21 @@
   max-height: 290px;
   border-radius: 3px;
 }
+/* A photo shown whole sits on a blurred copy of itself, not grey bars. */
+.mm-menu-photo > img.mm-menu-photo-backdrop {
+  position: absolute;
+  inset: 0;
+  object-fit: cover;
+  filter: blur(24px) saturate(1.15) brightness(0.9);
+  transform: scale(1.15);
+}
+.mm-menu-photo > .mm-menu-photo-backdrop + img {
+  position: relative;
+}
+/* The classic masthead photo fades into the page instead. */
+.menu-hero-photo .mm-menu-photo-backdrop {
+  display: none;
+}
 .md-guest-hero > span {
   display: block;
   margin-top: 7px;
