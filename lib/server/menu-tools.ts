@@ -24,6 +24,7 @@ import {
   response,
   run,
   token,
+  viewer,
   type Row,
 } from "./core";
 import { enqueue, provider } from "./generation";
@@ -734,6 +735,9 @@ export async function publicEvent(
       src: z.enum(menuPlacementIds).optional(),
     })
     .parse(await body(req));
+  // The owner checking their own live menu isn't a guest visit.
+  if ((await viewer(req))?.id === r.user_id)
+    return response({ ok: true, counted: false });
   const dishes = menu.sections
     .flatMap((s: Row) => s.items)
     .map((x: Row) => x.id)
@@ -760,8 +764,14 @@ export async function publicEvent(
     assert(menu.contact?.reservationUrl, 400, "No reservation link.");
   // Dish views have their own allowance, so a dining room of guests
   // scrolling on the restaurant's Wi-Fi never crowds out visits and taps.
+  // One address also has a cap across all restaurants.
   const ip = req.headers.get("cf-connecting-ip"),
     group = b.kind === "dish_view" ? "views" : "guests";
+  await limit(
+    `public-event-ip:${group}:${ip}`,
+    group === "views" ? 4800 : 1200,
+    3600,
+  );
   await limit(
     `public-event:${group}:${r.id}:${ip}`,
     group === "views" ? 1200 : 300,

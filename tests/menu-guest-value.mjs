@@ -6,7 +6,8 @@ const root = mkdtempSync(join(tmpdir(), "menu-guest-value-"));
 process.env.MENU_MATERIAL_DATA_DIR = root;
 process.env.APP_ORIGIN = "http://localhost";
 const { handle } = await import("../lib/server/api.ts");
-const { one } = await import("../lib/server/core.ts");
+const { one, all, digest } = await import("../lib/server/core.ts");
+const { housekeeping } = await import("../lib/server/safeguards.ts");
 const { newMenuDocument, newMenuEntry, menuPurposePatch, uncertainFields } =
   await import("../lib/menu-document.ts");
 const {
@@ -593,6 +594,27 @@ Ramen 1,200`);
     { kind: "menu_visit", session, src: "billboard" },
     400,
   );
+  // The owner opening their own menu isn't counted as a guest.
+  const guestVisits = async () =>
+    (await one("SELECT count(*) AS n FROM events WHERE kind='menu_visit'")).n;
+  const visitsBefore = await guestVisits();
+  assert.equal(
+    (
+      await call(`public/${slug}/events`, {
+        kind: "menu_visit",
+        session: crypto.randomUUID(),
+      })
+    ).counted,
+    false,
+  );
+  assert.equal(await guestVisits(), visitsBefore, "owner visits aren't kept");
+  const visitRow = await one(
+    "SELECT details FROM events WHERE kind='menu_visit' ORDER BY created_at DESC LIMIT 1",
+  );
+  assert.deepEqual(JSON.parse(visitRow.details), {
+    menu: guest.menu.documentId,
+    src: "table",
+  });
 
   // Menu stats: last 7 days against the 7 before, by placement and menu.
   await guestCall(`public/${slug}/events`, {
@@ -684,6 +706,49 @@ Ramen 1,200`);
     { kind: "menu_visit", session: crypto.randomUUID(), src: "table" },
     200,
     venue,
+  );
+  // One address has a cap across every restaurant's menus.
+  await run(
+    "INSERT INTO rate_limits (key,count,expires_at) VALUES (?,?,?)",
+    digest("public-event-ip:guests:203.0.113.5"),
+    1200,
+    Date.now() + 3600000,
+  );
+  await guestCall(
+    `public/${slug}/events`,
+    { kind: "menu_visit", session: crypto.randomUUID() },
+    429,
+    "203.0.113.5",
+  );
+  await guestCall(
+    `public/${slug}/events`,
+    { kind: "menu_visit", session: crypto.randomUUID() },
+    200,
+    "203.0.113.6",
+  );
+  // Housekeeping removes guest activity older than 90 days, and only that.
+  const old = Date.now() - 91 * 24 * 60 * 60 * 1000;
+  for (const [id, kind, at] of [
+    ["old-visit", "menu_visit", old],
+    ["old-view", "dish_view", old],
+    ["old-export", "export_complete", old],
+    ["recent-visit", "menu_visit", Date.now() - 80 * 24 * 60 * 60 * 1000],
+  ])
+    await run(
+      "INSERT INTO events (id,restaurant_id,kind,entity_id,details,created_at) VALUES (?,?,?,NULL,'{}',?)",
+      id,
+      restaurantState.id,
+      kind,
+      at,
+    );
+  await housekeeping();
+  assert.deepEqual(
+    (
+      await all(
+        "SELECT id FROM events WHERE id IN ('old-visit','old-view','old-export','recent-visit') ORDER BY id",
+      )
+    ).map((e) => e.id),
+    ["old-export", "recent-visit"],
   );
 
   // Quick update: sold out and prices go live without publishing other edits.
