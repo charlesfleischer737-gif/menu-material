@@ -1257,10 +1257,13 @@ export function MenuDeliveryDialog({
           ) : (
             <>
               {choosingAddress && (
-                <Field label="Menu address">
+                // Field labels a single control; this one sits in a wrapper.
+                <div className="md-field">
+                  <label htmlFor="md-address">Menu address</label>
                   <div className="md-address-input">
                     <span aria-hidden="true">/m/</span>
                     <input
+                      id="md-address"
                       value={address}
                       maxLength={60}
                       disabled={busy}
@@ -1280,7 +1283,7 @@ export function MenuDeliveryDialog({
                           ? "Checking…"
                           : "Your QR code and link use this address. You can change it later; old links keep working.")}
                   </small>
-                </Field>
+                </div>
               )}
               <ul className="md-change-list">
                 {changes.map((s, i) => (

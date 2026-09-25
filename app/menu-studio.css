@@ -1005,7 +1005,7 @@
   max-width: 340px;
   font-size: var(--text-subhead);
   line-height: 1.9;
-  color: var(--gray-500);
+  color: var(--gray-600);
 }
 .md-start-actions {
   display: flex;
@@ -1708,7 +1708,7 @@
 }
 .md-share-qr p {
   font-size: var(--text-footnote);
-  color: var(--gray-500);
+  color: var(--gray-600);
   line-height: 1.75;
   margin: 8px 0;
 }
