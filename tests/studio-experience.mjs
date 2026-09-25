@@ -13,7 +13,7 @@ assert.equal(
   handle,
   "The deployed route must expose the library update method",
 );
-const { run, one, digest, id } = await import("../lib/server/core.ts");
+const { run, one, all, digest, id } = await import("../lib/server/core.ts");
 const {
   photoBrief,
   photoStyles,
@@ -1003,15 +1003,28 @@ try {
       },
       state.restaurant,
     );
+  // "Apply to more dishes" copies the photo's shape and Details note too.
   const photoSet = await call("photo-batches", {
     batchId: batchKey,
     items: batchItems,
     style: styleFor(recipe, state.restaurant),
-    recipe,
+    recipe: { ...recipe, note: "Leave room above for a headline" },
+    format: "doordash",
   });
   assert.equal(photoSet.batch.items.length, 8);
   assert.equal(photoSet.batch.settings.controls.surface, "Pale stone");
   assert.equal(photoSet.batch.settings.controls.plate, "keep");
+  assert.equal(photoSet.batch.settings.controls.format, "doordash");
+  assert.equal(
+    photoSet.batch.settings.revision,
+    "Leave room above for a headline",
+  );
+  const setSample = await one(
+    "SELECT details,prompt FROM jobs WHERE id=?",
+    photoSet.batch.sampleJobId,
+  );
+  assert.equal(JSON.parse(setSample.details).controls.format, "doordash");
+  assert.equal(setSample.prompt, "Leave room above for a headline");
   const setBalance = (await call("state")).remaining;
   assert.equal(
     (await one("SELECT COUNT(*) n FROM batch_items WHERE batch_id=?", batchKey))
@@ -1045,6 +1058,13 @@ try {
       .n,
     7,
   );
+  for (const row of await all(
+    "SELECT j.details,j.prompt FROM batch_items b JOIN jobs j ON j.id=b.job_id WHERE b.batch_id=?",
+    batchKey,
+  )) {
+    assert.equal(JSON.parse(row.details).controls.format, "doordash");
+    assert.equal(row.prompt, "Leave room above for a headline");
+  }
   assert.equal((await call("state")).remaining, setBalance - 7);
   await call(`photo-batches/${batchKey}/continue`, { remainingCount: 7 });
   assert.equal(

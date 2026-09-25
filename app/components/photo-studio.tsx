@@ -1662,7 +1662,7 @@ export default function PhotoStudio({
         <PhotoBatchSheet
           onCloseAutoFocus={returnToResult}
           state={state}
-          draft={{ ...b, ...resultRecipe }}
+          draft={{ ...b, ...resultRecipe, format: resultFormat }}
           onClose={() => setBatchOpen(false)}
           refresh={refresh}
           remember={async (id) => {

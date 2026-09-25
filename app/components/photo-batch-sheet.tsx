@@ -9,7 +9,13 @@ import {
 } from "@/components/ui/dialog";
 import { api, downloadBlob, type Row } from "@/lib/client";
 import { recipeFromDraft } from "@/lib/studio-library";
-import { styleFor } from "@/lib/studio";
+import {
+  formatNames,
+  formatShapes,
+  formats,
+  styleFor,
+  type PhotoFormat,
+} from "@/lib/studio";
 import { masterPhotoExport } from "@/lib/photo-export";
 import { photoFilename } from "@/lib/photo-destinations";
 import { track } from "./creation-shared";
@@ -39,6 +45,16 @@ export function PhotoBatchSheet({
   const [included, setIncluded] = useState<string[]>([]);
   const batchId = useRef(draft.photoBatchId || crypto.randomUUID()),
     lock = useRef(false);
+  const format: PhotoFormat = draft.format in formats ? draft.format : "menu",
+    note = String(draft.note || "")
+      .trim()
+      .slice(0, 500);
+  // What a set is made as: its own saved shape once started.
+  const setFormat: PhotoFormat =
+    batch?.settings?.controls?.format in formats
+      ? batch!.settings.controls.format
+      : format;
+  const madeAs = `${formatNames[setFormat]} · ${formatShapes[setFormat]}`;
   useEffect(() => {
     let active = true;
     if (draft.photoBatchId && !lock.current)
@@ -87,7 +103,9 @@ export function PhotoBatchSheet({
       batchId: batchId.current,
       items,
       style: styleFor(draft, state.restaurant),
-      recipe: recipeFromDraft(draft, state.restaurant),
+      // The set copies this photo's look, shape and Details note.
+      recipe: { ...recipeFromDraft(draft, state.restaurant), note },
+      format,
     });
     setBatch(result.batch);
     void api("jobs/tick", {}).catch(() => {});
@@ -216,6 +234,10 @@ export function PhotoBatchSheet({
               <p>
                 Choose up to 8 dishes with an original photo. The first selected
                 dish becomes your sample.
+              </p>
+              <p>
+                Each photo uses this look
+                {note ? " and your Details note" : ""}, made {madeAs}.
               </p>
               <div className="ps2-batch-grid">
                 {candidates.map((dish: Row) => {
@@ -410,9 +432,9 @@ export function PhotoBatchSheet({
                 </>
               )}
               <p className="ps2-control-help">
-                Review every result separately. Download includes only the
-                approved photos you select, at full saved quality with no new
-                crop.
+                Made {madeAs}. Review every result separately. Download includes
+                only the approved photos you select, at full saved quality with
+                no new crop.
               </p>
               <button
                 className="cx-btn cx-secondary"
