@@ -21,6 +21,7 @@ import { downloadPhotoItem, photoLineage } from "@/lib/photo-destinations";
 import { lookProfile } from "@/lib/photo-pack";
 import { PhotoFinishSheet } from "./photo-finish-sheet";
 import { PhotoPackSheet } from "./photo-pack-sheet";
+import { photoReviewReminder, type PhotoUseAction } from "@/lib/photo-use";
 import { photoActionLabels } from "./photo-hub-actions";
 import { workspacePreferenceKey } from "@/lib/workspace-navigation";
 import { Sheet, SheetContent, SheetTitle } from "@/components/ui/sheet";
@@ -159,12 +160,19 @@ export default function DishLibrary({
       setDirty(false);
     }
   }
-  function reuse(d: Row, a: Row, where: string) {
+  async function selectPhoto(photo: Row, use: PhotoUseAction) {
+    await api(`assets/${photo.id}/use`, { action: use });
+    await refresh();
+  }
+  function reuse(d: Row, a: Row, where: "post" | "menu") {
     if (dirty && !window.confirm("Discard unsaved dish details and continue?"))
       return;
-    setDetail(null);
-    setDirty(false);
-    onDestination(where, d.id, a.id, { quick: true });
+    void action.act("Opening your photo", async () => {
+      await selectPhoto(a, where);
+      setDetail(null);
+      setDirty(false);
+      onDestination(where, d.id, a.id, { quick: true });
+    });
   }
   // The same actions, with the same names, as a finished photo in Photo Studio.
   // Called as a function, not rendered as a component: an inner component
@@ -173,7 +181,7 @@ export default function DishLibrary({
     return (
       <DropdownMenu>
         <DropdownMenuTrigger asChild>
-          <button className="cx-link">
+          <button className="cx-link" disabled={!!action.busy}>
             Use photo <ChevronDown size={14} />
           </button>
         </DropdownMenuTrigger>
@@ -185,7 +193,12 @@ export default function DishLibrary({
             {photoActionLabels.download}
           </DropdownMenuItem>
           <DropdownMenuItem
-            onSelect={() => setPhotoUse({ kind: "pack", dish, photo })}
+            onSelect={() =>
+              void action.act("Preparing your photo", async () => {
+                await selectPhoto(photo, "pack");
+                setPhotoUse({ kind: "pack", dish, photo });
+              })
+            }
           >
             <Package size={16} aria-hidden="true" />
             {photoActionLabels.pack}
@@ -254,7 +267,7 @@ export default function DishLibrary({
         setUploads((prev) =>
           prev.map((u) =>
             u.key === item.key
-              ? { ...u, dishId, assetId: data.id, status: "Needs review" }
+              ? { ...u, dishId, assetId: data.id, status: "New photo" }
               : u,
           ),
         );
@@ -391,7 +404,7 @@ export default function DishLibrary({
                 onChange={(event) => setStatus(event.target.value)}
               >
                 <option value="">All photos</option>
-                {["Approved", "Needs review", "No photo"].map((value) => (
+                {["Ready to use", "New photo", "No photo"].map((value) => (
                   <option key={value}>{value}</option>
                 ))}
               </select>
@@ -448,12 +461,10 @@ export default function DishLibrary({
                     state.assets,
                   ),
                 )
-                .filter((a) => a?.approved_at)
+                .filter((a) => !!a)
                 .map((a) => a.id);
               if (ids.length !== selected.length)
-                action.setError(
-                  "Choose dishes with approved photos to download.",
-                );
+                action.setError("Choose dishes with photos to download.");
               else setDownloadIds(ids);
             }}
           >
@@ -592,7 +603,7 @@ export default function DishLibrary({
                     )}{" "}
                     {label}
                   </span>
-                  {a?.approved_at ? (
+                  {a ? (
                     photoUseMenu(d, a)
                   ) : (
                     <button className="cx-link" onClick={() => open(d)}>
@@ -659,8 +670,8 @@ export default function DishLibrary({
                                 : a.kind === "source"
                                   ? "Original"
                                   : a.approved_at
-                                    ? "Approved"
-                                    : "Needs review"}
+                                    ? "Ready to use"
+                                    : "New photo"}
                             </small>
                           </button>
                         ))}
@@ -677,8 +688,9 @@ export default function DishLibrary({
                       </p>
                     )}
                     <div className="mm-detail-actions">
-                      {current?.approved_at ? (
+                      {current ? (
                         <>
+                          <p className="mm-muted">{photoReviewReminder}</p>
                           {photoUseMenu(detail, current)}
                           <button
                             className="cx-link"
@@ -688,6 +700,7 @@ export default function DishLibrary({
                             }
                             onClick={() =>
                               action.act("Setting main photo", async () => {
+                                await selectPhoto(current, "main");
                                 await api(`library/${detail.id}`, {
                                   preferredPhotoId: current.id,
                                 });
@@ -704,26 +717,6 @@ export default function DishLibrary({
                               : "Make main photo"}
                           </button>
                         </>
-                      ) : current ? (
-                        <label className="cx-check">
-                          <input
-                            type="checkbox"
-                            checked={false}
-                            disabled={!!action.busy}
-                            onChange={() =>
-                              action.act("Approving photo", async () => {
-                                await api(`assets/${current.id}/approve`, {
-                                  accurate: true,
-                                });
-                                await refresh();
-                                action.setNotice(
-                                  "Photo approved and ready to use.",
-                                );
-                              })
-                            }
-                          />
-                          This photo accurately shows the dish I serve
-                        </label>
                       ) : null}
                       <button
                         className="cx-link"
@@ -1089,9 +1082,7 @@ export default function DishLibrary({
             key={downloadIds.join(":")}
             items={downloadIds
               .map((id) => {
-                const a = state.assets.find(
-                  (a: Row) => a.id === id && a.approved_at,
-                );
+                const a = state.assets.find((a: Row) => a.id === id);
                 const d = a && allDishes.find((d) => d.id === a.dish_id);
                 return a && d ? downloadPhotoItem(state, a, d.name) : null;
               })
@@ -1100,6 +1091,10 @@ export default function DishLibrary({
               state.user.id,
               state.restaurant.id,
             )}
+            onUse={async (assetId) => {
+              await api(`assets/${assetId}/use`, { action: "download" });
+              await refresh();
+            }}
             onPromote={(item) => {
               setDownloadIds([]);
               reuse({ id: item.dishId }, { id: item.assetId }, "post");
@@ -1121,10 +1116,7 @@ export default function DishLibrary({
           approved={!!usedPhoto.approved_at}
           initialFormat={usedLineage?.format || "menu"}
           style={usedStyle}
-          onApprove={async () => {
-            await api(`assets/${usedPhoto.id}/approve`, { accurate: true });
-            await refresh();
-          }}
+          onUse={(use) => selectPhoto(usedPhoto, use)}
           onPack={() => setPhotoUse({ ...photoUse, kind: "pack" })}
         />
       )}

@@ -14,7 +14,7 @@ process.env.IMAGE_COST_ESTIMATE_USD = "0.12";
 process.env.BOOTSTRAP_OWNER_EMAIL = "bootstrap@example.test";
 process.env.APP_ORIGIN = "http://localhost";
 const { handle } = await import("../lib/server/api.ts");
-const { run } = await import("../lib/server/core.ts");
+const { run, one } = await import("../lib/server/core.ts");
 const { env } = await import("../lib/local-runtime.ts");
 const photos = readFileSync("public/pasta.jpg");
 const generatedPng = readFileSync("public/og.png");
@@ -317,7 +317,53 @@ try {
   );
   await call(`assets/${generated.id}?download=1`, undefined, 403);
   await call(`assets/${generated.id}/approve`, { accurate: false }, 400);
-  await call(`assets/${generated.id}/approve`, { accurate: true });
+  await call(`assets/${generated.id}/use`, {}, 400);
+  await call(`assets/${generated.id}/use`, { action: "publish" }, 400);
+  const remainingBeforeUse = (await call("state")).remaining;
+  await call(`assets/${generated.id}/use`, { action: "download" });
+  const selectedAt = (
+    await one("SELECT approved_at FROM assets WHERE id=?", generated.id)
+  ).approved_at;
+  const selection = await one(
+    "SELECT details FROM events WHERE kind='photo_selected' AND entity_id=?",
+    generated.id,
+  );
+  assert.equal(JSON.parse(selection.details).action, "download");
+  const readyEvent = await one(
+    "SELECT details FROM events WHERE kind='image_approved' AND entity_id=?",
+    generated.id,
+  );
+  assert.equal(JSON.parse(readyEvent.details).selectionMethod, "use_action");
+  assert.equal(JSON.parse(readyEvent.details).accurate, undefined);
+  await Promise.all([
+    call(`assets/${generated.id}/use`, { action: "download" }),
+    call(`assets/${generated.id}/use`, { action: "download" }),
+  ]);
+  assert.equal(
+    (await one("SELECT approved_at FROM assets WHERE id=?", generated.id))
+      .approved_at,
+    selectedAt,
+  );
+  assert.equal(
+    (
+      await one(
+        "SELECT count(*) AS n FROM events WHERE kind='photo_selected' AND entity_id=?",
+        generated.id,
+      )
+    ).n,
+    1,
+  );
+  await call(`assets/${generated.id}/use`, { action: "post" });
+  assert.equal(
+    (
+      await one(
+        "SELECT count(*) AS n FROM events WHERE kind='photo_selected' AND entity_id=?",
+        generated.id,
+      )
+    ).n,
+    2,
+  );
+  assert.equal((await call("state")).remaining, remainingBeforeUse);
   await call(`assets/${generated.id}?download=1`);
   await call(`public/${slug}/assets/${generated.id}`, undefined, 404);
   await call("captions/generate", { dishId });
@@ -351,6 +397,7 @@ try {
     404,
   );
   await call("assets/" + generated.id, undefined, 404);
+  await call(`assets/${generated.id}/use`, { action: "menu" }, 404);
   await call("admin", undefined, 403);
   await call(
     "menu",

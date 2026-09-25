@@ -1155,7 +1155,7 @@ function Insights() {
       {data && (
         <>
           <p className="muted">
-            First approved photo export action:{" "}
+            First selected photo export action:{" "}
             {data.firstDownloadElapsedMs == null
               ? "Not recorded yet."
               : `${Math.max(1, Math.round(data.firstDownloadElapsedMs / 60000))} minutes after your first upload (elapsed time, including time away).`}{" "}
@@ -1192,14 +1192,16 @@ function Insights() {
             <summary>How activity is measured</summary>
             <p>
               Export actions record a download starting or a native share
-              completing; they do not confirm file receipt or publication.
+              completing; they do not confirm file receipt or publication. Photo
+              selection records a choice to use an image, not an accuracy
+              certification.
             </p>
             <div className="measurement-list">
               <p>
-                <b>Active time to approval:</b>{" "}
+                <b>Active time to photo selection:</b>{" "}
                 {data.active.count
-                  ? `${Math.round(data.active.average / 1000)} seconds average (${data.active.count} approvals)`
-                  : "No approvals recorded yet"}
+                  ? `${Math.round(data.active.average / 1000)} seconds average (${data.active.count} selections)`
+                  : "No photos selected yet"}
                 .
               </p>
               <p>

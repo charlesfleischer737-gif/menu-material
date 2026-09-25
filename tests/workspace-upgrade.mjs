@@ -96,15 +96,15 @@ try {
   const first = await upload(dish.id),
     second = await upload(dish.id);
   let assets = (await call("state")).assets;
-  assert.equal(dishStatus(saved, assets), "Needs review");
+  assert.equal(dishStatus(saved, assets), "New photo");
   await call(`library/${dish.id}`, { preferredPhotoId: first.id }, 400);
-  await call(`assets/${first.id}/approve`, { accurate: true });
-  await call(`assets/${second.id}/approve`, { accurate: true });
+  await call(`assets/${first.id}/use`, { action: "main" });
+  await call(`assets/${second.id}/use`, { action: "menu" });
   await call(`library/${dish.id}`, { preferredPhotoId: first.id });
   let current = await call("state");
   saved = current.dishes.find((d) => d.id === dish.id);
   assert.equal(preferredPhoto(saved, current.assets).id, first.id);
-  assert.equal(dishStatus(saved, current.assets), "Approved");
+  assert.equal(dishStatus(saved, current.assets), "Ready to use");
   assert.equal(
     dishStatus(
       saved,

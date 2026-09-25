@@ -350,7 +350,7 @@ Acceptance criteria:
 7. Cancelling undispatched work releases its reservation once. After provider acceptance, the UI distinguishes leaving the screen from cancellation; it cannot promise to cancel external work or refund provider spend unless that capability is verified.
 8. Operational measurements separate upload, queue wait, provider time, archival, and display time. Broad rollout requires the latency and reliability gates in sections 6 and 7.
 
-### PS-20 — Result review and truthful approval [R1]
+### PS-20 — Result review and deliberate use [R1]
 
 **Requirement:** Owners enjoy the result, verify the actual dish, and remain in control of reuse.
 
@@ -358,9 +358,9 @@ Acceptance criteria:
 
 1. The completed image is shown fully and prominently by default. Compare original, zoom, and version history are clearly available without a tutorial.
 2. Provide both a usable comparison slider and discrete Original/Result views. Keyboard and touch users can compare without precise dragging. Differing image ratios are labeled and never imply exact spatial alignment where none exists.
-3. **Use photo** opens a compact finish sheet with a relevant export preview and one fidelity confirmation for the selected version. Unapproved generated photos are not automatically inserted into menus or posts.
-4. Approval attaches to the exact asset/version, not the dish generally. Selecting an unreviewed revision cannot inherit another version's approval.
-5. Crop-only derivatives can inherit food-content approval through lineage but require a new crop check when they introduce meaningful clipping. Generated revisions and edits changing food appearance require their own review. A repeated identical export does not ask for the same confirmation again.
+3. **Download**, **Make a post**, **Add to menu**, and **Photo pack** proceed directly from the result preview. Show “Check that the food and portions match what you serve.” as a non-blocking reminder. Do not require an accuracy checkbox or a separate approval action. Generated photos enter downstream drafts only after the owner chooses to use them.
+4. Record the exact asset/version selected and the intended action. Selection is not an accuracy certification. Preserve the existing `approved_at` eligibility field for compatibility, with selection-method metadata distinguishing current use actions from legacy attestations. Autosaving or generating an image does not select it for use.
+5. Preserve destination previews, crop controls, and whole-dish guidance without requiring crop confirmation. A new generated or edited version is selected independently when used. Repeated exports never require confirmation.
 6. A temporary, editable asset label allows saving/downloading without inventing a dish name. Naming a menu item can be required at the menu handoff instead. Generated names do not introduce ingredients, prices, or other unconfirmed facts.
 7. A food-issue action is visible near review and invokes PS-22. Reporting a concern does not destroy the image, original, or prior approved versions.
 
@@ -418,7 +418,7 @@ Acceptance criteria:
 4. Full-quality image returns the saved master at its original dimensions and format without cropping or recompression. Preserve or clearly explain its actual file extension; never label an upscaled image as more original detail.
 5. Output filenames are readable, collision-resistant, and valid with Unicode dish names. Files have correct MIME types and open on required devices. No unrequested watermark, text, props, or branding is added.
 6. If a destination crop clips the dish or protected packaging, default to an eligible fit or ask for adjustment. No new AI generation occurs during a normal crop/resize/export. Any paid generative expansion would require a separate disclosed action and is outside this release.
-7. Approval is saved before export; a failed download leaves the approved image in My Dishes and offers retry without generation or extra charge. Repeated identical exports do not repeat fidelity confirmation.
+7. The exact photo choice is saved before export; a failed download leaves the selected image in My Dishes and offers retry without generation or extra charge. Exports require no fidelity confirmation.
 8. Native sharing is used only when supported, with download fallback. UI and analytics distinguish file preparation, browser download initiation, native share completion/cancellation, and confirmed user success; they never claim social publication from a download.
 9. Handoff to menus/Post Maker passes the exact approved asset, dish identity, selected look, and relevant occasion. It does not regenerate the photo, publish content, change an existing live menu, or require reselection of the image.
 10. After a successful finish, offer **Add another photo** and **Use this look again**. Cross-tool suggestions must not interrupt or obscure the file-saving action.
@@ -617,7 +617,7 @@ Two independent reviewers inspect every original/result pair at normal display s
 | Requested look | Clearly reflects the selected treatment and explicit overrides while obeying protected food constraints. |
 | Destination usefulness | Food is legible at the destination's typical viewing size and the eligible crop preserves the intended serving. |
 
-Fidelity dimensions are pass/fail. Score the other dimensions 1–5 using anchored examples established before testing: 1 unusable, 2 major defect, 3 usable only with noticeable compromise, 4 restaurant-ready, 5 exceptional. A **usable first result** passes both fidelity dimensions and scores at least 4 on every other dimension. Owner approval is still required in the actual product.
+Fidelity dimensions are pass/fail. Score the other dimensions 1–5 using anchored examples established before testing: 1 unusable, 2 major defect, 3 usable only with noticeable compromise, 4 restaurant-ready, 5 exceptional. A **usable first result** passes both fidelity dimensions and scores at least 4 on every other dimension. Owners can compare and inspect results before choosing to use them; this choice is not a fidelity certification.
 
 Critical errors include a different dish, invented prominent ingredient/side, material portion/count change, materially altered branded product, copied food from a reference, or an output from another source/restaurant. Cosmetic preference disagreement alone is not a critical error.
 

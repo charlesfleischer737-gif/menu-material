@@ -313,13 +313,13 @@ export function PhotoBatchSheet({
                         {result.asset?.needs_correction
                           ? "Needs correction"
                           : result.asset?.approved_at
-                            ? "Approved"
+                            ? "Ready to use"
                             : result.asset
                               ? "Needs your review"
                               : result.failed
                                 ? "Couldn’t create this photo"
                                 : index > 0 && !batch.continued
-                                  ? "Waiting for sample approval"
+                                  ? "Waiting for your sample choice"
                                   : "Creating…"}
                       </p>
                       {result.error && <p role="alert">{result.error}</p>}
@@ -384,7 +384,7 @@ export function PhotoBatchSheet({
                     {sample?.asset?.approved_at &&
                     !sample.asset.needs_correction
                       ? `Continue with the remaining ${remaining} dishes. Uses ${remaining} images · ${state.remaining} remaining.`
-                      : "Review and approve your sample to continue. The remaining images have not been charged."}
+                      : "Use your sample in Photo Studio to continue. The remaining images have not been charged."}
                   </p>
                   <button
                     className="cx-btn"
@@ -411,8 +411,7 @@ export function PhotoBatchSheet({
               )}
               <p className="ps2-control-help">
                 Review every result separately. Download includes only the
-                approved photos you select, at full saved quality with no new
-                crop.
+                photos you select, at full saved quality with no new crop.
               </p>
               <button
                 className="cx-btn cx-secondary"

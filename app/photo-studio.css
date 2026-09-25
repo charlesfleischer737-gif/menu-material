@@ -2456,44 +2456,10 @@ textarea.st-input {
   outline: 2px solid var(--workspace-focus);
   outline-offset: 2px;
 }
-/* The one-time check, asked inline on the first action. */
-.st-attest {
-  display: grid;
-  gap: 10px;
-}
-.st-attest-title {
-  margin: 0;
-  font-size: var(--text-callout);
-  font-weight: 600;
-}
-.st-attest-check {
-  display: flex;
-  align-items: flex-start;
-  gap: 10px;
-  padding: 12px;
-  border: 1px solid var(--workspace-line);
-  border-radius: 12px;
-  background: var(--workspace-canvas);
-  font-size: var(--text-footnote);
-  line-height: 1.45;
-  cursor: pointer;
-}
-.st-attest-check input {
-  flex: none;
-  width: 20px;
-  height: 20px;
-  margin: 0;
-  accent-color: var(--workspace-action);
-}
-.st-attest-error {
+.st-hub-error {
   margin: 0;
   color: var(--workspace-error);
   font-size: var(--text-footnote);
-}
-.st-attest-actions {
-  display: grid;
-  grid-template-columns: auto minmax(0, 1fr);
-  gap: 8px;
 }
 /* Failure: Try again first, going back second. */
 .st-action-inline .st-create + .st-pill {

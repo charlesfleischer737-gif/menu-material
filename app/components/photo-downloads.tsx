@@ -1,6 +1,7 @@
 "use client";
 import { useEffect, useState } from "react";
 import { ArrowRight, Check, Download, Megaphone } from "lucide-react";
+import { photoReviewReminder } from "@/lib/photo-use";
 import { downloadBlob } from "@/lib/client";
 import { masterPhotoExport, photoExport } from "@/lib/photo-export";
 import {
@@ -33,18 +34,19 @@ export default function PhotoDownloads({
   preferenceKey,
   initialFormat = "menu",
   onPromote,
+  onUse,
 }: {
   items: DownloadPhoto[];
   preferenceKey: string;
   initialFormat?: string;
   onPromote?: (item: DownloadPhoto) => void;
+  onUse: (assetId: string) => Promise<void>;
 }) {
   const [destination, setDestination] = useState<PhotoDestination>(
     photoDestination(initialFormat),
   );
   const [index, setIndex] = useState(0);
   const [crops, setCrops] = useState<Record<string, Adjustments>>({});
-  const [checked, setChecked] = useState<Record<string, boolean>>({});
   const [progress, setProgress] = useState("");
   const [downloaded, setDownloaded] = useState(false);
   const action = useAction();
@@ -62,8 +64,6 @@ export default function PhotoDownloads({
   )!;
   const cropKey = `${item.assetId}:${destination}`;
   const edits = crops[cropKey] || { ...emptyAdjustments, fit: !catalog };
-  const allChecked =
-    master || items.every((i) => checked[`${i.assetId}:${destination}`]);
   const photoOnly = !catalog || items.every((i) => i.fromPhoto);
   const profile = catalogProfiles[destination as keyof typeof catalogProfiles];
   function select(value: PhotoDestination) {
@@ -76,8 +76,6 @@ export default function PhotoDownloads({
   }
   async function download() {
     const attemptId = crypto.randomUUID();
-    if (!allChecked)
-      throw Error("Review the crop for each selected dish first.");
     if (!photoOnly)
       throw Error("Use a photo of your actual dish for ordering platforms.");
     const files: Record<string, Uint8Array> = {};
@@ -91,6 +89,7 @@ export default function PhotoDownloads({
       const photo = items[n];
       setProgress(`Preparing photo ${n + 1} of ${items.length}…`);
       try {
+        await onUse(photo.assetId);
         const output =
           destination === "master"
             ? await masterPhotoExport(photo.assetId)
@@ -205,9 +204,6 @@ export default function PhotoDownloads({
                   aria-pressed={i === index}
                   onClick={() => setIndex(i)}
                 >
-                  {checked[`${photo.assetId}:${destination}`] && (
-                    <Check size={15} />
-                  )}
                   {photo.name}
                 </button>
               ))}
@@ -226,7 +222,6 @@ export default function PhotoDownloads({
                 label={`${item.name} · ${destination === "story" ? "Instagram Story" : choice.label} preview`}
                 onChange={(next) => {
                   setCrops((old) => ({ ...old, [cropKey]: next }));
-                  setChecked((old) => ({ ...old, [cropKey]: false }));
                   setDownloaded(false);
                 }}
               />
@@ -258,24 +253,12 @@ export default function PhotoDownloads({
                   allowFit={!catalog}
                   onChange={(next) => {
                     setCrops((old) => ({ ...old, [cropKey]: next }));
-                    setChecked((old) => ({ ...old, [cropKey]: false }));
                     setDownloaded(false);
                   }}
                 />
-                <label className="cx-check">
-                  <input
-                    type="checkbox"
-                    checked={!!checked[cropKey]}
-                    onChange={(e) =>
-                      setChecked((old) => ({
-                        ...old,
-                        [cropKey]: e.target.checked,
-                      }))
-                    }
-                  />
-                  The full dish is visible and accurately represents what I
-                  serve.
-                </label>
+                <p className="cx-hint">
+                  Keep the whole dish visible in the crop.
+                </p>
               </>
             )}
             {!photoOnly && (
@@ -286,9 +269,10 @@ export default function PhotoDownloads({
                 use.
               </p>
             )}
+            <p className="cx-hint">{photoReviewReminder}</p>
             <button
               className="cx-btn cx-full"
-              disabled={!allChecked || !photoOnly}
+              disabled={!!action.busy || !photoOnly}
               onClick={() => action.act("Preparing your download", download)}
             >
               <Download size={18} />
@@ -339,8 +323,8 @@ export default function PhotoDownloads({
                 : "Want a matching post, too?"}
             </h3>
             <p>
-              Use this approved photo, your restaurant’s look, and an editable
-              caption. No images used.
+              Use this photo, your restaurant’s look, and an editable caption.
+              No images used.
             </p>
           </div>
           <button
