@@ -39,7 +39,7 @@ function localClock(now: number, timeZone: string) {
   );
   return { day, minute: (Number(parts.hour) % 24) * 60 + Number(parts.minute) };
 }
-/** "3 PM" or "3:30 PM" in the menu's language. */
+/** "3 PM" or "3:30 PM" (in English unless a language is given). */
 export function formatTime(time: string, language = "en") {
   const [h, m] = time.split(":").map(Number);
   return new Intl.DateTimeFormat(language, {
@@ -56,15 +56,30 @@ export function dayName(day: number, language = "en") {
   }).format(Date.UTC(2000, 0, 2 + day));
 }
 
+/** "New York time": which clock a restaurant's hours are on. */
+export const zoneName = (timeZone: string) =>
+  `${timeZone.split("/").pop()!.replace(/_/g, " ")} time`;
+/** Whether two timezones read the same day and time at `now`. */
+export function sameClock(a: string, b: string, now: number) {
+  try {
+    const x = localClock(now, a),
+      y = localClock(now, b);
+    return x.day === y.day && x.minute === y.minute;
+  } catch {
+    return true;
+  }
+}
+
 /**
  * Whether the restaurant is open at `now` in its own timezone. A closing time
- * at or before the opening time means the following day (a late bar).
+ * at or before the opening time means the following day (a late bar). The
+ * label is English, so its days and times are too ("opens Tuesday at 9 AM",
+ * never "opens martes at 9") until guest menus are translated.
  */
 export function openingStatus(
   hours: DayHours[] | undefined,
   timeZone: string,
   now: number,
-  language = "en",
 ): { open: boolean; label: string } | null {
   if (!hours || hours.length !== 7 || !now) return null;
   let clock: { day: number; minute: number };
@@ -85,7 +100,7 @@ export function openingStatus(
   )
     return {
       open: true,
-      label: `Open now · until ${formatTime(yesterday.close, language)}`,
+      label: `Open now · until ${formatTime(yesterday.close)}`,
     };
   if (today && !today.closed) {
     const opens = minutes(today.open),
@@ -94,22 +109,21 @@ export function openingStatus(
     if (clock.minute >= opens && (overnight || clock.minute < closes))
       return {
         open: true,
-        label: `Open now · until ${formatTime(today.close, language)}`,
+        label: `Open now · until ${formatTime(today.close)}`,
       };
     if (clock.minute < opens)
       return {
         open: false,
-        label: `Closed · opens at ${formatTime(today.open, language)}`,
+        label: `Closed · opens at ${formatTime(today.open)}`,
       };
   }
   for (let ahead = 1; ahead <= 7; ahead++) {
     const next = byDay(clock.day + ahead);
     if (!next || next.closed) continue;
-    const when =
-      ahead === 1 ? "tomorrow" : dayName((clock.day + ahead) % 7, language);
+    const when = ahead === 1 ? "tomorrow" : dayName((clock.day + ahead) % 7);
     return {
       open: false,
-      label: `Closed · opens ${when} at ${formatTime(next.open, language)}`,
+      label: `Closed · opens ${when} at ${formatTime(next.open)}`,
     };
   }
   return { open: false, label: "Closed" };

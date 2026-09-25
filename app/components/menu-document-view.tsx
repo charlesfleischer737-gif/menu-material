@@ -1,5 +1,12 @@
 "use client";
-import { useCallback, useEffect, useId, useRef, useState } from "react";
+import {
+  useCallback,
+  useEffect,
+  useId,
+  useRef,
+  useState,
+  useSyncExternalStore,
+} from "react";
 import type { Row } from "@/lib/client";
 import { scheduleLabel } from "@/lib/promotions";
 import {
@@ -35,7 +42,9 @@ import {
   directionsHref,
   formatTime,
   openingStatus,
+  sameClock,
   telephoneHref,
+  zoneName,
   type MenuContact,
 } from "@/lib/restaurant-contact";
 import { isMenuPlacement } from "@/lib/menu-placements";
@@ -167,20 +176,44 @@ function useServerTime(
 function OpeningStatus({
   contact,
   serverNow,
-  language,
 }: {
   contact: MenuContact;
   serverNow?: number;
-  language: string;
 }) {
   const time = useServerTime(serverNow, 30000),
-    status = openingStatus(contact.hours, contact.timezone, time, language);
+    status = openingStatus(contact.hours, contact.timezone, time),
+    zone = useZoneNote(contact.timezone, time);
   if (!status) return null;
   return (
     <p className={`md-guest-status ${status.open ? "is-open" : ""}`}>
       {status.label}
+      {zone && ` (${zone})`}
     </p>
   );
+}
+// The guest's own timezone is only known in the browser, after hydration.
+const unchanging = () => () => {};
+const deviceZone = () => Intl.DateTimeFormat().resolvedOptions().timeZone;
+/**
+ * "New York time" when the guest's device is on another clock, so hours
+ * read from elsewhere aren't mistaken for the guest's local times.
+ */
+function useZoneNote(timeZone: string, now: number) {
+  const viewer = useSyncExternalStore(unchanging, deviceZone, () => "");
+  return viewer && now && !sameClock(timeZone, viewer, now)
+    ? zoneName(timeZone)
+    : "";
+}
+/** Under the hours: "Times are New York time.", for guests elsewhere. */
+function HoursZone({
+  timeZone,
+  serverNow,
+}: {
+  timeZone: string;
+  serverNow?: number;
+}) {
+  const zone = useZoneNote(timeZone, useServerTime(serverNow, null));
+  return zone ? <p className="md-guest-zone">Times are {zone}.</p> : null;
 }
 /** The live specials, each taken down when it ends. */
 function GuestSpecials({
@@ -613,7 +646,6 @@ export default function MenuDocumentView({
               <OpeningStatus
                 contact={contact}
                 serverNow={preview ? undefined : menu.serverNow}
-                language={menu.language}
               />
             )}
             {!!actions.length && (
@@ -894,16 +926,23 @@ export default function MenuDocumentView({
                 const h = visit.hours.find((x) => x.day === day);
                 return (
                   <div key={day}>
-                    <dt>{dayName(day, menu.language)}</dt>
+                    {/* English, like the labels around it. */}
+                    <dt>{dayName(day)}</dt>
                     <dd>
                       {!h || h.closed
                         ? "Closed"
-                        : `${formatTime(h.open, menu.language)} – ${formatTime(h.close, menu.language)}`}
+                        : `${formatTime(h.open)} – ${formatTime(h.close)}`}
                     </dd>
                   </div>
                 );
               })}
             </dl>
+          )}
+          {hasHours && (
+            <HoursZone
+              timeZone={visit.timezone}
+              serverNow={preview ? undefined : menu.serverNow}
+            />
           )}
         </section>
       )}

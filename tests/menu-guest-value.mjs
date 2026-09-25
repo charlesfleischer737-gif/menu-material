@@ -33,8 +33,15 @@ const {
   suitsDiet,
 } = await import("../lib/dietary.ts");
 const { composeMenu } = await import("../lib/menu-layout.ts");
-const { openingStatus, telephoneHref, directionsHref } =
-  await import("../lib/restaurant-contact.ts");
+const {
+  openingStatus,
+  telephoneHref,
+  directionsHref,
+  dayName,
+  formatTime,
+  zoneName,
+  sameClock,
+} = await import("../lib/restaurant-contact.ts");
 const { menuStructuredData, menuPreviewImage, jsonLd } =
   await import("../lib/menu-structured-data.ts");
 let cookie = "",
@@ -527,6 +534,28 @@ Ramen 1,200`);
   assert.equal(at("2026-09-27T05:00:00Z"), "Open now · until 2 AM"); // Sun 1:00
   assert.equal(at("2026-09-27T16:00:00Z"), "Closed · opens tomorrow at 9 AM"); // Sunday, closed all day
   assert.equal(openingStatus([], "America/New_York", Date.now()), null);
+  // The labels are English, so their days and times are too, whatever the
+  // menu's language ("opens Monday at 9 AM", never "opens lunes at 9").
+  const mondaysOnly = week.map((h) => ({ ...h, closed: h.day !== 1 }));
+  assert.equal(
+    openingStatus(
+      mondaysOnly,
+      "America/New_York",
+      Date.parse("2026-09-25T16:00:00Z"), // Friday noon
+    )?.label.replace(/\s/g, " "),
+    "Closed · opens Monday at 9 AM",
+  );
+  assert.deepEqual(
+    [dayName(2), formatTime("21:00").replace(/\s/g, " "), formatTime("09:30")],
+    ["Tuesday", "9 PM", "9:30 AM"].map((s) => s.replace(/\s/g, " ")),
+  );
+  // Guests on another clock are told which one the hours use.
+  assert.equal(zoneName("America/New_York"), "New York time");
+  assert.equal(zoneName("America/Argentina/Buenos_Aires"), "Buenos Aires time");
+  const friday = Date.parse("2026-09-25T16:00:00Z");
+  assert(sameClock("America/New_York", "America/Detroit", friday));
+  assert(!sameClock("America/New_York", "Europe/Madrid", friday));
+  assert(sameClock("America/New_York", "Not/A_Zone", friday), "unknown zone");
   assert.equal(telephoneHref("(555) 123-4567"), "tel:5551234567");
   assert.match(
     directionsHref("Juniper", "12 Market St"),

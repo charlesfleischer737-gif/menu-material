@@ -2298,6 +2298,10 @@
   margin: 0;
   font-variant-numeric: tabular-nums;
 }
+.md-guest-zone {
+  font-size: 0.8125rem;
+  color: var(--md-muted);
+}
 .md-menu-switcher {
   display: flex;
   flex-wrap: wrap;
