@@ -393,8 +393,41 @@ try {
   );
   checks++;
 
+  // 19. Owners can join the Pro waitlist once; administrators see it among
+  // the requests.
+  await expect("plan-waitlist", 401, { body: {} });
+  for (let n = 0; n < 2; n++)
+    assert.deepEqual(
+      (
+        await expect("plan-waitlist", 200, {
+          body: {},
+          cookie: reclaimed.cookie,
+        })
+      ).json,
+      { ok: true },
+    );
+  await expect("plan-waitlist", 403, {
+    body: {},
+    cookie: reclaimed.cookie,
+    headers: { origin: "https://elsewhere.example" },
+  });
+  await expect("access-requests", 202, {
+    body: { email: "visitor@example.test", restaurant: "Visitor Diner" },
+    ip: "192.0.2.55",
+  });
+  const requests = (await expect("admin", 200, { cookie: adminCookie })).json
+    .requests;
+  assert.deepEqual(
+    requests.map((r) => [r.kind, r.email, r.restaurant, r.status]).sort(),
+    [
+      ["access", "visitor@example.test", "Visitor Diner", "new"],
+      ["pro", "owner@example.test", "Corner Kitchen", "new"],
+    ],
+  );
+  checks++;
+
   console.log(
-    `PASS: ${checks} account security checks: per-network limits on the IPv6 /64 with no site-wide lockout, a per-account sign-in slowdown, versioned password hashes, sliding sessions, revocable reset and setup links;`,
+    `PASS: ${checks} account security checks: per-network limits on the IPv6 /64 with no site-wide lockout, a per-account sign-in slowdown, versioned password hashes, sliding sessions, revocable reset and setup links, the Pro waitlist;`,
   );
 } finally {
   rmSync(root, { recursive: true, force: true });

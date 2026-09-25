@@ -946,7 +946,7 @@ async function route(req: Request) {
             new Date(now()).toISOString().slice(0, 10),
           ),
           requests: await all(
-            "SELECT id,kind,email,restaurant,status,created_at FROM launch_requests WHERE kind='access' ORDER BY status='new' DESC,created_at DESC LIMIT 200",
+            "SELECT id,kind,email,restaurant,status,created_at FROM launch_requests WHERE kind IN ('access','pro') ORDER BY status='new' DESC,created_at DESC LIMIT 200",
           ),
           // Links that still work: invitations, setup invitations and resets.
           invites: await all(
@@ -1096,6 +1096,18 @@ async function route(req: Request) {
         return response({ ok: true });
       }
       throw new AppError(404, "Not found.");
+    }
+    if (p[0] === "plan-waitlist" && method === "POST") {
+      // One entry per owner; asking again changes nothing.
+      const { u, r } = await owner(req);
+      await run(
+        "INSERT OR IGNORE INTO launch_requests (id,kind,email,restaurant,created_at) VALUES (?,'pro',?,?,?)",
+        id(),
+        u.email,
+        r.name,
+        now(),
+      );
+      return response({ ok: true });
     }
     const { r } = await owner(req);
     if (p[0] === "studio-references" && !p[1] && method === "POST") {
