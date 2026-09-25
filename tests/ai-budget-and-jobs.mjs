@@ -183,6 +183,51 @@ async function siteBudget(cents) {
     JSON.stringify({ paused: false, dailyBudgetCents: cents }),
   );
 }
+// Finish leftover work so a site-wide check sees only a section's own images.
+async function settleLeftovers() {
+  await run(
+    "UPDATE outputs SET status='failed',lease_until=0 WHERE status NOT IN ('completed','failed')",
+  );
+  await run(
+    "UPDATE jobs SET status='failed' WHERE status IN ('queued','processing')",
+  );
+}
+// Make one matching database write fail, like a lost D1 connection.
+function failOnce(match) {
+  const realPrepare = env.DB.prepare;
+  let armed = true;
+  env.DB.prepare = (sql) => {
+    const statement = realPrepare(sql);
+    return Object.assign(
+      Object.create(Object.getPrototypeOf(statement)),
+      statement,
+      {
+        bind: (...args) => {
+          const bound = statement.bind(...args);
+          if (!armed || !match(sql, args)) return bound;
+          armed = false;
+          return Object.assign(
+            Object.create(Object.getPrototypeOf(bound)),
+            bound,
+            {
+              run: async () => {
+                throw Error("D1_ERROR: Network connection lost.");
+              },
+            },
+          );
+        },
+      },
+    );
+  };
+  return () => {
+    env.DB.prepare = realPrepare;
+  };
+}
+async function eventually(ready) {
+  for (let n = 0; n < 400 && !(await ready()); n++)
+    await new Promise((resolve) => setTimeout(resolve, 5));
+  assert(await ready(), "The expected state was not reached");
+}
 const HELD =
   "Waiting for the daily AI budget to reset at 00:00 UTC. It will start automatically; cancel it to keep your image.";
 
@@ -403,6 +448,76 @@ try {
   await run("DELETE FROM ai_spend");
   await siteBudget(10000);
 
+  // 4. A job whose final status write failed is settled from its finished
+  // images by the next check, including its correction.
+  const stuck = await restaurant("stuck-kitchen");
+  const stuckJob = await newJob(stuck);
+  await run(
+    "INSERT INTO photo_corrections (original_job_id,restaurant_id,reported_asset_id,reason,correction_job_id,status,created_at,updated_at) VALUES (?,?,?,?,?,'queued',?,?)",
+    id(),
+    stuck.rid,
+    id(),
+    "ingredients",
+    stuckJob.id,
+    Date.now(),
+    Date.now(),
+  );
+  let restore = failOnce(
+    (sql, args) =>
+      sql.startsWith("UPDATE jobs SET status=?") &&
+      args[0] === "completed" &&
+      args[1] === stuckJob.id,
+  );
+  await tick(stuck.rid);
+  restore();
+  assert.equal((await output(stuckJob.id)).status, "completed");
+  assert.equal(await jobState(stuckJob.id), "processing");
+  assert.deepEqual(
+    (await jobStatus(stuck.rid)).jobs.map((job) => job.id),
+    [stuckJob.id],
+    "pages keep waiting on it",
+  );
+  await tick(stuck.rid);
+  assert.equal(await jobState(stuckJob.id), "completed");
+  assert.deepEqual((await jobStatus(stuck.rid)).jobs, []);
+  assert.equal(
+    (
+      await one(
+        "SELECT status FROM photo_corrections WHERE correction_job_id=?",
+        stuckJob.id,
+      )
+    ).status,
+    "ready",
+    "the correction settles as on the normal path",
+  );
+  checks++;
+  // The worker's site-wide sweep reads every job, so it runs at most every
+  // ten minutes.
+  await settleLeftovers();
+  const sweep = async () => {
+    const job = await newJob(stuck, { revision: id() });
+    await run("UPDATE outputs SET status='completed' WHERE job_id=?", job.id);
+    await run("UPDATE jobs SET status='processing' WHERE id=?", job.id);
+    await tick();
+    return jobState(job.id);
+  };
+  await run("DELETE FROM app_settings WHERE key='job-settle-last-run'");
+  assert.equal(await sweep(), "completed");
+  offset += 60000;
+  assert.equal(await sweep(), "processing", "not again within ten minutes");
+  offset += 10 * 60000;
+  await tick();
+  assert.equal(
+    (
+      await one(
+        "SELECT COUNT(*) AS n FROM jobs WHERE restaurant_id=? AND status='processing'",
+        stuck.rid,
+      )
+    ).n,
+    0,
+  );
+  checks++;
+
   // 5. Rate limits and overloads are sent again after a pause, a few times at
   // most and counted once; other refusals explain themselves.
   const busy = await restaurant("busy-kitchen");
@@ -498,6 +613,60 @@ try {
   assert.equal(alerts(), burstsBefore + 1);
   checks++;
 
+  // 6. One image's failed status write neither ends the check early nor cuts
+  // off another image rendering in it.
+  await settleLeftovers();
+  const a = await restaurant("settled-a"),
+    b = await restaurant("settled-b");
+  const jobA = await newJob(a),
+    jobB = await newJob(b);
+  let releaseB = null;
+  imageHandler = (prompt) =>
+    prompt.includes('"name":"settled-b"')
+      ? new Promise((resolve) => (releaseB = () => resolve(finished())))
+      : null;
+  restore = failOnce(
+    (sql, args) =>
+      sql.startsWith("UPDATE jobs SET status=?") &&
+      args[0] === "completed" &&
+      args[1] === jobA.id,
+  );
+  let settled = false;
+  const checking = tick().then(() => (settled = true));
+  await eventually(async () => (await output(jobA.id)).status === "completed");
+  await eventually(() => !!releaseB);
+  await new Promise((resolve) => setTimeout(resolve, 20));
+  assert.equal(settled, false, "the check waits for the other render");
+  releaseB();
+  await checking;
+  restore();
+  imageHandler = null;
+  assert.equal(await jobState(jobB.id), "completed");
+  assert.equal(await jobState(jobA.id), "processing");
+  await tick(a.rid);
+  assert.equal(await jobState(jobA.id), "completed");
+  checks++;
+  // The worker's check still succeeds and records its heartbeat.
+  const jobC = await newJob(a, { revision: "heartbeat" });
+  restore = failOnce(
+    (sql, args) =>
+      sql.startsWith("UPDATE jobs SET status=?") &&
+      args[0] === "completed" &&
+      args[1] === jobC.id,
+  );
+  await run("DELETE FROM app_settings WHERE key='worker-heartbeat'");
+  const workerCheck = await call("internal/tick", {
+    body: {},
+    headers: { authorization: "Bearer fixture-runner-secret" },
+  });
+  restore();
+  assert.equal(workerCheck.status, 200);
+  assert.equal((await output(jobC.id)).status, "completed");
+  assert(
+    await one("SELECT value FROM app_settings WHERE key='worker-heartbeat'"),
+  );
+  checks++;
+
   // 9. A call abandoned mid-render is recorded as uncertain, as is one whose
   // answer could not be read.
   const lost = await restaurant("lost-call");
@@ -580,7 +749,7 @@ try {
   checks++;
 
   console.log(
-    `PASS: ${checks} AI budget and job checks: settled spend, free daily cap, paid-plan image budget, provider retries and refusals, uncertain spend and budget holds. Provider calls and webhooks are fixtures.`,
+    `PASS: ${checks} AI budget and job checks: settled spend, free daily cap, paid-plan image budget, stuck-job repair, provider retries and refusals, independent image settling, uncertain spend and budget holds. Provider calls and webhooks are fixtures.`,
   );
 } finally {
   console.error = originalError;

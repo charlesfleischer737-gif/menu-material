@@ -885,6 +885,27 @@ async function settle(o: Row, res: Row) {
     );
   }
 }
+// Jobs whose images have all finished but whose own status update failed are
+// settled, as the normal path does, so pages stop waiting on them. A page's
+// check covers its restaurant every time; the site-wide one reads the whole
+// jobs table, so it runs at most every ten minutes.
+async function settleFinishedJobs(restaurantId?: string) {
+  if (!restaurantId) {
+    const claim = await run(
+      "INSERT INTO app_settings (key,value) VALUES ('job-settle-last-run',?) ON CONFLICT(key) DO UPDATE SET value=excluded.value WHERE CAST(app_settings.value AS INTEGER)<?",
+      String(now()),
+      now() - 600000,
+    );
+    if (!claim.meta.changes) return;
+  }
+  const finished = await all(
+    `SELECT id FROM jobs j WHERE status IN ('queued','processing')${restaurantId ? " AND restaurant_id=?" : ""}
+     AND EXISTS(SELECT 1 FROM outputs o WHERE o.job_id=j.id)
+     AND NOT EXISTS(SELECT 1 FROM outputs o WHERE o.job_id=j.id AND o.status NOT IN ('completed','failed')) LIMIT 20`,
+    ...(restaurantId ? [restaurantId] : []),
+  );
+  for (const job of finished) await updateJob(job.id);
+}
 // Queued images waiting on the daily budget, a pause or a busy provider show
 // why, and start by themselves.
 const BUDGET_HOLD =
@@ -920,6 +941,7 @@ export async function tick(restaurantId?: string, { startNew = true } = {}) {
   const controls = await aiControls();
   const scope = restaurantId ? " AND restaurant_id=?" : "";
   const scopeArgs = restaurantId ? [restaurantId] : [];
+  await settleFinishedJobs(restaurantId);
   // Recovery never competes with new dispatch, and submitted work is retrieved even while paused.
   const timedOut = await all(
     "SELECT DISTINCT job_id FROM outputs WHERE response_id IS NOT NULL AND status NOT IN ('completed','failed') AND COALESCE(submitted_at,created_at)<?" +
@@ -955,6 +977,17 @@ export async function tick(restaurantId?: string, { startNew = true } = {}) {
     );
     pending.push(...queued);
   }
+  // A failed job status write must not end the check for other images or fail
+  // this one; a later check settles the job from its finished images.
+  const updateJobSafely = (o: Row) =>
+    updateJob(o.job_id).catch((error) =>
+      reportError(error, {
+        kind: "job",
+        route: "job/status",
+        restaurantId: o.restaurant_id,
+        detail: { jobId: o.job_id, outputId: o.id },
+      }),
+    );
   // Claims are atomic across browser ticks and worker invocations.
   const processOutput = async (candidate: Row) => {
     let o = candidate;
@@ -1063,7 +1096,7 @@ export async function tick(restaurantId?: string, { startNew = true } = {}) {
           lease,
         );
         o = { ...o, status: "submitting", submitted_at: sentAt };
-        await updateJob(o.job_id);
+        await updateJobSafely(o);
         let body: FormData | Row = request;
         if (images.length) {
           body = new FormData();
@@ -1189,25 +1222,35 @@ export async function tick(restaurantId?: string, { startNew = true } = {}) {
           },
         });
     } finally {
-      await updateJob(o.job_id);
+      await updateJobSafely(o);
     }
   };
+  // Each image is settled on its own: one failure is reported and the others
+  // carry on.
+  const attempt = (row: Row) =>
+    processOutput(row).catch((error) =>
+      reportError(error, {
+        kind: "job",
+        route: "job/tick",
+        restaurantId: row.restaurant_id,
+        detail: { jobId: row.job_id, outputId: row.id },
+      }),
+    );
   const recovery = pending.filter((o) => o.status !== "queued");
   const dispatch = pending.filter((o) => o.status === "queued");
   async function drain(rows: Row[]) {
     while (rows.length) {
       const row = rows.shift();
-      if (row) await processOutput(row);
+      if (row) await attempt(row);
     }
   }
   // Large image responses are recovered two at a time. Each new image holds its
-  // connection for the whole render, so new images start together.
-  await keepAlive(
-    Promise.all([
-      drain(recovery),
-      drain(recovery),
-      ...dispatch.map(processOutput),
-    ]),
+  // connection for the whole render, so new images start together, and each
+  // is kept alive on its own if the request ends first.
+  await Promise.allSettled(
+    [drain(recovery), drain(recovery), ...dispatch.map(attempt)].map((work) =>
+      keepAlive(work),
+    ),
   );
 }
 // A restaurant's unfinished work, small enough for an open page to check
