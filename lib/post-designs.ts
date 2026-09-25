@@ -101,7 +101,8 @@ const BODY: TextStyle = {
   lineHeight: 1.32,
 };
 const CREAM = "#fbf6ec",
-  INK = "#17140f";
+  INK = "#17140f",
+  GOLD = "#d8b878";
 
 function facts(d: Design, withPrice = true) {
   return [withPrice ? d.price : "", d.validity, d.cta]
@@ -935,6 +936,32 @@ async function afterdark(d: Design) {
     });
     edge = bottom > top * 1.15 ? "bottom" : "top";
   }
+  const at = (e: "top" | "bottom") => {
+    const brandY = e === "top" ? safe.top : safe.bottom - blockH;
+    const placed = stackBoxes(
+      k,
+      pieces,
+      safe.left,
+      brandY + (brand ? brand.h + 34 : 0),
+      "center",
+    );
+    const mark = brand
+      ? brandBoxes(d, brand, safe.left, brandY, col, "center").text
+      : null;
+    return { brandY, placed, blocks: [...placed, ...(mark ? [mark] : [])] };
+  };
+  // Gold, or cream or ink on a light photo, shading the dish by no more than
+  // 60%; when that can't read, the words move to the other edge.
+  const inks = [GOLD, CREAM, INK];
+  let words = at(edge);
+  if (
+    blockH &&
+    d.placement === "auto" &&
+    !k.inkOffFood(words.blocks, inks, edge, 0.6, false)
+  ) {
+    edge = edge === "top" ? "bottom" : "top";
+    words = at(edge);
+  }
   k.vignette(0.42, "#080605");
   k.glow(
     W * (edge === "top" ? 0.85 : 0.15),
@@ -945,38 +972,34 @@ async function afterdark(d: Design) {
   );
   k.grain(0.04);
   if (!blockH) return;
-  let y = edge === "top" ? safe.top : safe.bottom - blockH;
-  const brandY = y;
-  if (brand) y += brand.h + 34;
-  const placed = stackBoxes(k, pieces, safe.left, y, "center");
-  const at = brand
-    ? brandBoxes(d, brand, safe.left, brandY, col, "center")
-    : null;
-  // One gold for the whole block, with any shade it needs laid down before the words.
-  const gold = k.ink(
-    [...placed, ...(at?.text ? [at.text] : [])],
-    ["#d8b878"],
-    edge,
-  );
-  if (brand) drawBrand(d, brand, safe.left, brandY, col, "center", [gold]);
-  for (const p of placed) {
+  // One ink for the whole block, with any shade it needs laid down before the words.
+  const ink = k.inkOffFood(words.blocks, inks, edge);
+  if (!ink)
+    throw Error(
+      "The words would hide the dish in this design. Choose another design, or Photo only.",
+    );
+  const gold = ink === GOLD;
+  if (brand) drawBrand(d, brand, safe.left, words.brandY, col, "center", [ink]);
+  for (const p of words.placed) {
     const t = p.piece.t!;
     const isTitle = t === title;
-    const fill = isTitle
-      ? k.linear(safe.left, p.y, safe.right, p.y + t.height, [
-          [0, "#d8b878"],
-          [0.35, "#f1d9a6"],
-          [0.55, "#fff1cf"],
-          [0.8, "#e4c68e"],
-          [1, "#d8b878"],
-        ])
-      : t === kicker
-        ? gold
-        : "#f6ecdc";
+    const fill = !gold
+      ? ink
+      : isTitle
+        ? k.linear(safe.left, p.y, safe.right, p.y + t.height, [
+            [0, GOLD],
+            [0.35, "#f1d9a6"],
+            [0.55, "#fff1cf"],
+            [0.8, "#e4c68e"],
+            [1, GOLD],
+          ])
+        : t === kicker
+          ? GOLD
+          : "#f6ecdc";
     k.text(t, safe.left, p.y, fill, "center");
     if (isTitle && (info || detail))
       k.overlay(() =>
-        k.rule(W / 2 - 32, p.y + t.height + 16, 64, rgba("#d8b878", 0.9), 2),
+        k.rule(W / 2 - 32, p.y + t.height + 16, 64, rgba(ink, 0.9), 2),
       );
   }
 }

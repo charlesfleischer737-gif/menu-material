@@ -222,6 +222,71 @@ await assert.rejects(
   /too long to read comfortably/,
 );
 checks++;
+// The nightcap never shades the dish by more than 60%: each dish row is
+// compared with the photo as drawn, before any shade or words.
+const { PostKit } = await import("../lib/post-kit.ts");
+const drawPhoto = PostKit.prototype.photo;
+let photoPixels = null;
+PostKit.prototype.photo = function (...args) {
+  const placed = drawPhoto.apply(this, args);
+  photoPixels = this.ctx.getImageData(
+    0,
+    0,
+    this.canvas.width,
+    this.canvas.height,
+  ).data;
+  return placed;
+};
+for (const [photoId, channel, feedShape] of [
+  ["hero-burrata", "feed", "4:5"],
+  ["hero-burrata", "feed", "3:4"],
+  ["hero-burrata", "story", "4:5"],
+  ["pasta", "feed", "4:5"],
+  ["burger", "feed", "4:5"],
+]) {
+  const c = canvas(),
+    draft = {
+      ...base,
+      ...applyPostTemplate(base, "afterdark"),
+      feedShape,
+      items: [{ ...base.items[0], photoId }],
+    };
+  photoPixels = null;
+  const result = await renderPost(c, draft, restaurant, channel);
+  const final = c.getContext("2d").getImageData(0, 0, c.width, c.height).data;
+  let shade = 0;
+  for (const box of result.dishBoxes)
+    for (let y = Math.ceil(box.y); y < box.y + box.h; y += 4) {
+      let before = 0,
+        after = 0,
+        n = 0;
+      for (
+        let x = Math.ceil(box.x + box.w / 4);
+        x < box.x + box.w * 0.75;
+        x++
+      ) {
+        const i = (y * c.width + x) * 4;
+        before += photoPixels[i] + photoPixels[i + 1] + photoPixels[i + 2];
+        after += final[i] + final[i + 1] + final[i + 2];
+        n += 3;
+      }
+      [before, after] = [before / n, after / n];
+      if (before < 40 || before > 235) continue;
+      // How much of a dark (or pale) shade turns the photo's row into the post's.
+      shade = Math.max(
+        shade,
+        after < before
+          ? (before - after) / (before - 11)
+          : (after - before) / (248 - before),
+      );
+    }
+  assert(
+    shade <= 0.62,
+    `Nightcap ${photoId} ${channel} ${feedShape}: ${shade.toFixed(2)} shade over the dish`,
+  );
+  checks++;
+}
+PostKit.prototype.photo = drawPhoto;
 // Ordinary prices never block the Daily special: a long one leaves the seal.
 assert.equal(money(1850, "CAD"), "$18.50", "A narrow symbol, not CA$");
 for (const [currency, price] of [

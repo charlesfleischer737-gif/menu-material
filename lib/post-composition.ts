@@ -316,6 +316,7 @@ export async function renderComposedPost(
       renderedText: kit.renderedText,
       textBoxes: kit.textBoxes,
       photoBoxes: kit.photoBoxes,
+      dishBoxes: kit.dishBoxes,
       warnings: [...new Set([...warnings, ...kit.warnings])],
       template: t.id,
       width: W,

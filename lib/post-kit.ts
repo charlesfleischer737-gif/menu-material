@@ -354,6 +354,8 @@ export type Placement = {
   /** Share of the dish's bounds that stays inside the frame. */
   subjectVisible: number;
   subject: Box | null;
+  /** The food itself, without pale plates and cloths, when the backdrop shows it. */
+  core: Box | null;
 };
 export function isManual(e: Framing) {
   if (e.autoFrame === false) return true;
@@ -426,6 +428,7 @@ export function placePhoto(
       extend,
       subjectVisible: visible,
       subject,
+      core,
     };
   };
   if (isManual(e)) {
@@ -705,10 +708,16 @@ function wrap(
 
 /* ---------- the kit ---------- */
 export type Scrim = "top" | "bottom" | "soft" | "band";
+/** A scrim is solid this far past the words, then fades out over `scrimFade`. */
+const scrimPad = 40,
+  scrimFade = 220,
+  scrimBlur = 26;
 export class PostKit {
   readonly ctx: CanvasRenderingContext2D;
   readonly textBoxes: Row[] = [];
   readonly photoBoxes: Row[] = [];
+  /** Where the food sits in each photo drawn, so words can keep their shade off it. */
+  readonly dishBoxes: Box[] = [];
   readonly renderedText: string[] = [];
   readonly warnings: string[] = [];
   private tracking: boolean;
@@ -1030,6 +1039,29 @@ export class PostKit {
     scrim: Scrim = "soft",
     shade = { dark: "#0d0b09", light: "#fbf8f1" },
   ) {
+    return this.settle(blocks, candidates, scrim, shade)!;
+  }
+  /**
+   * Like ink(), but the shade laid over the food (dishBoxes) stays at or under
+   * `limit`. Returns null, drawing nothing, when no ink reads within it;
+   * `draw: false` only asks.
+   */
+  inkOffFood(
+    blocks: { box: Box; size: number }[],
+    candidates: string[],
+    scrim: Scrim,
+    limit = 0.6,
+    draw = true,
+  ) {
+    return this.settle(blocks, candidates, scrim, undefined, { limit, draw });
+  }
+  private settle(
+    blocks: { box: Box; size: number }[],
+    candidates: string[],
+    scrim: Scrim,
+    shade = { dark: "#0d0b09", light: "#fbf8f1" },
+    food?: { limit: number; draw: boolean },
+  ): string | null {
     const need = (size: number) => ((size * 320) / 1080 >= 24 ? 3 : 4.5) * 1.1;
     const check = () =>
       blocks.map((b) => ({ need: need(b.size), e: this.extremes(b.box) }));
@@ -1076,23 +1108,52 @@ export class PostKit {
     // A pale haze over food looks cheap: light shading has to earn its place.
     const cost = (a: { alpha: number; color: string }) =>
       a.color === shade.light ? a.alpha * 1.6 + 0.08 : a.alpha;
-    let choice = { ink: candidates[0], alpha: 2, color: shade.dark };
+    const boxes = blocks.map((b) => b.box);
+    // The share of the scrim that would fall on the food, where that is limited.
+    const reach = food
+      ? Math.max(0, ...this.dishBoxes.map((d) => this.reach(boxes, scrim, d)))
+      : 0;
+    let choice: { ink: string; alpha: number; color: string } | null = null;
     for (const ink of candidates) {
       const a = alphaFor(ink, state);
-      if (choice.alpha > 1.5 || cost(a) < cost(choice)) choice = { ink, ...a };
+      if (food && Math.min(1, a.alpha + 0.02) * reach > food.limit) continue;
+      if (!choice || cost(a) < cost(choice)) choice = { ink, ...a };
     }
+    if (!choice || (food && !food.draw)) return choice?.ink ?? null;
+    let laid = 0;
     for (let round = 0; round < 4 && choice.alpha > 0; round++) {
-      this.scrim(
-        blocks.map((b) => b.box),
-        choice.color,
-        Math.min(1, choice.alpha + 0.02),
-        scrim,
-      );
+      let alpha = Math.min(1, choice.alpha + 0.02);
+      if (food && reach)
+        alpha = Math.min(alpha, (1 - (1 - food.limit) / (1 - laid)) / reach);
+      if (alpha <= 0) break;
+      this.scrim(boxes, choice.color, alpha, scrim);
+      laid = 1 - (1 - laid) * (1 - alpha * reach);
       state = check();
       if (worst(choice.ink, state) >= 1) break;
       choice = { ...choice, ...alphaFor(choice.ink, state) };
     }
     return choice.ink;
+  }
+  /** The share of a scrim's alpha that reaches the most shaded point of `target`. */
+  private reach(boxes: Box[], mode: Scrim, target: Box) {
+    const y0 = Math.min(...boxes.map((b) => b.y)),
+      y1 = Math.max(...boxes.map((b) => b.y + b.h));
+    const past = (d: number) => Math.min(1, Math.max(0, 1 - d / scrimFade)),
+      above = y0 - scrimPad - (target.y + target.h),
+      below = target.y - (y1 + scrimPad);
+    if (mode === "top") return past(below);
+    if (mode === "bottom") return past(above);
+    if (mode === "band") return past(Math.max(above, below));
+    // A soft scrim is a blurred card around the words.
+    const x0 = Math.min(...boxes.map((b) => b.x)),
+      x1 = Math.max(...boxes.map((b) => b.x + b.w)),
+      p = scrimBlur * 3;
+    return target.x < x1 + p &&
+      target.x + target.w > x0 - p &&
+      target.y < y1 + p &&
+      target.y + target.h > y0 - p
+      ? 1
+      : 0;
   }
   scrim(boxes: Box[], color: string, alpha: number, mode: Scrim) {
     const x0 = Math.min(...boxes.map((b) => b.x)),
@@ -1100,8 +1161,8 @@ export class PostKit {
       x1 = Math.max(...boxes.map((b) => b.x + b.w)),
       y1 = Math.max(...boxes.map((b) => b.y + b.h));
     const ctx = this.ctx,
-      pad = 40,
-      fade = 220;
+      pad = scrimPad,
+      fade = scrimFade;
     ctx.save();
     if (mode === "top") {
       const end = y1 + pad;
@@ -1137,7 +1198,7 @@ export class PostKit {
         { x: 0, y: a - fade, w: this.W, h: total },
       );
     } else {
-      const sigma = 26,
+      const sigma = scrimBlur,
         p = sigma * 3;
       ctx.filter = `blur(${this.px(sigma)}px)`;
       ctx.fillStyle = rgba(color, alpha);
@@ -1214,6 +1275,18 @@ export class PostKit {
     } = {},
   ): Placement {
     const p = placePhoto(a, box, framing, o);
+    // The food's visible bounds; a busy photo, which can't show them, by its detail.
+    const food = p.core || {
+      x: p.x + (a.centroid.x - 0.25) * p.w,
+      y: p.y + (a.centroid.y - 0.25) * p.h,
+      w: p.w / 2,
+      h: p.h / 2,
+    };
+    const fx = Math.max(food.x, box.x),
+      fy = Math.max(food.y, box.y),
+      fw = Math.min(food.x + food.w, box.x + box.w) - fx,
+      fh = Math.min(food.y + food.h, box.y + box.h) - fy;
+    if (fw > 0 && fh > 0) this.dishBoxes.push({ x: fx, y: fy, w: fw, h: fh });
     const s = this.scale,
       ctx = this.ctx;
     const layer = makeCanvas(box.w * s, box.h * s),
