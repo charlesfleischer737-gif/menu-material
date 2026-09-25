@@ -217,6 +217,37 @@ export const emptyAdjustments = {
   fit: true,
 };
 export type Adjustments = typeof emptyAdjustments;
+const divisor = (a: number, b: number): number => (b ? divisor(b, a % b) : a);
+/**
+ * The size of a saved quick adjustment: the format's exact shape, at most
+ * `longest` pixels on its long side and never larger than the photo's own
+ * pixels in the frame. Enlarging adds no detail, and later downloads trust
+ * these pixels, so an enlarged crop could pass a delivery app's minimum size.
+ * `source` is the photo's size after any rotation.
+ */
+export function adjustedPhotoSize(
+  format: PhotoFormat,
+  source: { width: number; height: number },
+  edits: { fit?: boolean; zoom?: number } = {},
+  longest = 2048,
+) {
+  const shape = formats[format] || formats.menu,
+    unit = divisor(shape.width, shape.height),
+    across = shape.width / unit,
+    down = shape.height / unit;
+  // Photo pixels per unit of the shape at full scale: filling the frame
+  // crops to the tighter side, fitting keeps the whole photo inside it.
+  const pixels =
+    (edits.fit ? Math.max : Math.min)(
+      source.width / across,
+      source.height / down,
+    ) / Math.max(1, edits.zoom || 1);
+  const k = Math.max(
+    1,
+    Math.floor(Math.min(pixels, longest / Math.max(across, down)) + 1e-9),
+  );
+  return { width: across * k, height: down * k };
+}
 export const foodFamilies = [
   "Plated mains",
   "Burgers & sandwiches",

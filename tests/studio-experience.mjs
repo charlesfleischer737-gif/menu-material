@@ -14,8 +14,13 @@ assert.equal(
   "The deployed route must expose the library update method",
 );
 const { run, one, digest, id } = await import("../lib/server/core.ts");
-const { photoBrief, photoStyles, styleFor, studioDishRequest } =
-  await import("../lib/studio.ts");
+const {
+  photoBrief,
+  photoStyles,
+  styleFor,
+  studioDishRequest,
+  adjustedPhotoSize,
+} = await import("../lib/studio.ts");
 const { findStyles, studioLookPatch, startingLooks, lookExpectations } =
   await import("../lib/studio-discovery.ts");
 const { emptyStudioLibrary, recipeFromDraft, applySavedLook } =
@@ -98,6 +103,41 @@ try {
   assert.equal(freshSample.name, "Sample burger");
   assert.equal(freshSample.sample, true, "A sample always starts a new dish");
   assert.equal(freshSample.description, "");
+  // Quick adjustments save only the crop's real pixels. A 1.6× wide crop of
+  // a 1536 px square has 960 × 540 pixels of detail, below DoorDash's
+  // minimum, and must not be enlarged into a version that passes it.
+  const square = { width: 1536, height: 1536 };
+  assert.deepEqual(
+    adjustedPhotoSize("doordash", square, { fit: false, zoom: 1.6 }),
+    { width: 960, height: 540 },
+  );
+  assert.deepEqual(adjustedPhotoSize("doordash", square, { fit: false }), {
+    width: 1536,
+    height: 864,
+  });
+  assert.deepEqual(
+    adjustedPhotoSize("story", square, { fit: true }),
+    { width: 1152, height: 2048 },
+    "A fitted photo keeps its full size inside a taller frame, up to 2048 px",
+  );
+  assert.deepEqual(
+    adjustedPhotoSize("menu", { width: 3000, height: 2000 }, { fit: false }),
+    { width: 2000, height: 2000 },
+  );
+  assert.deepEqual(adjustedPhotoSize("menu", { width: 4000, height: 4000 }), {
+    width: 2048,
+    height: 2048,
+  });
+  for (const format of ["menu", "feed", "story", "doordash", "uber", "toast"])
+    for (const zoom of [1, 1.3, 2])
+      for (const fit of [true, false]) {
+        const size = adjustedPhotoSize(format, square, { fit, zoom });
+        const scale =
+          (fit ? Math.min : Math.max)(size.width / 1536, size.height / 1536) *
+          zoom;
+        assert(scale <= 1 + 1e-9, `${format} ${zoom}× is never enlarged`);
+        assert(Math.max(size.width, size.height) <= 2048);
+      }
   const referenceBase = {
     ...photoBrief(),
     ...studioLookPatch(photoBrief(), "menu-wood"),

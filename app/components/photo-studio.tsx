@@ -37,9 +37,15 @@ import {
   emptyAdjustments,
   samplePhoto,
   studioDishRequest,
+  adjustedPhotoSize,
   type PhotoFormat,
 } from "@/lib/studio";
-import { canvasBlob, drawPhoto, imageBitmap } from "@/lib/photo-export";
+import {
+  canvasBlob,
+  drawPhoto,
+  imageBitmap,
+  rotatedSize,
+} from "@/lib/photo-export";
 import { statePhotoHistory } from "@/lib/photo-destinations";
 import { lookProfile } from "@/lib/photo-pack";
 import { PhotoFinishSheet } from "./photo-finish-sheet";
@@ -690,8 +696,13 @@ export default function PhotoStudio({
     const im = await imageBitmap(`/api/assets/${session.assetId}`);
     const c = document.createElement("canvas");
     try {
-      const width = Math.min(2048, im.width),
-        height = Math.round(width / formats[values.format].ratio);
+      // Only the crop's real pixels: an enlarged version would pass
+      // delivery-app minimums that its detail can't meet.
+      const { width, height } = adjustedPhotoSize(
+        values.format,
+        rotatedSize(im, values.adjustments.rotate),
+        values.adjustments,
+      );
       drawPhoto(c, im, width, height, values.adjustments);
     } finally {
       im.close();
