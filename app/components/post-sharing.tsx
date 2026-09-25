@@ -3,7 +3,11 @@ import { useEffect, useRef, useState } from "react";
 import { Check, Copy, Download, Share2 } from "lucide-react";
 import { canvasBlob, renderPost } from "@/lib/creation-export";
 import { downloadBlob, type Row } from "@/lib/client";
-import { postShareFormats, postVisualState } from "@/lib/sharing";
+import {
+  postFormatDetail,
+  postShareFormats,
+  postVisualState,
+} from "@/lib/sharing";
 import { track } from "./creation-shared";
 import { postSlideCount } from "@/lib/post-composition";
 
@@ -12,11 +16,13 @@ export default function PostSharing({
   restaurant,
   busy,
   notice,
+  draftId,
 }: {
   draft: Row;
   restaurant: Row;
   busy: boolean;
   notice: (message: string) => void;
+  draftId?: string;
 }) {
   const [desiredFormat, setSelected] = useState(draft.channels[0] || "feed");
   const [prepared, setPrepared] = useState<{
@@ -49,6 +55,22 @@ export default function PostSharing({
   const caption = draft.caption || "";
   const copied = copiedCaption === caption && !!caption;
   const count = postSlideCount(draft, selected);
+  // Shares count against the dish photo, so they reach the owner's report.
+  const measure = (method: "share" | "download") =>
+    track("export_complete", draft.items?.[0]?.photoId, {
+      tool: "post",
+      channel: selected,
+      method,
+      design: String(draft.template || "chef"),
+      shape:
+        selected === "story"
+          ? "9:16"
+          : selected === "feed" && draft.feedShape === "3:4"
+            ? "3:4"
+            : "4:5",
+      count: files.length,
+      ...(draftId ? { draftId } : {}),
+    });
   useEffect(() => {
     let active = true;
     if (!draft.reviewed) return;
@@ -111,11 +133,7 @@ export default function PostSharing({
       .share({ files })
       .then(() => {
         setHandedOff(imageKey);
-        track("export_complete", undefined, {
-          tool: "post",
-          channel: selected,
-          method: "share",
-        });
+        measure("share");
         notice(
           "Files handed to your share sheet. Finish your post in Instagram.",
         );
@@ -131,11 +149,7 @@ export default function PostSharing({
   function save(file: File) {
     downloadBlob(file, file.name);
     setSaved((current) => ({ ...current, [imageKey + file.name]: true }));
-    track("export_complete", undefined, {
-      tool: "post",
-      channel: selected,
-      method: "download",
-    });
+    measure("download");
     notice(
       "Download started. On a phone, save the image to Photos or your gallery before opening Instagram.",
     );
@@ -162,6 +176,7 @@ export default function PostSharing({
         ...current,
         ...Object.fromEntries(files.map((f) => [imageKey + f.name, true])),
       }));
+      measure("download");
       notice(
         "Carousel download started. Unzip the numbered images before posting.",
       );
@@ -256,7 +271,7 @@ export default function PostSharing({
         <details>
           <summary>Download options & posting help</summary>
           <p className="mm-muted">
-            {postShareFormats[selected]?.detail} · PNG. Your design is saved
+            {postFormatDetail(draft, selected)} · PNG. Your design is saved
             separately in Menu Material.
           </p>
           {files.map((file, index) => (

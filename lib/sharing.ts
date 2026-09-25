@@ -45,6 +45,7 @@ export function postVisualState(
     "textPlacement",
     "carouselCover",
     "carouselClosing",
+    "feedShape",
   ];
   return {
     draft: {
@@ -74,3 +75,11 @@ export const postShareFormats: Record<
   story: { label: "Story", detail: "1080 × 1920" },
   carousel: { label: "Carousel", detail: "One dish per slide" },
 };
+/** The size line for a format, following the post's chosen shape. */
+export function postFormatDetail(draft: Row, channel: string) {
+  if (channel === "feed")
+    return draft.feedShape === "3:4"
+      ? "1080 × 1440 · 3:4"
+      : "1080 × 1350 · 4:5";
+  return postShareFormats[channel]?.detail || "";
+}
