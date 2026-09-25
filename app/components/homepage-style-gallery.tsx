@@ -104,6 +104,14 @@ function StylePicker({
             value={style.id}
             className="pw-style-radio"
             aria-label={style.name}
+            // Arrow keys move focus to a look. Radix chooses it only if the
+            // key is still down when focus arrives, so an instant press (from
+            // an on-screen keyboard, voice control or a switch device) moved
+            // focus without choosing. Choosing on focus doesn't depend on
+            // timing; Tab lands on the chosen look, so it changes nothing.
+            onFocus={() => {
+              if (style.id !== value) onChange(style.id);
+            }}
           />
           <img
             src={
