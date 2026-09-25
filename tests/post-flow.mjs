@@ -157,6 +157,116 @@ assert.deepEqual(
   ["feed"],
   "Removing the second dish removes the unavailable carousel format",
 );
+// The headline, description and price follow the dishes until the owner edits them.
+const burgerDish = {
+  id: "burger",
+  name: "The house burger",
+  description: "Beef, cheddar and pickles",
+  price: 1650,
+};
+const burgerPost = postFromPhoto(
+  { template: "chef" },
+  burgerDish,
+  { id: "approved-burger" },
+  restaurant,
+);
+const pastaItem = {
+  dishId: "pasta",
+  photoId: "approved-pasta",
+  name: "Tomato pasta",
+  quantity: 1,
+  facts: { name: "Tomato pasta", description: "Our real pasta", price: 1850 },
+};
+const burrataItem = {
+  dishId: "burrata",
+  photoId: "approved-burrata",
+  name: "Burrata",
+  quantity: 1,
+  facts: {
+    name: "Burrata",
+    description: "With heirloom tomatoes",
+    price: 1400,
+  },
+};
+const groupAssets = [
+  { id: "approved-burger", dish_id: "burger", approved_at: "2026-09-15" },
+  { id: "approved-pasta", dish_id: "pasta", approved_at: "2026-09-15" },
+  { id: "approved-burrata", dish_id: "burrata", approved_at: "2026-09-15" },
+];
+const [burgerItem] = burgerPost.items;
+let three = updatePost(
+  burgerPost,
+  { items: [burgerItem, pastaItem] },
+  restaurant,
+);
+three = updatePost(three, { items: [...three.items, burrataItem] }, restaurant);
+three = updatePost(three, { showPrice: true }, restaurant);
+assert.equal(
+  three.title,
+  "The house burger, Tomato pasta & Burrata",
+  "Several dishes share a headline that lists them, not the first dish’s name",
+);
+assert.equal(three.description, "", "No one dish describes a group");
+assert.equal(three.price, "", "A group needs its own offer price");
+assert.match(postDetailError(three, groupAssets), /Enter the price/);
+assert.doesNotMatch(three.caption, /Beef|16\.50/);
+const swapped = updatePost(
+  updatePost(burgerPost, { items: [burgerItem, pastaItem] }, restaurant),
+  { items: [pastaItem] },
+  restaurant,
+);
+assert.deepEqual(
+  [swapped.title, swapped.description, swapped.price],
+  ["Tomato pasta", "Our real pasta", "18.50"],
+  "Removing the first dish retitles the post for the dish that remains",
+);
+assert.doesNotMatch(swapped.caption, /burger|Beef|16\.50/);
+assert.match(swapped.caption, /Tomato pasta\nOur real pasta/);
+assert.equal(
+  updatePost(three, { items: [pastaItem, burgerItem, burrataItem] }, restaurant)
+    .title,
+  "Tomato pasta, The house burger & Burrata",
+  "Reordering keeps the list in the new order",
+);
+const owned = updatePost(
+  burgerPost,
+  { title: "Burger night", price: "12" },
+  restaurant,
+);
+const ownedGroup = updatePost(
+  owned,
+  { items: [burgerItem, pastaItem] },
+  restaurant,
+);
+assert.deepEqual(
+  [ownedGroup.title, ownedGroup.price, ownedGroup.description],
+  ["Burger night", "12", ""],
+  "The owner’s own headline and price stay; untouched words still follow",
+);
+assert.equal(
+  updatePost(ownedGroup, { items: [pastaItem] }, restaurant).title,
+  "Burger night",
+);
+const legacyWords = updatePost(
+  { ...base, description: "Our pasta, as always" },
+  { items: [item, { ...pastaItem, dishId: "pasta-2" }] },
+  restaurant,
+);
+assert.equal(
+  legacyWords.description,
+  "Our pasta, as always",
+  "Saved drafts without dish facts keep their description",
+);
+const longNames = ["Slow-roasted chicken", "Charred broccolini", "Pavlova"].map(
+  (name, n) => ({ ...pastaItem, dishId: "d" + n, name }),
+);
+assert.equal(
+  updatePost(burgerPost, { items: [burgerItem, ...longNames] }, restaurant)
+    .title,
+  "The house burger & 3 more",
+  "A long list stays short enough for a headline",
+);
+
 assert.equal(postDetailError(base, assets), "");
 assert.match(postDetailError(base, []), /no longer available/);
 assert.match(

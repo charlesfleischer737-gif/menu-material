@@ -1,4 +1,5 @@
 import type { Row } from "./client";
+import { postHeadline } from "./post-flow";
 
 /** Original compositions informed by restaurant feeds; reference imagery is never used in exports. */
 export const postTemplates = [
@@ -190,7 +191,7 @@ export function applyPostTemplate(draft: Row, id: string) {
   return {
     template: t.id,
     ...(!draft.title || retiredHeadlines.includes(draft.title)
-      ? { title: draft.items?.[0]?.name || "" }
+      ? { title: postHeadline(draft.items || []) }
       : {}),
     color: draft.brandMode === "restaurant" ? draft.color : t.color,
     accent: draft.brandMode === "restaurant" ? draft.accent : t.accent,

@@ -25,6 +25,7 @@ import {
 } from "@/lib/dish-library";
 import {
   postCaption,
+  postDefaults,
   postDetailError,
   postFromPhoto,
   updatePost,
@@ -241,15 +242,15 @@ export default function PostMaker({
     const lead = first
       ? recommendedDesigns({ ...b, items: [item] }, state.restaurant)[0]
       : "";
+    const words = postDefaults([item]);
+    // Later dishes update the words the owner hasn't changed (see updatePost).
     update({
       items: [...items, item],
       ...(first
         ? {
-            ...applyPostTemplate({ ...b, items: [item], title: d.name }, lead),
+            ...applyPostTemplate({ ...b, items: [item], ...words }, lead),
             compositionVersion: 2,
-            title: d.name,
-            description: d.description || "",
-            price: d.price ? (d.price / 100).toFixed(2) : "",
+            ...words,
             captionMode: "auto",
           }
         : {}),
@@ -267,25 +268,8 @@ export default function PostMaker({
         ? { ...i, name: d.name, category: d.category, facts: dishSnapshot(d) }
         : i;
     });
-    const first = state.dishes.find((d: Row) => d.id === items[0]?.dishId);
-    update({
-      items: next,
-      ...(items.length === 1 && first
-        ? {
-            title: b.title === items[0].name ? first.name : b.title,
-            description:
-              b.description === items[0].facts?.description
-                ? first.description
-                : b.description,
-            price:
-              b.price === String((items[0].facts?.price || 0) / 100) ||
-              Number(b.price) === (items[0].facts?.price || 0) / 100
-                ? (first.price / 100).toFixed(2)
-                : b.price,
-          }
-        : {}),
-      factsReviewed: true,
-    });
+    // A headline, description or price the owner hasn't changed follows the dish.
+    update({ items: next, factsReviewed: true });
   }
   async function caption(mode = "draft") {
     const data = await api("post-caption", {
