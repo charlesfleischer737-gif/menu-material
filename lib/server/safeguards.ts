@@ -4,6 +4,7 @@ import {
   config,
   all,
   bucket,
+  digest,
   id,
   limit,
   now,
@@ -195,10 +196,40 @@ export async function finishAi(
     key,
   );
 }
+// An IPv6 subscriber is usually given a whole /64, so its addresses count as
+// one caller. IPv4 addresses are used as they are.
+function network(address: string) {
+  const ip = address.split("%")[0].toLowerCase();
+  if (!ip.includes(":")) return ip;
+  const mapped = /^::ffff:(\d{1,3}(?:\.\d{1,3}){3})$/.exec(ip);
+  if (mapped) return mapped[1];
+  const [head, tail] = ip.split("::"),
+    left = head ? head.split(":") : [],
+    right = tail ? tail.split(":") : [];
+  // A dotted IPv4 ending fills the last two groups.
+  for (const groups of [left, right])
+    if (groups.at(-1)?.includes(".")) groups.splice(-1, 1, "0", "0");
+  const groups =
+    tail === undefined
+      ? left
+      : [
+          ...left,
+          ...Array(Math.max(0, 8 - left.length - right.length)).fill("0"),
+          ...right,
+        ];
+  if (groups.length !== 8 || !groups.every((g) => /^[0-9a-f]{1,4}$/.test(g)))
+    return ip;
+  return `${groups
+    .slice(0, 4)
+    .map((g) => parseInt(g, 16).toString(16))
+    .join(":")}::/64`;
+}
 export function caller(req: Request) {
   // Cloudflare overwrites this header at the hosting boundary; do not trust X-Forwarded-For.
-  return req.headers.get("cf-connecting-ip") || "unidentified";
+  return network(req.headers.get("cf-connecting-ip") || "unidentified");
 }
+// Per-network only: a shared site-wide bucket would let one attacker lock
+// every visitor out.
 export async function publicLimit(
   req: Request,
   purpose: string,
@@ -206,12 +237,58 @@ export async function publicLimit(
   seconds = 900,
 ) {
   await limit(`${purpose}:caller:${caller(req)}`, max, seconds);
-  await limit(`${purpose}:global`, Math.max(500, max * 50), seconds);
 }
+// After 20 sign-in attempts for one email within 15 minutes of each other,
+// each further attempt waits 1 s, 2 s, 4 s … up to 5 minutes after the last.
+// It slows guessing from many networks without locking the account.
+const loginWindow = 900000,
+  loginFreeAttempts = 20,
+  loginMaxWait = 300000;
+const loginKey = (email: string) => digest(`login:email:${email}`);
 export async function loginLimit(req: Request, email: string) {
-  await publicLimit(req, "login", 30);
   // A stranger cannot exhaust an owner's allowance merely by knowing their email.
   await limit(`login:pair:${caller(req)}:${email}`, 10);
+  const t = now();
+  // Claim the attempt atomically, so parallel requests cannot share a slot.
+  const claimed = await one(
+    `INSERT INTO rate_limits (key,count,expires_at) VALUES (?,1,?)
+     ON CONFLICT(key) DO UPDATE SET count=CASE WHEN expires_at<? THEN 1 ELSE count+1 END,expires_at=excluded.expires_at
+     WHERE expires_at<? OR count<? OR expires_at-?+MIN(?,1000*(1<<MIN(count-?,20)))<=?
+     RETURNING count`,
+    loginKey(email),
+    t + loginWindow,
+    t,
+    t,
+    loginFreeAttempts,
+    loginWindow,
+    loginMaxWait,
+    loginFreeAttempts,
+    t,
+  );
+  if (claimed) return;
+  const row = await one(
+    "SELECT count,expires_at FROM rate_limits WHERE key=?",
+    loginKey(email),
+  );
+  const wait = row
+    ? row.expires_at -
+      loginWindow +
+      Math.min(
+        loginMaxWait,
+        1000 * 2 ** Math.min(row.count - loginFreeAttempts, 20),
+      ) -
+      t
+    : 1000;
+  const seconds = Math.max(1, Math.ceil(wait / 1000)),
+    [amount, unit] =
+      seconds < 60 ? [seconds, "second"] : [Math.ceil(seconds / 60), "minute"];
+  throw new AppError(
+    429,
+    `Too many sign-in attempts for this account. Try again in ${amount} ${unit}${amount === 1 ? "" : "s"}.`,
+  );
+}
+export async function loginSucceeded(email: string) {
+  await run("DELETE FROM rate_limits WHERE key=?", loginKey(email));
 }
 async function accountForExistingStorage(restaurantId: string) {
   const existing = await all(

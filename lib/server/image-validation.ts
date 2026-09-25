@@ -40,6 +40,25 @@ export function validateImageDimensions(
       }
       position += length;
     }
+  } else if (mime === "image/webp" && bytes.length >= 30) {
+    // The first chunk after RIFF….WEBP: lossy, lossless or extended.
+    const chunk = Buffer.from(bytes.subarray(12, 16)).toString("latin1");
+    if (
+      chunk === "VP8 " &&
+      bytes[23] === 0x9d &&
+      bytes[24] === 0x01 &&
+      bytes[25] === 0x2a
+    ) {
+      width = view.getUint16(26, true) & 0x3fff;
+      height = view.getUint16(28, true) & 0x3fff;
+    } else if (chunk === "VP8L" && bytes[20] === 0x2f) {
+      const bits = view.getUint32(21, true);
+      width = (bits & 0x3fff) + 1;
+      height = ((bits >>> 14) & 0x3fff) + 1;
+    } else if (chunk === "VP8X") {
+      width = 1 + (bytes[24] | (bytes[25] << 8) | (bytes[26] << 16));
+      height = 1 + (bytes[27] | (bytes[28] << 8) | (bytes[29] << 16));
+    }
   }
   assert(
     width > 0 && height > 0,

@@ -27,9 +27,15 @@ globalThis.fetch = async (url, init = {}) => {
   assert(target.startsWith("https://hooks.example.test/"), target);
   if (webhookFails) throw new Error("Webhook network failure");
   const body = JSON.parse(init.body);
-  assert.equal(body.text, body.content);
-  assert(body.text.startsWith("[Menu Material · menu.example.test] "));
-  posts.push({ channel: target.split("/").at(-1), text: body.text });
+  // `text` for Slack-compatible hooks, `content` for Discord.
+  for (const field of [body.text, body.content])
+    assert(field.startsWith("[Menu Material · menu.example.test] "));
+  assert.deepEqual(body.allowed_mentions, { parse: [] });
+  posts.push({
+    channel: target.split("/").at(-1),
+    text: body.text,
+    content: body.content,
+  });
   return new Response("ok");
 };
 const logs = [];
@@ -373,6 +379,8 @@ try {
   checks++;
 
   // Browser error reports: validated, bounded, same-origin and rate limited.
+  // (The odd values above used this hour's share of browser reports.)
+  offset += 61 * minute;
   const report = {
     message: "Cannot read properties of undefined (reading 'name')",
     stack:
@@ -383,7 +391,10 @@ try {
     url: "http://localhost/workspace?invite=very-secret-invite#top",
     kind: "error",
   };
-  const ip = (n) => ({ "cf-connecting-ip": `198.51.100.${n}` });
+  const ip = (n) => ({
+    "cf-connecting-ip": `198.51.100.${n}`,
+    origin: "http://localhost",
+  });
   lines = logs.length;
   const sentClient = errors().length;
   await expect("client-errors", 202, {
@@ -418,9 +429,53 @@ try {
     body: report,
     headers: { ...ip(2), origin: "https://elsewhere.example" },
   });
+  // Scripts and other sites cannot post reports: the browser must say the
+  // request came from this site.
+  await expect("client-errors", 403, {
+    body: report,
+    headers: { "cf-connecting-ip": "198.51.100.2" },
+  });
+  await expect("client-errors", 202, {
+    body: report,
+    headers: {
+      "cf-connecting-ip": "198.51.100.2",
+      "sec-fetch-site": "same-origin",
+    },
+  });
   for (let n = 0; n < 20; n++)
     await expect("client-errors", 202, { body: report, headers: ip(3) });
   await expect("client-errors", 429, { body: report, headers: ip(3) });
+  checks++;
+
+  // Fake reports are forwarded as inert text and only up to their own
+  // hourly share, so a real server error still gets through afterwards.
+  offset += 61 * minute;
+  const beforeFakes = errors().length;
+  for (let n = 0; n < 30; n++)
+    await expect("client-errors", 202, {
+      body: {
+        message: `@everyone <!channel> <@U123> Payouts failing ${String.fromCharCode(97 + (n % 26), 97 + Math.floor(n / 26))} — re-authenticate: <https://evil.example/login|Open billing> or [Open billing](https://evil.example/login) www.evil.example`,
+        url: "/admin",
+      },
+      headers: {
+        "cf-connecting-ip": `2001:db8:${n}::1`,
+        origin: "http://localhost",
+      },
+    });
+  const fakes = errors().slice(beforeFakes);
+  assert.equal(fakes.length, 5);
+  for (const fake of fakes) {
+    for (const field of [fake.text, fake.content]) {
+      assert(!/@everyone|https?:\/\/|www\./.test(field), field);
+      assert.match(field, /@\u200beveryone/);
+    }
+    assert(!/[<>]/.test(fake.text.split("] ")[1]), fake.text);
+    assert.match(fake.text, /&lt;!channel&gt; &lt;@U123&gt;/);
+    assert(!/<[@!#]/.test(fake.content), fake.content);
+  }
+  await reportError(Error("Real failure after the fakes"), { status: 500 });
+  await flushMonitoring();
+  assert.match(errors().at(-1).text, /Real failure after the fakes/);
   checks++;
 
   assert.equal(
@@ -432,7 +487,7 @@ try {
     true,
   );
   console.log(
-    `PASS: ${checks} monitoring checks: liveness/readiness, coarse vs authorized detail, stale worker and queue alerts with dedupe and recovery, daily AI budget alerts, error burst, reportError safety and redaction, API error reporting, and client error validation, limits and dedupe. Webhooks are fixtures.`,
+    `PASS: ${checks} monitoring checks: liveness/readiness, coarse vs authorized detail, stale worker and queue alerts with dedupe and recovery, daily AI budget alerts, error burst, reportError safety and redaction, API error reporting, and client error validation, same-origin reports, limits, dedupe, their own webhook share and inert chat text. Webhooks are fixtures.`,
   );
 } finally {
   console.error = originalError;
