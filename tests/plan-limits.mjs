@@ -111,6 +111,7 @@ try {
   assert(freeMenuDesign({}));
   assert(freeMenuDesign({ design: "bistro", colorMode: "restaurant" }));
   assert(!freeMenuDesign({ design: "fine" }));
+  assert(freeMenuDesign({ layout: "featured" }), "featured dish photos");
   assert(!freeMenuDesign({ layout: "grid" }));
   assert(!freeMenuDesign({ appearance: "dark" }));
   assert(!freeMenuDesign({ colorMode: "custom" }));
@@ -132,7 +133,7 @@ try {
   assert(!freePostDraft({ template: "chef", brandMode: "restaurant" }));
   assert(!freePostDraft({ template: "chef", color: "#ff0000" }));
   assert(!freePostDraft({ template: "chef", typography: "bold" }));
-  checks += 14;
+  checks += 15;
 
   await call("auth/dev", {});
   const adminCookie = cookie;

@@ -16,9 +16,11 @@ export const FREE_SIGNUP_IMAGES = 5;
 export const FREE_LIVE_MENUS = 1;
 export const FREE_MENU_DESIGN = {
   design: "bistro",
-  layout: "classic",
   appearance: "light",
 } as const;
+// Typography only, or photos on the dishes the owner features. A photo for
+// every dish is Pro.
+export const FREE_MENU_LAYOUTS: readonly string[] = ["classic", "featured"];
 export const FREE_POST_TEMPLATES: readonly string[] = [
   "editorial",
   "chef",
@@ -34,7 +36,7 @@ export function freeMenuDesign(menu: {
 }) {
   return (
     (menu.design ?? FREE_MENU_DESIGN.design) === FREE_MENU_DESIGN.design &&
-    (menu.layout ?? FREE_MENU_DESIGN.layout) === FREE_MENU_DESIGN.layout &&
+    FREE_MENU_LAYOUTS.includes(menu.layout ?? "classic") &&
     (menu.appearance ?? FREE_MENU_DESIGN.appearance) ===
       FREE_MENU_DESIGN.appearance &&
     menu.colorMode !== "custom"
@@ -69,7 +71,7 @@ export const proFeatures = {
   menuDesigns: {
     title: "Every menu design",
     detail:
-      "All 10 designs, featured and grid layouts, dark mode and your own colors.",
+      "All 10 designs, a photo for every dish, dark mode and your own colors.",
     blocked:
       "This menu design is part of Pro. Free menus use The Brasserie design.",
   },

@@ -10,6 +10,9 @@ import {
 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import CreativeHeader from "./creative-header";
+import { ProBadge, ProNote } from "./pro-badge";
+import { proFeatures } from "@/lib/plans";
+import { hasProFeatures, requestUpgrade } from "@/lib/upgrade";
 import { draftStatus } from "@/lib/workspace-status";
 import {
   api,
@@ -177,6 +180,73 @@ function OfferPreview({
   );
 }
 
+/**
+ * Campaigns are Pro. Free sees its own dish as the matching post, Story and
+ * counter sign, drawn here; nothing is saved.
+ */
+function CampaignPreview({ state, seed }: { state: Row; seed: Row | null }) {
+  const r = state.restaurant,
+    dishes: Row[] = state.dishes || [],
+    assets: Row[] = state.assets || [];
+  const photoOf = (dishId: string) =>
+    assets.find(
+      (a) => a.dish_id === dishId && a.approved_at && !a.needs_correction,
+    );
+  const choices = dishes.filter((d) => !d.sample && photoOf(d.id));
+  const [dishId, setDishId] = useState<string>(
+    seed?.items?.[0]?.dishId || choices[0]?.id || "",
+  );
+  const dish = dishes.find((d) => d.id === dishId);
+  const seeded = seed?.items?.[0]?.dishId === dishId ? seed : null;
+  const photoId = seeded?.items?.[0]?.photoId || photoOf(dishId)?.id;
+  const draft = initial(r, {
+    title: seeded?.title || dish?.name || "",
+    description: seeded?.description || dish?.description || "",
+    price: seeded?.price ?? dish?.price ?? 0,
+    items: dish ? [{ dishId: dish.id, quantity: 1, photoId }] : [],
+  });
+  return (
+    <div className="promotion-pro-preview">
+      <h2>
+        {proFeatures.campaigns.title} <ProBadge />
+      </h2>
+      <p>{proFeatures.campaigns.detail}</p>
+      {choices.length ? (
+        <label className="field">
+          Preview with
+          <select value={dishId} onChange={(e) => setDishId(e.target.value)}>
+            {choices.map((d) => (
+              <option key={d.id} value={d.id}>
+                {d.name}
+              </option>
+            ))}
+          </select>
+        </label>
+      ) : (
+        <p className="mm-muted">
+          Approve a photo of a dish to see it as a campaign.
+        </p>
+      )}
+      {dish && photoId && (
+        <div className="promotion-pro-previews">
+          {(["feed", "story", "sign"] as const).map((format) => (
+            <figure key={format}>
+              <OfferPreview
+                draft={draft}
+                restaurant={r}
+                dishes={dishes}
+                format={format}
+                onChoosePhoto={() => {}}
+              />
+              <figcaption>{exportFormats[format].label}</figcaption>
+            </figure>
+          ))}
+        </div>
+      )}
+      <Button onClick={() => requestUpgrade("campaigns")}>See Pro</Button>
+    </div>
+  );
+}
 export default function PromotionWorkspace({
   state,
   refresh,
@@ -203,6 +273,9 @@ export default function PromotionWorkspace({
     [newDish, setNewDish] = useState<Row | null>(null),
     [recovery, setRecovery] = useState<Row | null>(null),
     [advice, setAdvice] = useState("");
+  // Without Pro, campaigns can be previewed, and old ones viewed.
+  const pro = hasProFeatures(state),
+    [previewSeed, setPreviewSeed] = useState<Row | null>(null);
   const saved = useRef<Row | null>(null),
     current = useRef<Row | null>(null),
     saving = useRef<Promise<Row> | null>(null),
@@ -372,6 +445,11 @@ export default function PromotionWorkspace({
   useEffect(() => {
     if (seed && seedUsed.current !== seed) {
       seedUsed.current = seed;
+      if (!pro) {
+        setPreviewSeed(seed);
+        onSeedUsed?.();
+        return;
+      }
       void action("Preparing suggestion", async () => {
         await create(seed);
         onSeedUsed?.();
@@ -458,9 +536,13 @@ export default function PromotionWorkspace({
         action={
           <Button
             disabled={!!busy}
-            onClick={() => action("Starting campaign", () => create())}
+            onClick={() =>
+              pro
+                ? action("Starting campaign", () => create())
+                : requestUpgrade("campaigns")
+            }
           >
-            <Plus /> New campaign
+            <Plus /> New campaign {!pro && <ProBadge />}
           </Button>
         }
       />
@@ -513,7 +595,19 @@ export default function PromotionWorkspace({
           )}
         </div>
       )}
-      {!form ? (
+      {!pro && form && (
+        <ProNote feature="campaigns">
+          Campaigns are part of Pro. You can still view this one, download its
+          files and take it off your menu.
+        </ProNote>
+      )}
+      {!form && !pro ? (
+        <CampaignPreview
+          key={previewSeed?.items?.[0]?.dishId || ""}
+          state={state}
+          seed={previewSeed}
+        />
+      ) : !form ? (
         <div className="cx-empty promotion-empty">
           <Sparkles />
           <h2>Make tonight’s special easy to share.</h2>

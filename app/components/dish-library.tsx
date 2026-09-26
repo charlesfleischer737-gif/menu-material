@@ -50,6 +50,7 @@ import DietaryPicker from "./dietary-picker";
 import { ConfirmDelete } from "./controls";
 import CreativeHeader from "./creative-header";
 import PhotoDownloads from "./photo-downloads";
+import { hasProFeatures, requestUpgrade } from "@/lib/upgrade";
 import Kitty from "./kitty";
 
 export default function DishLibrary({
@@ -516,6 +517,9 @@ export default function DishLibrary({
                 .map((a) => a.id);
               if (ids.length !== selected.length)
                 action.setError("Choose dishes with photos to download.");
+              // Several photos download as a ZIP, which is Pro.
+              else if (ids.length > 1 && !hasProFeatures(state))
+                requestUpgrade("downloads");
               else setDownloadIds(ids);
             }}
           >
@@ -1189,7 +1193,12 @@ export default function DishLibrary({
           initialFormat={usedLineage?.format || "menu"}
           style={usedStyle}
           onUse={(use) => selectPhoto(usedPhoto, use)}
-          onPack={() => setPhotoUse({ ...photoUse, kind: "pack" })}
+          packPro={!hasProFeatures(state)}
+          onPack={() =>
+            hasProFeatures(state)
+              ? setPhotoUse({ ...photoUse, kind: "pack" })
+              : requestUpgrade("downloads")
+          }
         />
       )}
       {photoUse?.kind === "pack" && usedPhoto?.approved_at && (

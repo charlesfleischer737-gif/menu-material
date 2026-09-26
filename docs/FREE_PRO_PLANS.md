@@ -6,6 +6,35 @@ New public accounts receive **five image generations once**, with no expiry and 
 
 **Pro is $9 USD/month for 50 image generations per paid monthly billing period.** Unused monthly generations do not roll over. The hosted site has Stripe billing enabled. Other environments stay inactive until Stripe is connected and explicitly enabled. The public pricing page and plan dialog show Pro as coming soon while inactive; checkout never simulates a successful purchase. Free accounts work immediately. Email delivery remains deferred at the owner's request.
 
+## What Free and Pro include
+
+Free is meant to be the most generous free plan among AI food-photo tools, and Pro to be the plan for restaurants that market every week ("Keep your restaurant looking its best, every week"). Every limit lives in `lib/plans.ts`; the server, the Pro badges and the pricing copy read it.
+
+| | Free | Pro |
+|---|---|---|
+| AI photos | 5 to start (`FREE_SIGNUP_IMAGES`): every style, fine-tuning, full quality, no watermark | 50 each paid billing period |
+| Restaurant look (colors, fonts, photo style, atmosphere references, tone) | Can be set up and previewed in Restaurant settings; new work uses neutral defaults | Applied to new photos, posts, menus, table cards and captions |
+| Saved photo looks and inspiration photos | No | Yes (up to 100 looks) |
+| Batches ("Apply to more dishes", older batch tool) | No | Up to 8 dishes |
+| Menus | 1 live menu: The Brasserie, light, typography only or featured dish photos, no custom colors; QR code, PDF and table card | All 10 designs, a photo for every dish, dark paper, custom colors; up to 30 live menus |
+| Posts and Stories | Just the dish, From the pass and The daily special; one photo; each design's own colors and type | All 10 designs, carousels, multi-dish offers, the restaurant's colors and fonts |
+| Campaigns (post, Story, counter sign, menu special) | A preview with the owner's own dish | Yes |
+| Downloads | Every size, one photo at a time | Also photo packs and multi-photo ZIPs |
+| Staff photo links | No new links | Yes |
+| Menu insights | This week's visits and the change; counts of what Pro shows | Order, call and directions taps, QR placements, menus and dishes |
+| Guest menu credit | "Made with Menu Material" | Removed |
+| Also | Menu import, food-error corrections, weekly suggestions | Automatic credit back on a repeated food-error report; no daily cap on captions and menu reading |
+
+**Pro features are separate from Pro images.** `featureAccess()` in `lib/server/entitlements.ts` gives Pro features while a paid period covers today, for 14 days after a failed renewal while Stripe retries (features only; an unpaid month grants no images), or until an administrator's comp date (`restaurants.pro_until`, "Pro features until" in Administration; it never adds images). `PLAN_LIMITS_ENABLED=false` lifts every Free limit at once, for an emergency or a test.
+
+**The server enforces every limit** when something new is created, saved, published or requested, and answers 402 with `code: "pro_required"` and the feature; the workspace then opens Plans on that feature (once per session when the person didn't click it). Menus are checked on publish (inside the write, so two tabs can't both pass), post drafts on save and copy, campaigns on every write except view, download, unpublish and sold out, batches and staff links on creation, saved looks on the library save and in photo requests (with inspiration photos), and insights and the menu credit on each read. `effectiveStyle()` resolves the restaurant look once for all server work, and `/api/state` sends both the effective and the saved look. Exports drawn in the browser (post and photo-pack ZIPs, PDFs of Pro menu designs) are limited in the page only.
+
+**A downgrade keeps everything.** Nothing is deleted or taken offline: live menus keep the look they were published with and can always be published again (in the basic design), scheduled specials run until they end, saved looks and post drafts stay and can be opened and downloaded, started batches finish, and existing staff links work until they expire. Only new Pro work needs Pro again.
+
+**Signups are limited per network.** Each network can open `SIGNUPS_PER_NETWORK_PER_DAY` (default 5) public accounts a day, counted when an account is created; invitations don't count. This keeps free images from being collected by signing up repeatedly. Email verification remains deferred.
+
+`tests/plan-limits.mjs` covers each limit through the API, two tabs publishing at once, keeping work after a downgrade, the renewal grace, comps, the switch and the signup cap. Suites that exercise Pro features comp their test workspace.
+
 ## Stripe activation
 
 1. In the intended Stripe account, reuse the existing Menu Material Pro product and recurring price: USD 9 for 50 image generations, interval month, quantity one, no trial. Configure the customer portal to update payment methods, view invoices and cancel at period end; disable product switches, quantity changes and prorated plan changes for this single-plan integration.

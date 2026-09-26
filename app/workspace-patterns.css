@@ -2060,3 +2060,84 @@
 .md-stage .md-attention-dot {
   background: var(--on-dark-warning);
 }
+/* Pro features are marked before anyone starts, so no work is lost to a limit. */
+.pro-badge {
+  display: inline-flex;
+  align-items: center;
+  flex-shrink: 0;
+  padding: 2px 8px;
+  border-radius: var(--radius-pill);
+  background: var(--green-soft);
+  color: var(--green);
+  font-size: var(--text-caption2);
+  font-weight: 700;
+  letter-spacing: 0.02em;
+  line-height: 1.5;
+  vertical-align: middle;
+}
+.pro-note {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 4px 10px;
+  margin: 8px 0;
+  padding: 10px 14px;
+  border-radius: 12px;
+  background: var(--gray-50);
+  font-size: var(--text-subhead);
+}
+.pro-note p {
+  flex: 1 1 200px;
+  margin: 0;
+}
+.pro-note .cx-link {
+  min-height: 44px;
+  padding: 0;
+  border: 0;
+  background: none;
+  color: var(--green);
+  font-weight: 600;
+  cursor: pointer;
+}
+/* Free sees its own dish as a campaign before choosing Pro. */
+.promotion-pro-preview {
+  display: grid;
+  gap: 12px;
+  max-width: 960px;
+  margin: 16px 0;
+  padding: 20px;
+  border-radius: 16px;
+  background: var(--gray-50);
+}
+.promotion-pro-preview h2 {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  margin: 0;
+  font-size: var(--text-title3);
+}
+.promotion-pro-preview p {
+  margin: 0;
+}
+.promotion-pro-previews {
+  display: grid;
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+  align-items: start;
+  gap: 12px;
+}
+.promotion-pro-previews figure {
+  margin: 0;
+}
+.promotion-pro-previews figcaption {
+  margin-top: 6px;
+  color: var(--gray-600);
+  font-size: var(--text-footnote);
+}
+.promotion-pro-preview > button {
+  justify-self: start;
+}
+@media (max-width: 720px) {
+  .promotion-pro-previews {
+    grid-template-columns: minmax(0, 1fr);
+  }
+}

@@ -26,6 +26,7 @@ import "./photo-studio.css";
 import "./kitties.css";
 // One control family (buttons, segmented choices); loaded last.
 import "./controls.css";
+import { FREE_SIGNUP_IMAGES } from "@/lib/plans";
 // Defaults for every page. Public pages add their own canonical address and
 // link-preview text with pageMetadata() from ./site-metadata.
 export async function generateMetadata(): Promise<Metadata> {
@@ -33,8 +34,7 @@ export async function generateMetadata(): Promise<Metadata> {
     // Makes canonical, og:url and og:image URLs absolute.
     metadataBase: new URL(await siteOrigin()),
     title: "Menu Material — Food photos worth ordering from.",
-    description:
-      "Turn real dish photos into professional images and matching posts for Toast, delivery apps, your website, and Instagram. Start with 5 free images.",
+    description: `Turn real dish photos into professional images and matching posts for Toast, delivery apps, your website, and Instagram. Start with ${FREE_SIGNUP_IMAGES} free images.`,
     icons: {
       icon: "/favicon.svg?v=menu-material-2",
       shortcut: "/favicon.svg?v=menu-material-2",
