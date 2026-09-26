@@ -98,14 +98,20 @@ export async function advanceBatches(restaurantId?: string) {
         "SELECT * FROM restaurants WHERE id=?",
         item.restaurant_id,
       );
-      const job = await enqueue(r!, {
-        dishId: item.dish_id,
-        sourceId: item.source_id,
-        requestKey: item.id,
-        ...JSON.parse(item.settings || "{}"),
-        style: JSON.parse(item.settings || "{}").style || JSON.parse(r!.style),
-        editMode: "preserve",
-      });
+      const job = await enqueue(
+        r!,
+        {
+          dishId: item.dish_id,
+          sourceId: item.source_id,
+          requestKey: item.id,
+          ...JSON.parse(item.settings || "{}"),
+          style:
+            JSON.parse(item.settings || "{}").style || JSON.parse(r!.style),
+          editMode: "preserve",
+        },
+        undefined,
+        { accepted: true },
+      );
       await run(
         "UPDATE batch_items SET status='submitted',job_id=?,error=NULL WHERE id=?",
         job.id,

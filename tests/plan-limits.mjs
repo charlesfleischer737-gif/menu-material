@@ -11,6 +11,7 @@ const { handle } = await import("../lib/server/api.ts");
 const { one, run } = await import("../lib/server/core.ts");
 const { env } = await import("../lib/local-runtime.ts");
 const { featureAccess } = await import("../lib/server/entitlements.ts");
+const { advanceBatches } = await import("../lib/server/menu-tools.ts");
 const { newMenuDocument, newMenuEntry } =
   await import("../lib/menu-document.ts");
 const { defaultStyle } = await import("../lib/promotions.ts");
@@ -601,6 +602,31 @@ try {
     "savedLooks",
   );
   checks += 6;
+
+  // A batch accepted with Pro finishes in the background after Pro ends,
+  // inspiration photo included: limits are checked only when work is accepted.
+  const batchItem = crypto.randomUUID();
+  await run(
+    "INSERT INTO batch_items (id,restaurant_id,batch_id,dish_id,source_id,settings,created_at) VALUES (?,?,?,?,?,?,?)",
+    batchItem,
+    rid,
+    crypto.randomUUID(),
+    dish.id,
+    source,
+    JSON.stringify({
+      candidateCount: 1,
+      style: { ...defaultStyle, referenceIds: [reference] },
+    }),
+    Date.now(),
+  );
+  await advanceBatches(rid);
+  const advanced = await one(
+    "SELECT status,error,job_id FROM batch_items WHERE id=?",
+    batchItem,
+  );
+  assert.equal(advanced.status, "submitted", advanced.error || "");
+  assert(advanced.job_id);
+  checks += 2;
 
   // 11. A failed renewal keeps Pro features (not images) for 14 days.
   const day = 86400000;

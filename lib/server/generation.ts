@@ -172,6 +172,9 @@ export async function enqueue(
   r: Row,
   input: Row,
   policy?: { correctionFor: string },
+  // Work accepted earlier, such as the rest of a started batch: plan limits
+  // were checked then, and the background never checks them again.
+  { accepted = false }: { accepted?: boolean } = {},
 ) {
   let correctionOriginal: Row | null = null;
   if (policy) {
@@ -429,7 +432,11 @@ export async function enqueue(
   }
   // Saved looks and inspiration photos are Pro for new work. A correction
   // repeats what the original request used.
-  if (!policy && (lookContext?.savedLookId || style.referenceIds.length))
+  if (
+    !policy &&
+    !accepted &&
+    (lookContext?.savedLookId || style.referenceIds.length)
+  )
     await requirePro(r.id, "savedLooks");
   // Accepted work and reusable completed results above do not need their
   // references again. New work must have every reference before reserving quota.
