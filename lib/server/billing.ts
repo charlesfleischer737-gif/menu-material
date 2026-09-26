@@ -13,7 +13,7 @@ import {
   type Row,
 } from "./core";
 import { limitedBytes } from "./safeguards";
-import { imageEntitlement } from "./entitlements";
+import { featureAccess, imageEntitlement } from "./entitlements";
 import { PRO_PLAN } from "../plans";
 
 export function billingEnabled() {
@@ -30,12 +30,21 @@ export async function billingSummary(restaurantId: string) {
     "SELECT status,cancel_at_period_end,customer_id FROM billing_accounts WHERE restaurant_id=?",
     restaurantId,
   );
+  const live = await one(
+    "SELECT count(*) AS n FROM menu_documents WHERE restaurant_id=? AND archived_at IS NULL AND published IS NOT NULL",
+    restaurantId,
+  );
   return {
     ...(await imageEntitlement(restaurantId)),
     enabled: billingEnabled(),
     status: account?.status || "free",
     cancelAtPeriodEnd: !!account?.cancel_at_period_end,
     canManage: !!account?.customer_id && billingEnabled(),
+    // So controls can show what's Pro before anyone starts.
+    features: {
+      ...(await featureAccess(restaurantId)),
+      usage: { liveMenus: Number(live?.n || 0) },
+    },
   };
 }
 async function stripe(

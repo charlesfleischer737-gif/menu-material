@@ -252,6 +252,21 @@ export function caller(req: Request) {
   // Cloudflare overwrites this header at the hosting boundary; do not trust X-Forwarded-For.
   return network(req.headers.get("cf-connecting-ip") || "unidentified");
 }
+// Each network can open a few free accounts a day, so free images can't be
+// collected by signing up again and again. Invitations don't count.
+export async function newAccountLimit(req: Request) {
+  const max = Math.floor(setting("SIGNUPS_PER_NETWORK_PER_DAY", 5));
+  try {
+    await limit(`new-account:${caller(req)}`, max, 86400);
+  } catch (e) {
+    if (e instanceof AppError && e.status === 429)
+      throw new AppError(
+        429,
+        "Several accounts were already created from this network today. Please try again tomorrow or ask for an invitation.",
+      );
+    throw e;
+  }
+}
 // Per-network only: a shared site-wide bucket would let one attacker lock
 // every visitor out.
 export async function publicLimit(

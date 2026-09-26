@@ -15,6 +15,8 @@ import { api, type Row } from "@/lib/client";
 import { loadFresh, reloadOnPreloadError } from "@/lib/chunk-reload";
 import { watchJobs } from "@/lib/job-progress";
 import { rememberScroll } from "@/lib/scroll-memory";
+import type { ProFeature } from "@/lib/plans";
+import { UPGRADE_EVENT, type UpgradeRequest } from "@/lib/upgrade";
 // loadFresh reloads the page when a tab from before a deploy asks for a
 // screen's file that the deploy removed.
 const GuestStudio = lazy(() => loadFresh(() => import("./guest-studio")));
@@ -71,6 +73,8 @@ export default function HomeClient({ hasSession }: { hasSession: boolean }) {
     [settings, setSettings] = useState(false),
     [guest, setGuest] = useState(false),
     [plans, setPlans] = useState(false),
+    // The Pro feature that opened Plans, if any.
+    [planFeature, setPlanFeature] = useState<ProFeature | null>(null),
     [busy, setBusy] = useState(""),
     [error, setError] = useState("");
   const actionBusy = useRef(false);
@@ -180,9 +184,30 @@ export default function HomeClient({ hasSession }: { hasSession: boolean }) {
     return () => window.removeEventListener("popstate", follow);
   }, [loaded, hasSession, signedIn]);
   useEffect(() => {
-    const open = () => setPlans(true);
+    const open = () => {
+      setPlanFeature(null);
+      setPlans(true);
+    };
     window.addEventListener("menu-material:plans", open);
     return () => window.removeEventListener("menu-material:plans", open);
+  }, []);
+  // A Pro feature someone reached for. Offers the person didn't ask for (a
+  // refused save) appear once per feature each session.
+  useEffect(() => {
+    const offer = (event: Event) => {
+      const { feature, auto } = (event as CustomEvent<UpgradeRequest>).detail;
+      if (auto) {
+        const key = `menu-material:upgrade-offered:${feature}`;
+        try {
+          if (sessionStorage.getItem(key)) return;
+          sessionStorage.setItem(key, "1");
+        } catch {}
+      }
+      setPlanFeature(feature);
+      setPlans(true);
+    };
+    window.addEventListener(UPGRADE_EVENT, offer);
+    return () => window.removeEventListener(UPGRADE_EVENT, offer);
   }, []);
   // lib/client.ts reports a 401: the session ended while the workspace was
   // open. Offer sign-in over the current screen, which stays as it is.
@@ -381,9 +406,13 @@ export default function HomeClient({ hasSession }: { hasSession: boolean }) {
         <Suspense fallback={<p role="status">Opening your plan…</p>}>
           <PlanDialog
             open={plans}
-            close={() => setPlans(false)}
+            close={() => {
+              setPlans(false);
+              setPlanFeature(null);
+            }}
             state={state}
             refresh={refresh}
+            feature={planFeature}
           />
         </Suspense>
       )}

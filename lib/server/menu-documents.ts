@@ -15,6 +15,7 @@ import {
   run,
   type Row,
 } from "./core";
+import { effectiveStyle } from "./entitlements";
 import {
   menuDocumentSchema,
   upgradeMenuDocument,
@@ -188,7 +189,7 @@ async function publication(r: Row, documentId: string, draft: MenuDocument) {
       currency: r.currency,
       logoId,
       orderingUrl: r.ordering_url,
-      style: publicBrandStyle(JSON.parse(r.style || "{}")),
+      style: publicBrandStyle(await effectiveStyle(r)),
     },
   };
 }
@@ -196,7 +197,11 @@ async function publication(r: Row, documentId: string, draft: MenuDocument) {
 const specialsOnly = (published: string | null) =>
   !!published && !JSON.parse(published).sections?.length;
 /** A stand-in with no dishes, so live specials stay open to guests. */
-function specialsPage(r: Row, snapshot: string | null) {
+function specialsPage(
+  r: Row,
+  snapshot: string | null,
+  style: Record<string, any>,
+) {
   return JSON.stringify({
     restaurant: snapshot
       ? JSON.parse(snapshot).restaurant
@@ -206,7 +211,7 @@ function specialsPage(r: Row, snapshot: string | null) {
           currency: r.currency,
           logoId: null,
           orderingUrl: r.ordering_url,
-          style: publicBrandStyle(JSON.parse(r.style || "{}")),
+          style: publicBrandStyle(style),
         },
     sections: [],
   });
@@ -1118,7 +1123,7 @@ export async function menuDocumentsRoute(req: Request, p: string[], r: Row) {
           r.id,
           r.id,
           t,
-          specialsPage(r, row.published),
+          specialsPage(r, row.published, await effectiveStyle(r)),
           t,
           r.id,
           row.id,

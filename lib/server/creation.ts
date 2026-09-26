@@ -15,6 +15,7 @@ import {
   run,
   type Row,
 } from "./core";
+import { effectiveStyle } from "./entitlements";
 import { enqueue, provider } from "./generation";
 import { styleSchema, validateStyle } from "./promotions";
 import { advanceBatches, retryFailed } from "./menu-tools";
@@ -178,7 +179,7 @@ export async function creationRoute(req: Request, p: string[], r: Row) {
           ...b,
           dishes,
           voice:
-            b.voice || JSON.parse(r.style || "{}").tone || "Warm and welcoming",
+            b.voice || (await effectiveStyle(r)).tone || "Warm and welcoming",
           restaurant: r.name,
           currency: r.currency,
         }),

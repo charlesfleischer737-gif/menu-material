@@ -134,6 +134,13 @@
       "when": 1790393726068,
       "tag": "0018_pro_50_images",
       "breakpoints": true
+    },
+    {
+      "idx": 19,
+      "version": "6",
+      "when": 1790399920786,
+      "tag": "0019_pro_feature_comp",
+      "breakpoints": true
     }
   ]
 }

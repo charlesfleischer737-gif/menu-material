@@ -1424,6 +1424,12 @@
 .pw-plan-current p {
   margin: 8px 0;
 }
+.pw-plan-note {
+  margin: 16px 0 0;
+  padding: 12px 16px;
+  border-radius: var(--radius-card);
+  background: var(--gray-100);
+}
 
 @media (max-width: 1000px) {
   .pw-use-case-slides {

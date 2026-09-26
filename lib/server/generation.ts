@@ -1,5 +1,5 @@
 import type { Row } from "./core";
-import { entitlementSql } from "./entitlements";
+import { effectiveStyle, entitlementSql } from "./entitlements";
 import { settleCorrection } from "./correction-policy";
 import { z } from "zod";
 import { checkStudioGeneration } from "./studio-release";
@@ -301,7 +301,7 @@ export async function enqueue(
     : null;
   assert(!input.parentId || parent, 404, "Revision image not found.");
   const revision = String(input.revision || "").slice(0, 1000);
-  const style = savedStyle(input.style || JSON.parse(r.style || "{}"));
+  const style = savedStyle(input.style || (await effectiveStyle(r)));
   assert(
     source || d.description.trim(),
     400,
@@ -1401,7 +1401,7 @@ export async function generateCaption(
   }
   const facts = {
     restaurant: r.name,
-    tone: JSON.parse(r.style || "{}").tone || "Warm and welcoming",
+    tone: (await effectiveStyle(r)).tone || "Warm and welcoming",
     dish: d.name,
     description: d.description,
     offer,

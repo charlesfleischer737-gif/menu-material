@@ -1,4 +1,4 @@
-import { entitlementSql } from "./entitlements";
+import { effectiveStyle, entitlementSql } from "./entitlements";
 import { z } from "zod";
 import { checkStudioGeneration } from "./studio-release";
 import { validateImageDimensions } from "./image-validation";
@@ -261,6 +261,7 @@ export async function menuTools(req: Request, p: string[], r: Row) {
           "Photo not found.",
         );
     }
+    const batchStyle = await effectiveStyle(r);
     await db().batch(
       b.items.map((i) =>
         db()
@@ -275,7 +276,7 @@ export async function menuTools(req: Request, p: string[], r: Row) {
             i.sourceId,
             JSON.stringify({
               candidateCount: b.candidateCount,
-              style: JSON.parse(r.style),
+              style: batchStyle,
             }),
             now(),
           ),
@@ -637,7 +638,8 @@ export async function menuTools(req: Request, p: string[], r: Row) {
       400,
       "Approve a photo for an available dish to get menu-based suggestions.",
     );
-    const suggestions = [];
+    const suggestions = [],
+      lookStyle = await effectiveStyle(r);
     const today = localTime(now(), r.timezone).slice(0, 10);
     for (let offset = 0; offset < 14 && suggestions.length < 3; offset++) {
       const date = new Date(
@@ -674,7 +676,7 @@ export async function menuTools(req: Request, p: string[], r: Row) {
         items: [{ dishId: d.id, quantity: 1, photoId: d.photoId }],
         startsLocal,
         endsLocal,
-        style: { ...defaultStyle, ...JSON.parse(r.style) },
+        style: { ...defaultStyle, ...lookStyle },
         caption: `${d.name}. ${d.description}`.slice(0, 2200),
         reason:
           goal === "catering"
