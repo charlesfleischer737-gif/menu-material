@@ -7,10 +7,11 @@ const variants = (name: string) =>
   [640, 960, 1280, 1536]
     .map((w) => `/homepage/optimized/${name}-${w}.webp ${w}w`)
     .join(", ");
-// Stacked, the frame spans the page (22px gutters): 4:5 on phones and 16:10 up
-// to 1000px. From 1001px it is 5:4 in the hero's photo column, 8/13 of the
-// 1120px content less a 56px gap (655px at most). object-fit: cover draws a
-// photo wider than a frame that is narrower than the photo's own shape: in 4:5
+// Stacked, the frame spans the page (22px gutters): on phones as tall as the
+// first screen allows, up to 4:5, and 16:10 up to 1000px. From 1001px it is 5:4
+// in the hero's photo column, 8/13 of the 1120px content less a 56px gap
+// (655px at most). object-fit: cover draws a photo wider than a frame that is
+// narrower than the photo's own shape: at 4:5, the phone sizes' upper bound,
 // the 3:2 result at 1.875× and the 4:3 phone photo at 1.667× the frame width,
 // in 5:4 at 1.2× and 1.067×.
 const stackedWidth = "(max-width: 1000px) calc(100vw - 44px)";
