@@ -11,6 +11,7 @@ import {
 import { api } from "@/lib/client";
 import { isPlaceholderRestaurantName } from "@/lib/restaurant-identity";
 import Brand from "./brand";
+import { PRO_PRICE_LABEL } from "@/lib/plans";
 export default function Auth({
   open,
   setOpen,
@@ -268,7 +269,9 @@ export default function Auth({
         {mode === "signup" && !resetting && (
           <p className="fine">
             5 free images, once per account.{" "}
-            {billingEnabled ? "Pro: $9.99/month." : "Pro is coming soon."}{" "}
+            {billingEnabled
+              ? `Pro: ${PRO_PRICE_LABEL}/month.`
+              : "Pro is coming soon."}{" "}
             <a href="/pricing" target="_blank" rel="noreferrer">
               See plans
             </a>

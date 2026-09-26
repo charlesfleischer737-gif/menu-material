@@ -1,6 +1,7 @@
 "use client";
 import type { ReactNode } from "react";
 import { Check } from "lucide-react";
+import { PRO_PLAN, PRO_PRICE_LABEL } from "@/lib/plans";
 /* eslint-disable @next/next/no-html-link-for-pages --
    Plain links on purpose: next/link's client navigation throws in the vinext
    production build ("navigateClientSide is not a function"), so a <Link>
@@ -69,10 +70,11 @@ export default function PlanCards({
         </div>
         <p className="pw-plan-tagline">Keep good food in the spotlight.</p>
         <p className="pw-plan-price">
-          $9.99<span>/month</span>
+          {PRO_PRICE_LABEL}
+          <span>/month</span>
         </p>
         <p className="pw-plan-allowance">
-          <strong>100 images</strong> every month.
+          <strong>{PRO_PLAN.imagesPerPeriod} images</strong> every month.
         </p>
         <Features
           items={[
@@ -87,11 +89,13 @@ export default function PlanCards({
           {enabled ? (
             onUpgrade ? (
               <button className="cx-btn" disabled={busy} onClick={onUpgrade}>
-                {busy ? "Opening secure checkout…" : "Get Pro — $9.99/month"}
+                {busy
+                  ? "Opening secure checkout…"
+                  : `Get Pro — ${PRO_PRICE_LABEL}/month`}
               </button>
             ) : (
               <a className="cx-btn" href="/?upgrade=1">
-                Get Pro — $9.99/month
+                Get Pro — {PRO_PRICE_LABEL}/month
               </a>
             )
           ) : (

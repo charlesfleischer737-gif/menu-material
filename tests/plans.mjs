@@ -1,6 +1,7 @@
 import assert from "node:assert/strict";
 import { createHmac } from "node:crypto";
-import { mkdtempSync, readFileSync, rmSync } from "node:fs";
+import { mkdtempSync, readFileSync, readdirSync, rmSync } from "node:fs";
+import { DatabaseSync } from "node:sqlite";
 import { join } from "node:path";
 import { tmpdir } from "node:os";
 const root = mkdtempSync(join(tmpdir(), "menu-material-plans-"));
@@ -14,13 +15,61 @@ const { enqueue } = await import("../lib/server/generation.ts");
 const { env } = await import("../lib/local-runtime.ts");
 const { transferGuestPhoto } = await import("../lib/guest-studio.ts");
 const { photoBrief } = await import("../lib/studio.ts");
+
+// Upgrade a populated database, keeping existing grants and constraints intact.
+const migrationDb = new DatabaseSync(":memory:");
+try {
+  migrationDb.exec("PRAGMA foreign_keys=ON");
+  for (const file of readdirSync("drizzle")
+    .filter((name) => name.endsWith(".sql") && name < "0018")
+    .sort())
+    migrationDb.exec(readFileSync(join("drizzle", file), "utf8"));
+  migrationDb.exec(`
+    INSERT INTO users (id,email,password,created_at) VALUES ('owner','owner@example.test','fixture',1);
+    INSERT INTO restaurants (id,user_id,name,slug,created_at) VALUES ('restaurant','owner','Test','test',1);
+    INSERT INTO billing_periods (id,restaurant_id,subscription_id,invoice_id,starts_at,ends_at)
+      VALUES ('old','restaurant','sub_old','in_old',1,2);
+  `);
+  const existing = migrationDb.prepare("SELECT * FROM billing_periods").get();
+  migrationDb.exec("BEGIN");
+  migrationDb.exec(readFileSync("drizzle/0018_pro_50_images.sql", "utf8"));
+  migrationDb.exec("COMMIT");
+  assert.deepEqual(
+    migrationDb.prepare("SELECT * FROM billing_periods").get(),
+    existing,
+  );
+  migrationDb.exec(`INSERT INTO billing_periods (id,restaurant_id,subscription_id,invoice_id,starts_at,ends_at)
+    VALUES ('new','restaurant','sub_new','in_new',2,3)`);
+  assert.equal(
+    migrationDb
+      .prepare("SELECT allowance FROM billing_periods WHERE id='new'")
+      .get().allowance,
+    50,
+  );
+  assert.throws(
+    () =>
+      migrationDb.exec(`INSERT INTO billing_periods (id,restaurant_id,subscription_id,invoice_id,starts_at,ends_at)
+    VALUES ('duplicate','restaurant','sub_new','in_new',2,3)`),
+    /UNIQUE/,
+  );
+  assert.throws(
+    () =>
+      migrationDb.exec(`INSERT INTO billing_periods (id,restaurant_id,subscription_id,invoice_id,starts_at,ends_at)
+    VALUES ('foreign','missing','sub_other','in_other',2,3)`),
+    /FOREIGN KEY/,
+  );
+  assert.deepEqual(migrationDb.prepare("PRAGMA foreign_key_check").all(), []);
+} finally {
+  migrationDb.close();
+}
+
 let cookie = "",
   checks = 0,
   stripeCalls = 0,
   checkoutCreates = 0,
   customerCreates = 0;
 let subscriptions = [],
-  priceAmount = 999,
+  priceAmount = 900,
   checkoutStatus = "open",
   lostJobResponse = false,
   lostFinalSaveResponse = false;
@@ -155,7 +204,7 @@ function subscription(rid, start, end, number = 1) {
       id: "in_" + number,
       customer: "cus_1",
       status: "paid",
-      amount_paid: 999,
+      amount_paid: 900,
       billing_reason:
         number === 1 ? "subscription_create" : "subscription_cycle",
       lines: {
@@ -230,11 +279,11 @@ try {
     STRIPE_WEBHOOK_SECRET: "whsec_fixture",
     STRIPE_PRO_PRICE_ID: "price_pro",
   });
-  priceAmount = 1999;
+  priceAmount = 999;
   await call("billing/checkout", {}, 503);
   assert.equal(checkoutCreates, 0);
   checks++;
-  priceAmount = 999;
+  priceAmount = 900;
   await call("billing/checkout", {
     price: "attacker_price",
     customer: "someone_else",
@@ -261,18 +310,45 @@ try {
   await notify("checkout.session.completed");
   assert.equal((await call("state")).billing.plan, "free");
   subscriptions[0].latest_invoice.status = "paid";
+  subscriptions[0].latest_invoice.amount_paid = 899;
+  await notify();
+  assert.equal(
+    (await call("state")).billing.plan,
+    "free",
+    "Underpayment cannot grant Pro images",
+  );
+  subscriptions[0].latest_invoice.amount_paid = 900;
+  subscriptions[0].items.data[0].price.unit_amount = 999;
+  await notify();
+  assert.equal(
+    (await call("state")).billing.plan,
+    "free",
+    "The obsolete $9.99 price cannot grant Pro images",
+  );
+  subscriptions[0].items.data[0].price.unit_amount = 900;
+  checks += 2;
   checkoutStatus = "complete";
   await notify();
   state = await call("state");
   assert.equal(state.billing.plan, "pro");
-  assert.equal(state.remaining, 100);
-  checks += 2;
+  assert.equal(state.remaining, 50);
+  assert.equal(state.billing.allowance, 50);
+  assert.equal(
+    (
+      await one(
+        "SELECT allowance FROM billing_periods WHERE restaurant_id=?",
+        rid,
+      )
+    ).allowance,
+    50,
+  );
+  checks += 4;
   await call("billing/checkout", {}, 409);
   await call("billing/portal", {});
   assert.equal(calls.at(-1).form.customer, "cus_1");
   checks++;
   const proJobs = await Promise.allSettled(
-    Array.from({ length: 51 }, (_, n) =>
+    Array.from({ length: 26 }, (_, n) =>
       enqueue(r, {
         dishId: dish.id,
         requestKey: id(),
@@ -281,8 +357,13 @@ try {
       }),
     ),
   );
-  assert.equal(proJobs.filter((x) => x.status === "fulfilled").length, 50);
+  assert.equal(proJobs.filter((x) => x.status === "fulfilled").length, 25);
   assert.equal(proJobs.find((x) => x.status === "rejected").reason.status, 402);
+  await assert.rejects(
+    () => enqueue(r, { dishId: dish.id, requestKey: id(), candidateCount: 1 }),
+    (error) => error.status === 402,
+    "The 51st image is blocked even when requested alone",
+  );
   checks += 2;
   await notify();
   assert.equal((await call("state")).remaining, 0);
@@ -312,7 +393,7 @@ try {
   checks += 2;
   subscriptions = [subscription(rid, start, end, 2)];
   await notify();
-  assert.equal((await call("state")).remaining, 100);
+  assert.equal((await call("state")).remaining, 50);
   const old = await one(
     "SELECT id,job_id FROM outputs WHERE restaurant_id=? AND credit_period!='free' LIMIT 1",
     rid,
@@ -320,14 +401,14 @@ try {
   await run("UPDATE outputs SET status='failed' WHERE id=?", old.id);
   assert.equal(
     (await call("state")).remaining,
-    100,
+    50,
     "Old failures do not overfill a new month",
   );
   checks++;
   await retryFailed(r, old.job_id);
   assert.equal(
     (await call("state")).remaining,
-    99,
+    49,
     "Retrying old failed work reserves the current paid period",
   );
   checks++;

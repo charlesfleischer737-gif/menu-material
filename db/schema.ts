@@ -7,6 +7,7 @@ import {
   uniqueIndex,
   primaryKey,
 } from "drizzle-orm/sqlite-core";
+import { PRO_PLAN } from "../lib/plans";
 export const users = sqliteTable("users", {
   id: text().primaryKey(),
   email: text().notNull().unique(),
@@ -97,7 +98,7 @@ export const billingPeriods = sqliteTable(
     invoiceId: text("invoice_id").notNull().unique(),
     startsAt: integer("starts_at").notNull(),
     endsAt: integer("ends_at").notNull(),
-    allowance: integer().notNull().default(100),
+    allowance: integer().notNull().default(PRO_PLAN.imagesPerPeriod),
   },
   (t) => [
     index("idx_billing_period_restaurant").on(

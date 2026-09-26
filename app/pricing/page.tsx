@@ -2,6 +2,7 @@ import PublicInformation from "../components/public-information";
 import PlanCards from "../components/plan-cards";
 import { billingEnabled } from "@/lib/server/billing";
 import { pageMetadata } from "../site-metadata";
+import { PRO_PLAN, PRO_PRICE_LABEL } from "@/lib/plans";
 export const dynamic = "force-dynamic";
 export const metadata = pageMetadata({
   title: "Free & Pro plans · Menu Material",
@@ -23,8 +24,8 @@ export default function Pricing() {
     [
       "How does Pro work?",
       enabled
-        ? "Pro is $9.99 a month for 100 images each billing period. Unused images don’t roll over, and you can cancel future renewals from Plans in your workspace."
-        : "Pro will be $9.99 a month for 100 images each billing period, with payment and cancellation in Plans. Subscriptions aren’t open yet.",
+        ? `Pro is ${PRO_PRICE_LABEL} a month for ${PRO_PLAN.imagesPerPeriod} images each billing period. Unused images don’t roll over, and you can cancel future renewals from Plans in your workspace.`
+        : `Pro will be ${PRO_PRICE_LABEL} a month for ${PRO_PLAN.imagesPerPeriod} images each billing period, with payment and cancellation in Plans. Subscriptions aren’t open yet.`,
     ],
     [
       "What happens if I cancel?",
@@ -44,8 +45,8 @@ export default function Pricing() {
       title="A little budget. A lot of good-looking food."
       intro={
         enabled
-          ? "Start with 5 free images. Keep creating with Pro for $9.99 a month."
-          : "Start with 5 free images. Pro is coming soon at $9.99 a month."
+          ? `Start with 5 free images. Keep creating with Pro for ${PRO_PRICE_LABEL} a month.`
+          : `Start with 5 free images. Pro is coming soon at ${PRO_PRICE_LABEL} a month.`
       }
     >
       <PlanCards enabled={enabled} />

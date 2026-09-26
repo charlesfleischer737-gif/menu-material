@@ -14,6 +14,7 @@ import {
 } from "./core";
 import { limitedBytes } from "./safeguards";
 import { imageEntitlement } from "./entitlements";
+import { PRO_PLAN } from "../plans";
 
 export function billingEnabled() {
   return (
@@ -72,10 +73,10 @@ const externalId = (value: string | Row | null | undefined) =>
 function proPrice(price: Row) {
   return (
     price?.id === config("STRIPE_PRO_PRICE_ID") &&
-    price.currency === "usd" &&
-    price.unit_amount === 999 &&
-    price.recurring?.interval === "month" &&
-    price.recurring?.interval_count === 1
+    price.currency === PRO_PLAN.currency &&
+    price.unit_amount === PRO_PLAN.amountCents &&
+    price.recurring?.interval === PRO_PLAN.interval &&
+    price.recurring?.interval_count === PRO_PLAN.intervalCount
   );
 }
 function origin() {
@@ -159,7 +160,7 @@ async function reconcile(account: Row, lease: string) {
   const paid =
     ["active", "past_due"].includes(sub.status) &&
     invoice?.status === "paid" &&
-    invoice.amount_paid >= 999 &&
+    invoice.amount_paid >= PRO_PLAN.amountCents &&
     ["subscription_create", "subscription_cycle"].includes(
       invoice.billing_reason,
     ) &&
@@ -187,7 +188,7 @@ async function reconcile(account: Row, lease: string) {
       db()
         .prepare(
           `INSERT OR IGNORE INTO billing_periods (id,restaurant_id,subscription_id,invoice_id,starts_at,ends_at,allowance)
-    SELECT ?,?,?,?,?,?,100 WHERE EXISTS(SELECT 1 FROM billing_accounts WHERE restaurant_id=? AND lease_token=?)`,
+    SELECT ?,?,?,?,?,?,? WHERE EXISTS(SELECT 1 FROM billing_accounts WHERE restaurant_id=? AND lease_token=?)`,
         )
         .bind(
           sub.id + ":" + item.current_period_start,
@@ -196,6 +197,7 @@ async function reconcile(account: Row, lease: string) {
           invoice.id,
           item.current_period_start * 1000,
           item.current_period_end * 1000,
+          PRO_PLAN.imagesPerPeriod,
           account.restaurant_id,
           lease,
         ),

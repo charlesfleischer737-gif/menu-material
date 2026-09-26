@@ -378,7 +378,7 @@ Menu Material's defensible position is **the owner's real food, owned by them, k
 
 ## 8. Pricing and packaging
 
-- **Cost per image is unmeasured.** Pro at $9.99 for 100 images brings in $0.10 per image. The app's own safety reservation is $2 per image, and the real cost per *approved* image (including retries, photo analysis and captions) hasn't been measured with the current model. Measure it before opening Pro.
+- **Cost per image is unmeasured.** The corrected Pro plan is $9 for 50 images, or $0.18 per image before fees (updated September 25, 2026 to match Stripe). The app's own safety reservation is $2 per image, and the real cost per *approved* image (including retries, photo analysis and captions) hasn't been measured with the current model. Measure it before opening Pro.
 - **Comparable prices** (some are third-party figures; check them before quoting):
   - FoodShot AI: $15 for 25 images, $45 for 100
   - FoodPhoto.ai: $9.99 for about 70 credits

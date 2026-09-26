@@ -9,6 +9,7 @@ import {
 } from "@/components/ui/dialog";
 import { api, type Row } from "@/lib/client";
 import PlanCards from "./plan-cards";
+import { PRO_PLAN, PRO_PRICE_LABEL } from "@/lib/plans";
 export default function PlanDialog({
   open,
   close,
@@ -156,8 +157,11 @@ export default function PlanDialog({
           {notice && <p role="status">{notice}</p>}
           {billing.plan === "pro" ? (
             <section className="pw-plan-current">
-              <h2>Pro · $9.99/month</h2>
-              <p>100 full-quality images each paid billing period.</p>
+              <h2>Pro · {PRO_PRICE_LABEL}/month</h2>
+              <p>
+                {PRO_PLAN.imagesPerPeriod} full-quality images each paid billing
+                period.
+              </p>
               <p>
                 {billing.cancelAtPeriodEnd
                   ? "Your subscription ends"

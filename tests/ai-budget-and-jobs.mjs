@@ -153,7 +153,7 @@ async function restaurant(name, { paid = false, budget } = {}) {
       `sub_${name}`,
     );
     await run(
-      "INSERT INTO billing_periods (id,restaurant_id,subscription_id,invoice_id,starts_at,ends_at,allowance) VALUES (?,?,?,?,?,?,100)",
+      "INSERT INTO billing_periods (id,restaurant_id,subscription_id,invoice_id,starts_at,ends_at,allowance) VALUES (?,?,?,?,?,?,50)",
       `bp_${name}`,
       rid,
       `sub_${name}`,
@@ -425,12 +425,12 @@ try {
     "a free restaurant keeps its $20 daily budget",
   );
   const proImages = await restaurant("pro-images", { paid: true });
-  for (let n = 0; n < 100; n++)
+  for (let n = 0; n < 50; n++)
     await reserveAi({ restaurantId: proImages.rid, kind: "image" });
   await assert.rejects(
     () => reserveAi({ restaurantId: proImages.rid, kind: "image" }),
     (e) => e.status === 429,
-    "up to the plan's 100 images a day",
+    "up to the plan's 50 images a day",
   );
   const proCapped = await restaurant("pro-capped", {
     paid: true,
