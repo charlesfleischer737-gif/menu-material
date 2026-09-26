@@ -6,13 +6,13 @@ import Kitty from "./kitty";
    production build ("navigateClientSide is not a function"), so a <Link>
    click there does nothing. These are separate server-rendered pages anyway. */
 
-// Shared public-site chrome: an evergreen sticky bar and a quiet footer.
+// Shared public-site chrome: a frosted stone sticky bar and a quiet footer.
 export function SiteHeader({ children }: { children: ReactNode }) {
   return (
     <header className="pw-header">
       <div className="pw-header-inner">
         <a className="pw-brand" href="/" aria-label="Menu Material home">
-          <Brand reversed />
+          <Brand />
         </a>
         {children}
       </div>

@@ -13,11 +13,6 @@
   --pw-heading: clamp(1.75rem, 3.2vw, 2.625rem);
   --pw-section-lead: clamp(1.0625rem, 1.5vw, 1.1875rem);
   --pw-header-height: 56px;
-  /* The homepage's light from the top edge: an ellipse reaching 70vw to each
-     side and 600px down, faded out 70% of the way (420px down). */
-  --pw-light: 70vw 600px;
-  --pw-light-reach: 420px;
-  --pw-light-color: rgb(63 191 127 / 22%);
   min-height: 100vh;
   background: var(--workspace-surface);
   color: var(--pw-ink);
@@ -40,30 +35,28 @@
   overflow: hidden;
 }
 
-/* Header: a solid evergreen bar that stays with the page. The visitor Photo
-   Studio turns it frosted stone (app/launch.css). */
+/* Header: a frosted stone bar that stays with the page, the same on every
+   public page and in the visitor Photo Studio. */
 .pw-header {
   position: sticky;
   top: 0;
   z-index: 50;
-  background: var(--green-ink);
+  background: var(--canvas-glass);
+  -webkit-backdrop-filter: var(--glass-blur);
+  backdrop-filter: var(--glass-blur);
+  box-shadow: 0 1px 0 rgb(0 0 0 / 6%);
 }
-/* On the homepage the logo's green glows down from the top edge of the page,
-   through the header into the hero. Both draw the same ellipse, sized in
-   viewport units and pixels rather than percentages of either box, so they
-   read as one surface. As the page scrolls, the landing page moves the
-   header's part up with it (--pw-scroll), so the light leaves with the hero
-   instead of staying in the bar. */
+/* On the homepage it is solid stone, one surface with the hero at the top of
+   the page and the same color over the green band, whose white heading would
+   otherwise show through. Its hairline appears once the page scrolls beneath
+   it (data-scrolled, set by the landing page). */
 .pw-homepage .pw-header {
-  background:
-    radial-gradient(
-        var(--pw-light) at 50% 0,
-        var(--pw-light-color),
-        transparent 70%
-      )
-      50% calc(-1 * var(--pw-scroll, 0px)) / 100% var(--pw-light-reach)
-      no-repeat,
-    var(--green-ink);
+  background: var(--gray-100);
+  -webkit-backdrop-filter: none;
+  backdrop-filter: none;
+}
+.pw-homepage .pw-header:not([data-scrolled]) {
+  box-shadow: none;
 }
 .pw-header-inner {
   display: flex;
@@ -95,13 +88,13 @@
   padding: 12px 0;
   border: 0;
   background: none;
-  color: var(--on-dark-muted);
+  color: rgb(29 29 31 / 80%);
   font: inherit;
   transition: color var(--duration-fast) var(--ease);
 }
 .pw-nav > a:hover,
 .pw-nav > .pw-login:hover {
-  color: var(--on-dark);
+  color: var(--pw-ink);
 }
 .pw-nav > .pw-header-cta[data-ui-button] {
   min-height: 34px;
@@ -117,30 +110,10 @@
   border: 0;
   border-radius: 50%;
   background: none;
-  color: var(--on-dark);
+  color: var(--pw-ink);
 }
-/* On evergreen the main action is a light pill, and focus rings turn bright
-   green so they stay visible. */
-:is(.pw-hero, .pw-start) [data-ui-button],
-.pw-nav > .pw-header-cta[data-ui-button] {
-  background: var(--gray-100);
-  color: var(--green-ink);
-}
-:is(.pw-hero, .pw-start) [data-ui-button]:not(:disabled):hover,
-.pw-nav > .pw-header-cta[data-ui-button]:not(:disabled):hover {
-  background: #fff;
-}
-:is(.pw-hero, .pw-start) [data-ui-button]:not(:disabled):active,
-.pw-nav > .pw-header-cta[data-ui-button]:not(:disabled):active {
-  background: var(--gray-200);
-}
-.pw-site
-  :is(.pw-header, .pw-hero, .pw-showcase, .pw-start)
-  :is(a, button):focus-visible {
-  outline-color: var(--green-bright);
-}
-/* Solid white rather than the shared frosted glass, which the evergreen hero
-   would tint gray. */
+/* Solid white rather than the shared frosted glass, so the headline behind it
+   doesn't show through. */
 .pw-mobile-menu[data-state] {
   min-width: 200px;
   padding: 6px;
@@ -158,24 +131,17 @@
   font-size: var(--text-callout);
 }
 
-/* Hero: a short pitch and the before-and-after on an evergreen band that runs
-   on from the header, under the header's light, and into the showcase.
-   Stacked, the photo sits between the pitch and its action; from 1001px it
-   sits beside them, sized to fit the first screen. */
+/* Hero: a short pitch and the before-and-after on the stone canvas, one
+   surface with the header; the green starts with the showcase below. Stacked,
+   the photo sits between the pitch and its action; from 1001px it sits beside
+   them, sized to fit the first screen. */
 .pw-hero {
   display: grid;
   grid-template-columns: minmax(0, 1fr);
   grid-template-areas: "intro" "compare" "actions";
   justify-items: center;
   padding: clamp(28px, 4vw, 48px) var(--pw-gutter) clamp(48px, 5.5vw, 72px);
-  background:
-    radial-gradient(
-      var(--pw-light) at 50% calc(-1 * var(--pw-header-height)),
-      var(--pw-light-color),
-      transparent 70%
-    ),
-    var(--green-ink);
-  color: var(--on-dark);
+  background: var(--gray-100);
   text-align: center;
 }
 .pw-hero-intro {
@@ -196,7 +162,7 @@
   font-size: clamp(1.0625rem, 1.6vw, 1.25rem);
   line-height: 1.45;
   letter-spacing: -0.012em;
-  color: var(--on-dark-muted);
+  color: var(--pw-muted);
   text-wrap: pretty;
 }
 .pw-hero-actions {
@@ -209,7 +175,7 @@
 }
 .pw-free-note {
   font-size: var(--text-footnote);
-  color: var(--on-dark-muted);
+  color: var(--pw-muted);
 }
 
 /* Phone photo vs. studio result: drag or use the keyboard. */
@@ -227,8 +193,8 @@
   aspect-ratio: 16 / 10;
   overflow: hidden;
   border-radius: var(--radius-media);
-  background: var(--artwork-stage);
-  box-shadow: var(--artwork-edge);
+  background: var(--gray-200);
+  box-shadow: 0 30px 60px -30px rgb(0 0 0 / 30%);
   cursor: ew-resize;
   touch-action: pan-y;
   user-select: none;
@@ -364,22 +330,19 @@
   text-wrap: pretty;
 }
 
-/* Showcase: a full-width wall of style examples that continues the hero's
-   evergreen band, two rows drifting in opposite directions and fading out at
-   the page edges. Each row repeats its photos once, so moving it by half its
-   width loops without a seam. */
+/* Showcase: where the green starts. A full-width wall of style examples on an
+   evergreen band lit from its top edge, two rows drifting in opposite
+   directions and fading out at the page edges. Each row repeats its photos
+   once, so moving it by half its width loops without a seam. */
 .pw-showcase {
   --pw-tile: clamp(156px, 17vw, 240px);
   --pw-tile-gap: clamp(10px, 1vw, 14px);
-  padding-block: 0 clamp(36px, 4vw, 52px);
-  background: var(--green-ink);
+  padding-block: var(--pw-band) clamp(36px, 4vw, 52px);
+  background: var(--green-glow), var(--green-ink);
   color: var(--on-dark);
 }
 .pw-showcase > .pw-section-heading {
   width: calc(100% - 44px);
-}
-.pw-showcase .pw-section-heading p {
-  color: var(--on-dark-muted);
 }
 .pw-showcase-wall {
   display: grid;
@@ -501,6 +464,9 @@
 }
 .pw-showcase-toggle:hover {
   background: rgb(255 255 255 / 18%);
+}
+.pw-site .pw-showcase-toggle:focus-visible {
+  outline-color: var(--green-bright);
 }
 @keyframes pw-showcase-drift {
   to {
@@ -1124,6 +1090,17 @@
 }
 .pw-start [data-ui-button] {
   margin-top: 28px;
+  background: var(--gray-100);
+  color: var(--green-ink);
+}
+.pw-start [data-ui-button]:not(:disabled):hover {
+  background: #fff;
+}
+.pw-start [data-ui-button]:not(:disabled):active {
+  background: var(--gray-200);
+}
+.pw-site .pw-start [data-ui-button]:focus-visible {
+  outline-color: var(--green-bright);
 }
 
 /* Footer */
