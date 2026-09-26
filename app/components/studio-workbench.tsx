@@ -16,7 +16,6 @@ import {
   Images,
   Lightbulb,
   LoaderCircle,
-  PenLine,
   ShieldCheck,
   SlidersHorizontal,
   Sparkles,
@@ -800,6 +799,30 @@ export function StudioWorkbench({
       {busy || "Create photo"}
     </button>
   );
+  // The one offer for owners without a photo: under the canvas on phones,
+  // under Choose a photo on wider screens. The two choices wrap together.
+  const noPhoto = (
+    <p className="st-no-photo">
+      No photo handy?{" "}
+      <span>
+        <button
+          className="st-text-button"
+          disabled={!!busy}
+          onClick={() => update({ mode: "description" })}
+        >
+          Describe your dish
+        </button>{" "}
+        or{" "}
+        <button
+          className="st-text-button"
+          disabled={!!busy}
+          onClick={() => void trySample()}
+        >
+          try a sample
+        </button>
+      </span>
+    </p>
+  );
 
   const tile = (style: PhotoStyle, index: number) => {
     const reason = suggestionReason(style, context);
@@ -1034,16 +1057,7 @@ export function StudioWorkbench({
                   Just crop or brighten
                 </button>
               )}
-              {!source && b.mode === "photo" && (
-                <button
-                  className="st-text-button"
-                  disabled={!!busy}
-                  onClick={() => update({ mode: "description" })}
-                >
-                  <PenLine size={14} />
-                  No photo? Describe your dish
-                </button>
-              )}
+              {!source && b.mode === "photo" && noPhoto}
               {b.mode === "description" && (
                 <button
                   className="st-text-button"
@@ -1074,7 +1088,10 @@ export function StudioWorkbench({
           </section>
           <aside className="st-inspector" aria-label="Photo settings">
             {!source && b.mode === "photo" && (
-              <section className="st-section" aria-labelledby="st-photo-title">
+              <section
+                className="st-section st-photo-section"
+                aria-labelledby="st-photo-title"
+              >
                 <h2 id="st-photo-title" className="st-section-title">
                   Photo
                 </h2>
@@ -1085,30 +1102,19 @@ export function StudioWorkbench({
                 >
                   Choose a photo
                 </button>
-                <p className="st-photo-links">
-                  {!state.guest && originals.length > 0 && (
-                    <>
-                      <button
-                        ref={dishesTrigger}
-                        className="st-text-button"
-                        disabled={!!busy}
-                        onClick={() => setDishesOpen(true)}
-                      >
-                        From My Dishes
-                      </button>
-                      <span aria-hidden="true">·</span>
-                    </>
-                  )}
-                  <button
-                    className="st-text-button"
-                    disabled={!!busy}
-                    onClick={() => void trySample()}
-                  >
-                    {!state.guest && originals.length
-                      ? "Try a sample"
-                      : "No photo handy? Try a sample"}
-                  </button>
-                </p>
+                {!state.guest && originals.length > 0 && (
+                  <p className="st-photo-links">
+                    <button
+                      ref={dishesTrigger}
+                      className="st-text-button"
+                      disabled={!!busy}
+                      onClick={() => setDishesOpen(true)}
+                    >
+                      From My Dishes
+                    </button>
+                  </p>
+                )}
+                {noPhoto}
               </section>
             )}
 
