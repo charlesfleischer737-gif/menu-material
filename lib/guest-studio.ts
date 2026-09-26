@@ -2,6 +2,7 @@ import { api, type Row } from "./client";
 import { styleFor, emptyAdjustments, resolvePhotoLook } from "./studio";
 import { photoLookContext } from "./photo-recipe";
 import { activeInspirationId } from "./studio-reference";
+import { hasProFeatures } from "./upgrade";
 import {
   rememberPreference,
   workspacePreferenceKey,
@@ -58,6 +59,18 @@ export async function transferGuestPhoto(
   if ((draft.look === "reference" || activeReference) && !reference)
     throw Error(
       "Add an inspiration photo, or choose another look to continue.",
+    );
+  // Inspiration photos are Pro: say so before anything is saved.
+  if (
+    (draft.look === "reference" || activeReference) &&
+    create &&
+    !hasProFeatures(state)
+  )
+    throw Object.assign(
+      Error(
+        "Inspiration photos are part of Pro. Choose another look to make this image on the free plan.",
+      ),
+      { code: "pro_required", feature: "savedLooks" },
     );
   if (transfer.restaurantId && transfer.restaurantId !== state.restaurant.id)
     throw Error(

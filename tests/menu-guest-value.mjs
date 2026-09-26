@@ -242,6 +242,16 @@ Ramen 1,200`);
 
   // API: imported dishes join My Dishes (matched by name, or created).
   await call("auth/dev", {});
+  // This suite exercises Pro features: comp the workspace (never images).
+  {
+    const own = (await call("state")).restaurant;
+    await call("admin/restaurant", {
+      id: own.id,
+      allowance: own.allowance,
+      paused: false,
+      proUntil: Date.now() + 10 * 365 * 86400000,
+    });
+  }
   await call("restaurant/name", { name: "Juniper Café" });
   const croissant = await call("dishes", {
     name: "Butter Croissant",

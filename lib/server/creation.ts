@@ -15,7 +15,7 @@ import {
   run,
   type Row,
 } from "./core";
-import { effectiveStyle } from "./entitlements";
+import { effectiveStyle, requirePro } from "./entitlements";
 import { enqueue, provider } from "./generation";
 import { styleSchema, validateStyle } from "./promotions";
 import { advanceBatches, retryFailed } from "./menu-tools";
@@ -24,6 +24,7 @@ import { manageDrafts } from "./drafts";
 import { studioLibraryRoute } from "./studio-library";
 import { photoCorrectionsRoute } from "./photo-corrections";
 import { lookRecipeSchema } from "../studio-library";
+import { freePostDraft } from "../post-templates";
 import {
   creationEventKinds,
   parseCreationEventDetails,
@@ -56,6 +57,10 @@ export async function creationRoute(req: Request, p: string[], r: Row) {
     return analyzePhoto(r, (await body(req)).sourceId);
   if (p[0] === "creation-drafts") {
     const b = draftSchema.parse(await body(req));
+    // Free posts use its three designs; a post with Pro options can still be
+    // opened and downloaded, but changes need Free options or Pro.
+    if (b.kind === "post" && !freePostDraft(b.draft))
+      await requirePro(r.id, "postTemplates");
     const content = JSON.stringify(b.draft);
     assert(
       content.length < 48000,
@@ -273,6 +278,8 @@ export async function creationRoute(req: Request, p: string[], r: Row) {
       return response({ ok: true });
     }
     if (prior) return response({ batch: JSON.parse(prior.draft) });
+    // A started batch can continue and retry; starting one is Pro.
+    await requirePro(r.id, "batches");
     const b = z
       .object({
         items: z

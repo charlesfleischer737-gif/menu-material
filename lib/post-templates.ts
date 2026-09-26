@@ -1,5 +1,6 @@
 import type { Row } from "./client";
 import { postHeadline } from "./post-flow";
+import { FREE_POST_TEMPLATES } from "./plans";
 
 /** Original compositions informed by restaurant feeds; reference imagery is never used in exports. */
 export const postTemplates = [
@@ -172,6 +173,27 @@ export function getPostTemplate(id: string) {
   };
   return (
     postTemplates.find((t) => t.id === (aliases[id] || id)) || postTemplates[0]
+  );
+}
+/**
+ * A post Free can save: one of its three designs, one photo, as a post or
+ * Story, in the design's own colors and type.
+ */
+export function freePostDraft(draft: Row) {
+  const t = getPostTemplate(String(draft.template || "chef"));
+  const same = (value: unknown, own: string) =>
+    !value || String(value).toLowerCase() === own.toLowerCase();
+  return (
+    FREE_POST_TEMPLATES.includes(t.id) &&
+    (Array.isArray(draft.items) ? draft.items.length : 0) <= 1 &&
+    (Array.isArray(draft.channels) ? draft.channels : []).every(
+      (channel: unknown) => channel === "feed" || channel === "story",
+    ) &&
+    draft.brandMode !== "restaurant" &&
+    draft.brandMode !== "custom" &&
+    (!draft.typography || draft.typography === "template") &&
+    same(draft.color, t.color) &&
+    same(draft.accent, t.accent)
   );
 }
 const retiredHeadlines = [

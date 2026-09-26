@@ -1,5 +1,5 @@
 import type { Row } from "./core";
-import { effectiveStyle, entitlementSql } from "./entitlements";
+import { effectiveStyle, entitlementSql, requirePro } from "./entitlements";
 import { settleCorrection } from "./correction-policy";
 import { z } from "zod";
 import { checkStudioGeneration } from "./studio-release";
@@ -427,6 +427,10 @@ export async function enqueue(
     ).catch(() => {});
     return { ...cached, reused: true };
   }
+  // Saved looks and inspiration photos are Pro for new work. A correction
+  // repeats what the original request used.
+  if (!policy && (lookContext?.savedLookId || style.referenceIds.length))
+    await requirePro(r.id, "savedLooks");
   // Accepted work and reusable completed results above do not need their
   // references again. New work must have every reference before reserving quota.
   await requireStudioReferences(r.id, style.referenceIds);

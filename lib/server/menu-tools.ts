@@ -1,4 +1,4 @@
-import { effectiveStyle, entitlementSql } from "./entitlements";
+import { effectiveStyle, entitlementSql, requirePro } from "./entitlements";
 import { z } from "zod";
 import { checkStudioGeneration } from "./studio-release";
 import { validateImageDimensions } from "./image-validation";
@@ -179,6 +179,8 @@ export async function menuTools(req: Request, p: string[], r: Row) {
       );
       return response({ ok: true });
     }
+    // Existing links keep working until they expire; new ones are Pro.
+    await requirePro(r.id, "staffLinks");
     const raw = token();
     await run(
       "INSERT INTO staff_links (hash,restaurant_id,expires_at,created_at) VALUES (?,?,?,?)",
@@ -239,6 +241,8 @@ export async function menuTools(req: Request, p: string[], r: Row) {
       );
       return response({ ok: true });
     }
+    // A batch already accepted can finish and retry; starting one is Pro.
+    await requirePro(r.id, "batches");
     for (const i of b.items) {
       assert(
         await one(

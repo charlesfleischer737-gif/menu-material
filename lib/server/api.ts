@@ -12,7 +12,7 @@ import {
   saveStudioRelease,
 } from "./studio-release";
 import { billingRoute, billingSummary, billingEnabled } from "./billing";
-import { effectiveStyle } from "./entitlements";
+import { effectiveStyle, requirePro } from "./entitlements";
 import { validateImageDimensions } from "./image-validation";
 import { analyzeGuestPhoto } from "./photo-analysis";
 import { checkMenuSharing, menuLinkOrigin } from "./menu-sharing";
@@ -29,7 +29,7 @@ import {
   slugify,
 } from "../restaurant-identity";
 import { normalizeDietary } from "../dietary";
-import { FREE_SIGNUP_IMAGES, isProFeature } from "../plans";
+import { FREE_SIGNUP_IMAGES, freeMenuDesign, isProFeature } from "../plans";
 import {
   menuDocumentsRoute,
   assetInPublishedDocuments,
@@ -1855,6 +1855,8 @@ async function route(req: Request) {
       }
       if (p[1] === "publish") {
         const draft = menuSchema.parse(JSON.parse(r.menu_draft));
+        // The older single menu follows the same rule: Free uses the basic design.
+        if (!freeMenuDesign(draft)) await requirePro(r.id, "menuDesigns");
         assert(
           draft.sections.some((s) => s.items.length),
           400,

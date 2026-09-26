@@ -545,6 +545,30 @@ try {
     "Missing guest inspiration is detected before account writes",
   );
   const guestReference = { file, normalized: file, url: "blob:reference" };
+  // Inspiration photos are Pro: a free account hears so before any writes.
+  await assert.rejects(
+    transferGuestPhoto(
+      referenceDraft,
+      { file, normalized: file, url: "blob:local" },
+      guestReference,
+      guestState,
+      referenceTransfer,
+    ),
+    /Inspiration photos are part of Pro/,
+  );
+  assert.equal(
+    referenceTransfer.dishId,
+    undefined,
+    "Free inspiration is refused before account writes",
+  );
+  // A guest signing in to an account with Pro features continues with it.
+  await run(
+    "UPDATE restaurants SET pro_until=? WHERE id=?",
+    Date.now() + 86400000,
+    guestState.restaurant.id,
+  );
+  Object.assign(guestState, await call("state"));
+  checks += 2;
   await transferGuestPhoto(
     referenceDraft,
     { file, normalized: file, url: "blob:local" },
