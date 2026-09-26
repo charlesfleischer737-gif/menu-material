@@ -39,35 +39,16 @@ function inPlace(action: () => void) {
   };
 }
 
-// The header draws the top of the hero's light (marketing.css). Moving that up
-// as the page scrolls keeps the two joined while the hero leaves; past the
-// light's reach the header is plain evergreen, so updates stop there.
-function useLightInStep(root: RefObject<HTMLDivElement | null>) {
+// At the top of the page the header is one stone surface with the hero; once
+// the page scrolls beneath it, it gets its hairline (marketing.css).
+function useScrolledHeader(root: RefObject<HTMLDivElement | null>) {
   useEffect(() => {
     const header = root.current?.querySelector<HTMLElement>(".pw-header");
     if (!header) return;
-    const reach =
-      parseFloat(
-        getComputedStyle(header).getPropertyValue("--pw-light-reach"),
-      ) || Infinity;
-    let frame = 0,
-      shown = -1;
-    const place = () => {
-      frame = 0;
-      const offset = Math.min(Math.max(scrollY, 0), reach);
-      if (offset === shown) return;
-      shown = offset;
-      header.style.setProperty("--pw-scroll", `${offset}px`);
-    };
-    const onScroll = () => {
-      frame ||= requestAnimationFrame(place);
-    };
-    place();
-    addEventListener("scroll", onScroll, { passive: true });
-    return () => {
-      removeEventListener("scroll", onScroll);
-      cancelAnimationFrame(frame);
-    };
+    const update = () => header.toggleAttribute("data-scrolled", scrollY > 0);
+    update();
+    addEventListener("scroll", update, { passive: true });
+    return () => removeEventListener("scroll", update);
   }, [root]);
 }
 
@@ -84,7 +65,7 @@ export default function Landing({
   const navigationTarget = useRef<string | null>(null);
   const start = inPlace(onStart),
     signIn = inPlace(onSignIn);
-  useLightInStep(root);
+  useScrolledHeader(root);
   return (
     <div className="pw-site pw-homepage" ref={root}>
       <a className="skip-link" href="#main">
