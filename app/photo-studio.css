@@ -233,6 +233,7 @@
   padding: 0 8px;
   color: var(--st-muted);
   font-size: var(--text-footnote);
+  text-wrap: pretty;
 }
 .st-stage-foot > span {
   display: inline-flex;
@@ -355,7 +356,33 @@
   font-size: var(--text-footnote);
 }
 .st-photo-links .st-text-button {
-  font-size: var(--text-callout);
+  font-size: var(--text-subhead);
+}
+/* Without a photo: one sentence offers a description or the sample. Its
+   choices are links in the sentence, as tall as its lines, and wrap
+   together. */
+.st-studio .st-no-photo {
+  margin: 0;
+  color: var(--st-muted);
+  font-size: var(--text-footnote);
+  line-height: 1.3;
+}
+.st-no-photo > span {
+  display: inline-block;
+}
+.st-studio .st-no-photo .st-text-button {
+  position: relative;
+  min-height: 0;
+}
+.st-inspector .st-no-photo {
+  margin-top: 12px;
+  font-size: var(--text-subhead);
+  text-align: center;
+  text-wrap: balance;
+}
+/* Phones only; wider screens show it under Choose a photo. */
+.st-stage-foot .st-no-photo {
+  display: none;
 }
 /* Style */
 :is(.st-studio, .st-sheet, .st-paused, .st-header) .st-subject {
@@ -399,6 +426,15 @@
 .st-tile {
   position: relative;
   min-width: 0;
+}
+/* The narrowest tiles (small phones, four across beside the photo) set
+   names a touch smaller, so a word of up to 7em still fits whole; the
+   longest in a style name, selected, is 6.8em. */
+.st-style-grid .st-tile {
+  container-type: inline-size;
+}
+.st-style-grid .st-tile-name {
+  font-size: min(var(--text-caption), 100cqi / 7);
 }
 .st-style-grid > .st-tile-phone {
   display: none;
@@ -493,6 +529,8 @@
   outline: 2px solid var(--workspace-focus);
   outline-offset: 4px;
 }
+/* Names wrap between words, never inside one; only a word too long for any
+   tile (an owner's own name) breaks. */
 .st-tile-name {
   display: -webkit-box;
   width: 100%;
@@ -503,8 +541,6 @@
   font-size: var(--text-caption);
   line-height: 1.3;
   overflow-wrap: break-word;
-  -webkit-hyphens: auto;
-  hyphens: auto;
   transition: color var(--duration-fast) var(--ease);
 }
 .st-tile[data-selected] .st-tile-name {
@@ -764,7 +800,9 @@ textarea.st-input {
 .st-header-copy {
   min-width: 0;
 }
-.cx-app .st-header h1 {
+/* The same title before signup as in the workspace, not the site's larger
+   page heading. */
+:is(.cx-app, .cx-guest) .st-header h1 {
   font: 700 var(--text-title1) / 1.15 var(--font-display);
   letter-spacing: var(--tracking-display);
 }
@@ -772,6 +810,7 @@ textarea.st-input {
   margin-top: 4px;
   color: var(--workspace-muted);
   font-size: var(--text-body);
+  line-height: 1.4;
 }
 .st-header-tools {
   display: flex;
@@ -2118,7 +2157,6 @@ textarea.st-input {
 @media (pointer: coarse) {
   :is(.st-studio, .st-sheet, .st-paused, .st-header)
     :is(
-      .st-glass-button,
       .st-text-button,
       .st-subject,
       .st-back,
@@ -2126,6 +2164,19 @@ textarea.st-input {
       .st-library-rail button
     ) {
     min-height: 44px;
+  }
+  /* A glass button keeps the height of the label beside it, clear of the
+     photo below, and the no-photo choices the height of their line; only
+     their targets grow to 44px. */
+  :is(.st-studio, .st-sheet, .st-paused, .st-header) .st-glass-button::before,
+  .st-studio .st-no-photo .st-text-button::before {
+    content: "";
+    position: absolute;
+    top: 50%;
+    right: 0;
+    left: 0;
+    height: 44px;
+    translate: 0 -50%;
   }
   :is(.st-studio, .st-sheet) .st-icon-button {
     width: 44px;
@@ -2226,11 +2277,21 @@ textarea.st-input {
   .st-canvas.has-photo .st-photo {
     max-height: min(56vh, 460px);
   }
-  .st-inspector .st-photo-pill {
+  /* The canvas is the way to add a photo, and the no-photo offer sits right
+     under it; the Photo section keeps only My Dishes, if there is one. */
+  .st-inspector :is(.st-photo-pill, .st-no-photo) {
+    display: none;
+  }
+  .st-photo-section:not(:has(.st-photo-links)) {
     display: none;
   }
   .st-inspector .st-photo-links {
     margin-top: 0;
+  }
+  .st-stage-foot .st-no-photo {
+    display: block;
+    flex-basis: 100%;
+    margin-top: 6px;
   }
   .st-canvas .st-dropzone {
     padding: 20px;

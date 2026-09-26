@@ -1,6 +1,6 @@
 "use client";
 import { useCallback, useEffect, useRef, useState } from "react";
-import { ArrowLeft, Sparkles } from "lucide-react";
+import { Sparkles } from "lucide-react";
 import { api, normalizePhoto, type Row } from "@/lib/client";
 import {
   emptyAdjustments,
@@ -407,20 +407,11 @@ export default function GuestStudio({
           className="cx-tool cx-feature-page cx-guided-studio"
           data-action-layout
         >
+          {/* The logo leads home; the photo starts right below the title. */}
           <header className="st-header">
             <div className="st-header-copy">
               <h1>Photo Studio</h1>
               <p>Add your photo. Find your look. Make it menu material.</p>
-            </div>
-            <div className="st-header-tools">
-              <button
-                className="st-text-button"
-                onClick={onBack}
-                disabled={!!busy}
-              >
-                <ArrowLeft size={16} />
-                Back
-              </button>
             </div>
           </header>
           {error && (
