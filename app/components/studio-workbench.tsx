@@ -10,6 +10,8 @@ import {
   ArrowRight,
   BookOpen,
   ChevronDown,
+  ChevronLeft,
+  ChevronRight,
   ImagePlus,
   Images,
   Lightbulb,
@@ -36,9 +38,6 @@ import {
   DropdownMenuRadioGroup,
   DropdownMenuRadioItem,
   DropdownMenuSeparator,
-  DropdownMenuSub,
-  DropdownMenuSubContent,
-  DropdownMenuSubTrigger,
   DropdownMenuTrigger,
 } from "@/components/ui/dropdown-menu";
 import {
@@ -218,6 +217,24 @@ export function StudioWorkbench({
   const [undo, setUndo] = useState<{ patch: Row; name: string } | null>(null),
     [notice, setNotice] = useState("");
   const [dragging, setDragging] = useState(false);
+  // Drinks open in place of the list rather than beside it: a side menu has
+  // no room on a phone.
+  const [drinkList, setDrinkList] = useState(false);
+  const subjectMenu = useRef<HTMLDivElement>(null);
+  function showDrinks(show: boolean) {
+    setDrinkList(show);
+    // Keyboard focus follows into the list that replaced the one it was in:
+    // the chosen drink, the first one, or back to Drinks.
+    requestAnimationFrame(() => {
+      const find = (selector: string) =>
+        subjectMenu.current?.querySelector<HTMLElement>(selector);
+      (show
+        ? find('[role="menuitemradio"][data-state="checked"]') ||
+          find('[role="menuitemradio"]')
+        : find("[data-drinks]")
+      )?.focus();
+    });
+  }
   const inspirationSession = useRef<{
     base: Row;
     origin: "browse" | "custom" | "main";
@@ -1003,7 +1020,7 @@ export function StudioWorkbench({
                 {state.guest
                   ? state.user
                     ? "Your photo is saved to your account when you create it."
-                    : "Your photo stays on this device until you sign up."
+                    : "Your photo is kept on this device until you sign up."
                   : b.mode === "description"
                     ? "Illustrations are labeled as illustrations."
                     : "Your original photo is always kept."}
@@ -1101,7 +1118,9 @@ export function StudioWorkbench({
                   Style
                 </h2>
                 {source && b.mode === "photo" && (
-                  <DropdownMenu>
+                  <DropdownMenu
+                    onOpenChange={(open) => open && setDrinkList(false)}
+                  >
                     <DropdownMenuTrigger asChild>
                       <button
                         className="st-subject"
@@ -1128,36 +1147,22 @@ export function StudioWorkbench({
                       </button>
                     </DropdownMenuTrigger>
                     <DropdownMenuContent
+                      ref={subjectMenu}
                       className="cx-workspace-popover st-menu"
                       align="end"
                     >
-                      <DropdownMenuLabel>Suggest styles for</DropdownMenuLabel>
-                      <DropdownMenuRadioGroup
-                        value={
-                          confirmed && b.recommendationFamily !== "Drinks"
-                            ? b.recommendationFamily
-                            : ""
-                        }
-                        onValueChange={(value) => identify(value)}
-                      >
-                        {foodFamilies
-                          .filter((family) => family !== "Drinks")
-                          .map((family) => (
-                            <DropdownMenuRadioItem key={family} value={family}>
-                              {family}
-                            </DropdownMenuRadioItem>
-                          ))}
-                      </DropdownMenuRadioGroup>
-                      <DropdownMenuSub>
-                        <DropdownMenuSubTrigger>
-                          Drinks
-                          {confirmed && b.recommendationFamily === "Drinks" && (
-                            <span className="st-menu-value">
-                              {drinkNames[b.recommendationDrink] || "Drink"}
-                            </span>
-                          )}
-                        </DropdownMenuSubTrigger>
-                        <DropdownMenuSubContent className="cx-workspace-popover st-menu">
+                      {drinkList ? (
+                        <>
+                          <DropdownMenuItem
+                            onSelect={(event) => {
+                              event.preventDefault();
+                              showDrinks(false);
+                            }}
+                          >
+                            <ChevronLeft aria-hidden="true" />
+                            Back
+                          </DropdownMenuItem>
+                          <DropdownMenuLabel>Drinks</DropdownMenuLabel>
                           <DropdownMenuRadioGroup
                             value={
                               confirmed && b.recommendationFamily === "Drinks"
@@ -1172,18 +1177,63 @@ export function StudioWorkbench({
                               </DropdownMenuRadioItem>
                             ))}
                           </DropdownMenuRadioGroup>
-                        </DropdownMenuSubContent>
-                      </DropdownMenuSub>
-                      {retryAnalysis &&
-                        b.analysisStatus === "unavailable" &&
-                        state.aiConnected && (
-                          <>
-                            <DropdownMenuSeparator />
-                            <DropdownMenuItem onSelect={retryAnalysis}>
-                              Read my photo again
-                            </DropdownMenuItem>
-                          </>
-                        )}
+                        </>
+                      ) : (
+                        <>
+                          <DropdownMenuLabel>
+                            Suggest styles for
+                          </DropdownMenuLabel>
+                          <DropdownMenuRadioGroup
+                            value={
+                              confirmed && b.recommendationFamily !== "Drinks"
+                                ? b.recommendationFamily
+                                : ""
+                            }
+                            onValueChange={(value) => identify(value)}
+                          >
+                            {foodFamilies
+                              .filter((family) => family !== "Drinks")
+                              .map((family) => (
+                                <DropdownMenuRadioItem
+                                  key={family}
+                                  value={family}
+                                >
+                                  {family}
+                                </DropdownMenuRadioItem>
+                              ))}
+                          </DropdownMenuRadioGroup>
+                          <DropdownMenuItem
+                            inset
+                            data-drinks
+                            onSelect={(event) => {
+                              event.preventDefault();
+                              showDrinks(true);
+                            }}
+                          >
+                            Drinks
+                            {confirmed &&
+                              b.recommendationFamily === "Drinks" && (
+                                <span className="st-menu-value">
+                                  {drinkNames[b.recommendationDrink] || "Drink"}
+                                </span>
+                              )}
+                            <ChevronRight
+                              className="st-menu-chevron"
+                              aria-hidden="true"
+                            />
+                          </DropdownMenuItem>
+                          {retryAnalysis &&
+                            b.analysisStatus === "unavailable" &&
+                            state.aiConnected && (
+                              <>
+                                <DropdownMenuSeparator />
+                                <DropdownMenuItem onSelect={retryAnalysis}>
+                                  Read my photo again
+                                </DropdownMenuItem>
+                              </>
+                            )}
+                        </>
+                      )}
                     </DropdownMenuContent>
                   </DropdownMenu>
                 )}

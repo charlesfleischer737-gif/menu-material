@@ -91,6 +91,10 @@ try {
       mode: "photo",
       look: "menu-stone",
       note: "Keep the bowl",
+      sourceId: "guest-photo",
+      analysisSourceId: "guest-photo",
+      analysisStatus: "manual",
+      recommendationFamily: "Pizza",
     },
     photo,
     null,
@@ -110,9 +114,39 @@ try {
   assert.equal(handed.dishId, handOff.dishId);
   assert.equal(handed.look, "menu-stone");
   assert.equal(handed.note, "Keep the bowl");
+  // What the photo shows, as read or as the guest said, stays with the saved
+  // photo, so the workspace doesn't read it again over the guest's choice.
+  assert.equal(handed.analysisSourceId, handOff.sourceId);
+  assert.equal(handed.analysisStatus, "manual");
+  assert.equal(handed.recommendationFamily, "Pizza");
+  checks++;
+  // A photo still being read is read again in the workspace.
+  const unread = { id: id(), revision: 0, requestKey: id() };
+  await transferGuestPhoto(
+    {
+      ...photoBrief(),
+      mode: "photo",
+      sourceId: "guest-photo",
+      analysisSourceId: "guest-photo",
+      analysisStatus: "analyzing",
+    },
+    photo,
+    null,
+    state,
+    unread,
+    undefined,
+    { create: false },
+  );
+  assert.equal(
+    JSON.parse(
+      (await one("SELECT draft FROM creation_drafts WHERE id=?", unread.id))
+        .draft,
+    ).analysisSourceId,
+    "",
+  );
   checks++;
   console.log(
-    `Guest studio: ${checks} checks passed (samples stay samples after signup; sign-in hands the draft to the workspace without making an image).`,
+    `Guest studio: ${checks} checks passed (samples stay samples after signup; sign-in hands the draft and what the photo shows to the workspace without making an image).`,
   );
 } finally {
   rmSync(root, { recursive: true, force: true });

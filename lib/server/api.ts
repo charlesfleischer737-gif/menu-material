@@ -13,6 +13,7 @@ import {
 } from "./studio-release";
 import { billingRoute, billingSummary, billingEnabled } from "./billing";
 import { validateImageDimensions } from "./image-validation";
+import { analyzeGuestPhoto } from "./photo-analysis";
 import { checkMenuSharing, menuLinkOrigin } from "./menu-sharing";
 import {
   changeMenuAddress,
@@ -721,6 +722,8 @@ async function route(req: Request) {
       // No account details, availability promise or email-delivery claim.
       return response({ ok: true }, 202);
     }
+    if (p[0] === "guest-photo-analysis" && method === "POST")
+      return await analyzeGuestPhoto(req);
     if (p[0] === "public" && p[1]) {
       // Earlier addresses (printed QR codes) resolve to the restaurant's menu.
       const r = (await resolveMenuAddress(p[1])).restaurant;
