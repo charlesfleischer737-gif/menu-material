@@ -12,6 +12,7 @@ import {
   saveStudioRelease,
 } from "./studio-release";
 import { billingRoute, billingSummary, billingEnabled } from "./billing";
+import { passwordResetEnabled, requestPasswordReset } from "./password-reset";
 import { effectiveStyle, requirePro } from "./entitlements";
 import { validateImageDimensions } from "./image-validation";
 import { analyzeGuestPhoto } from "./photo-analysis";
@@ -241,28 +242,30 @@ async function signup(req: Request, b: Row) {
   assert(
     invite,
     403,
-    "This invitation is invalid, expired, or belongs to another email. Request a new link from the administrator.",
+    "This link is invalid, expired, or belongs to another email. Request a new link and try again.",
   );
   if (invite.role === "reset") {
     const u = await one("SELECT id FROM users WHERE email=?", email);
     assert(u, 400, "Account not found.");
-    const resetClaim = id();
+    const resetClaim = id(),
+      newPassword = hashPassword(password),
+      resetTime = now();
     await db().batch([
       db()
         .prepare(
-          "UPDATE users SET password=? WHERE id=? AND EXISTS(SELECT 1 FROM invites WHERE hash=? AND used_by IS NULL)",
+          "UPDATE users SET password=? WHERE id=? AND EXISTS(SELECT 1 FROM invites WHERE hash=? AND used_by IS NULL AND expires_at>?)",
         )
-        .bind(hashPassword(password), u.id, hash),
+        .bind(newPassword, u.id, hash, resetTime),
       db()
         .prepare(
-          "DELETE FROM sessions WHERE user_id=? AND EXISTS(SELECT 1 FROM invites WHERE hash=? AND used_by IS NULL)",
+          "DELETE FROM sessions WHERE user_id=? AND EXISTS(SELECT 1 FROM invites WHERE hash=? AND used_by IS NULL AND expires_at>?)",
         )
-        .bind(u.id, hash),
+        .bind(u.id, hash, resetTime),
       db()
         .prepare(
-          "UPDATE invites SET used_by=? WHERE hash=? AND used_by IS NULL",
+          "UPDATE invites SET used_by=? WHERE hash=? AND used_by IS NULL AND expires_at>?",
         )
-        .bind(resetClaim, hash),
+        .bind(resetClaim, hash, resetTime),
       // Any other reset link for this account stops working too.
       db()
         .prepare(
@@ -274,8 +277,9 @@ async function signup(req: Request, b: Row) {
       (await one("SELECT used_by FROM invites WHERE hash=?", hash))?.used_by ===
         resetClaim,
       409,
-      "This reset invitation has already been used.",
+      "This reset link has expired or already been used. Request a new link.",
     );
+    await loginSucceeded(email);
     return await createSession(req, u.id);
   }
   assert(
@@ -784,6 +788,12 @@ async function route(req: Request) {
       return response({ ok: true });
     }
     if (p[0] === "auth") {
+      if (p[1] === "recovery" && method === "GET")
+        return response({ enabled: passwordResetEnabled() });
+      if (p[1] === "forgot-password") {
+        assert(method === "POST", 405, "Method not allowed.");
+        return await requestPasswordReset(req);
+      }
       // Per network and before the body is read, so malformed floods stay
       // cheap and only slow their sender.
       if (
