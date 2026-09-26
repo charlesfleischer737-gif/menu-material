@@ -2078,7 +2078,7 @@
 .pro-note {
   display: flex;
   flex-wrap: wrap;
-  align-items: center;
+  align-items: flex-start;
   gap: 4px 10px;
   margin: 8px 0;
   padding: 10px 14px;
@@ -2089,6 +2089,9 @@
 .pro-note p {
   flex: 1 1 200px;
   margin: 0;
+}
+.pro-note > .pro-badge {
+  margin-top: 1px;
 }
 .pro-note .cx-link {
   min-height: 44px;
@@ -2128,6 +2131,9 @@
 .promotion-pro-previews figure {
   margin: 0;
 }
+.promotion-pro-previews .offer-canvas {
+  margin: 0;
+}
 .promotion-pro-previews figcaption {
   margin-top: 6px;
   color: var(--gray-600);
@@ -2137,7 +2143,17 @@
   justify-self: start;
 }
 @media (max-width: 720px) {
+  /* A swipeable row, so the three previews don't make a long page. */
   .promotion-pro-previews {
-    grid-template-columns: minmax(0, 1fr);
+    grid-template-columns: none;
+    grid-auto-flow: column;
+    grid-auto-columns: 72%;
+    overflow-x: auto;
+    overscroll-behavior-x: contain;
+    scroll-snap-type: x mandatory;
+    padding-bottom: 4px;
+  }
+  .promotion-pro-previews figure {
+    scroll-snap-align: start;
   }
 }

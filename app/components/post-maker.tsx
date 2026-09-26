@@ -462,8 +462,8 @@ export default function PostMaker({
       )}
       {!pro && !freePostDraft(b) && (
         <ProNote feature="postTemplates">
-          This post uses Pro options. You can still download it; to change
-          it, choose a free design or get Pro.
+          This post uses Pro options. You can still download it; to change it,
+          choose a free design or get Pro.
         </ProNote>
       )}
       {!items.length ? (
@@ -827,8 +827,10 @@ export default function PostMaker({
                   <>
                     <h2>Design</h2>
                     <p className="mm-muted">
-                      Your restaurant colors carry through each design. The
-                      photo and layout adapt to each format.
+                      {pro
+                        ? "Your restaurant colors carry through each design."
+                        : "Each design uses its own colors and type."}{" "}
+                      The photo and layout adapt to each format.
                     </p>
                     {b.compositionVersion !== 2 ? (
                       // Older designs render at 4:5 only; the improved one offers 3:4.

@@ -274,8 +274,7 @@ export default function PromotionWorkspace({
     [recovery, setRecovery] = useState<Row | null>(null),
     [advice, setAdvice] = useState("");
   // Without Pro, campaigns can be previewed, and old ones viewed.
-  const pro = hasProFeatures(state),
-    [previewSeed, setPreviewSeed] = useState<Row | null>(null);
+  const pro = hasProFeatures(state);
   const saved = useRef<Row | null>(null),
     current = useRef<Row | null>(null),
     saving = useRef<Promise<Row> | null>(null),
@@ -443,13 +442,10 @@ export default function PromotionWorkspace({
       );
   }, [active, state.promotions]);
   useEffect(() => {
+    // Without Pro, a suggestion or dish opens in the preview instead.
+    if (!pro) return;
     if (seed && seedUsed.current !== seed) {
       seedUsed.current = seed;
-      if (!pro) {
-        setPreviewSeed(seed);
-        onSeedUsed?.();
-        return;
-      }
       void action("Preparing suggestion", async () => {
         await create(seed);
         onSeedUsed?.();
@@ -603,9 +599,9 @@ export default function PromotionWorkspace({
       )}
       {!form && !pro ? (
         <CampaignPreview
-          key={previewSeed?.items?.[0]?.dishId || ""}
+          key={seed?.items?.[0]?.dishId || ""}
           state={state}
-          seed={previewSeed}
+          seed={seed || null}
         />
       ) : !form ? (
         <div className="cx-empty promotion-empty">

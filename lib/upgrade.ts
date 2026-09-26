@@ -1,3 +1,4 @@
+import type { Row } from "./client";
 import type { ProFeature } from "./plans";
 
 // Any control can ask the workspace to explain a Pro feature and offer Pro.
@@ -18,5 +19,5 @@ export function requestUpgrade(feature: ProFeature, auto = false) {
 }
 
 /** Whether the workspace's plan includes Pro features right now. */
-export const hasProFeatures = (state: Record<string, any> | null | undefined) =>
+export const hasProFeatures = (state: Row | null | undefined) =>
   state?.billing?.features?.unlocked !== false;

@@ -198,11 +198,7 @@ async function publication(r: Row, documentId: string, draft: MenuDocument) {
 const specialsOnly = (published: string | null) =>
   !!published && !JSON.parse(published).sections?.length;
 /** A stand-in with no dishes, so live specials stay open to guests. */
-function specialsPage(
-  r: Row,
-  snapshot: string | null,
-  style: Record<string, any>,
-) {
+function specialsPage(r: Row, snapshot: string | null, style: Row) {
   return JSON.stringify({
     restaurant: snapshot
       ? JSON.parse(snapshot).restaurant
@@ -1079,9 +1075,15 @@ export async function menuDocumentsRoute(req: Request, p: string[], r: Row) {
         )
         .bind(serialized, t, r.id, row.id, t, b.revision),
     ]);
-    if (!(await one("SELECT id FROM menu_publication_history WHERE id=?", hid))) {
+    if (
+      !(await one("SELECT id FROM menu_publication_history WHERE id=?", hid))
+    ) {
       if (await overLimit()) proRequired("menus");
-      assert(false, 409, "The menu changed during publication. Review it again.");
+      assert(
+        false,
+        409,
+        "The menu changed during publication. Review it again.",
+      );
     }
     await event(r.id, "menu_published", row.id, {
       version: 2,

@@ -134,9 +134,10 @@ export default function PlanDialog({
     setError("");
     try {
       if (action === "checkout" && offered)
-        await api("events", { kind: "upgrade_clicked", feature: offered }).catch(
-          () => {},
-        );
+        await api("events", {
+          kind: "upgrade_clicked",
+          feature: offered,
+        }).catch(() => {});
       const result = await api("billing/" + action, {});
       const url = new URL(result.url);
       if (
@@ -241,6 +242,7 @@ export default function PlanDialog({
             </section>
           ) : (
             <PlanCards
+              proFirst={!!offered}
               enabled={billing.enabled}
               onUpgrade={() => void visit("checkout")}
               onFree={close}

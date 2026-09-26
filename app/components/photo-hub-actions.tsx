@@ -1,12 +1,6 @@
 "use client";
 import { useRef, useState, type Ref } from "react";
-import {
-  BookOpen,
-  Download,
-  Megaphone,
-  Package,
-  Sparkles,
-} from "lucide-react";
+import { BookOpen, Download, Megaphone, Package, Sparkles } from "lucide-react";
 import { photoReviewReminder } from "@/lib/photo-use";
 import WorkspaceActionBar from "./workspace-action-bar";
 import { ProBadge } from "./pro-badge";

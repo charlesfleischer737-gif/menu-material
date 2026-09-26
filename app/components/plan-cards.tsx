@@ -26,6 +26,7 @@ export default function PlanCards({
   onFree,
   busy = false,
   comingSoon,
+  proFirst = false,
 }: {
   enabled?: boolean;
   onUpgrade?: () => void;
@@ -33,9 +34,11 @@ export default function PlanCards({
   busy?: boolean;
   /** Replaces the Pro card's "open soon" note while billing is off. */
   comingSoon?: ReactNode;
+  /** Lead with Pro when the cards stack, for an offer of a Pro feature. */
+  proFirst?: boolean;
 }) {
   return (
-    <div className="pw-plan-grid">
+    <div className={`pw-plan-grid ${proFirst ? "is-pro-first" : ""}`}>
       <article className="pw-plan-card">
         <h2>Free</h2>
         <p className="pw-plan-tagline">A great first impression.</p>

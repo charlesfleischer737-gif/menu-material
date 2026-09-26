@@ -92,7 +92,12 @@ export async function hasProFeatures(restaurantId: string) {
 }
 
 export function proRequired(feature: ProFeature): never {
-  throw new AppError(402, proFeatures[feature].blocked, "pro_required", feature);
+  throw new AppError(
+    402,
+    proFeatures[feature].blocked,
+    "pro_required",
+    feature,
+  );
 }
 
 export async function requirePro(restaurantId: string, feature: ProFeature) {
@@ -100,8 +105,8 @@ export async function requirePro(restaurantId: string, feature: ProFeature) {
 }
 
 /** The saved look as stored, whatever the plan. */
-export function parseSavedStyle(raw: unknown): Record<string, any> {
-  if (raw && typeof raw === "object") return raw as Record<string, any>;
+export function parseSavedStyle(raw: unknown): Row {
+  if (raw && typeof raw === "object") return raw as Row;
   try {
     const parsed = JSON.parse(String(raw || "{}"));
     return parsed && typeof parsed === "object" ? parsed : {};
@@ -114,7 +119,7 @@ export function parseSavedStyle(raw: unknown): Record<string, any> {
  * The restaurant look new work uses: the saved look with Pro features, and
  * neutral defaults on Free. The saved look is kept either way.
  */
-export function styleForPlan(saved: Record<string, any>, unlocked: boolean) {
+export function styleForPlan(saved: Row, unlocked: boolean) {
   return unlocked ? saved : { ...defaultStyle };
 }
 

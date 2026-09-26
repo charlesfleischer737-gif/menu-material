@@ -95,9 +95,7 @@ try {
       INSERT INTO users (id,email,password,created_at) VALUES ('owner','owner@example.test','fixture',1);
       INSERT INTO restaurants (id,user_id,name,slug,created_at) VALUES ('restaurant','owner','Test','test',1);
     `);
-    migrationDb.exec(
-      readFileSync("drizzle/0019_pro_feature_comp.sql", "utf8"),
-    );
+    migrationDb.exec(readFileSync("drizzle/0019_pro_feature_comp.sql", "utf8"));
     assert.equal(
       migrationDb.prepare("SELECT pro_until FROM restaurants").get().pro_until,
       null,
