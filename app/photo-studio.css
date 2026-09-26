@@ -384,6 +384,11 @@
 .st-stage-foot .st-no-photo {
   display: none;
 }
+/* With nothing to show (a signed-out guest's photo has no note), the space
+   under the canvas closes up. */
+.st-stage-foot:not(:has(> :not(.st-no-photo))) {
+  display: none;
+}
 /* Style */
 :is(.st-studio, .st-sheet, .st-paused, .st-header) .st-subject {
   display: inline-flex;
@@ -2288,9 +2293,14 @@ textarea.st-input {
   .st-inspector .st-photo-links {
     margin-top: 0;
   }
+  .st-stage-foot:has(> .st-no-photo) {
+    display: flex;
+  }
   .st-stage-foot .st-no-photo {
     display: block;
     flex-basis: 100%;
+  }
+  .st-stage-foot > span + .st-no-photo {
     margin-top: 6px;
   }
   .st-canvas .st-dropzone {

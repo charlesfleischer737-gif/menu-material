@@ -846,6 +846,15 @@ export function StudioWorkbench({
       </span>
     </p>
   );
+  // Under the canvas: what becomes of the photo. A signed-out guest gets no
+  // note.
+  const stageNote = guestOnly
+    ? ""
+    : state.guest
+      ? "Your photo is saved to your account when you create it."
+      : b.mode === "description"
+        ? "Illustrations are labeled as illustrations."
+        : "Your original photo is always kept.";
 
   const tile = (style: PhotoStyle, index: number) => {
     const reason = suggestionReason(style, context);
@@ -1061,16 +1070,12 @@ export function StudioWorkbench({
               )}
             </div>
             <div className="st-stage-foot">
-              <span>
-                <ShieldCheck size={14} aria-hidden="true" />
-                {state.guest
-                  ? state.user
-                    ? "Your photo is saved to your account when you create it."
-                    : "Your photo is kept on this device until you sign up."
-                  : b.mode === "description"
-                    ? "Illustrations are labeled as illustrations."
-                    : "Your original photo is always kept."}
-              </span>
+              {stageNote && (
+                <span>
+                  <ShieldCheck size={14} aria-hidden="true" />
+                  {stageNote}
+                </span>
+              )}
               {source && !state.guest && b.mode === "photo" && (
                 <button
                   className="st-text-button"
