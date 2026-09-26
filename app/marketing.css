@@ -1490,8 +1490,29 @@
   .pw-mobile-menu-trigger {
     display: grid;
   }
+  /* The pitch, the before-and-after and its action share the first screen:
+     the hero is at least the height the browser shows below the header (svh
+     counts its toolbars as showing) and the photo takes whatever the text
+     leaves, from 200px up to 4:5, centered in any height beyond that. */
+  .pw-hero {
+    grid-template-rows: auto minmax(200px, 1fr) auto;
+    row-gap: 24px;
+    min-height: calc(100vh - var(--pw-header-height));
+    min-height: calc(100svh - var(--pw-header-height));
+    padding-bottom: 24px;
+  }
+  .pw-compare-block {
+    align-self: center;
+    height: 100%;
+    max-height: calc((100vw - 44px) * 1.25);
+    margin-top: 0;
+  }
+  .pw-hero-actions {
+    margin-top: 0;
+  }
   .pw-compare {
-    aspect-ratio: 4 / 5;
+    height: 100%;
+    aspect-ratio: auto;
     border-radius: var(--radius-card);
   }
   .pw-information-header h1 {
