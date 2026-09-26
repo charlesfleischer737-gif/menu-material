@@ -427,6 +427,15 @@
   position: relative;
   min-width: 0;
 }
+/* The narrowest tiles (small phones, four across beside the photo) set
+   names a touch smaller, so a word of up to 7em still fits whole; the
+   longest in a style name, selected, is 6.8em. */
+.st-style-grid .st-tile {
+  container-type: inline-size;
+}
+.st-style-grid .st-tile-name {
+  font-size: min(var(--text-caption), 100cqi / 7);
+}
 .st-style-grid > .st-tile-phone {
   display: none;
 }
@@ -520,6 +529,8 @@
   outline: 2px solid var(--workspace-focus);
   outline-offset: 4px;
 }
+/* Names wrap between words, never inside one; only a word too long for any
+   tile (an owner's own name) breaks. */
 .st-tile-name {
   display: -webkit-box;
   width: 100%;
@@ -530,8 +541,6 @@
   font-size: var(--text-caption);
   line-height: 1.3;
   overflow-wrap: break-word;
-  -webkit-hyphens: auto;
-  hyphens: auto;
   transition: color var(--duration-fast) var(--ease);
 }
 .st-tile[data-selected] .st-tile-name {
