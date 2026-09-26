@@ -17,8 +17,10 @@ import {
   type GuestDraftRecord,
 } from "@/lib/guest-studio-storage";
 import { studioLookPatch } from "@/lib/studio-discovery";
+import { photoAnalysisRecommendation } from "@/lib/studio-onboarding";
 import { activeInspirationId, inspirationPatch } from "@/lib/studio-reference";
 import {
+  readGuestPhoto,
   transferGuestPhoto,
   type GuestPhoto,
   type GuestTransfer,
@@ -129,6 +131,13 @@ export default function GuestStudio({
       photo: restoredPhoto,
       reference: restoredReference,
     };
+    // A photo still being read when the page closed is read again.
+    if (
+      restoredPhoto &&
+      record.draft.analysisSourceId === record.draft.sourceId &&
+      record.draft.analysisStatus === "analyzing"
+    )
+      void readPhoto(restoredPhoto.normalized);
     // Resuming restores work; creation always requires the owner's action.
     setRequested(false);
     persisted.current = true;
@@ -272,6 +281,45 @@ export default function GuestStudio({
       }
     }
   }
+  // Suggestions follow what's in the photo, as in the workspace. The latest
+  // photo's answer is the only one used, and never over the owner's choice.
+  const analysisRun = useRef(0);
+  async function readPhoto(normalized: Blob) {
+    const run = ++analysisRun.current;
+    const settle = (patch: (current: Row) => Row) => {
+      if (run !== analysisRun.current) return;
+      setDraft((current) => {
+        const next = patch(current);
+        return Object.keys(next).length ? { ...current, ...next } : current;
+      });
+    };
+    if (!state.aiConnected) {
+      settle(() => ({
+        analysisSourceId: "guest-photo",
+        analysisStatus: "unavailable",
+        recommendationFamily: "",
+      }));
+      return;
+    }
+    settle(() => ({
+      analysisSourceId: "guest-photo",
+      analysisStatus: "analyzing",
+      recommendationFamily: "",
+    }));
+    try {
+      const result = await readGuestPhoto(normalized);
+      settle((current) =>
+        photoAnalysisRecommendation(current, result, "guest-photo"),
+      );
+    } catch {
+      settle((current) =>
+        current.analysisSourceId === "guest-photo" &&
+        current.analysisStatus === "analyzing"
+          ? { analysisStatus: "unavailable", recommendationFamily: "" }
+          : {},
+      );
+    }
+  }
   async function upload(file: File, options: { sample?: boolean } = {}) {
     if (lock.current) return;
     lock.current = true;
@@ -294,10 +342,13 @@ export default function GuestStudio({
         sample: !!options.sample,
         sourceId: "guest-photo",
         mode: "photo",
-        analysisStatus: "manual",
-        analysisSourceId: "guest-photo",
+        analysisAdvice: "",
+        analysisSubject: "",
+        menuDocument: false,
+        recommendationDrink: "other",
         adjustments: { ...emptyAdjustments },
       });
+      void readPhoto(normalized);
     } catch (e) {
       setError((e as Error).message);
     } finally {
@@ -474,6 +525,11 @@ export default function GuestStudio({
                 ),
               );
             }}
+            retryAnalysis={
+              photo && state.aiConnected
+                ? () => void readPhoto(photo.normalized)
+                : undefined
+            }
             create={create}
             quickEdit={() => {}}
             openMenu={() => {}}

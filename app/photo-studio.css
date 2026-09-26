@@ -1788,6 +1788,12 @@ textarea.st-input {
   padding-left: 12px;
   color: var(--workspace-muted);
 }
+.st-menu-chevron {
+  margin-left: auto;
+}
+.st-menu-value + .st-menu-chevron {
+  margin-left: 0;
+}
 
 /* Customize */
 .st-customize.st-sheet[data-slot="dialog-content"] {

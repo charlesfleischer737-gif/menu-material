@@ -899,6 +899,62 @@ try {
     "Analysis usage is recorded",
   );
   await call("photo-analysis", { sourceId: foreignDraft }, 404);
+  // Photo Studio before signup reads the photo too: signed out, nothing is
+  // stored, and the check counts against the site-wide budget.
+  const guestAnalysis = async (bytes, network, expected = 200) => {
+    const form = new FormData();
+    form.set("file", new File([bytes], "photo.jpg", { type: "image/jpeg" }));
+    const res = await handle(
+      new Request("http://localhost/api/guest-photo-analysis", {
+        method: "POST",
+        headers: { "cf-connecting-ip": network },
+        body: form,
+      }),
+    );
+    const data = await res.json();
+    assert.equal(res.status, expected, JSON.stringify(data));
+    checks++;
+    return data;
+  };
+  const guestStart = {
+    calls,
+    assets: (await one("SELECT count(*) n FROM assets")).n,
+    drafts: (await one("SELECT count(*) n FROM creation_drafts")).n,
+  };
+  const guestRead = await guestAnalysis(jpeg, "203.0.113.7");
+  assert.equal(guestRead.family, "Drinks");
+  assert.equal(guestRead.drinkKind, "beer");
+  assert.equal(guestRead.subject, "A pint of stout");
+  assert.equal(calls - guestStart.calls, 1);
+  assert.equal(
+    (await one("SELECT count(*) n FROM assets")).n,
+    guestStart.assets,
+  );
+  assert.equal(
+    (await one("SELECT count(*) n FROM creation_drafts")).n,
+    guestStart.drafts,
+    "A guest's photo is read, never stored",
+  );
+  const guestSpend = await one(
+    "SELECT kind,status,reserved_cents FROM ai_spend WHERE restaurant_id='guest'",
+  );
+  assert.equal(guestSpend.kind, "analysis");
+  assert.equal(guestSpend.status, "submitted");
+  assert(guestSpend.reserved_cents < 1, "Settled at its measured token cost");
+  await guestAnalysis(Buffer.from("not a photo"), "203.0.113.7", 400);
+  assert.equal(calls - guestStart.calls, 1, "Only photos are sent");
+  const runtime = (await import("../lib/local-runtime.ts")).env;
+  runtime.AI_GUEST_DAILY_CALLS = "1";
+  assert.match(
+    (await guestAnalysis(jpeg, "203.0.113.8", 429)).error,
+    /Tell us what’s in your photo/,
+  );
+  delete runtime.AI_GUEST_DAILY_CALLS;
+  assert.equal(calls - guestStart.calls, 1, "Guests share a daily cap");
+  for (let i = 0; i < 20; i++)
+    await guestAnalysis(Buffer.from("not a photo"), "203.0.113.9", 400);
+  await guestAnalysis(jpeg, "203.0.113.9", 429);
+  assert.equal(calls - guestStart.calls, 1, "Each network has its own limit");
   assert(
     (await call("creation-drafts")).drafts.every((d) =>
       ["studio", "menu", "post"].includes(d.kind),

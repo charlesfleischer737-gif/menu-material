@@ -38,13 +38,17 @@ function setting(key: string, fallback: number) {
 }
 // The schema default for restaurants.daily_budget_cents ($20).
 const DEFAULT_RESTAURANT_BUDGET_CENTS = 2000;
+// Visitors trying Photo Studio before signup have no restaurant. Their photo
+// checks are recorded under this ID, against the site-wide budget and a daily
+// cap of their own.
+export const GUEST_AI = "guest";
 // What a new reservation must satisfy, checked atomically when it is inserted
 // and ahead of time before an image is claimed. Daily budgets count finished
 // calls at their settled cost. Free plans also have a daily cap on calls other
 // than images. On an active paid plan the default restaurant budget never
 // holds images below what the plan's allowance could use in a day; an
 // administrator's own restaurant budget and the site-wide budget still apply.
-async function reservationTerms(charge: AiCharge, restaurant: Row) {
+async function reservationTerms(charge: AiCharge, restaurant: Row | null) {
   const rid = charge.restaurantId;
   const cents = Math.max(
     1,
@@ -61,26 +65,38 @@ async function reservationTerms(charge: AiCharge, restaurant: Row) {
       ) * 100,
     ),
   );
+  const day = budgetDay();
+  const siteSql = `COALESCE((SELECT json_extract(value,'$.paused') FROM app_settings WHERE key='ai-controls'),0)=0
+     AND COALESCE((SELECT SUM(reserved_cents) FROM ai_spend WHERE budget_day=? AND status!='rejected'),0)+?<=COALESCE((SELECT json_extract(value,'$.dailyBudgetCents') FROM app_settings WHERE key='ai-controls'),10000)`;
+  if (rid === GUEST_AI) {
+    const cap = Math.floor(setting("AI_GUEST_DAILY_CALLS", 500));
+    return {
+      cents,
+      cap,
+      day,
+      sql: `${siteSql}
+     AND (SELECT COUNT(*) FROM ai_spend WHERE budget_day=? AND restaurant_id=? AND status!='rejected')<?`,
+      args: [day, cents, day, rid, cap],
+    };
+  }
   const plan = await imageEntitlement(rid);
   const paid = plan.plan !== "free";
   const floor =
     paid &&
     charge.kind === "image" &&
-    Number(restaurant.daily_budget_cents) === DEFAULT_RESTAURANT_BUDGET_CENTS
+    Number(restaurant?.daily_budget_cents) === DEFAULT_RESTAURANT_BUDGET_CENTS
       ? plan.allowance * cents
       : 0;
   const cap =
     !paid && charge.kind !== "image"
       ? Math.floor(setting("AI_FREE_DAILY_TEXT_CALLS", 40))
       : null;
-  const day = budgetDay();
   return {
     cents,
     cap,
     day,
     sql: `EXISTS(SELECT 1 FROM restaurants WHERE id=? AND paused=0)
-     AND COALESCE((SELECT json_extract(value,'$.paused') FROM app_settings WHERE key='ai-controls'),0)=0
-     AND COALESCE((SELECT SUM(reserved_cents) FROM ai_spend WHERE budget_day=? AND status!='rejected'),0)+?<=COALESCE((SELECT json_extract(value,'$.dailyBudgetCents') FROM app_settings WHERE key='ai-controls'),10000)
+     AND ${siteSql}
      AND COALESCE((SELECT SUM(reserved_cents) FROM ai_spend WHERE budget_day=? AND restaurant_id=? AND status!='rejected'),0)+?<=MAX((SELECT daily_budget_cents FROM restaurants WHERE id=?),?)
      AND (? IS NULL OR (SELECT COUNT(*) FROM ai_spend WHERE budget_day=? AND restaurant_id=? AND kind!='image' AND status!='rejected')<?)`,
     args: [rid, day, cents, day, rid, cents, rid, floor, cap, day, rid, cap],
@@ -94,12 +110,15 @@ export async function reserveAi(charge: AiCharge) {
     "AI creation is temporarily paused. Your saved work is safe.",
   );
   const rid = charge.restaurantId;
-  const r = await one(
-    "SELECT paused,daily_budget_cents FROM restaurants WHERE id=?",
-    rid,
-  );
+  const guest = rid === GUEST_AI;
+  const r = guest
+    ? null
+    : await one(
+        "SELECT paused,daily_budget_cents FROM restaurants WHERE id=?",
+        rid,
+      );
   assert(
-    r && !r.paused,
+    guest || (r && !r.paused),
     423,
     "AI creation is paused for this restaurant. Your queued work is saved.",
   );
@@ -120,6 +139,11 @@ export async function reserveAi(charge: AiCharge) {
     terms.cents,
     now(),
     ...terms.args,
+  );
+  assert(
+    inserted.meta.changes || !guest,
+    429,
+    "Photo suggestions are busy right now. Tell us what’s in your photo, or try again later.",
   );
   if (!inserted.meta.changes && terms.cap !== null) {
     const used = await one(

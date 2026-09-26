@@ -7,6 +7,28 @@ import {
   workspacePreferenceKey,
 } from "./workspace-navigation";
 export type GuestPhoto = { file: File; normalized: Blob; url: string };
+// What's in a photo chosen before signup, to suggest styles. Only a small
+// copy is sent (the model reads photos at 512 px), and nothing is stored.
+export async function readGuestPhoto(normalized: Blob) {
+  const bitmap = await createImageBitmap(normalized);
+  const scale = Math.min(1, 768 / Math.max(bitmap.width, bitmap.height));
+  const canvas = document.createElement("canvas");
+  canvas.width = Math.round(bitmap.width * scale);
+  canvas.height = Math.round(bitmap.height * scale);
+  canvas.getContext("2d")!.drawImage(bitmap, 0, 0, canvas.width, canvas.height);
+  bitmap.close();
+  const copy = await new Promise<Blob>((resolve, reject) =>
+    canvas.toBlob(
+      (blob) =>
+        blob ? resolve(blob) : reject(Error("Photo could not be prepared.")),
+      "image/jpeg",
+      0.85,
+    ),
+  );
+  const form = new FormData();
+  form.set("file", copy, "photo.jpg");
+  return api("guest-photo-analysis", form);
+}
 export type GuestTransfer = {
   id: string;
   revision: number;
@@ -82,11 +104,19 @@ export async function transferGuestPhoto(
     transfer[key] = (await api("assets", form)).id;
     await persistProgress();
   }
+  // What the photo shows, read here or said by the owner, stays with the saved
+  // photo, so the workspace doesn't read it again or lose the owner's choice.
+  const analyzed =
+    draft.mode === "photo" &&
+    !!transfer.sourceId &&
+    draft.analysisSourceId === draft.sourceId &&
+    ["ready", "manual", "uncertain"].includes(draft.analysisStatus);
   const saved = {
     ...draft,
     measurementOrigin: "guest",
     dishId: transfer.dishId,
     sourceId: transfer.sourceId || "",
+    analysisSourceId: analyzed ? transfer.sourceId : "",
     referenceId: transfer.referenceId || "",
     photoReferenceIds:
       draft.photoReferenceIds == null

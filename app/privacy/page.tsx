@@ -32,7 +32,8 @@ export default function Privacy() {
           create an account or sign in and generate. They are then saved to your
           account and removed from the browser. Photos not saved to an account
           expire after 24 hours and are deleted the next time Photo Studio
-          opens.
+          opens. To suggest styles before signup, a small copy of the photo is
+          sent to OpenAI to see what it shows; Menu Material does not store it.
         </p>
         <p>
           Usage records include creation status, approvals, exports and support
