@@ -84,6 +84,9 @@ export class AppError extends Error {
   constructor(
     public status: number,
     message: string,
+    // Lets the page respond to a kind of error, such as offering Pro.
+    public code?: string,
+    public feature?: string,
   ) {
     super(message);
   }

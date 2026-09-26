@@ -1,7 +1,7 @@
 "use client";
 import type { ReactNode } from "react";
 import { Check } from "lucide-react";
-import { PRO_PLAN, PRO_PRICE_LABEL } from "@/lib/plans";
+import { FREE_SIGNUP_IMAGES, PRO_PLAN, PRO_PRICE_LABEL } from "@/lib/plans";
 /* eslint-disable @next/next/no-html-link-for-pages --
    Plain links on purpose: next/link's client navigation throws in the vinext
    production build ("navigateClientSide is not a function"), so a <Link>
@@ -26,6 +26,7 @@ export default function PlanCards({
   onFree,
   busy = false,
   comingSoon,
+  proFirst = false,
 }: {
   enabled?: boolean;
   onUpgrade?: () => void;
@@ -33,22 +34,25 @@ export default function PlanCards({
   busy?: boolean;
   /** Replaces the Pro card's "open soon" note while billing is off. */
   comingSoon?: ReactNode;
+  /** Lead with Pro when the cards stack, for an offer of a Pro feature. */
+  proFirst?: boolean;
 }) {
   return (
-    <div className="pw-plan-grid">
+    <div className={`pw-plan-grid ${proFirst ? "is-pro-first" : ""}`}>
       <article className="pw-plan-card">
         <h2>Free</h2>
         <p className="pw-plan-tagline">A great first impression.</p>
         <p className="pw-plan-price">$0</p>
         <p className="pw-plan-allowance">
-          <strong>5 images</strong> to get started.
+          <strong>{FREE_SIGNUP_IMAGES} images</strong> to get started.
         </p>
         <Features
           items={[
-            "Free images never expire",
-            "Full-quality images and exports",
-            "Photos for your menu and social channels",
-            "No credit card required",
+            "Full-quality photos in every style, no watermark",
+            "Every download size, for delivery apps and social",
+            "One live menu with its QR code, PDF and table card",
+            "Posts and Stories in three designs",
+            "Free images never expire. No credit card",
           ]}
         />
         <div className="pw-plan-action">
@@ -68,7 +72,9 @@ export default function PlanCards({
           <h2>Pro</h2>
           {!enabled && <span className="pw-plan-badge">Coming soon</span>}
         </div>
-        <p className="pw-plan-tagline">Keep good food in the spotlight.</p>
+        <p className="pw-plan-tagline">
+          Keep your restaurant looking its best, every week.
+        </p>
         <p className="pw-plan-price">
           {PRO_PRICE_LABEL}
           <span>/month</span>
@@ -78,10 +84,13 @@ export default function PlanCards({
         </p>
         <Features
           items={[
-            "New images every billing period",
-            "The same full-quality images and exports",
-            "New dishes, menu refreshes and weekly specials",
-            "Matching posts and Stories from approved photos",
+            "Your restaurant look on every photo, post and menu",
+            "Every post and menu design, plus carousels",
+            "Campaigns: a matching post, Story, counter sign and menu special",
+            "Up to 30 live menus, with full menu insights",
+            "Saved looks, inspiration photos and batches",
+            "Staff photo links",
+            "No “Made with Menu Material” on your menus",
             "Cancel future renewals anytime",
           ]}
         />
@@ -101,7 +110,8 @@ export default function PlanCards({
           ) : (
             (comingSoon ?? (
               <p className="pw-plan-soon">
-                Subscriptions open soon. Start with 5 free images today.
+                Subscriptions open soon. Start with {FREE_SIGNUP_IMAGES} free
+                images today.
               </p>
             ))
           )}

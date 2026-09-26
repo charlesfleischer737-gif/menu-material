@@ -37,6 +37,8 @@ import {
 import {
   postTemplates,
   applyPostTemplate,
+  freePostDraft,
+  getPostTemplate,
   ownerChoices,
 } from "@/lib/post-templates";
 import {
@@ -46,6 +48,9 @@ import {
   recommendedDesigns,
 } from "@/lib/post-composition";
 import { campaignZip, renderPost } from "@/lib/creation-export";
+import { FREE_POST_TEMPLATES } from "@/lib/plans";
+import { hasProFeatures, requestUpgrade } from "@/lib/upgrade";
+import { ProBadge, ProNote } from "./pro-badge";
 import { release } from "@/lib/post-kit";
 import { postShape } from "@/lib/sharing";
 import { emptyAdjustments } from "@/lib/studio";
@@ -67,7 +72,14 @@ import WorkspaceTabs from "./workspace-tabs";
 import PostSharing from "./post-sharing";
 import { PostCanvas } from "./post-canvas";
 export { PostCanvas } from "./post-canvas";
-const initial = (restaurant: Row, version = 1) => ({
+// Free posts use each design's own colors and type; Pro, the restaurant's.
+const designColors = (id: string) => ({
+  color: getPostTemplate(id).color,
+  accent: getPostTemplate(id).accent,
+});
+const freeDesign = (id: string) =>
+  FREE_POST_TEMPLATES.includes(getPostTemplate(id).id);
+const initial = (restaurant: Row, version = 1, pro = true) => ({
   step: 1,
   compositionVersion: version,
   items: [],
@@ -97,7 +109,7 @@ const initial = (restaurant: Row, version = 1) => ({
   captionMode: "auto",
   reviewed: false,
   voice: restaurant.style?.tone || "Warm and welcoming",
-  ...brandPostFields(restaurant.style),
+  ...(pro ? brandPostFields(restaurant.style) : designColors("chef")),
   typography: "template",
 });
 export default function PostMaker({
@@ -115,9 +127,10 @@ export default function PostMaker({
   onSeedUsed: () => void;
   onPhoto: () => void;
 }) {
+  const pro = hasProFeatures(state);
   const store = useCreationDraft(
     "post",
-    initial(state.restaurant),
+    initial(state.restaurant, 1, pro),
     workspacePreferenceKey(state.user.id, state.restaurant.id),
   );
   const { draft: b, change, save, start, ready, status } = store;
@@ -195,7 +208,13 @@ export default function PostMaker({
       items: items.map((item, i) => (i === index ? { ...item, ...p } : item)),
     });
   }
+  // The design a dish opens on; on Free, the best of its three designs.
+  function leadDesign(draft: Row) {
+    const options = recommendedDesigns(draft, state.restaurant);
+    return pro ? options[0] : options.find(freeDesign) || "chef";
+  }
   function applyDesign(id: string) {
+    if (!pro && !freeDesign(id)) return requestUpgrade("postTemplates");
     const patch = applyPostTemplate({ ...b, compositionVersion: 2 }, id);
     update({ ...patch, compositionVersion: 2 });
   }
@@ -216,7 +235,7 @@ export default function PostMaker({
         if (d && a) {
           const draft = {
             ...postFromPhoto(
-              initial(state.restaurant, 2),
+              initial(state.restaurant, 2, pro),
               d,
               a,
               state.restaurant,
@@ -225,7 +244,7 @@ export default function PostMaker({
             ...(seed.occasion ? { occasion: seed.occasion } : {}),
           };
           // Open on the design made for this dish, not a fixed default.
-          const lead = recommendedDesigns(draft, state.restaurant)[0];
+          const lead = leadDesign(draft);
           await start({
             ...draft,
             ...applyPostTemplate(draft, lead),
@@ -244,6 +263,12 @@ export default function PostMaker({
     if (ready) change(currentCaption(store.read(), state.restaurant));
   }, [ready, store.id, state.restaurant.name, state.restaurant.currency]);
   function choose(d: Row) {
+    // More than one photo (carousels and offers) is Pro.
+    if (!pro && items.length && !items.some((i) => i.dishId === d.id)) {
+      setPicker(false);
+      requestUpgrade("postTemplates");
+      return;
+    }
     if (items.length >= 6 && !items.some((i) => i.dishId === d.id)) {
       action.setError("Choose up to six photos. Remove one to add another.");
       return;
@@ -269,9 +294,7 @@ export default function PostMaker({
       quantity: 1,
       facts: dishSnapshot(d),
     };
-    const lead = first
-      ? recommendedDesigns({ ...b, items: [item] }, state.restaurant)[0]
-      : "";
+    const lead = first ? leadDesign({ ...b, items: [item] }) : "";
     const words = postDefaults([item]);
     // Later dishes update the words the owner hasn't changed (see updatePost).
     update({
@@ -437,6 +460,12 @@ export default function PostMaker({
           <strong>{dishNote}</strong>
         </div>
       )}
+      {!pro && !freePostDraft(b) && (
+        <ProNote feature="postTemplates">
+          This post uses Pro options. You can still download it; to change it,
+          choose a free design or get Pro.
+        </ProNote>
+      )}
       {!items.length ? (
         <div className="mm-post-start">
           <div>
@@ -590,6 +619,7 @@ export default function PostMaker({
                     <span>
                       {t.name}
                       {b.template === t.id && <Check size={14} />}
+                      {!pro && !freeDesign(t.id) && <ProBadge />}
                     </span>
                   </button>
                 ))}
@@ -695,10 +725,13 @@ export default function PostMaker({
                     <button
                       className="cx-link"
                       disabled={items.length >= 6}
-                      onClick={() => setPicker(true)}
+                      onClick={() =>
+                        pro ? setPicker(true) : requestUpgrade("postTemplates")
+                      }
                     >
                       <Plus size={15} />
                       Add another photo {items.length >= 6 ? "· limit 6" : ""}
+                      {!pro && <ProBadge />}
                     </button>
                     <Field label="Headline">
                       <textarea
@@ -794,8 +827,10 @@ export default function PostMaker({
                   <>
                     <h2>Design</h2>
                     <p className="mm-muted">
-                      Your restaurant colors carry through each design. The
-                      photo and layout adapt to each format.
+                      {pro
+                        ? "Your restaurant colors carry through each design."
+                        : "Each design uses its own colors and type."}{" "}
+                      The photo and layout adapt to each format.
                     </p>
                     {b.compositionVersion !== 2 ? (
                       // Older designs render at 4:5 only; the improved one offers 3:4.
@@ -900,63 +935,69 @@ export default function PostMaker({
                         onChange={(e) => update({ cta: e.target.value })}
                       />
                     </Field>
-                    <details className="mm-divider">
-                      <summary>Fine-tune this design</summary>
-                      <Field label="Brand color">
-                        <input
-                          type="color"
-                          value={b.color}
-                          onChange={(e) =>
+                    {!pro ? (
+                      <ProNote feature="postTemplates">
+                        Your own colors and fonts on posts are part of Pro.
+                      </ProNote>
+                    ) : (
+                      <details className="mm-divider">
+                        <summary>Fine-tune this design</summary>
+                        <Field label="Brand color">
+                          <input
+                            type="color"
+                            value={b.color}
+                            onChange={(e) =>
+                              update({
+                                color: e.target.value,
+                                brandMode: "custom",
+                              })
+                            }
+                          />
+                        </Field>
+                        <Field label="Accent color">
+                          <input
+                            type="color"
+                            value={b.accent}
+                            onChange={(e) =>
+                              update({
+                                accent: e.target.value,
+                                brandMode: "custom",
+                              })
+                            }
+                          />
+                        </Field>
+                        <Field label="Typography">
+                          <select
+                            value={b.typography || "template"}
+                            onChange={(e) =>
+                              update({ typography: e.target.value })
+                            }
+                          >
+                            <option value="template">
+                              This design’s typography
+                            </option>
+                            {brandTypefaces.map((f) => (
+                              <option key={f.id} value={f.id}>
+                                {f.name}
+                              </option>
+                            ))}
+                          </select>
+                        </Field>
+                        <button
+                          className="cx-link"
+                          onClick={() =>
                             update({
-                              color: e.target.value,
-                              brandMode: "custom",
+                              ...brandPostFields(state.restaurant.style),
+                              voice:
+                                state.restaurant.style?.tone ||
+                                "Warm and welcoming",
                             })
-                          }
-                        />
-                      </Field>
-                      <Field label="Accent color">
-                        <input
-                          type="color"
-                          value={b.accent}
-                          onChange={(e) =>
-                            update({
-                              accent: e.target.value,
-                              brandMode: "custom",
-                            })
-                          }
-                        />
-                      </Field>
-                      <Field label="Typography">
-                        <select
-                          value={b.typography || "template"}
-                          onChange={(e) =>
-                            update({ typography: e.target.value })
                           }
                         >
-                          <option value="template">
-                            This design’s typography
-                          </option>
-                          {brandTypefaces.map((f) => (
-                            <option key={f.id} value={f.id}>
-                              {f.name}
-                            </option>
-                          ))}
-                        </select>
-                      </Field>
-                      <button
-                        className="cx-link"
-                        onClick={() =>
-                          update({
-                            ...brandPostFields(state.restaurant.style),
-                            voice:
-                              state.restaurant.style?.tone ||
-                              "Warm and welcoming",
-                          })
-                        }
-                      >
-                        Apply current restaurant look
-                      </button>
-                    </details>
+                          Apply current restaurant look
+                        </button>
+                      </details>
+                    )}
                   </>
                 )}
                 {panel === "photo" && (
@@ -1344,28 +1385,31 @@ export default function PostMaker({
             className="cx-link"
             disabled={!postReady || !!busy}
             onClick={() =>
-              act("Preparing downloads", async () => {
-                await save();
-                downloadBlob(
-                  await campaignZip(b, state.restaurant),
-                  `${state.restaurant.slug}-post-pack.zip`,
-                );
-                // The pack counts like any other download in the owner's report.
-                track("export_complete", items[0]?.photoId, {
-                  tool: "post",
-                  method: "download",
-                  design: String(b.template || "chef"),
-                  count: b.channels.reduce(
-                    (n: number, c: string) => n + postSlideCount(b, c),
-                    0,
-                  ),
-                  ...(store.id ? { draftId: store.id } : {}),
-                });
-                action.setNotice("Your post pack download has started.");
-              })
+              !pro
+                ? requestUpgrade("downloads")
+                : act("Preparing downloads", async () => {
+                    await save();
+                    downloadBlob(
+                      await campaignZip(b, state.restaurant),
+                      `${state.restaurant.slug}-post-pack.zip`,
+                    );
+                    // The pack counts like any other download in the owner's report.
+                    track("export_complete", items[0]?.photoId, {
+                      tool: "post",
+                      method: "download",
+                      design: String(b.template || "chef"),
+                      count: b.channels.reduce(
+                        (n: number, c: string) => n + postSlideCount(b, c),
+                        0,
+                      ),
+                      ...(store.id ? { draftId: store.id } : {}),
+                    });
+                    action.setNotice("Your post pack download has started.");
+                  })
             }
           >
             Download all formats & caption
+            {!pro && <ProBadge />}
           </button>
           <p className="mm-muted">
             Design saved automatically. You choose when to publish in your

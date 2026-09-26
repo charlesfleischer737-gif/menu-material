@@ -87,6 +87,16 @@ const storage = bucket(),
 try {
   await call("studio-references", { referenceIds: [] }, 401);
   await call("auth/dev", {});
+  // This suite exercises Pro features: comp the workspace (never images).
+  {
+    const own = (await call("state")).restaurant;
+    await call("admin/restaurant", {
+      id: own.id,
+      allowance: own.allowance,
+      paused: false,
+      proUntil: Date.now() + 10 * 365 * 86400000,
+    });
+  }
   const state = await call("state"),
     restaurantId = state.restaurant.id;
   const ownCookie = cookie;

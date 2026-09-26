@@ -1,4 +1,4 @@
-import { entitlementSql } from "./entitlements";
+import { effectiveStyle, entitlementSql, requirePro } from "./entitlements";
 import { z } from "zod";
 import { checkStudioGeneration } from "./studio-release";
 import { validateImageDimensions } from "./image-validation";
@@ -98,14 +98,20 @@ export async function advanceBatches(restaurantId?: string) {
         "SELECT * FROM restaurants WHERE id=?",
         item.restaurant_id,
       );
-      const job = await enqueue(r!, {
-        dishId: item.dish_id,
-        sourceId: item.source_id,
-        requestKey: item.id,
-        ...JSON.parse(item.settings || "{}"),
-        style: JSON.parse(item.settings || "{}").style || JSON.parse(r!.style),
-        editMode: "preserve",
-      });
+      const job = await enqueue(
+        r!,
+        {
+          dishId: item.dish_id,
+          sourceId: item.source_id,
+          requestKey: item.id,
+          ...JSON.parse(item.settings || "{}"),
+          style:
+            JSON.parse(item.settings || "{}").style || JSON.parse(r!.style),
+          editMode: "preserve",
+        },
+        undefined,
+        { accepted: true },
+      );
       await run(
         "UPDATE batch_items SET status='submitted',job_id=?,error=NULL WHERE id=?",
         job.id,
@@ -179,6 +185,8 @@ export async function menuTools(req: Request, p: string[], r: Row) {
       );
       return response({ ok: true });
     }
+    // Existing links keep working until they expire; new ones are Pro.
+    await requirePro(r.id, "staffLinks");
     const raw = token();
     await run(
       "INSERT INTO staff_links (hash,restaurant_id,expires_at,created_at) VALUES (?,?,?,?)",
@@ -239,6 +247,8 @@ export async function menuTools(req: Request, p: string[], r: Row) {
       );
       return response({ ok: true });
     }
+    // A batch already accepted can finish and retry; starting one is Pro.
+    await requirePro(r.id, "batches");
     for (const i of b.items) {
       assert(
         await one(
@@ -261,6 +271,7 @@ export async function menuTools(req: Request, p: string[], r: Row) {
           "Photo not found.",
         );
     }
+    const batchStyle = await effectiveStyle(r);
     await db().batch(
       b.items.map((i) =>
         db()
@@ -275,7 +286,7 @@ export async function menuTools(req: Request, p: string[], r: Row) {
             i.sourceId,
             JSON.stringify({
               candidateCount: b.candidateCount,
-              style: JSON.parse(r.style),
+              style: batchStyle,
             }),
             now(),
           ),
@@ -637,7 +648,8 @@ export async function menuTools(req: Request, p: string[], r: Row) {
       400,
       "Approve a photo for an available dish to get menu-based suggestions.",
     );
-    const suggestions = [];
+    const suggestions = [],
+      lookStyle = await effectiveStyle(r);
     const today = localTime(now(), r.timezone).slice(0, 10);
     for (let offset = 0; offset < 14 && suggestions.length < 3; offset++) {
       const date = new Date(
@@ -674,7 +686,7 @@ export async function menuTools(req: Request, p: string[], r: Row) {
         items: [{ dishId: d.id, quantity: 1, photoId: d.photoId }],
         startsLocal,
         endsLocal,
-        style: { ...defaultStyle, ...JSON.parse(r.style) },
+        style: { ...defaultStyle, ...lookStyle },
         caption: `${d.name}. ${d.description}`.slice(0, 2200),
         reason:
           goal === "catering"

@@ -206,11 +206,26 @@ try {
     brand: "Private preferences",
     style: savedLook,
   });
+  const lookState = (await call("state")).restaurant;
   assert.deepEqual(
-    (await call("state")).restaurant.style,
+    lookState.savedStyle,
     savedLook,
     "restaurant look settings persist together",
   );
+  assert.equal(
+    lookState.style.primary,
+    "#202820",
+    "Free work uses neutral defaults while the saved look is kept",
+  );
+  // The rest of this flow follows the look to guests, which is Pro.
+  cookie = adminCookie;
+  await call("admin/restaurant", {
+    id: lookState.id,
+    allowance: lookState.allowance,
+    paused: false,
+    proUntil: Date.now() + 365 * 86400000,
+  });
+  cookie = ownerCookie;
   const menu = {
     sections: [
       { id: "mains", name: "Mains", items: [{ dishId, photoId: sourceId }] },

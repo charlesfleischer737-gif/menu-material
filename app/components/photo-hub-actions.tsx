@@ -1,16 +1,18 @@
 "use client";
 import { useRef, useState, type Ref } from "react";
-import { BookOpen, Download, Megaphone, Package } from "lucide-react";
+import { BookOpen, Download, Megaphone, Package, Sparkles } from "lucide-react";
 import { photoReviewReminder } from "@/lib/photo-use";
 import WorkspaceActionBar from "./workspace-action-bar";
+import { ProBadge } from "./pro-badge";
 
-export type PhotoAction = "download" | "pack" | "post" | "menu";
+export type PhotoAction = "download" | "pack" | "post" | "menu" | "promote";
 /** The same names wherever a finished photo can be used. */
 export const photoActionLabels: Record<PhotoAction, string> = {
   download: "Download",
   pack: "Photo pack",
   post: "Make a post",
   menu: "Add to menu",
+  promote: "Promote this dish",
 };
 
 export function PhotoHubActions({
@@ -18,11 +20,14 @@ export function PhotoHubActions({
   note,
   onAction,
   downloadRef,
+  proActions = [],
 }: {
   disabled?: boolean;
   note: string;
   onAction: (action: PhotoAction) => Promise<void>;
   downloadRef?: Ref<HTMLButtonElement>;
+  /** Actions marked Pro, so no one starts work their plan can't finish. */
+  proActions?: PhotoAction[];
 }) {
   const [busy, setBusy] = useState(false),
     [error, setError] = useState("");
@@ -62,6 +67,7 @@ export function PhotoHubActions({
           [
             ["post", Megaphone],
             ["menu", BookOpen],
+            ["promote", Sparkles],
             ["pack", Package],
           ] as const
         ).map(([action, Icon]) => (
@@ -73,6 +79,7 @@ export function PhotoHubActions({
           >
             <Icon size={17} aria-hidden="true" />
             {photoActionLabels[action]}
+            {proActions.includes(action) && <ProBadge />}
           </button>
         ))}
       </div>

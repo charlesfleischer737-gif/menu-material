@@ -35,6 +35,8 @@ import {
   DropdownMenuTrigger,
 } from "@/components/ui/dropdown-menu";
 import { api, normalizePhoto, type Row } from "@/lib/client";
+import { hasProFeatures, requestUpgrade } from "@/lib/upgrade";
+import { ProBadge } from "./pro-badge";
 import {
   looks,
   photoStyles,
@@ -140,6 +142,7 @@ export default function PhotoStudio({
     ),
     { draft: b, change, save, start, ready, status, read } = draftStore;
   const root = useStepFocus(b.step <= 3 ? 1 : b.step, ready);
+  const pro = hasProFeatures(state);
   const action = useAction(),
     { act, busy, setNotice, setError } = action;
   const [advice, setAdvice] = useState(""),
@@ -946,7 +949,10 @@ export default function PhotoStudio({
     );
   }
   async function openPhotoAction(action: PhotoAction) {
-    await selectPhoto(action);
+    // A photo pack downloads every size at once, which is Pro.
+    if (action === "pack" && !pro) return requestUpgrade("downloads");
+    // Promoting a dish is a marketing use of the photo, like a post.
+    await selectPhoto(action === "promote" ? "post" : action);
     if (action === "download") setFinishOpen(true);
     else if (action === "pack") setPackOpen(true);
     else handoff(action);
@@ -1440,15 +1446,23 @@ export default function PhotoStudio({
                       </DropdownMenuItem>
                       {asset?.approved_at && (
                         <DropdownMenuItem
-                          onSelect={() => needRecipe() && setSaveLookOpen(true)}
+                          onSelect={() =>
+                            !pro
+                              ? requestUpgrade("savedLooks")
+                              : needRecipe() && setSaveLookOpen(true)
+                          }
                         >
-                          Save this look
+                          Save this look {!pro && <ProBadge />}
                         </DropdownMenuItem>
                       )}
                       <DropdownMenuItem
-                        onSelect={() => needRecipe() && setBatchOpen(true)}
+                        onSelect={() =>
+                          !pro
+                            ? requestUpgrade("batches")
+                            : needRecipe() && setBatchOpen(true)
+                        }
                       >
-                        Apply to more dishes
+                        Apply to more dishes {!pro && <ProBadge />}
                       </DropdownMenuItem>
                       {asset?.approved_at && (
                         <>
@@ -1645,6 +1659,7 @@ export default function PhotoStudio({
                     : `${formatNames[resultFormat]} · ${formatShapes[resultFormat]} · No image used`
                 }
                 onAction={openPhotoAction}
+                proActions={pro ? [] : ["promote", "pack"]}
               />
             </aside>
           </div>
@@ -1742,7 +1757,9 @@ export default function PhotoStudio({
           initialFormat={resultFormat}
           style={resultStyle}
           onUse={selectPhoto}
+          packPro={!pro}
           onPack={() => {
+            if (!pro) return requestUpgrade("downloads");
             setFinishOpen(false);
             setPackOpen(true);
           }}

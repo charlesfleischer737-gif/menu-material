@@ -45,6 +45,7 @@ import {
 import type { SavedLook } from "@/lib/studio-library";
 import type { useStudioLibrary } from "./use-studio-library";
 import { StudioSavedLooks } from "./studio-saved-looks";
+import { ProBadge } from "./pro-badge";
 import { StyleTile } from "./studio-style-tile";
 import { radioKeys, radioTab } from "./radio-keys";
 
@@ -73,6 +74,7 @@ export function StudioStyleLibrary({
   store,
   restaurantLook,
   guest,
+  pro = true,
   busy,
   timezone,
   expectations,
@@ -94,6 +96,8 @@ export function StudioStyleLibrary({
   store: ReturnType<typeof useStudioLibrary>;
   restaurantLook?: PhotoStyle;
   guest: boolean;
+  /** Without Pro, saved looks and inspiration photos are marked Pro. */
+  pro?: boolean;
   busy: boolean;
   timezone?: string;
   expectations: (id: string) => ReturnType<typeof lookExpectations>;
@@ -557,6 +561,7 @@ export function StudioStyleLibrary({
                   restaurantLook={restaurantLook}
                   selectedKey={selectedKey}
                   guest={guest}
+                  pro={pro}
                   disabledStyleIds={unavailable}
                   tile={(style, origin) => tile(style, origin)}
                   onApply={onApplySaved}
@@ -748,6 +753,7 @@ export function StudioStyleLibrary({
             >
               <ImagePlus size={16} />
               Match a photo you love
+              {!pro && <ProBadge />}
             </button>
             {store.error && (
               <span role="alert">

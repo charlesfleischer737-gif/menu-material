@@ -275,6 +275,8 @@ type GuestMenu = DesignedMenu & {
   menus?: { id: string; name: string }[];
   specials?: Row[];
   serverNow?: number;
+  /** False when the restaurant's plan removes "Made with Menu Material". */
+  credit?: boolean;
 };
 export default function MenuDocumentView({
   menu: initial,
@@ -949,7 +951,7 @@ export default function MenuDocumentView({
       {menu.footer && (
         <footer className="md-guest-footer">{menu.footer}</footer>
       )}
-      {!preview && (
+      {!preview && menu.credit !== false && (
         <div className="md-guest-credit">Made with Menu Material</div>
       )}
     </Surface>

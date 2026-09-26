@@ -2,12 +2,11 @@ import PublicInformation from "../components/public-information";
 import PlanCards from "../components/plan-cards";
 import { billingEnabled } from "@/lib/server/billing";
 import { pageMetadata } from "../site-metadata";
-import { PRO_PLAN, PRO_PRICE_LABEL } from "@/lib/plans";
+import { FREE_SIGNUP_IMAGES, PRO_PLAN, PRO_PRICE_LABEL } from "@/lib/plans";
 export const dynamic = "force-dynamic";
 export const metadata = pageMetadata({
   title: "Free & Pro plans · Menu Material",
-  description:
-    "Explore Menu Material plans for restaurant photography. Start with 5 free images.",
+  description: `Explore Menu Material plans for restaurant photography. Start with ${FREE_SIGNUP_IMAGES} free images.`,
   path: "/pricing",
 });
 export default function Pricing() {
@@ -15,11 +14,19 @@ export default function Pricing() {
   const questions: [string, string][] = [
     [
       "What uses an image?",
-      "Each new photo or AI revision uses one image. Cropping, touch-ups, menus, post layouts and downloads are always free, and images that fail to create are returned.",
+      "Each new photo or AI revision uses one image. Cropping, touch-ups, menus, post layouts and downloads never use one, and images that fail to create are returned.",
     ],
     [
       "Do free images expire?",
-      "No. The 5 free images are a one-time allowance for each account.",
+      `No. The ${FREE_SIGNUP_IMAGES} free images are a one-time allowance for each account.`,
+    ],
+    [
+      "What’s included for free?",
+      "Full-quality photos in every style with no watermark, every download size, one live menu with its QR code, PDF and table card, and posts and Stories in three designs.",
+    ],
+    [
+      "What does Pro add?",
+      `${PRO_PLAN.imagesPerPeriod} images every month, your restaurant look on photos, posts and menus, every post and menu design, campaigns, up to 30 live menus, full menu insights, saved looks, inspiration photos, batches, staff photo links, and no “Made with Menu Material” on your guest menus.`,
     ],
     [
       "How does Pro work?",
@@ -29,11 +36,11 @@ export default function Pricing() {
     ],
     [
       "What happens if I cancel?",
-      "Your paid allowance lasts until the end of the billing period. Saved photos and designs stay available.",
+      "Pro lasts until the end of the billing period. Your photos, posts, menus and saved looks stay available, and live menus stay live.",
     ],
     [
       "Is the quality the same on every plan?",
-      "Yes. Every plan includes Photo Studio, My Dishes, Post Maker and full-quality exports. Always review each image against the dish you serve before sharing it.",
+      "Yes. Every image and export is full quality on every plan. Always review each image against the dish you serve before sharing it.",
     ],
     [
       "How do I reset my password?",
@@ -45,8 +52,8 @@ export default function Pricing() {
       title="A little budget. A lot of good-looking food."
       intro={
         enabled
-          ? `Start with 5 free images. Keep creating with Pro for ${PRO_PRICE_LABEL} a month.`
-          : `Start with 5 free images. Pro is coming soon at ${PRO_PRICE_LABEL} a month.`
+          ? `Start with ${FREE_SIGNUP_IMAGES} free images. Pro keeps your restaurant looking its best, every week, for ${PRO_PRICE_LABEL} a month.`
+          : `Start with ${FREE_SIGNUP_IMAGES} free images. Pro is coming soon at ${PRO_PRICE_LABEL} a month.`
       }
     >
       <PlanCards enabled={enabled} />

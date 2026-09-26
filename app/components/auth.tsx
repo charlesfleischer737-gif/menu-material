@@ -11,7 +11,7 @@ import {
 import { api } from "@/lib/client";
 import { isPlaceholderRestaurantName } from "@/lib/restaurant-identity";
 import Brand from "./brand";
-import { PRO_PRICE_LABEL } from "@/lib/plans";
+import { FREE_SIGNUP_IMAGES, PRO_PRICE_LABEL } from "@/lib/plans";
 export default function Auth({
   open,
   setOpen,
@@ -131,7 +131,7 @@ export default function Auth({
               ? "Sign in to your restaurant workspace."
               : resetting
                 ? "Restore access with your secure reset link. Your previous sign-ins will be closed."
-                : "Start with 5 free images. Your photo and selected look stay ready. No credit card needed."}
+                : `Start with ${FREE_SIGNUP_IMAGES} free images. Your photo and selected look stay ready. No credit card needed.`}
           </DialogDescription>
         </DialogHeader>
         {!resetting && (
@@ -268,7 +268,7 @@ export default function Auth({
         </form>
         {mode === "signup" && !resetting && (
           <p className="fine">
-            5 free images, once per account.{" "}
+            {FREE_SIGNUP_IMAGES} free images, once per account.{" "}
             {billingEnabled
               ? `Pro: ${PRO_PRICE_LABEL}/month.`
               : "Pro is coming soon."}{" "}

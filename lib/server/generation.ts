@@ -1,5 +1,5 @@
 import type { Row } from "./core";
-import { entitlementSql } from "./entitlements";
+import { effectiveStyle, entitlementSql, requirePro } from "./entitlements";
 import { settleCorrection } from "./correction-policy";
 import { z } from "zod";
 import { checkStudioGeneration } from "./studio-release";
@@ -172,6 +172,9 @@ export async function enqueue(
   r: Row,
   input: Row,
   policy?: { correctionFor: string },
+  // Work accepted earlier, such as the rest of a started batch: plan limits
+  // were checked then, and the background never checks them again.
+  { accepted = false }: { accepted?: boolean } = {},
 ) {
   let correctionOriginal: Row | null = null;
   if (policy) {
@@ -301,7 +304,7 @@ export async function enqueue(
     : null;
   assert(!input.parentId || parent, 404, "Revision image not found.");
   const revision = String(input.revision || "").slice(0, 1000);
-  const style = savedStyle(input.style || JSON.parse(r.style || "{}"));
+  const style = savedStyle(input.style || (await effectiveStyle(r)));
   assert(
     source || d.description.trim(),
     400,
@@ -427,6 +430,14 @@ export async function enqueue(
     ).catch(() => {});
     return { ...cached, reused: true };
   }
+  // Saved looks and inspiration photos are Pro for new work. A correction
+  // repeats what the original request used.
+  if (
+    !policy &&
+    !accepted &&
+    (lookContext?.savedLookId || style.referenceIds.length)
+  )
+    await requirePro(r.id, "savedLooks");
   // Accepted work and reusable completed results above do not need their
   // references again. New work must have every reference before reserving quota.
   await requireStudioReferences(r.id, style.referenceIds);
@@ -1401,7 +1412,7 @@ export async function generateCaption(
   }
   const facts = {
     restaurant: r.name,
-    tone: JSON.parse(r.style || "{}").tone || "Warm and welcoming",
+    tone: (await effectiveStyle(r)).tone || "Warm and welcoming",
     dish: d.name,
     description: d.description,
     offer,

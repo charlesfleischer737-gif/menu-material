@@ -15,6 +15,7 @@ import {
   response,
   type Row,
 } from "./core";
+import { requirePro } from "./entitlements";
 import { looks, photoBrief } from "../studio";
 import { restaurantPhotoDefaults } from "../restaurant-look";
 
@@ -145,6 +146,13 @@ export async function studioLibraryRoute(
   input.library.legacyMigrated ||= !!JSON.parse(row?.content || "{}")
     .legacyMigrated;
   const previous = JSON.parse(row?.content || "{}").looks || [];
+  // Saving a new look is Pro. Looks already saved can be renamed or archived.
+  if (
+    input.library.looks.some(
+      (look) => !previous.some((entry: Row) => entry.id === look.id),
+    )
+  )
+    await requirePro(restaurant.id, "savedLooks");
   for (const look of input.library.looks) {
     const saved = previous.find((entry: Row) => entry.id === look.id);
     look.version = saved

@@ -54,6 +54,16 @@ async function call(path, data, expected = 200, method) {
 }
 try {
   await call("auth/dev", {});
+  // This suite exercises Pro features: comp the workspace (never images).
+  {
+    const own = (await call("state")).restaurant;
+    await call("admin/restaurant", {
+      id: own.id,
+      allowance: own.allowance,
+      paused: false,
+      proUntil: Date.now() + 10 * 365 * 86400000,
+    });
+  }
   // Guests never see a placeholder name; publishing requires a real one.
   await call("restaurant/name", { name: "Test Kitchen" });
   const state = await call("state"),

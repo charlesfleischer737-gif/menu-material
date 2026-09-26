@@ -26,6 +26,7 @@ import {
   Zap,
 } from "lucide-react";
 import { api, dishCount, downloadBlob, type Row } from "@/lib/client";
+import { hasProFeatures } from "@/lib/upgrade";
 import {
   entryPrice,
   menuPrice,
@@ -100,6 +101,7 @@ export default function MenuStudio({
 }: MenuStudioProps) {
   const store = useMenuDocument(state.restaurant.id),
     { draft, record, change } = store;
+  const pro = hasProFeatures(state);
   const [selected, setSelected] = useState(""),
     [panel, setPanel] = useState("content"),
     [preview, setPreview] = useState("print"),
@@ -1151,6 +1153,7 @@ export default function MenuStudio({
                     menu={draft}
                     change={patch}
                     choose={() => setDialog("design")}
+                    pro={pro}
                   />
                 ) : panel === "details" ? (
                   <MenuDetailsInspector menu={draft} change={patch} />
@@ -1294,6 +1297,7 @@ export default function MenuStudio({
         {dialog === "design" && (
           <MenuDesignPicker
             menu={menu}
+            pro={pro}
             close={() => setDialog("")}
             apply={(design) => {
               patch({ design });
@@ -1370,6 +1374,20 @@ export default function MenuStudio({
               await store.saveNow();
             }}
             setProfile={(printProfile) => patch({ printProfile })}
+            pro={pro}
+            liveElsewhere={store.menus.some(
+              (m) => m.published && m.id !== record.id,
+            )}
+            useFreeDesign={() =>
+              patch({
+                design: "bistro",
+                appearance: "light",
+                ...(draft.layout === "grid" ? { layout: "featured" } : {}),
+                ...(draft.colorMode === "custom"
+                  ? { colorMode: "restaurant" }
+                  : {}),
+              })
+            }
           />
         )}
         {dialog === "quick" && record.published && (
@@ -1383,6 +1401,7 @@ export default function MenuStudio({
         {dialog === "share" && (
           <MenuShareDialog
             record={record}
+            pro={pro}
             restaurant={state.restaurant}
             origin={state.menuOrigin}
             fallbackName={

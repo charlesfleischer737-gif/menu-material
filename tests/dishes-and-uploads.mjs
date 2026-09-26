@@ -558,6 +558,7 @@ function myDishes(dishes, clientOverrides = {}) {
     "./controls": { ConfirmDelete: Stub },
     "./creative-header": { default: Stub },
     "./photo-downloads": { default: Stub },
+    "@/lib/upgrade": { hasProFeatures: () => true, requestUpgrade: () => {} },
     "./kitty": { default: Stub },
   }));
   page.render({

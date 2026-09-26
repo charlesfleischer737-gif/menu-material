@@ -547,7 +547,7 @@ function LegacyMenuView({
               .includes(search.toLowerCase()),
           ),
         ) && <p className="mm-menu-no-results">No dishes match “{search}”.</p>}
-      <footer>Made with Menu Material</footer>
+      {menu.credit !== false && <footer>Made with Menu Material</footer>}
     </article>
   );
 }

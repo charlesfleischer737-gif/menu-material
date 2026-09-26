@@ -15,6 +15,7 @@ import {
   run,
   type Row,
 } from "./core";
+import { hasProFeatures, requirePro } from "./entitlements";
 import { defaultStyle, localToInstant, promotionStatus } from "../promotions";
 import { publicBrandStyle } from "../restaurant-look";
 import { photoStyles } from "../photo-styles";
@@ -232,6 +233,8 @@ export async function publicMenu(r: Row, t = now()) {
   return {
     ...menu,
     contact,
+    // "Made with Menu Material", decided on each visit: Pro removes it.
+    credit: !(await hasProFeatures(r.id)),
     menus: await publicMenuDocuments(r.id),
     restaurant: { ...restaurant, style: publicBrandStyle(restaurant.style) },
     specials: specials.map((special) => ({
@@ -272,6 +275,10 @@ export async function promotionRoute(req: Request, p: string[], r: Row) {
   if (req.method === "GET") return response({ promotion: offerRow(existing!) });
   assert(req.method === "POST", 405, "Method not allowed.");
   const b = await body(req);
+  // Existing campaigns stay viewable and downloadable and can be taken off
+  // the menu on any plan; making or changing one is Pro.
+  if (!["unpublish", "sold-out", "export", "copy-caption"].includes(p[2]))
+    await requirePro(r.id, "campaigns");
   if (p[2]) {
     const saved = existing!,
       draft = JSON.parse(saved.draft);

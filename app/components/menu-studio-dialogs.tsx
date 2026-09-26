@@ -62,16 +62,22 @@ import {
 } from "./menu-studio-controls";
 import MenuProof from "./menu-proof";
 import MenuDocumentView from "./menu-document-view";
+import { ProBadge, ProNote } from "./pro-badge";
+import { FREE_MENU_DESIGN, freeMenuDesign } from "@/lib/plans";
+import { requestUpgrade } from "@/lib/upgrade";
 import type { MenuContact } from "@/lib/restaurant-contact";
 
 export function MenuDesignPicker({
   menu,
   close,
   apply,
+  pro = true,
 }: {
   menu: DesignedMenu;
   close: () => void;
   apply: (design: MenuDocument["design"]) => void;
+  /** Without Pro, other designs can be tried in the draft, not published. */
+  pro?: boolean;
 }) {
   const [selected, setSelected] = useState(menu.design),
     [all, setAll] = useState(false),
@@ -99,9 +105,14 @@ export function MenuDesignPicker({
             <MenuProof menu={{ ...menu, design: selected }} />
           </div>
           <div className="md-dialog-actions md-sticky-actions">
-            <span>Your content, photos, and colors stay yours.</span>
+            <span>
+              {!pro && selected !== FREE_MENU_DESIGN.design
+                ? "Try it in your draft. Publishing this design is part of Pro."
+                : "Your content, photos, and colors stay yours."}
+            </span>
             <button className="md-button" onClick={() => apply(selected)}>
               Use {spec.name}
+              {!pro && selected !== FREE_MENU_DESIGN.design && <ProBadge />}
             </button>
           </div>
         </>
@@ -140,7 +151,10 @@ export function MenuDesignPicker({
                   )}
                 </div>
                 <div className="md-design-card-copy">
-                  <span>{d.category}</span>
+                  <span>
+                    {d.category}{" "}
+                    {!pro && d.id !== FREE_MENU_DESIGN.design && <ProBadge />}
+                  </span>
                   <h3>{d.name}</h3>
                   <p>{d.description}</p>
                   <strong>Preview every page →</strong>
@@ -1037,6 +1051,9 @@ export function MenuDeliveryDialog({
   published,
   save,
   setProfile,
+  pro = true,
+  liveElsewhere = false,
+  useFreeDesign,
 }: {
   mode: string;
   menu: DesignedMenu;
@@ -1053,6 +1070,11 @@ export function MenuDeliveryDialog({
   published: (address?: string) => Promise<void>;
   save: () => Promise<void>;
   setProfile: (profile: MenuDocument["printProfile"]) => void;
+  pro?: boolean;
+  /** Another menu is live; without Pro, this one can't join it. */
+  liveElsewhere?: boolean;
+  /** Switch the draft to the options Free publishes and prints. */
+  useFreeDesign?: () => void;
 }) {
   const [proof, setProof] = useState<MenuPdfResult | null>(null),
     [busy, setBusy] = useState(false),
@@ -1064,6 +1086,9 @@ export function MenuDeliveryDialog({
       "checking" | "available" | "taken" | ""
     >("");
   const isPrint = mode === "export",
+    // Said before anyone publishes or prints, so no work is lost to a limit.
+    designLocked = !pro && !freeMenuDesign(menu),
+    menuLocked = !pro && !isPrint && !record.published && liveElsewhere,
     blocking = checks.filter((c) => c.level === "block"),
     warnings = checks.filter((c) => c.level === "warn"),
     // The first publication chooses the menu address that QR codes will use
@@ -1115,6 +1140,8 @@ export function MenuDeliveryDialog({
     };
   }, [choosingAddress, address]);
   async function deliver() {
+    if (designLocked) return requestUpgrade("menuDesigns");
+    if (menuLocked) return requestUpgrade("menus");
     setBusy(true);
     setError("");
     try {
@@ -1315,6 +1342,29 @@ export function MenuDeliveryDialog({
               </ul>
             </div>
           )}
+          {designLocked && (
+            <>
+              <ProNote feature="menuDesigns">
+                This menu uses Pro design options. On Free, menus use The
+                Brasserie in light, without custom colors or a photo on every
+                dish.
+              </ProNote>
+              {useFreeDesign && (
+                <button
+                  className="md-button md-secondary md-full"
+                  onClick={useFreeDesign}
+                >
+                  Use the free options
+                </button>
+              )}
+            </>
+          )}
+          {menuLocked && (
+            <ProNote feature="menus">
+              Free includes one live menu. Take your other menu offline to
+              publish this one, or get Pro for up to 30.
+            </ProNote>
+          )}
           {error && (
             <p className="md-inline-error" role="alert">
               {error}
@@ -1366,6 +1416,7 @@ export function MenuShareDialog({
   close,
   action,
   fallbackName,
+  pro = true,
 }: {
   record: SavedMenu;
   restaurant: Row;
@@ -1375,6 +1426,7 @@ export function MenuShareDialog({
   action: (action: string) => Promise<void>;
   /** The live menu the main QR code shows while this one is offline. */
   fallbackName?: string;
+  pro?: boolean;
 }) {
   const [qr, setQr] = useState(""),
     [url, setUrl] = useState(""),
@@ -1459,6 +1511,11 @@ export function MenuShareDialog({
         <CheckCircle2 size={17} /> Published
         {checked && " · Guest access checked"}
       </div>
+      {!pro && (
+        <ProNote feature="menuCredit">
+          Your guest menu ends with “Made with Menu Material”. Pro removes it.
+        </ProNote>
+      )}
       <Field label="Link destination">
         <select
           value={main ? "main" : "this"}

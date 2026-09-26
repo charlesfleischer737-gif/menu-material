@@ -27,6 +27,7 @@ import {
 } from "@/lib/guest-studio";
 import Brand from "./brand";
 import { StudioWorkbench } from "./studio-workbench";
+import { FREE_SIGNUP_IMAGES } from "@/lib/plans";
 export default function GuestStudio({
   state,
   onSignIn,
@@ -394,7 +395,7 @@ export default function GuestStudio({
               <Sparkles size={15} />
               {state.user
                 ? `${state.remaining} ${state.remaining === 1 ? "image" : "images"} left`
-                : "5 free images"}
+                : `${FREE_SIGNUP_IMAGES} free images`}
             </span>
           </nav>
         </div>

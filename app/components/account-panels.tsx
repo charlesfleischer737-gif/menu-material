@@ -637,6 +637,12 @@ function FoodReportReview({
     </div>
   );
 }
+// A comp's last day, in the administrator's own calendar.
+function compDate(ms: number | null) {
+  if (!ms) return "";
+  const d = new Date(ms);
+  return `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, "0")}-${String(d.getDate()).padStart(2, "0")}`;
+}
 function AdminRestaurant({
   restaurant: r,
   act,
@@ -645,6 +651,7 @@ function AdminRestaurant({
 }: AdminProps & { restaurant: Row }) {
   const [allowance, setAllowance] = useState(r.allowance),
     [paused, setPaused] = useState(!!r.paused),
+    [proUntil, setProUntil] = useState(compDate(r.pro_until)),
     [budget, setBudget] = useState(r.daily_budget_cents / 100),
     [minutes, setMinutes] = useState(15);
   const settings = useAdminOperation(act, busy);
@@ -704,6 +711,20 @@ function AdminRestaurant({
             }}
           />
         </label>
+        <label className="field">
+          Pro features until
+          <small>Leave empty for none. Doesn’t add images.</small>
+          <input
+            disabled={!!busy}
+            aria-label={`Pro features until, for ${r.name}`}
+            type="date"
+            value={proUntil}
+            onChange={(e) => {
+              setProUntil(e.target.value);
+              settings.changed();
+            }}
+          />
+        </label>
         <label className="check-label">
           <input
             aria-label={`Pause new AI work for ${r.name}`}
@@ -731,6 +752,9 @@ function AdminRestaurant({
                   allowance,
                   paused,
                   dailyBudgetCents: Math.round(budget * 100),
+                  proUntil: proUntil
+                    ? new Date(`${proUntil}T23:59:59`).getTime()
+                    : null,
                 });
                 await refresh();
               },
@@ -745,7 +769,8 @@ function AdminRestaurant({
         dirty={
           budget !== r.daily_budget_cents / 100 ||
           allowance !== r.allowance ||
-          paused !== !!r.paused
+          paused !== !!r.paused ||
+          proUntil !== compDate(r.pro_until)
         }
       />
       <div className="support-entry">

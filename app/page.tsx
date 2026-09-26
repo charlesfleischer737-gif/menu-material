@@ -2,11 +2,11 @@ import { cookies } from "next/headers";
 import HomeClient from "./components/home-client";
 import { homeStructuredData, pageMetadata, siteOrigin } from "./site-metadata";
 import { jsonLd } from "@/lib/menu-structured-data";
+import { FREE_SIGNUP_IMAGES } from "@/lib/plans";
 
 export const metadata = pageMetadata({
   title: "Menu Material — Food photos worth ordering from.",
-  description:
-    "Turn real dish photos into professional images and matching posts for Toast, delivery apps, your website, and Instagram. Start with 5 free images.",
+  description: `Turn real dish photos into professional images and matching posts for Toast, delivery apps, your website, and Instagram. Start with ${FREE_SIGNUP_IMAGES} free images.`,
   path: "/",
   shareDescription:
     "Better food photos for menus, delivery apps, and social media. Made from your actual dish.",

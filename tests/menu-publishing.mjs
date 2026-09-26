@@ -247,6 +247,16 @@ try {
 
   // API: a placeholder name blocks publishing until the owner names it.
   await call("auth/dev", {});
+  // This suite exercises Pro features: comp the workspace (never images).
+  {
+    const own = (await call("state")).restaurant;
+    await call("admin/restaurant", {
+      id: own.id,
+      allowance: own.allowance,
+      paused: false,
+      proUntil: Date.now() + 10 * 365 * 86400000,
+    });
+  }
   const state = await call("state");
   const rid = state.restaurant.id;
   assert.equal(state.restaurant.name, "Your restaurant");

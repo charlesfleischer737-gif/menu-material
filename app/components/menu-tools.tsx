@@ -14,6 +14,8 @@ import {
 import { photoAdvice } from "@/lib/photo-advice";
 import { draftStatus } from "@/lib/workspace-status";
 import WorkspaceActionBar from "./workspace-action-bar";
+import { ProBadge, ProNote } from "./pro-badge";
+import { hasProFeatures, requestUpgrade } from "@/lib/upgrade";
 import {
   useWorkspaceOperation,
   WorkspaceOperationStatus,
@@ -637,6 +639,7 @@ function BatchPhotos({ state, refresh, act, busy, selectDish, missing }: Row) {
       <h3 className="style-heading">
         Create photos using your restaurant style
       </h3>
+      {!hasProFeatures(state) && <ProNote feature="batches" />}
       <p className="muted">
         Choose up to 5 dishes. Each uses its latest original, or its description
         when no original exists. Uses 1 image per dish.
@@ -679,27 +682,30 @@ function BatchPhotos({ state, refresh, act, busy, selectDish, missing }: Row) {
       <Button
         disabled={!!busy || !chosen.length || !state.aiConnected}
         onClick={() =>
-          batchOperation.run(
-            "Starting batch",
-            "Batch started. Follow each dish’s progress below.",
-            async () => {
-              batchId.current ||= crypto.randomUUID();
-              await api("batches", {
-                batchId: batchId.current,
-                candidateCount: 1,
-                items: chosen.map((dishId) => ({
-                  dishId,
-                  sourceId:
-                    state.assets.find(
-                      (a: Row) => a.dish_id === dishId && a.kind === "source",
-                    )?.id || null,
-                })),
-              });
-              setChosen([]);
-              batchId.current = "";
-              await refresh();
-            },
-          )
+          !hasProFeatures(state)
+            ? requestUpgrade("batches")
+            : batchOperation.run(
+                "Starting batch",
+                "Batch started. Follow each dish’s progress below.",
+                async () => {
+                  batchId.current ||= crypto.randomUUID();
+                  await api("batches", {
+                    batchId: batchId.current,
+                    candidateCount: 1,
+                    items: chosen.map((dishId) => ({
+                      dishId,
+                      sourceId:
+                        state.assets.find(
+                          (a: Row) =>
+                            a.dish_id === dishId && a.kind === "source",
+                        )?.id || null,
+                    })),
+                  });
+                  setChosen([]);
+                  batchId.current = "";
+                  await refresh();
+                },
+              )
         }
       >
         Create photos for {chosen.length || "selected"}{" "}
@@ -869,21 +875,29 @@ function StaffUploads({ state, refresh, act, busy }: Row) {
         An upload-only link for this restaurant, valid for 7 days. Staff choose
         a dish and submit photos for your review.
       </p>
+      {!hasProFeatures(state) && (
+        <ProNote feature="staffLinks">
+          New staff links are part of Pro. Links you already shared keep working
+          until they expire, and you can still review what arrives.
+        </ProNote>
+      )}
       <div className="button-row">
         <Button
           disabled={!!busy}
           onClick={() =>
-            links.run(
-              "Creating staff upload link",
-              "Upload link ready. Copy it to share with your team.",
-              async () => {
-                const value = await api("staff-links", {});
-                setLink(location.origin + value.path);
-              },
-            )
+            !hasProFeatures(state)
+              ? requestUpgrade("staffLinks")
+              : links.run(
+                  "Creating staff upload link",
+                  "Upload link ready. Copy it to share with your team.",
+                  async () => {
+                    const value = await api("staff-links", {});
+                    setLink(location.origin + value.path);
+                  },
+                )
           }
         >
-          Create staff upload link
+          Create staff upload link {!hasProFeatures(state) && <ProBadge />}
         </Button>
         <Button
           variant="outline"
@@ -1068,7 +1082,10 @@ function Weekly({ state, act, busy, onSuggestion }: Row) {
               {s.startsLocal.replace("T", " ")} · {state.restaurant.timezone}
             </p>
             <Button variant="outline" onClick={() => onSuggestion(s)}>
-              Edit this promotion
+              {hasProFeatures(state)
+                ? "Edit this promotion"
+                : "Preview this promotion"}
+              {!hasProFeatures(state) && <ProBadge />}
             </Button>
           </article>
         ))}

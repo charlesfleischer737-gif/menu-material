@@ -10,6 +10,8 @@ import {
   run,
   type Row,
 } from "./core";
+import { requirePro } from "./entitlements";
+import { freePostDraft } from "../post-templates";
 
 const kinds = ["studio", "menu", "post"];
 const decode = (row: Row) => ({ ...row, draft: JSON.parse(row.draft) });
@@ -31,6 +33,9 @@ export async function manageDrafts(
     if (req.method === "GET") return response({ draft: decode(row) });
     assert(req.method === "POST", 405, "Method not allowed.");
     if (p[2] === "duplicate") {
+      // A copy is new work, so a post with Pro options needs Pro.
+      if (row.kind === "post" && !freePostDraft(JSON.parse(row.draft)))
+        await requirePro(restaurantId, "postTemplates");
       const copyId = id();
       const title =
         row.name ||

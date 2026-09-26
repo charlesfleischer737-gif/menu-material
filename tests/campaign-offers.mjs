@@ -58,6 +58,16 @@ async function call(path, b, expected = 200) {
 }
 try {
   await call("auth/dev", {});
+  // This suite exercises Pro features: comp the workspace (never images).
+  {
+    const own = (await call("state")).restaurant;
+    await call("admin/restaurant", {
+      id: own.id,
+      allowance: own.allowance,
+      paused: false,
+      proUntil: Date.now() + 10 * 365 * 86400000,
+    });
+  }
   await call("restaurant", {
     name: "Campaign Kitchen",
     cuisine: "Italian",

@@ -3,11 +3,9 @@ import { useEffect, useId, useState } from "react";
 import { ArrowDownRight, ArrowUpRight } from "lucide-react";
 import { api } from "@/lib/client";
 import { MenuDialog } from "./menu-studio-controls";
+import { ProNote } from "./pro-badge";
 
-export type MenuStatsData = {
-  published: boolean;
-  views: number;
-  previousViews: number;
+type FullStats = {
   orders: number;
   reservations: number;
   calls: number;
@@ -16,6 +14,13 @@ export type MenuStatsData = {
   menus: { id: string; name: string; views: number }[];
   mostSeen: { name: string; guests: number } | null;
 };
+// Free gets visits and only counts of what Pro shows (`locked`).
+export type MenuStatsData = {
+  published: boolean;
+  views: number;
+  previousViews: number;
+  locked?: { actions: number; dishes: number };
+} & (FullStats | { [key in keyof FullStats]?: undefined });
 const count = (n: number) =>
   new Intl.NumberFormat(
     "en",
@@ -57,6 +62,15 @@ export function useMenuStats(version: string) {
     };
   }, [version]);
   return stats;
+}
+
+// What Pro would show, counted but not itemized. Taps are interest, not sales.
+function lockedSummary(locked?: { actions: number; dishes: number }) {
+  if (!locked?.actions && !locked?.dishes)
+    return "See which dishes guests look at and what they tap, with Pro.";
+  const taps = `${count(locked.actions)} ${locked.actions === 1 ? "tap" : "taps"} to order, call or get directions`,
+    dishes = `${count(locked.dishes)} ${locked.dishes === 1 ? "dish" : "dishes"}`;
+  return `Guests made ${taps} and looked at ${dishes}. See which with Pro.`;
 }
 
 /** On a phone the headline sits in the status line and opens the details. */
@@ -111,6 +125,15 @@ export default function MenuStats({
             </button>
           )}
         </p>
+      ) : stats.orders === undefined ? (
+        <>
+          <div className="md-stat">
+            <span>Menu views</span>
+            <strong>{count(stats.views)}</strong>
+            <Delta current={stats.views} previous={stats.previousViews} />
+          </div>
+          <ProNote feature="insights">{lockedSummary(stats.locked)}</ProNote>
+        </>
       ) : (
         <>
           <div className="md-stat">
@@ -140,7 +163,7 @@ export default function MenuStats({
           </button>
         </>
       )}
-      {open && (
+      {open && stats.orders !== undefined && (
         <MenuDialog
           title="Menu visits"
           description="All your menus, over the last 7 days. Each guest counts once per menu, however often they look."

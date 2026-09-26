@@ -12,6 +12,7 @@ import {
   saveStudioRelease,
 } from "./studio-release";
 import { billingRoute, billingSummary, billingEnabled } from "./billing";
+import { effectiveStyle, requirePro } from "./entitlements";
 import { validateImageDimensions } from "./image-validation";
 import { analyzeGuestPhoto } from "./photo-analysis";
 import { checkMenuSharing, menuLinkOrigin } from "./menu-sharing";
@@ -28,6 +29,7 @@ import {
   slugify,
 } from "../restaurant-identity";
 import { normalizeDietary } from "../dietary";
+import { FREE_SIGNUP_IMAGES, freeMenuDesign, isProFeature } from "../plans";
 import {
   menuDocumentsRoute,
   assetInPublishedDocuments,
@@ -45,6 +47,7 @@ import {
   housekeeping,
   aiControls,
   caller,
+  newAccountLimit,
 } from "./safeguards";
 import {
   all,
@@ -233,7 +236,7 @@ async function signup(req: Request, b: Row) {
         email,
         now(),
       )
-    : { role: "owner", allowance: 5 };
+    : { role: "owner", allowance: FREE_SIGNUP_IMAGES };
   assert(!b.website, 400, "Please check the form and try again.");
   assert(
     invite,
@@ -287,6 +290,7 @@ async function signup(req: Request, b: Row) {
     409,
     "An administrator already exists. Ask them for an invitation.",
   );
+  if (!invited) await newAccountLimit(req);
   const userId = id(),
     rid = id(),
     restaurant = z
@@ -431,7 +435,7 @@ async function snapshot(r: Row, draft: Row) {
       cuisine: r.cuisine,
       currency: r.currency,
       brand: r.brand,
-      style: JSON.parse(r.style || "{}"),
+      style: await effectiveStyle(r),
       orderingUrl: r.ordering_url,
       timezone: r.timezone,
       hours: JSON.parse(r.hours),
@@ -923,18 +927,23 @@ async function route(req: Request) {
           r.id,
         ),
       );
+      const billing = await billingSummary(r.id),
+        saved = storedStyle(r.style);
       return response({
         user: u,
         studioAvailability: await studioAvailability(r.id),
         restaurant: {
           ...r,
-          style: storedStyle(r.style),
+          // What new work uses: the saved look with Pro, defaults on Free.
+          style: billing.features.unlocked ? saved : storedStyle("{}"),
+          // What Restaurant settings edits and previews on any plan.
+          savedStyle: saved,
           hours: JSON.parse(r.hours),
           menuDraft: JSON.parse(r.menu_draft),
           published: r.published ? JSON.parse(r.published) : null,
         },
         remaining: await remaining(r.id),
-        billing: await billingSummary(r.id),
+        billing,
         aiConnected: !!config("OPENAI_API_KEY"),
         local: config("LOCAL_DEVELOPMENT") === "true",
         // For menu links and QR codes made in the browser.
@@ -1032,7 +1041,7 @@ async function route(req: Request) {
       if (method === "GET")
         return response({
           restaurants: await all(
-            "SELECT r.id,r.name,r.slug,r.public_suspended,r.allowance,r.paused,r.daily_budget_cents,r.created_at,u.email,(SELECT count(*) FROM outputs WHERE restaurant_id=r.id AND status='completed') AS completed,(SELECT count(*) FROM outputs WHERE restaurant_id=r.id AND status NOT IN ('completed','failed')) AS reserved,(SELECT count(*) FROM outputs WHERE restaurant_id=r.id AND status='failed') AS failed,(SELECT sum(cost_estimate) FROM outputs WHERE restaurant_id=r.id) AS cost_estimate,(SELECT count(*) FROM assets WHERE restaurant_id=r.id AND approved_at IS NOT NULL AND kind='generated') AS approved,(SELECT sum(CAST(json_extract(details,'$.minutes') AS INTEGER)) FROM events WHERE restaurant_id=r.id AND kind='support_time') AS support_minutes FROM restaurants r JOIN users u ON u.id=r.user_id ORDER BY r.created_at DESC",
+            "SELECT r.id,r.name,r.slug,r.public_suspended,r.allowance,r.paused,r.daily_budget_cents,r.pro_until,r.created_at,u.email,(SELECT count(*) FROM outputs WHERE restaurant_id=r.id AND status='completed') AS completed,(SELECT count(*) FROM outputs WHERE restaurant_id=r.id AND status NOT IN ('completed','failed')) AS reserved,(SELECT count(*) FROM outputs WHERE restaurant_id=r.id AND status='failed') AS failed,(SELECT sum(cost_estimate) FROM outputs WHERE restaurant_id=r.id) AS cost_estimate,(SELECT count(*) FROM assets WHERE restaurant_id=r.id AND approved_at IS NOT NULL AND kind='generated') AS approved,(SELECT sum(CAST(json_extract(details,'$.minutes') AS INTEGER)) FROM events WHERE restaurant_id=r.id AND kind='support_time') AS support_minutes FROM restaurants r JOIN users u ON u.id=r.user_id ORDER BY r.created_at DESC",
           ),
           controls: await aiControls(),
           studioRelease: await studioReleaseControls(),
@@ -1180,18 +1189,27 @@ async function route(req: Request) {
           404,
           "Restaurant not found.",
         );
+        // Pro features without a subscription (never images): a time, or
+        // null to end them. Left out, the current comp stays.
+        const proUntil =
+          b.proUntil === undefined || b.proUntil === null
+            ? b.proUntil
+            : z.number().int().min(0).max(8.64e15).parse(b.proUntil);
         await run(
-          "UPDATE restaurants SET allowance=?,paused=?,daily_budget_cents=COALESCE(?,daily_budget_cents) WHERE id=?",
+          "UPDATE restaurants SET allowance=?,paused=?,daily_budget_cents=COALESCE(?,daily_budget_cents),pro_until=CASE WHEN ?=1 THEN ? ELSE pro_until END WHERE id=?",
           z.number().int().min(0).max(100000).parse(b.allowance),
           b.paused ? 1 : 0,
           b.dailyBudgetCents === undefined
             ? null
             : z.number().int().min(0).max(1000000).parse(b.dailyBudgetCents),
+          proUntil === undefined ? 0 : 1,
+          proUntil ?? null,
           rid,
         );
         await event(rid, "allowance_updated", null, {
           allowance: b.allowance,
           paused: !!b.paused,
+          ...(proUntil === undefined ? {} : { proUntil }),
         });
         return response({ ok: true });
       }
@@ -1793,10 +1811,28 @@ async function route(req: Request) {
     }
     if (p[0] === "events" && method === "POST") {
       const b = await body(req);
+      const kind = z
+        .enum([
+          "image_downloaded",
+          "caption_copied",
+          "visit",
+          // Which Pro features people meet, and which ones they buy for.
+          "upgrade_prompt_shown",
+          "upgrade_clicked",
+        ])
+        .parse(b.kind);
       await event(
         r.id,
-        z.enum(["image_downloaded", "caption_copied", "visit"]).parse(b.kind),
+        kind,
         b.entityId ? z.string().uuid().parse(b.entityId) : null,
+        kind.startsWith("upgrade_")
+          ? {
+              feature: z
+                .string()
+                .refine(isProFeature, "Unknown feature.")
+                .parse(b.feature),
+            }
+          : {},
       );
       return response({ ok: true });
     }
@@ -1819,6 +1855,8 @@ async function route(req: Request) {
       }
       if (p[1] === "publish") {
         const draft = menuSchema.parse(JSON.parse(r.menu_draft));
+        // The older single menu follows the same rule: Free uses the basic design.
+        if (!freeMenuDesign(draft)) await requirePro(r.id, "menuDesigns");
         assert(
           draft.sections.some((s) => s.items.length),
           400,
@@ -1863,7 +1901,13 @@ async function route(req: Request) {
     if (e instanceof z.ZodError)
       return response({ error: e.issues.map((x) => x.message).join(" ") }, 400);
     if (e instanceof AppError && e.status < 500)
-      return response({ error: e.message }, e.status);
+      return response(
+        {
+          error: e.message,
+          ...(e.code ? { code: e.code, feature: e.feature } : {}),
+        },
+        e.status,
+      );
     await reportError(e, {
       request: req,
       status: e instanceof AppError ? e.status : 500,

@@ -60,6 +60,8 @@ export const restaurants = sqliteTable("restaurants", {
   allowance: integer().notNull().default(20),
   paused: integer().notNull().default(0),
   dailyBudgetCents: integer("daily_budget_cents").notNull().default(2000),
+  // Set by an administrator: Pro features, not Pro images, until this time.
+  proUntil: integer("pro_until"),
   menuDraft: text("menu_draft").notNull().default('{"sections":[]}'),
   published: text(),
   publishedAt: integer("published_at"),

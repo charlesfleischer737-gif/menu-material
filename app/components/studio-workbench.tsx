@@ -70,6 +70,9 @@ import type { Row } from "@/lib/client";
 import { track } from "./creation-shared";
 import { useStudioLibrary } from "./use-studio-library";
 import { PhotoInspirationSheet } from "./photo-inspiration-sheet";
+import { ProBadge } from "./pro-badge";
+import { FREE_SIGNUP_IMAGES, proFeatures, type ProFeature } from "@/lib/plans";
+import { hasProFeatures, requestUpgrade } from "@/lib/upgrade";
 import WorkspaceActionBar from "./workspace-action-bar";
 import { StudioStyleLibrary, type LibraryOrigin } from "./studio-style-library";
 import { StudioCustomizeSheet } from "./studio-customize-sheet";
@@ -169,6 +172,10 @@ export function StudioWorkbench({
   const saved = useStudioLibrary(
     state.guest ? undefined : state.restaurant?.id,
   );
+  // A signed-out guest has no plan yet; the free plan's rules apply.
+  const guestOnly = !!state.guest && !state.user,
+    pro = !guestOnly && hasProFeatures(state),
+    [proHint, setProHint] = useState("");
   const [sampleLoading, setSampleLoading] = useState(false);
   const busy = parentBusy || (sampleLoading ? "Preparing your photo" : "");
   const lookName = b.savedLookName || selected.name;
@@ -193,9 +200,12 @@ export function StudioWorkbench({
       b.styleIntent
     )
       return;
-    const defaultLook = saved.library.looks.find(
-      (look) => look.id === saved.library.defaultLookId && !look.archived,
-    );
+    // A default saved look starts new photos with Pro features.
+    const defaultLook = pro
+      ? saved.library.looks.find(
+          (look) => look.id === saved.library.defaultLookId && !look.archived,
+        )
+      : undefined;
     update({
       ...(defaultLook ? applySavedLook(defaultLook) : {}),
       studioDefaultResolved: true,
@@ -289,10 +299,20 @@ export function StudioWorkbench({
         : referenceRetryTrigger
       ).current?.focus({ preventScroll: true });
   }, [inspirationStatus]);
+  // Saved looks and inspiration photos are Pro. A signed-out guest can't
+  // open Plans, so they read why here instead.
+  function offerPro(feature: ProFeature) {
+    if (guestOnly)
+      setProHint(
+        `${proFeatures[feature].blocked} Choose one of the looks to try Photo Studio free.`,
+      );
+    else requestUpgrade(feature);
+  }
   function openInspiration(
     origin: "browse" | "custom" | "main",
     trigger: HTMLButtonElement,
   ) {
+    if (!pro) return offerPro("savedLooks");
     inspirationSession.current = {
       base: origin === "custom" ? { ...b, ...controls } : { ...b },
       origin,
@@ -322,9 +342,11 @@ export function StudioWorkbench({
           : imageFor(state.restaurant.style.photoPreset),
       }
     : undefined;
-  const defaultSaved = saved.library.looks.find(
-    (look) => look.id === saved.library.defaultLookId && !look.archived,
-  );
+  const defaultSaved = pro
+    ? saved.library.looks.find(
+        (look) => look.id === saved.library.defaultLookId && !look.archived,
+      )
+    : undefined;
   const savedTile = (look: SavedLook): PhotoStyle => ({
     id: look.id,
     name: look.name,
@@ -520,7 +542,7 @@ export function StudioWorkbench({
               : state.remaining <= 0
                 ? "You’ve used your available images."
                 : signedOutGuest
-                  ? "Create a free account to continue · 5 free images"
+                  ? `Create a free account to continue · ${FREE_SIGNUP_IMAGES} free images`
                   : `Uses 1 image · ${state.remaining} left`);
   const showImage =
     b.look === "keep" && source
@@ -601,6 +623,7 @@ export function StudioWorkbench({
     );
   }
   function applySaved(look: SavedLook) {
+    if (!pro) return offerPro("savedLooks");
     if (!state.guest)
       track("look_selected", undefined, {
         ...measurementContext,
@@ -1331,7 +1354,13 @@ export function StudioWorkbench({
                       ? "Replace inspiration photo"
                       : "Edit inspiration photo"
                     : "Add inspiration photo"}
+                  {!pro && <ProBadge />}
                 </button>
+              )}
+              {proHint && (
+                <div className="st-alert" role="status">
+                  <p>{proHint}</p>
+                </div>
               )}
               {inspirationBlock && (
                 <div className="st-alert" role="status">
@@ -1491,6 +1520,7 @@ export function StudioWorkbench({
         store={saved}
         restaurantLook={restaurantLook}
         guest={!!state.guest}
+        pro={pro}
         busy={!!busy}
         timezone={state.restaurant?.timezone}
         expectations={(id) => lookExpectations(b, id, state.restaurant)}
@@ -1570,6 +1600,7 @@ export function StudioWorkbench({
         }
         onInspiration={(trigger) => openInspiration("custom", trigger)}
         onSaveLook={() => {
+          if (!pro) return offerPro("savedLooks");
           setSaveName(b.savedLookName || selected.name);
           setSaveError("");
           setSaveOpen(true);

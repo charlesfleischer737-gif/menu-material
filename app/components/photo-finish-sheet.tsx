@@ -37,6 +37,7 @@ import { isCatalogDestination, photoFilename } from "@/lib/photo-destinations";
 import { destinationChannel, type StyleProfile } from "@/lib/channel-rules";
 import { downloadWarnings } from "@/lib/photo-pack";
 import { CropControls, Field, PhotoFrame, track } from "./creation-shared";
+import { ProBadge } from "./pro-badge";
 import { radioKeys, radioTab } from "./radio-keys";
 
 type Destination = DownloadFormat | "master";
@@ -69,6 +70,7 @@ export function PhotoFinishSheet({
   style,
   onUse,
   onPack,
+  packPro = false,
   onCloseAutoFocus,
   onBusyChange,
   measurementContext = {},
@@ -87,6 +89,8 @@ export function PhotoFinishSheet({
   onUse: (action: PhotoUseAction) => Promise<void>;
   /** Opens the photo pack (every channel in one download). */
   onPack?: () => void;
+  /** Marks the photo pack as Pro. */
+  packPro?: boolean;
   onCloseAutoFocus?: (event: Event) => void;
   onBusyChange?: (busy: boolean) => void;
   measurementContext?: { draftId?: string; sourceId?: string };
@@ -440,6 +444,7 @@ export function PhotoFinishSheet({
             >
               <Package size={16} aria-hidden="true" />
               Photo pack · every size in one download
+              {packPro && <ProBadge />}
             </button>
           )}
         </footer>

@@ -937,15 +937,17 @@ try {
   checks++;
 
   // 15. A saved style naming a photo style since removed still creates images.
+  // The saved look applies to new work with Pro features (comped here).
   const retired = await restaurant("retired-style");
   await run(
-    "UPDATE restaurants SET style=? WHERE id=?",
+    "UPDATE restaurants SET style=?,pro_until=? WHERE id=?",
     JSON.stringify({
       photoPreset: "retired-look",
       tone: "Playful",
       photoStyle: "Warm wood and soft window light",
       referenceIds: ["not-a-uuid"],
     }),
+    Date.now() + 365 * 86400000,
     retired.rid,
   );
   const retiredJob = await enqueue(

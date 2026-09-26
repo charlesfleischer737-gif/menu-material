@@ -1,5 +1,7 @@
 import { publishWorkerHealth } from "./worker-health";
 import { syncServerClock } from "./server-clock";
+import { isProFeature } from "./plans";
+import { requestUpgrade } from "./upgrade";
 export type Row = Record<string, any>;
 export async function api(
   path: string,
@@ -32,6 +34,9 @@ export async function api(
       new CustomEvent("menu-material:signed-out", { detail: { path } }),
     );
   const data = (await res.json().catch(() => null)) as Row | null;
+  // A Pro feature the page let through anyway: explain it and offer Pro.
+  if (data?.code === "pro_required" && isProFeature(data.feature))
+    requestUpgrade(data.feature, true);
   if (!res.ok)
     throw Object.assign(
       new Error(
@@ -43,6 +48,8 @@ export async function api(
       ),
       {
         status: res.status,
+        code: data?.code as string | undefined,
+        feature: data?.feature as string | undefined,
       },
     );
   if (!data)

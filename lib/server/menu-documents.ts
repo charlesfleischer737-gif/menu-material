@@ -15,6 +15,8 @@ import {
   run,
   type Row,
 } from "./core";
+import { effectiveStyle, hasProFeatures, proRequired } from "./entitlements";
+import { FREE_LIVE_MENUS, freeMenuDesign } from "../plans";
 import {
   menuDocumentSchema,
   upgradeMenuDocument,
@@ -188,7 +190,7 @@ async function publication(r: Row, documentId: string, draft: MenuDocument) {
       currency: r.currency,
       logoId,
       orderingUrl: r.ordering_url,
-      style: publicBrandStyle(JSON.parse(r.style || "{}")),
+      style: publicBrandStyle(await effectiveStyle(r)),
     },
   };
 }
@@ -196,7 +198,7 @@ async function publication(r: Row, documentId: string, draft: MenuDocument) {
 const specialsOnly = (published: string | null) =>
   !!published && !JSON.parse(published).sections?.length;
 /** A stand-in with no dishes, so live specials stay open to guests. */
-function specialsPage(r: Row, snapshot: string | null) {
+function specialsPage(r: Row, snapshot: string | null, style: Row) {
   return JSON.stringify({
     restaurant: snapshot
       ? JSON.parse(snapshot).restaurant
@@ -206,10 +208,19 @@ function specialsPage(r: Row, snapshot: string | null) {
           currency: r.currency,
           logoId: null,
           orderingUrl: r.ordering_url,
-          style: publicBrandStyle(JSON.parse(r.style || "{}")),
+          style: publicBrandStyle(style),
         },
     sections: [],
   });
+}
+/** Live menus other than this one, for Free's one-menu limit. */
+async function otherLiveMenus(rid: string, menuId: string) {
+  const row = await one(
+    "SELECT count(*) AS n FROM menu_documents WHERE restaurant_id=? AND id<>? AND archived_at IS NULL AND published IS NOT NULL",
+    rid,
+    menuId,
+  );
+  return Number(row?.n || 0);
 }
 export async function publicMenuDocuments(rid: string) {
   return (
@@ -525,6 +536,28 @@ async function menuStats(r: Row) {
     published
       .flatMap((d) => (d.menu.sections || []).flatMap((s: Row) => s.items))
       .find((i: Row) => i.id === top.entity_id || i.dishId === top.entity_id);
+  // Free sees visits. Everything else is still recorded, so Pro shows the
+  // history at once; Free gets only the counts, to show what Pro adds.
+  if (!(await hasProFeatures(r.id))) {
+    const dishes = await one(
+      "SELECT count(DISTINCT entity_id) AS n FROM events WHERE restaurant_id=? AND kind='dish_view' AND created_at>=? AND entity_id IS NOT NULL",
+      r.id,
+      since,
+    );
+    return {
+      published: published.length > 0,
+      views: total("menu_visit"),
+      previousViews: total("menu_visit", 0),
+      locked: {
+        actions:
+          total("ordering_click") +
+          total("reserve_click") +
+          total("call_click") +
+          total("directions_click"),
+        dishes: Number(dishes?.n || 0),
+      },
+    };
+  }
   return {
     published: published.length > 0,
     views: total("menu_visit"),
@@ -987,6 +1020,15 @@ export async function menuDocumentsRoute(req: Request, p: string[], r: Row) {
   );
   if (p[2] === "publish") {
     const draft = menuDocumentSchema.parse(JSON.parse(row.draft));
+    // Free publishes one menu, in the basic design. A menu already live can
+    // always be republished, so prices can be fixed after a downgrade.
+    const unlocked = await hasProFeatures(r.id);
+    if (!unlocked && !freeMenuDesign(draft)) proRequired("menuDesigns");
+    const overLimit = async () =>
+      !unlocked &&
+      !row.published &&
+      (await otherLiveMenus(r.id, row.id)) >= FREE_LIVE_MENUS;
+    if (await overLimit()) proRequired("menus");
     // Check before choosing an address, so a blocked publish changes nothing.
     await assertMenuReady(r, draft);
     // A special published before any menu leaves a stand-in with no dishes;
@@ -999,11 +1041,20 @@ export async function menuDocumentsRoute(req: Request, p: string[], r: Row) {
       t = now(),
       hid = id();
     await db().batch([
+      // The Free limit holds inside the write, so two tabs can't both pass.
       db()
         .prepare(
-          "UPDATE menu_documents SET published=?,published_revision=revision,published_at=? WHERE id=? AND restaurant_id=? AND revision=? AND archived_at IS NULL",
+          "UPDATE menu_documents SET published=?,published_revision=revision,published_at=? WHERE id=? AND restaurant_id=? AND revision=? AND archived_at IS NULL AND (?=1 OR published IS NOT NULL OR (SELECT count(*) FROM menu_documents o WHERE o.restaurant_id=menu_documents.restaurant_id AND o.id<>menu_documents.id AND o.archived_at IS NULL AND o.published IS NOT NULL)<?)",
         )
-        .bind(serialized, t, row.id, r.id, b.revision),
+        .bind(
+          serialized,
+          t,
+          row.id,
+          r.id,
+          b.revision,
+          unlocked ? 1 : 0,
+          FREE_LIVE_MENUS,
+        ),
       db()
         .prepare(
           "INSERT INTO menu_publication_history (id,menu_id,restaurant_id,snapshot,revision,created_at) SELECT ?,id,restaurant_id,published,revision,? FROM menu_documents WHERE id=? AND published_at=? AND revision=?",
@@ -1024,11 +1075,16 @@ export async function menuDocumentsRoute(req: Request, p: string[], r: Row) {
         )
         .bind(serialized, t, r.id, row.id, t, b.revision),
     ]);
-    assert(
-      await one("SELECT id FROM menu_publication_history WHERE id=?", hid),
-      409,
-      "The menu changed during publication. Review it again.",
-    );
+    if (
+      !(await one("SELECT id FROM menu_publication_history WHERE id=?", hid))
+    ) {
+      if (await overLimit()) proRequired("menus");
+      assert(
+        false,
+        409,
+        "The menu changed during publication. Review it again.",
+      );
+    }
     await event(r.id, "menu_published", row.id, {
       version: 2,
       revision: b.revision,
@@ -1118,7 +1174,7 @@ export async function menuDocumentsRoute(req: Request, p: string[], r: Row) {
           r.id,
           r.id,
           t,
-          specialsPage(r, row.published),
+          specialsPage(r, row.published, await effectiveStyle(r)),
           t,
           r.id,
           row.id,
