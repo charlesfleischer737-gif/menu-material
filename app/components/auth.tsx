@@ -11,6 +11,7 @@ import {
 import { api } from "@/lib/client";
 import { isPlaceholderRestaurantName } from "@/lib/restaurant-identity";
 import Brand from "./brand";
+import GoogleSignIn from "./google-sign-in";
 import { FREE_SIGNUP_IMAGES, PRO_PRICE_LABEL } from "@/lib/plans";
 export default function Auth({
   open,
@@ -45,6 +46,13 @@ export default function Auth({
     [signInInstead, setSignInInstead] = useState(false);
   const passwordInput = useRef<HTMLInputElement>(null);
   const linkLoaded = useRef(false);
+  const [googleStep, setGoogleStep] = useState<"link" | "signup" | null>(null);
+  useEffect(() => {
+    if (!open) {
+      setGoogleStep(null);
+      setBusy(false);
+    }
+  }, [open]);
   useEffect(() => {
     if (
       open &&
@@ -77,6 +85,7 @@ export default function Auth({
     }
   }, [setOpen]);
   async function forgotPassword() {
+    setGoogleStep(null);
     setMode("forgot");
     setResetting(false);
     setInvite("");
@@ -163,29 +172,37 @@ export default function Auth({
         <Brand />
         <DialogHeader>
           <DialogTitle>
-            {mode === "forgot"
-              ? resetSent
-                ? "Check your email"
-                : "Reset your password"
-              : mode === "login"
-                ? "Sign in"
-                : resetting
-                  ? "Choose a new password"
-                  : "Create your free account"}
+            {googleStep
+              ? googleStep === "link"
+                ? "Connect your Google account"
+                : "Finish creating your account"
+              : mode === "forgot"
+                ? resetSent
+                  ? "Check your email"
+                  : "Reset your password"
+                : mode === "login"
+                  ? "Sign in"
+                  : resetting
+                    ? "Choose a new password"
+                    : "Create your free account"}
           </DialogTitle>
           <DialogDescription>
-            {mode === "forgot"
-              ? resetSent
-                ? "If an account matches that email, you'll receive a reset link shortly. Check your spam folder too."
-                : "Enter your account email to request a secure reset link."
-              : mode === "login"
-                ? "Sign in to your restaurant workspace."
-                : resetting
-                  ? "Restore access with your secure reset link. Your previous sign-ins will be closed."
-                  : `Start with ${FREE_SIGNUP_IMAGES} free images. Your photo and selected look stay ready. No credit card needed.`}
+            {googleStep
+              ? googleStep === "link"
+                ? "Keep your restaurant, photos, and credits together."
+                : `Start with ${FREE_SIGNUP_IMAGES} free images. No credit card needed.`
+              : mode === "forgot"
+                ? resetSent
+                  ? "If an account matches that email, you'll receive a reset link shortly. Check your spam folder too."
+                  : "Enter your account email to request a secure reset link."
+                : mode === "login"
+                  ? "Sign in to your restaurant workspace."
+                  : resetting
+                    ? "Restore access with your secure reset link. Your previous sign-ins will be closed."
+                    : `Start with ${FREE_SIGNUP_IMAGES} free images. Your photo and selected look stay ready. No credit card needed.`}
           </DialogDescription>
         </DialogHeader>
-        {!resetting && mode !== "forgot" && (
+        {!googleStep && !resetting && mode !== "forgot" && (
           <div
             className="workspace-segments auth-mode-choice"
             role="group"
@@ -211,7 +228,7 @@ export default function Auth({
             ))}
           </div>
         )}
-        {ownerSetup && !invite && mode !== "forgot" && (
+        {!googleStep && ownerSetup && !invite && mode !== "forgot" && (
           <Button
             variant="outline"
             disabled={busy}
@@ -252,102 +269,122 @@ export default function Auth({
             you choose a new one.
           </p>
         )}
-        {(mode !== "forgot" || (recovery === "ready" && !resetSent)) && (
-          <form onSubmit={submit}>
-            <label className="field">
-              Email address
-              <input
-                required
-                type="email"
-                disabled={busy}
-                maxLength={254}
-                value={email}
-                onChange={(e) => setEmail(e.target.value)}
-                autoComplete="email"
-              />
-            </label>
-            {mode !== "forgot" && (
-              <label className="field">
-                {resetting ? "New password" : "Password"}
-                {mode === "signup" && <small>At least 12 characters.</small>}
-                <input
-                  ref={passwordInput}
-                  required
-                  minLength={mode === "signup" ? 12 : 1}
-                  disabled={busy}
-                  maxLength={128}
-                  type="password"
-                  value={password}
-                  onChange={(e) => setPassword(e.target.value)}
-                  autoComplete={
-                    mode === "signup" ? "new-password" : "current-password"
-                  }
-                />
-              </label>
-            )}
-            {mode === "signup" && !resetting && (
-              <label className="field">
-                Restaurant name
-                <small>Shown on your menus and posts.</small>
-                <input
-                  required
-                  disabled={busy}
-                  minLength={2}
-                  maxLength={100}
-                  value={restaurant}
-                  onChange={(e) => setRestaurant(e.target.value)}
-                  autoComplete="organization"
-                  placeholder="Corner House Kitchen"
-                />
-              </label>
-            )}
-            <label className="pw-honeypot" aria-hidden="true">
-              Website
-              <input
-                value={website}
-                onChange={(e) => setWebsite(e.target.value)}
-                tabIndex={-1}
-                autoComplete="off"
-              />
-            </label>
-            {error && (
-              <p className="error" role="alert">
-                {error}
-              </p>
-            )}
-            {error && signInInstead && mode === "signup" && !resetting && (
-              <Button
-                type="button"
-                variant="outline"
-                className="wide"
-                disabled={busy}
-                onClick={() => {
-                  // The typed email stays; only the mode changes.
-                  setMode("login");
-                  setError("");
-                  passwordInput.current?.focus();
-                }}
-              >
-                Sign in instead
-              </Button>
-            )}
-            <Button className="wide auth-submit" disabled={busy}>
-              {busy
-                ? mode === "forgot"
-                  ? "Requesting reset link…"
-                  : resetting
-                    ? "Saving new password…"
-                    : "Opening your workspace…"
-                : mode === "forgot"
-                  ? "Send reset link"
-                  : mode === "login"
-                    ? "Sign in"
-                    : resetting
-                      ? "Save new password"
-                      : "Create free account"}
-            </Button>
-          </form>
+        {open && !invite && !resetting && mode !== "forgot" && (
+          <GoogleSignIn
+            key={mode}
+            busy={busy}
+            restaurant={restaurant}
+            onBusy={setBusy}
+            onStep={setGoogleStep}
+            onDone={async () => {
+              await onDone();
+              setOpen(false);
+              setPassword("");
+              setGoogleStep(null);
+            }}
+            onForgot={(address) => {
+              setEmail(address);
+              void forgotPassword();
+            }}
+          />
         )}
+        {!googleStep &&
+          (mode !== "forgot" || (recovery === "ready" && !resetSent)) && (
+            <form onSubmit={submit}>
+              <label className="field">
+                Email address
+                <input
+                  required
+                  type="email"
+                  disabled={busy}
+                  maxLength={254}
+                  value={email}
+                  onChange={(e) => setEmail(e.target.value)}
+                  autoComplete="email"
+                />
+              </label>
+              {mode !== "forgot" && (
+                <label className="field">
+                  {resetting ? "New password" : "Password"}
+                  {mode === "signup" && <small>At least 12 characters.</small>}
+                  <input
+                    ref={passwordInput}
+                    required
+                    minLength={mode === "signup" ? 12 : 1}
+                    disabled={busy}
+                    maxLength={128}
+                    type="password"
+                    value={password}
+                    onChange={(e) => setPassword(e.target.value)}
+                    autoComplete={
+                      mode === "signup" ? "new-password" : "current-password"
+                    }
+                  />
+                </label>
+              )}
+              {mode === "signup" && !resetting && (
+                <label className="field">
+                  Restaurant name
+                  <small>Shown on your menus and posts.</small>
+                  <input
+                    required
+                    disabled={busy}
+                    minLength={2}
+                    maxLength={100}
+                    value={restaurant}
+                    onChange={(e) => setRestaurant(e.target.value)}
+                    autoComplete="organization"
+                    placeholder="Corner House Kitchen"
+                  />
+                </label>
+              )}
+              <label className="pw-honeypot" aria-hidden="true">
+                Website
+                <input
+                  value={website}
+                  onChange={(e) => setWebsite(e.target.value)}
+                  tabIndex={-1}
+                  autoComplete="off"
+                />
+              </label>
+              {error && (
+                <p className="error" role="alert">
+                  {error}
+                </p>
+              )}
+              {error && signInInstead && mode === "signup" && !resetting && (
+                <Button
+                  type="button"
+                  variant="outline"
+                  className="wide"
+                  disabled={busy}
+                  onClick={() => {
+                    // The typed email stays; only the mode changes.
+                    setMode("login");
+                    setError("");
+                    passwordInput.current?.focus();
+                  }}
+                >
+                  Sign in instead
+                </Button>
+              )}
+              <Button className="wide auth-submit" disabled={busy}>
+                {busy
+                  ? mode === "forgot"
+                    ? "Requesting reset link…"
+                    : resetting
+                      ? "Saving new password…"
+                      : "Opening your workspace…"
+                  : mode === "forgot"
+                    ? "Send reset link"
+                    : mode === "login"
+                      ? "Sign in"
+                      : resetting
+                        ? "Save new password"
+                        : "Create free account"}
+              </Button>
+            </form>
+          )}
         {mode === "forgot" && (
           <Button
             variant="outline"
@@ -387,7 +424,7 @@ export default function Auth({
             Usage guidelines
           </a>
         </p>
-        {mode === "login" && (
+        {!googleStep && mode === "login" && (
           <Button variant="link" disabled={busy} onClick={forgotPassword}>
             Forgot password?
           </Button>

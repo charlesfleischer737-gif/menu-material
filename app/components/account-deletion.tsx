@@ -37,6 +37,10 @@ export default function AccountDeletion() {
         and you are signed out everywhere. It can’t be undone, so download
         anything you want to keep first.
       </p>
+      <p className="fine">
+        Signed up with Google and haven’t set a password? Sign out and use
+        Forgot password to set one before deleting your account.
+      </p>
       <div style={{ display: "grid", gap: 16 }}>
         <label className="field">
           Password

@@ -25,15 +25,24 @@ export default function Privacy() {
           Information used by Menu Material
         </h2>
         <p>
-          Menu Material stores your account email, protected password record,
-          restaurant details, uploaded photos, menu files, drafts, generated
-          images and usage records. Photos chosen before signup are kept only in
-          this browser, where they survive a reload or a closed tab, until you
-          create an account or sign in and generate. They are then saved to your
-          account and removed from the browser. Photos not saved to an account
-          expire after 24 hours and are deleted the next time Photo Studio
-          opens. To suggest styles before signup, a small copy of the photo is
-          sent to OpenAI to see what it shows; Menu Material does not store it.
+          Menu Material stores your account email, protected password record (if
+          you set a password), restaurant details, uploaded photos, menu files,
+          drafts, generated images and usage records. Photos chosen before
+          signup are kept only in this browser, where they survive a reload or a
+          closed tab, until you create an account or sign in and generate. They
+          are then saved to your account and removed from the browser. Photos
+          not saved to an account expire after 24 hours and are deleted the next
+          time Photo Studio opens. To suggest styles before signup, a small copy
+          of the photo is sent to OpenAI to see what it shows; Menu Material
+          does not store it.
+        </p>
+        <p>
+          If you choose Continue with Google, Google verifies your identity and
+          Menu Material stores your Google account identifier and email address
+          to sign you in. We do not receive your Google password or request
+          access to your Gmail, Drive, or other Google files. Connecting Google
+          to an existing account requires confirmation of your Menu Material
+          password.
         </p>
         <p>
           Usage records include creation status, approvals, exports and support

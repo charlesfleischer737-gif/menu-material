@@ -22,6 +22,28 @@ export const sessions = sqliteTable("sessions", {
     .references(() => users.id),
   expiresAt: integer("expires_at").notNull(),
 });
+// Google's stable subject identifies a person even if their email changes.
+export const googleIdentities = sqliteTable("google_identities", {
+  subject: text().primaryKey(),
+  userId: text("user_id")
+    .notNull()
+    .unique()
+    .references(() => users.id, { onDelete: "cascade" }),
+  createdAt: integer("created_at").notNull(),
+});
+// Short-lived, browser-bound proofs. Never store Google's raw ID token.
+export const googleAuthFlows = sqliteTable(
+  "google_auth_flows",
+  {
+    hash: text().primaryKey(),
+    nonceHash: text("nonce_hash").notNull(),
+    subject: text(),
+    email: text(),
+    authoritative: integer().notNull().default(0),
+    expiresAt: integer("expires_at").notNull(),
+  },
+  (t) => [index("idx_google_auth_flows_expiry").on(t.expiresAt)],
+);
 export const invites = sqliteTable("invites", {
   hash: text().primaryKey(),
   email: text().notNull(),

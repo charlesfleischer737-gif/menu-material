@@ -13,6 +13,7 @@ import {
 } from "./studio-release";
 import { billingRoute, billingSummary, billingEnabled } from "./billing";
 import { passwordResetEnabled, requestPasswordReset } from "./password-reset";
+import { googleAuthRoute } from "./google-auth";
 import { effectiveStyle, requirePro } from "./entitlements";
 import { validateImageDimensions } from "./image-validation";
 import { analyzeGuestPhoto } from "./photo-analysis";
@@ -788,6 +789,7 @@ async function route(req: Request) {
       return response({ ok: true });
     }
     if (p[0] === "auth") {
+      if (p[1] === "google") return await googleAuthRoute(req, p[2]);
       if (p[1] === "recovery" && method === "GET")
         return response({ enabled: passwordResetEnabled() });
       if (p[1] === "forgot-password") {
