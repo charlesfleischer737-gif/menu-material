@@ -19,15 +19,19 @@ export function ProNote({
   feature,
   children,
   action = "See Pro",
+  alternative,
 }: {
   feature: ProFeature;
   children?: React.ReactNode;
   action?: string;
+  /** A way to carry on without Pro, shown before the Pro link. */
+  alternative?: React.ReactNode;
 }) {
   return (
     <div className="pro-note" role="note">
       <ProBadge />
       <p>{children ?? proFeatures[feature].blocked}</p>
+      {alternative}
       <button
         type="button"
         className="cx-link"

@@ -36,9 +36,11 @@ import {
 } from "@/lib/post-flow";
 import {
   postTemplates,
-  applyPostTemplate,
+  choosePostTemplate,
+  freePostCopy,
   freePostDraft,
   getPostTemplate,
+  newPostDraft,
   ownerChoices,
 } from "@/lib/post-templates";
 import {
@@ -60,6 +62,7 @@ import {
   Feedback,
   Field,
   DraftRecovery,
+  refusedByPlan,
   SavedDrafts,
   track,
   useAction,
@@ -72,46 +75,8 @@ import WorkspaceTabs from "./workspace-tabs";
 import PostSharing from "./post-sharing";
 import { PostCanvas } from "./post-canvas";
 export { PostCanvas } from "./post-canvas";
-// Free posts use each design's own colors and type; Pro, the restaurant's.
-const designColors = (id: string) => ({
-  color: getPostTemplate(id).color,
-  accent: getPostTemplate(id).accent,
-});
 const freeDesign = (id: string) =>
   FREE_POST_TEMPLATES.includes(getPostTemplate(id).id);
-const initial = (restaurant: Row, version = 1, pro = true) => ({
-  step: 1,
-  compositionVersion: version,
-  items: [],
-  occasion: "showcase",
-  title: "",
-  description: "",
-  price: "",
-  showPrice: false,
-  validity: "",
-  template: "chef",
-  kicker: "",
-  cta: "",
-  textMode: "minimal",
-  showBrand: true,
-  textPlacement: "auto",
-  channels: ["feed", "story"],
-  feedShape: "4:5",
-  // A carousel opens on its offer; without a cover, the first slide carries it.
-  carouselCover: true,
-  layouts: Object.fromEntries(
-    ["feed", "story", "carousel"].map((k) => [
-      k,
-      { ...emptyAdjustments, fit: false, autoFrame: true },
-    ]),
-  ),
-  caption: "",
-  captionMode: "auto",
-  reviewed: false,
-  voice: restaurant.style?.tone || "Warm and welcoming",
-  ...(pro ? brandPostFields(restaurant.style) : designColors("chef")),
-  typography: "template",
-});
 export default function PostMaker({
   state,
   refresh,
@@ -130,8 +95,11 @@ export default function PostMaker({
   const pro = hasProFeatures(state);
   const store = useCreationDraft(
     "post",
-    initial(state.restaurant, 1, pro),
+    newPostDraft(state.restaurant, 1, pro),
     workspacePreferenceKey(state.user.id, state.restaurant.id),
+    // On Free, a post with Pro options (such as one made on Pro) opens and
+    // downloads, but isn't saved.
+    (draft) => pro || freePostDraft(draft),
   );
   const { draft: b, change, save, start, ready, status } = store;
   const action = useAction();
@@ -215,7 +183,7 @@ export default function PostMaker({
   }
   function applyDesign(id: string) {
     if (!pro && !freeDesign(id)) return requestUpgrade("postTemplates");
-    const patch = applyPostTemplate({ ...b, compositionVersion: 2 }, id);
+    const patch = choosePostTemplate({ ...b, compositionVersion: 2 }, id, pro);
     update({ ...patch, compositionVersion: 2 });
   }
   useEffect(() => {
@@ -235,7 +203,7 @@ export default function PostMaker({
         if (d && a) {
           const draft = {
             ...postFromPhoto(
-              initial(state.restaurant, 2, pro),
+              newPostDraft(state.restaurant, 2, pro),
               d,
               a,
               state.restaurant,
@@ -247,7 +215,7 @@ export default function PostMaker({
           const lead = leadDesign(draft);
           await start({
             ...draft,
-            ...applyPostTemplate(draft, lead),
+            ...choosePostTemplate(draft, lead, pro),
             compositionVersion: 2,
           });
           track("photo_reused", a.id, { dishId: d.id, destination: "post" });
@@ -301,7 +269,7 @@ export default function PostMaker({
       items: [...items, item],
       ...(first
         ? {
-            ...applyPostTemplate({ ...b, items: [item], ...words }, lead),
+            ...choosePostTemplate({ ...b, items: [item], ...words }, lead, pro),
             compositionVersion: 2,
             ...words,
             captionMode: "auto",
@@ -323,6 +291,14 @@ export default function PostMaker({
     });
     // A headline, description or price the owner hasn't changed follows the dish.
     update({ items: next, factsReviewed: true });
+  }
+  // A copy of a post with Pro options that Free can save and change.
+  function makeFreeCopy() {
+    void act("Making a Free copy", async () => {
+      const first = { ...b, items: items.slice(0, 1) };
+      await start(freePostCopy(b, state.restaurant, leadDesign(first)));
+      action.setNotice("Free copy made. Your original post is unchanged.");
+    });
   }
   async function caption(mode = "draft") {
     const data = await api("post-caption", {
@@ -375,7 +351,10 @@ export default function PostMaker({
       ),
     ]);
     change({ reviewed: false });
-    await save();
+    // A save the plan refuses doesn't stop a download of what's on screen.
+    await save().catch((e) => {
+      if (!refusedByPlan(e)) throw e;
+    });
     setExporting(true);
   }
   if (!ready) return <DraftRecovery store={store} title="Post Maker" />;
@@ -421,7 +400,7 @@ export default function PostMaker({
           disabled={!!busy}
           onClick={() =>
             act("Starting post", async () => {
-              await start(initial(state.restaurant, 2));
+              await start(newPostDraft(state.restaurant, 2, pro));
               setPanel("details");
               setSlide(0);
             })
@@ -461,9 +440,20 @@ export default function PostMaker({
         </div>
       )}
       {!pro && !freePostDraft(b) && (
-        <ProNote feature="postTemplates">
-          This post uses Pro options. You can still download it; to change it,
-          choose a free design or get Pro.
+        <ProNote
+          feature="postTemplates"
+          alternative={
+            <button
+              className="cx-link"
+              disabled={!!busy}
+              onClick={makeFreeCopy}
+            >
+              Make a Free copy
+            </button>
+          }
+        >
+          This post uses Pro options, so changes to it aren’t saved. You can
+          still download it.
         </ProNote>
       )}
       {!items.length ? (
@@ -607,9 +597,10 @@ export default function PostMaker({
                       thumbnail
                       draft={{
                         ...b,
-                        ...applyPostTemplate(
+                        ...choosePostTemplate(
                           { ...b, compositionVersion: 2 },
                           t.id,
+                          pro,
                         ),
                         compositionVersion: 2,
                       }}
@@ -1412,8 +1403,10 @@ export default function PostMaker({
             {!pro && <ProBadge />}
           </button>
           <p className="mm-muted">
-            Design saved automatically. You choose when to publish in your
-            social app.
+            {pro || freePostDraft(b)
+              ? "Design saved automatically."
+              : "This post uses Pro options, so changes aren’t saved."}{" "}
+            You choose when to publish in your social app.
           </p>
           <Feedback {...action} />
         </DialogContent>
