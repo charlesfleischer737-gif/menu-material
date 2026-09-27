@@ -27,7 +27,10 @@ export function Admin({ act, refresh, busy }: AdminProps) {
     [reset, setReset] = useState(false),
     [loadError, setLoadError] = useState(""),
     [loading, setLoading] = useState(true),
-    [checkedAt, setCheckedAt] = useState(0);
+    [checkedAt, setCheckedAt] = useState(0),
+    // Shown above the list, since a deleted restaurant's card (and the
+    // status beside its controls) goes with it.
+    [deleted, setDeleted] = useState("");
   const loadRequest = useRef<Promise<void> | null>(null);
   const invite = useAdminOperation(act, busy);
   const aiOperation = useAdminOperation(act, busy);
@@ -282,6 +285,11 @@ export function Admin({ act, refresh, busy }: AdminProps) {
           No restaurants yet. Create an invitation to welcome the first owner.
         </p>
       )}
+      {deleted && (
+        <p className="admin-empty-note" role="status">
+          {deleted}
+        </p>
+      )}
       <div className="admin-restaurants">
         {data?.restaurants.map((r: Row) => (
           <AdminRestaurant
@@ -293,6 +301,7 @@ export function Admin({ act, refresh, busy }: AdminProps) {
               await load();
               await refresh();
             }}
+            onDeleted={() => setDeleted(`${r.name}’s account was deleted.`)}
           />
         ))}
       </div>
@@ -657,15 +666,18 @@ function AdminRestaurant({
   act,
   refresh,
   busy,
-}: AdminProps & { restaurant: Row }) {
+  onDeleted,
+}: AdminProps & { restaurant: Row; onDeleted: () => void }) {
   const [allowance, setAllowance] = useState(r.allowance),
     [paused, setPaused] = useState(!!r.paused),
     [proUntil, setProUntil] = useState(compDate(r.pro_until)),
     [budget, setBudget] = useState(r.daily_budget_cents / 100),
-    [minutes, setMinutes] = useState(15);
+    [minutes, setMinutes] = useState(15),
+    [confirmation, setConfirmation] = useState("");
   const settings = useAdminOperation(act, busy);
   const support = useAdminOperation(act, busy);
   const takedown = useAdminOperation(act, busy);
+  const removal = useAdminOperation(act, busy);
   return (
     <div className="admin-restaurant">
       <div>
@@ -858,6 +870,49 @@ function AdminRestaurant({
         </Button>
       </div>
       <AdminOperationStatus feedback={takedown.feedback} />
+      <p>
+        Deleting the account removes the restaurant, everything in it and the
+        owner’s sign-in. It can’t be undone. A live Pro subscription must be
+        cancelled first.
+      </p>
+      <div className="admin-row-controls">
+        <label className="field" style={{ flex: "1 1 240px" }}>
+          Type the owner’s email to delete
+          <input
+            aria-label={`Type ${r.email} to delete ${r.name}’s account`}
+            disabled={!!busy}
+            autoComplete="off"
+            spellCheck={false}
+            value={confirmation}
+            placeholder={r.email}
+            onChange={(e) => {
+              setConfirmation(e.target.value);
+              removal.changed("");
+            }}
+          />
+        </label>
+        <Button
+          variant="destructive"
+          disabled={
+            !!busy ||
+            confirmation.trim().toLowerCase() !== String(r.email).toLowerCase()
+          }
+          aria-label={`Delete ${r.name}’s account permanently`}
+          onClick={() =>
+            removal.run("Deleting account", "Account deleted.", async () => {
+              await api("admin/delete-account", {
+                id: r.id,
+                confirm: confirmation,
+              });
+              onDeleted();
+              await refresh();
+            })
+          }
+        >
+          Delete account
+        </Button>
+      </div>
+      <AdminOperationStatus feedback={removal.feedback} />
     </div>
   );
 }

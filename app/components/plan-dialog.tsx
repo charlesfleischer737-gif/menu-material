@@ -9,6 +9,7 @@ import {
 } from "@/components/ui/dialog";
 import { api, type Row } from "@/lib/client";
 import PlanCards from "./plan-cards";
+import { useSiteContact } from "./site-contact";
 import {
   FREE_SIGNUP_IMAGES,
   PRO_PLAN,
@@ -55,6 +56,7 @@ export default function PlanDialog({
     [waitlist, setWaitlist] = useState<"" | "sending" | "joined" | "noted">("");
   const waitlistStatus = useRef<HTMLParagraphElement>(null),
     waitlistButton = useRef<HTMLButtonElement>(null);
+  const { termsUrl, refundPolicyUrl } = useSiteContact();
   const allowance = billing.allowance ?? FREE_SIGNUP_IMAGES,
     left = billing.remaining ?? state.remaining,
     features: Row = billing.features || {},
@@ -238,6 +240,8 @@ export default function PlanDialog({
                   ? new Date(billing.renewsAt).toLocaleDateString()
                   : "at the end of this billing period"}
                 .
+                {!billing.cancelAtPeriodEnd &&
+                  " Cancel anytime in Manage billing; Pro stays until then."}
               </p>
               <button
                 className="cx-btn"
@@ -307,6 +311,23 @@ export default function PlanDialog({
               Prices in USD. Pro renews monthly until cancelled. Unused monthly
               images don’t roll over. Images that fail to create are returned.
               Your saved work remains available when you cancel.
+              {/* The plan cards link these beside Get Pro. */}
+              {billing.plan === "pro" && termsUrl && (
+                <>
+                  {" "}
+                  <a href="/terms" target="_blank" rel="noreferrer">
+                    Terms
+                  </a>
+                </>
+              )}
+              {billing.plan === "pro" && refundPolicyUrl && (
+                <>
+                  {termsUrl ? " · " : " "}
+                  <a href={refundPolicyUrl} target="_blank" rel="noreferrer">
+                    Refund policy
+                  </a>
+                </>
+              )}
             </p>
           ) : (
             <p className="fine">Images that fail to create are returned.</p>

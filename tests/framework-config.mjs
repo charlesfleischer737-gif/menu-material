@@ -45,7 +45,15 @@ function headersFor(pathname) {
   });
   return headers;
 }
-const pages = ["/", "/pricing", "/privacy", "/guidelines", "/no-such-page"];
+const pages = [
+  "/",
+  "/pricing",
+  "/privacy",
+  "/guidelines",
+  "/contact",
+  "/terms",
+  "/no-such-page",
+];
 const everyPath = [
   ...pages,
   "/api/state",

@@ -1225,7 +1225,8 @@
   line-height: 1.53;
   color: rgb(29 29 31 / 86%);
 }
-.pw-information > section a {
+.pw-information > section a,
+.pw-information-intro a {
   color: var(--green);
   text-decoration: underline;
   text-underline-offset: 3px;
@@ -1386,6 +1387,17 @@
   font-size: var(--text-subhead);
   text-align: center;
 }
+/* Renewal and cancellation terms under Get Pro. */
+.pw-plan-terms {
+  font-size: var(--text-caption);
+  line-height: 1.45;
+  color: var(--on-dark-muted);
+}
+.pw-plan-terms a {
+  color: var(--on-dark);
+  text-decoration: underline;
+  text-underline-offset: 3px;
+}
 .pw-plans-dialog {
   display: flex;
   flex-direction: column;
@@ -1414,6 +1426,10 @@
 }
 .pw-plans-body .pw-plan-grid {
   margin-block: 20px 0;
+}
+.pw-plans-body .fine a {
+  text-decoration: underline;
+  text-underline-offset: 3px;
 }
 .pw-plan-current {
   margin-top: 20px;

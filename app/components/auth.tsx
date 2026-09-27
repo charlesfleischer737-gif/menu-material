@@ -11,6 +11,7 @@ import {
 import { api } from "@/lib/client";
 import { isPlaceholderRestaurantName } from "@/lib/restaurant-identity";
 import Brand from "./brand";
+import { useSiteContact } from "./site-contact";
 import { FREE_SIGNUP_IMAGES, PRO_PRICE_LABEL } from "@/lib/plans";
 export default function Auth({
   open,
@@ -40,6 +41,7 @@ export default function Auth({
     [resetting, setResetting] = useState(false),
     [signInInstead, setSignInInstead] = useState(false);
   const passwordInput = useRef<HTMLInputElement>(null);
+  const { supportEmail, termsUrl } = useSiteContact();
   useEffect(() => {
     if (open && !new URLSearchParams(location.search).get("invite")) {
       setMode(initialMode);
@@ -266,6 +268,19 @@ export default function Auth({
                   : "Create free account"}
           </Button>
         </form>
+        {mode === "signup" && !resetting && termsUrl && (
+          <p className="fine">
+            By creating an account you agree to the{" "}
+            <a href="/terms" target="_blank" rel="noreferrer">
+              Terms
+            </a>{" "}
+            and the{" "}
+            <a href="/privacy" target="_blank" rel="noreferrer">
+              Privacy policy
+            </a>
+            .
+          </p>
+        )}
         {mode === "signup" && !resetting && (
           <p className="fine">
             {FREE_SIGNUP_IMAGES} free images, once per account.{" "}
@@ -289,8 +304,15 @@ export default function Auth({
         </p>
         {mode === "login" && (
           <p className="fine">
-            Automated password-reset emails are not available yet. If you have
-            an administrator contact, request a secure reset link.
+            {supportEmail ? (
+              <>
+                Forgot your password? Email{" "}
+                <a href={`mailto:${supportEmail}`}>{supportEmail}</a> from your
+                account’s email address for a secure reset link.
+              </>
+            ) : (
+              "Automated password-reset emails are not available yet. If you have an administrator contact, request a secure reset link."
+            )}
           </p>
         )}
         {local && (

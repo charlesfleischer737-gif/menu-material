@@ -279,7 +279,7 @@ export async function admin(req: Request) {
  * Delete an owner's account: every row that belongs to their restaurant, its
  * stored files (private and public copies), their sessions and the user.
  * AI spend rows stay for budget and invoice reconciliation; they hold no
- * personal details.
+ * personal details. The owner and administrators share these rules.
  */
 export async function deleteAccount(u: Row, r: Row) {
   assert(
@@ -288,16 +288,10 @@ export async function deleteAccount(u: Row, r: Row) {
     409,
     "The only administrator’s account can’t be deleted.",
   );
-  // Payment records are handled by support, never deleted from here.
-  assert(
-    !(await one(
-      "SELECT 1 AS found FROM billing_accounts WHERE restaurant_id=? AND (customer_id IS NOT NULL OR subscription_id IS NOT NULL) UNION ALL SELECT 1 FROM billing_periods WHERE restaurant_id=? LIMIT 1",
-      r.id,
-      r.id,
-    )),
-    409,
-    "This account has billing records. Contact support to close it.",
-  );
+  // A live subscription is cancelled first. Otherwise the Stripe customer
+  // goes (Stripe keeps its invoices) and the billing rows go below.
+  const { closeBilling } = await import("./billing");
+  await closeBilling(r.id);
   const rid = r.id,
     keys = new Set<string>();
   const { assetVariantKeys } = await import("./photo-variants");
@@ -370,6 +364,7 @@ export async function deleteAccount(u: Row, r: Row) {
       "events",
       "assets",
       "dishes",
+      "billing_periods",
       "billing_accounts",
     ].map(owned),
     db().prepare("DELETE FROM restaurants WHERE id=?").bind(rid),
