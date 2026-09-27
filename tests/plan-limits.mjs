@@ -329,6 +329,22 @@ try {
     price: 6,
     confirmed: true,
   });
+  // The single menu from before Menus is gone, so a hand-made call can't put
+  // a second menu live beside one published in Menus.
+  const oldSingleMenu = async () => {
+    await call(
+      "menu",
+      {
+        sections: [
+          { id: "old", name: "Old", items: [{ dishId: tabsDish.id }] },
+        ],
+      },
+      410,
+    );
+    await call("menu/publish", {}, 410);
+    await call("menu/unpublish", {}, 410);
+  };
+  await oldSingleMenu();
   const tabMenu = () =>
     call("menus", {
       id: crypto.randomUUID(),
@@ -359,7 +375,13 @@ try {
     ).n,
     1,
   );
-  checks += 2;
+  await oldSingleMenu();
+  const tabsLive = await one(
+    "SELECT m.published AS menu,r.published AS main FROM menu_documents m JOIN restaurants r ON r.id=m.restaurant_id WHERE r.user_id=? AND m.published IS NOT NULL",
+    tabsRid,
+  );
+  assert.equal(tabsLive.main, tabsLive.menu, "guests see only that menu");
+  checks += 3;
   cookie = ownerCookie;
 
   // 6. Posts: three designs, one photo, a post or Story, the design's colors.
@@ -846,7 +868,7 @@ try {
   checks++;
 
   console.log(
-    `PASS: ${checks} plan limit checks: signup cap per network, Free defaults for the restaurant look, one basic live menu (also across two tabs), three free post designs (New posts, free designs over a Pro post's look, and Free copies), Pro-only campaigns, batches, staff links, saved looks and inspiration photos, trimmed insights, the menu credit, admin comps, keeping work after a downgrade, the renewal grace and the switch.`,
+    `PASS: ${checks} plan limit checks: signup cap per network, Free defaults for the restaurant look, one basic live menu (also across two tabs, and with the old single-menu routes gone), three free post designs (New posts, free designs over a Pro post's look, and Free copies), Pro-only campaigns, batches, staff links, saved looks and inspiration photos, trimmed insights, the menu credit, admin comps, keeping work after a downgrade, the renewal grace and the switch.`,
   );
 } finally {
   rmSync(root, { recursive: true, force: true });

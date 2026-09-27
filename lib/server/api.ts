@@ -12,7 +12,6 @@ import {
   saveStudioRelease,
 } from "./studio-release";
 import { billingRoute, billingSummary, billingEnabled } from "./billing";
-import { effectiveStyle, requirePro } from "./entitlements";
 import { validateImageDimensions } from "./image-validation";
 import {
   assetVariantKeys,
@@ -30,13 +29,9 @@ import {
   resolveMenuAddress,
   suggestMenuAddress,
 } from "./menu-address";
-import {
-  isPlaceholderRestaurantName,
-  restaurantNameMessage,
-  slugify,
-} from "../restaurant-identity";
+import { isPlaceholderRestaurantName, slugify } from "../restaurant-identity";
 import { normalizeDietary } from "../dietary";
-import { FREE_SIGNUP_IMAGES, freeMenuDesign, isProFeature } from "../plans";
+import { FREE_SIGNUP_IMAGES, isProFeature } from "../plans";
 import {
   menuDocumentsRoute,
   assetInPublishedDocuments,
@@ -158,42 +153,6 @@ const dishSchema = z.object({
     .union([z.boolean(), z.number()])
     .transform((value) => !!value)
     .default(false),
-});
-const menuSchema = z.object({
-  design: z.enum(["bistro", "cafe", "fine", "casual"]).default("bistro"),
-  density: z
-    .enum(["spacious", "comfortable", "compact"])
-    .default("comfortable"),
-  printProfile: z.enum(["home", "press"]).default("home"),
-  title: z.string().max(100).default(""),
-  layout: z.enum(["classic", "grid", "featured"]).default("classic"),
-  appearance: z.enum(["light", "dark"]).default("light"),
-  paper: z.enum(["letter", "a4"]).default("letter"),
-  sections: z
-    .array(
-      z.object({
-        id: z.string().max(100),
-        name: z.string().trim().min(1).max(100),
-        items: z
-          .array(
-            z.object({
-              dishId: z.string().uuid(),
-              photoId: z.string().uuid().nullable().optional(),
-              featured: z.boolean().optional(),
-              crop: z
-                .object({
-                  fit: z.boolean().default(true),
-                  x: z.number().min(0).max(100).default(50),
-                  y: z.number().min(0).max(100).default(50),
-                  zoom: z.number().min(1).max(2).default(1),
-                })
-                .optional(),
-            }),
-          )
-          .max(100),
-      }),
-    )
-    .max(30),
 });
 // A saved look can outlive what it names (a photo style later removed from
 // the catalog). Keep the values that are still valid and use defaults for
@@ -376,89 +335,6 @@ async function issueInvite(email: string, allowance: number, role = "owner") {
     invite: raw,
     path: `/?invite=${encodeURIComponent(raw)}&email=${encodeURIComponent(email)}${role === "reset" ? "&reset=1" : ""}`,
     expiresAt: now() + 7 * 86400000,
-  };
-}
-async function snapshot(r: Row, draft: Row) {
-  const sections = [];
-  for (const section of draft.sections) {
-    const items = [];
-    for (const item of section.items) {
-      const d = await one(
-        "SELECT * FROM dishes WHERE id=? AND restaurant_id=?",
-        item.dishId,
-        r.id,
-      );
-      assert(d, 400, "One of the dishes in this menu is missing.");
-      let photoId = null;
-      if (item.photoId) {
-        const a = await one(
-          "SELECT * FROM assets WHERE id=? AND restaurant_id=? AND dish_id=? AND approved_at IS NOT NULL AND deleted_at IS NULL",
-          item.photoId,
-          r.id,
-          d.id,
-        );
-        assert(a, 400, "Menu photos must be approved and belong to this dish.");
-        const obj = await bucket().get(a.working_key || a.key);
-        assert(obj, 400, "A menu photo is unavailable. Choose another photo.");
-        await bucket().put(`public/${r.id}/${a.id}`, await obj.arrayBuffer(), {
-          httpMetadata: { contentType: a.working_key ? "image/jpeg" : a.mime },
-        });
-        photoId = a.id;
-      }
-      items.push({
-        id: d.id,
-        name: d.name,
-        description: d.description,
-        price: d.price,
-        available: !!d.available,
-        photoId,
-        featured: item.featured,
-        crop: item.crop,
-      });
-    }
-    sections.push({ id: section.id, name: section.name, items });
-  }
-  let logoId = null;
-  if (r.logo_id) {
-    const a = await one(
-      "SELECT * FROM assets WHERE id=? AND restaurant_id=? AND kind='logo' AND deleted_at IS NULL",
-      r.logo_id,
-      r.id,
-    );
-    if (a) {
-      const obj = await bucket().get(
-        transparentLogo(a) ? a.key : a.working_key || a.key,
-      );
-      if (obj) {
-        await bucket().put(`public/${r.id}/${a.id}`, await obj.arrayBuffer(), {
-          httpMetadata: {
-            contentType: transparentLogo(a) ? a.mime : "image/jpeg",
-          },
-        });
-        logoId = a.id;
-      }
-    }
-  }
-  return {
-    restaurant: {
-      name: r.name,
-      cuisine: r.cuisine,
-      currency: r.currency,
-      brand: r.brand,
-      style: await effectiveStyle(r),
-      orderingUrl: r.ordering_url,
-      timezone: r.timezone,
-      hours: JSON.parse(r.hours),
-      logoId,
-    },
-    sections,
-    design: draft.design,
-    density: draft.density,
-    printProfile: draft.printProfile,
-    title: draft.title,
-    layout: draft.layout,
-    appearance: draft.appearance,
-    paper: draft.paper,
   };
 }
 function assetIsPublished(menu: Row, assetId: string) {
@@ -1384,9 +1260,8 @@ async function route(req: Request) {
     if (
       r.public_suspended &&
       method === "POST" &&
-      ((p[0] === "menu" && p[1] === "publish") ||
-        (["menus", "promotions"].includes(p[0]) &&
-          ["publish", "primary", "live"].includes(p[2])))
+      ["menus", "promotions"].includes(p[0]) &&
+      ["publish", "primary", "live"].includes(p[2])
     )
       throw new AppError(
         403,
@@ -1946,66 +1821,14 @@ async function route(req: Request) {
       );
       return response({ ok: true });
     }
-    if (p[0] === "menu" && method === "POST") {
-      assert(
-        !(await one(
-          "SELECT id FROM menu_documents WHERE restaurant_id=? LIMIT 1",
-          r.id,
-        )),
-        409,
-        "Menu Studio has been upgraded. Reload the workspace to keep editing or publishing your saved menus.",
+    // The single menu from before Menus (menu, menu/publish, menu/unpublish).
+    // Pages use menus/*; a hand-made call here published around Free's
+    // one-live-menu limit.
+    if (p[0] === "menu" && method === "POST")
+      throw new AppError(
+        410,
+        "Menu Studio has been upgraded. Reload the page to keep editing and publishing your menus.",
       );
-      if (p[1] === "unpublish") {
-        await run(
-          "UPDATE restaurants SET published=NULL,published_at=NULL WHERE id=?",
-          r.id,
-        );
-        await event(r.id, "menu_unpublished");
-        return response({ ok: true });
-      }
-      if (p[1] === "publish") {
-        const draft = menuSchema.parse(JSON.parse(r.menu_draft));
-        // The older single menu follows the same rule: Free uses the basic design.
-        if (!freeMenuDesign(draft)) await requirePro(r.id, "menuDesigns");
-        assert(
-          draft.sections.some((s) => s.items.length),
-          400,
-          "Add at least one dish before publishing.",
-        );
-        assert(
-          !isPlaceholderRestaurantName(r.name),
-          400,
-          restaurantNameMessage,
-        );
-        const menu = await snapshot(r, draft);
-        await run(
-          "UPDATE restaurants SET published=?,published_at=? WHERE id=?",
-          JSON.stringify(menu),
-          now(),
-          r.id,
-        );
-        await event(r.id, "menu_published");
-        return response({ ok: true, path: "/m/" + r.slug });
-      }
-      const draft = menuSchema.parse(await body(req));
-      for (const section of draft.sections)
-        for (const item of section.items)
-          assert(
-            await one(
-              "SELECT id FROM dishes WHERE id=? AND restaurant_id=?",
-              item.dishId,
-              r.id,
-            ),
-            400,
-            "Menu dish not found.",
-          );
-      await run(
-        "UPDATE restaurants SET menu_draft=? WHERE id=?",
-        JSON.stringify(draft),
-        r.id,
-      );
-      return response({ ok: true });
-    }
     throw new AppError(404, "Not found.");
   } catch (e) {
     if (e instanceof z.ZodError)

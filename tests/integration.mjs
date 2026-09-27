@@ -16,6 +16,8 @@ process.env.APP_ORIGIN = "http://localhost";
 const { handle } = await import("../lib/server/api.ts");
 const { run, one } = await import("../lib/server/core.ts");
 const { env } = await import("../lib/local-runtime.ts");
+const { newMenuDocument, newMenuEntry } =
+  await import("../lib/menu-document.ts");
 const photos = readFileSync("public/pasta.jpg");
 const generatedPng = readFileSync("public/apple-touch-icon.png");
 let cookie = "",
@@ -226,15 +228,32 @@ try {
     proUntil: Date.now() + 365 * 86400000,
   });
   cookie = ownerCookie;
-  const menu = {
+  const pasta = newMenuEntry({
+    dishId,
+    name: "Tomato pasta",
+    description: "Spaghetti, tomatoes and basil",
+    price: 1400,
+    photoId: sourceId,
+  });
+  const menuDraft = newMenuDocument({
     sections: [
-      { id: "mains", name: "Mains", items: [{ dishId, photoId: sourceId }] },
+      {
+        id: "mains",
+        name: "Mains",
+        description: "",
+        pageBreakBefore: false,
+        items: [pasta],
+      },
     ],
-  };
-  await call("menu", menu);
-  await call("menu/publish", {}, 400);
+  });
+  // A menu shows only photos the owner chose.
+  await call("menus", { id: crypto.randomUUID(), draft: menuDraft }, 400);
   await call(`assets/${sourceId}/approve`, { accurate: true });
-  await call("menu/publish", {});
+  let menuDoc = await call("menus", {
+    id: crypto.randomUUID(),
+    draft: menuDraft,
+  });
+  await call(`menus/${menuDoc.id}/publish`, { revision: menuDoc.revision });
   assert.equal((await call("sharing/check", {})).accessible, true);
   publicCheckMode = "locked";
   assert.equal(
@@ -248,7 +267,11 @@ try {
   cookie = "";
   await call("sharing/check", {}, 401);
   await call("restaurant", { ...profile, style: savedLook }, 401);
-  await call("menu/publish", {}, 401);
+  await call(
+    `menus/${menuDoc.id}/publish`,
+    { revision: menuDoc.revision },
+    401,
+  );
   await call("creation-drafts", undefined, 401);
   await call("assets/" + sourceId, undefined, 401);
   let pub = await call("public/" + slug);
@@ -267,15 +290,27 @@ try {
   assert.equal(pub.menu.restaurant.style.referenceIds, undefined);
   await call(`public/${slug}/assets/${sourceId}`);
   cookie = ownerCookie;
-  await call("dishes/" + dishId, {
-    name: "Private draft name",
-    description: "Updated privately",
-    price: 16,
-    confirmed: true,
-  });
+  // Guests see the published copy; draft edits wait for the next publish.
+  menuDoc = await call(
+    `menus/${menuDoc.id}`,
+    {
+      revision: menuDoc.revision,
+      draft: {
+        ...menuDraft,
+        sections: [
+          {
+            ...menuDraft.sections[0],
+            items: [{ ...pasta, name: "Private draft name", price: 1600 }],
+          },
+        ],
+      },
+    },
+    200,
+    { method: "PUT" },
+  );
   pub = await call("public/" + slug);
   assert.equal(pub.menu.sections[0].items[0].name, "Tomato pasta");
-  await call("menu/publish", {});
+  await call(`menus/${menuDoc.id}/publish`, { revision: menuDoc.revision });
   pub = await call("public/" + slug);
   assert.equal(pub.menu.sections[0].items[0].name, "Private draft name");
   const request = { dishId, sourceId, requestKey: crypto.randomUUID() };
@@ -384,12 +419,16 @@ try {
   await call("captions/generate", { dishId });
   assert(promptSeen.includes("Do not invent ingredients"));
   await call("captions", { dishId, body: "Our own edited caption." });
-  await call("menu/unpublish", {});
+  await call(`menus/${menuDoc.id}/unpublish`, {
+    revision: menuDoc.revision,
+    confirmed: true,
+  });
   cookie = "";
   await call("public/" + slug, undefined, 404);
   await call(`public/${slug}/assets/${sourceId}`, undefined, 404);
   cookie = ownerCookie;
-  await call("menu/publish", {});
+  menuDoc = await call(`menus/${menuDoc.id}`);
+  await call(`menus/${menuDoc.id}/publish`, { revision: menuDoc.revision });
   await call("assets/" + sourceId, undefined, 200, { method: "DELETE" });
   pub = await call("public/" + slug);
   assert.equal(pub.menu.sections[0].items[0].photoId, null);
@@ -415,8 +454,21 @@ try {
   await call(`assets/${generated.id}/use`, { action: "menu" }, 404);
   await call("admin", undefined, 403);
   await call(
-    "menu",
-    { sections: [{ id: "x", name: "No", items: [{ dishId }] }] },
+    "menus",
+    {
+      id: crypto.randomUUID(),
+      draft: newMenuDocument({
+        sections: [
+          {
+            id: "x",
+            name: "No",
+            description: "",
+            pageBreakBefore: false,
+            items: [newMenuEntry({ dishId, name: "No", price: 100 })],
+          },
+        ],
+      }),
+    },
     400,
   );
   await call("restaurant", { name: "CSRF" }, 403, {

@@ -26,6 +26,8 @@ const { imagePrompt } = await import("../lib/server/generation.ts");
 const { restaurantPhotoDefaults, restaurantPhotoSelection, brandPostFields } =
   await import("../lib/restaurant-look.ts");
 const { applyPostTemplate } = await import("../lib/post-templates.ts");
+const { newMenuDocument, newMenuEntry } =
+  await import("../lib/menu-document.ts");
 const brand = {
   autoApply: true,
   primary: "#235b48",
@@ -435,11 +437,11 @@ globalThis.fetch = async (url, init = {}) => {
     usage: { input_tokens: 42, output_tokens: 16 },
   });
 };
-async function call(path, b, expected = 200) {
+async function call(path, b, expected = 200, method) {
   if (path === "jobs/tick") clockAdvance += 31000;
   const res = await handle(
     new Request("http://localhost/api/" + path, {
-      method: b === undefined ? "GET" : "POST",
+      method: method || (b === undefined ? "GET" : "POST"),
       headers: {
         cookie,
         ...(b instanceof FormData
@@ -810,7 +812,9 @@ try {
   await call("jobs/tick", {});
   await call("jobs/tick", {});
   assert.equal(calls - before, 1, "First sample is not regenerated");
-  const menu = {
+  // The menu names and prices the dish its own way ("Untitled dish" can't
+  // go live).
+  const menu = newMenuDocument({
     layout: "featured",
     appearance: "dark",
     paper: "a4",
@@ -818,12 +822,19 @@ try {
       {
         id: "mains",
         name: "Mains",
-        items: [{ dishId: dish.id, photoId: editId }],
+        items: [
+          newMenuEntry({
+            dishId: dish.id,
+            name: "House special",
+            price: 2000,
+            photoId: editId,
+          }),
+        ],
       },
     ],
-  };
-  await call("menu", menu);
-  await call("menu/publish", {});
+  });
+  const menuDoc = await call("menus", { id: crypto.randomUUID(), draft: menu });
+  await call(`menus/${menuDoc.id}/publish`, { revision: menuDoc.revision });
   state = await call("state");
   assert.equal(state.restaurant.published.layout, "featured");
   assert.equal(state.restaurant.published.appearance, "dark");
@@ -834,10 +845,13 @@ try {
     confirmed: true,
   });
   state = await call("state");
-  assert.equal(
-    state.restaurant.published.sections[0].items[0].name,
-    "Untitled dish",
-    "Price and name changes remain unpublished",
+  assert.deepEqual(
+    [
+      state.restaurant.published.sections[0].items[0].name,
+      state.restaurant.published.sections[0].items[0].price,
+    ],
+    ["House special", 2000],
+    "Price and name changes leave a menu's own name and price",
   );
   const beforeLayouts = calls;
   await call("creation-drafts", {
@@ -846,7 +860,12 @@ try {
     revision: 0,
     draft: { price: 12, caption: "Confirmed details", template: "photo" },
   });
-  await call("menu", { ...menu, layout: "classic" });
+  await call(
+    `menus/${menuDoc.id}`,
+    { revision: menuDoc.revision, draft: { ...menu, layout: "classic" } },
+    200,
+    "PUT",
+  );
   assert.equal(calls, beforeLayouts);
   const other = crypto.randomUUID();
   await run(
