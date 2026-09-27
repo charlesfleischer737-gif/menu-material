@@ -480,7 +480,7 @@ async function queueStatus() {
     oldestMs: Number.isFinite(oldest) ? Math.max(0, now() - oldest) : null,
   };
 }
-async function budgetStatus() {
+export async function budgetStatus() {
   const { budgetWarnPercent } = monitoringSettings();
   const controls = await aiControls();
   const spent = await one(

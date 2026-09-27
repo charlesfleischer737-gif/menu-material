@@ -228,7 +228,10 @@ export default function GuestStudio({
         if (create) void api("jobs/tick", {}).catch(() => {});
         await onFinish();
       } catch (e) {
-        setError((e as Error).message);
+        // Nothing was saved, and the Create bar already says images can't
+        // be made now: no alert and no Retry.
+        if ((e as { code?: string }).code !== "images_unavailable")
+          setError((e as Error).message);
       } finally {
         lock.current = false;
         transferring.current = false;
@@ -478,7 +481,6 @@ export default function GuestStudio({
               ...state,
               guest: true,
               remaining: state.user ? state.remaining : 5,
-              aiConnected: state.user ? state.aiConnected : true,
             }}
             selected={selected}
             source={photo?.url || ""}

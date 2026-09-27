@@ -8,6 +8,17 @@ import {
   workspacePreferenceKey,
 } from "./workspace-navigation";
 export type GuestPhoto = { file: File; normalized: Blob; url: string };
+// What a guest hears, before and after signup, when no image can be made.
+export const imagesUnavailableMessage =
+  "Photo creation isn’t available right now. Please try again later.";
+/**
+ * Why the guest studio can't make an image now, said before a photo is
+ * added or an account made; "" when it can. /api/state's imagesAvailable
+ * covers the AI key, a pause and the day's budget.
+ */
+export function guestCreationBlock(state: Row) {
+  return state.imagesAvailable === false ? imagesUnavailableMessage : "";
+}
 // What's in a photo chosen before signup, to suggest styles. Only a small
 // copy is sent (the model reads photos at 512 px), and nothing is stored.
 // The built-in sample is sent as its own file, which the server knows and
@@ -62,6 +73,12 @@ export async function transferGuestPhoto(
   persistProgress: () => Promise<void> = async () => {},
   { create = true }: { create?: boolean } = {},
 ) {
+  // No image can be made now: stop before anything is saved (the studio
+  // already says so). Once a dish is saved, as on a retry after a lost
+  // reply, the server decides.
+  const unavailable = create && !transfer.dishId && guestCreationBlock(state);
+  if (unavailable)
+    throw Object.assign(Error(unavailable), { code: "images_unavailable" });
   const activeReference = activeInspirationId(draft, state.restaurant);
   if ((draft.look === "reference" || activeReference) && !reference)
     throw Error(

@@ -13,6 +13,7 @@ import {
 } from "./studio-release";
 import { billingRoute, billingSummary, billingEnabled } from "./billing";
 import { validateImageDimensions } from "./image-validation";
+import { imagesAvailable } from "./image-availability";
 import {
   assetVariantKeys,
   neededVariants,
@@ -838,6 +839,9 @@ async function route(req: Request) {
             !(await one("SELECT id FROM users WHERE role='admin'")),
           local: config("LOCAL_DEVELOPMENT") === "true",
           aiConnected: !!config("OPENAI_API_KEY"),
+          // Told before signup, so nobody signs up for an image that can't
+          // be made now.
+          imagesAvailable: await imagesAvailable(),
         });
       const { r } = await owner(req);
       // Each photo's history (from a real photo? which size and look?) comes
@@ -873,6 +877,7 @@ async function route(req: Request) {
         remaining: await remaining(r.id),
         billing,
         aiConnected: !!config("OPENAI_API_KEY"),
+        imagesAvailable: await imagesAvailable(billing.plan === "pro"),
         local: config("LOCAL_DEVELOPMENT") === "true",
         // For menu links and QR codes made in the browser.
         menuOrigin: menuLinkOrigin(new URL(req.url).origin),

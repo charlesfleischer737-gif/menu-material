@@ -92,6 +92,7 @@ import {
   recipeFromDraft,
   type SavedLook,
 } from "@/lib/studio-library";
+import { guestCreationBlock } from "@/lib/guest-studio";
 
 // The generated master is square, portrait or landscape; these are the four
 // shapes owners reach for. Other saved destinations stay selectable.
@@ -513,7 +514,11 @@ export function StudioWorkbench({
   // A guest who has signed in (the guest studio hands their work over) sees
   // their account's real allowance and availability.
   const signedOutGuest = !!state.guest && !state.user;
+  // The guest studio says so before a photo is added, and after signup, when
+  // no image can be made now: one message, in place of Create's usual note.
+  const guestUnavailable = state.guest ? guestCreationBlock(state) : "";
   const canCreate =
+    !guestUnavailable &&
     !creationBlock &&
     !inspirationBlock &&
     photoReady &&
@@ -524,6 +529,7 @@ export function StudioWorkbench({
     (b.look !== "reference" || !!referencePhoto) &&
     !b.menuDocument;
   const reason =
+    guestUnavailable ||
     creationBlock ||
     inspirationBlock ||
     (b.menuDocument
@@ -545,6 +551,8 @@ export function StudioWorkbench({
                 : signedOutGuest
                   ? `Create a free account to continue · ${FREE_SIGNUP_IMAGES} free images`
                   : `Uses 1 image · ${state.remaining} left`);
+  const offerPlans =
+    !signedOutGuest && !guestUnavailable && state.remaining <= 0;
   const showImage =
     b.look === "keep" && source
       ? source
@@ -848,11 +856,13 @@ export function StudioWorkbench({
     </p>
   );
   // Under the canvas: what becomes of the photo. A signed-out guest gets no
-  // note.
+  // note; after signup, it waits until the photo can be created.
   const stageNote = guestOnly
     ? ""
     : state.guest
-      ? "Your photo is saved to your account when you create it."
+      ? guestUnavailable || state.remaining <= 0
+        ? ""
+        : "Your photo is saved to your account when you create it."
       : b.mode === "description"
         ? "Illustrations are labeled as illustrations."
         : "Your original photo is always kept.";
@@ -1496,13 +1506,14 @@ export function StudioWorkbench({
               </span>
             </section>
 
+            {/* Shown before a photo is added when no image can be made. */}
             <WorkspaceActionBar
-              className={`st-action${photoReady ? "" : " is-waiting"}`}
+              className={`st-action${photoReady || guestUnavailable ? "" : " is-waiting"}`}
             >
               {createButton}
               <p className="st-action-note">
                 {reason}
-                {!signedOutGuest && state.remaining <= 0 && (
+                {offerPlans && (
                   <button
                     className="st-text-button"
                     onClick={() =>
