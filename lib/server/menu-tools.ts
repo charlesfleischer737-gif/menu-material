@@ -8,6 +8,7 @@ import {
   releaseStorage,
   aiControls,
   caller,
+  MENU_READING_TIMEOUT_MS,
 } from "./safeguards";
 import {
   all,
@@ -390,16 +391,17 @@ export async function menuTools(req: Request, p: string[], r: Row) {
         "Menu reading is not connected yet. You can enter an editable draft manually.",
       );
       await limit("import:" + r.id, 10, 3600);
+      // A reading still within its time can't be started twice.
       const claimed = await run(
         "UPDATE menu_imports SET status='reading',read_started_at=?,error=NULL WHERE id=? AND (status!='reading' OR read_started_at IS NULL OR read_started_at<?)",
         now(),
         imp.id,
-        now() - 120000,
+        now() - MENU_READING_TIMEOUT_MS - 60000,
       );
       assert(
         claimed.meta.changes,
         409,
-        "This menu is already being read. If it was interrupted, retry after two minutes.",
+        "This menu is already being read. If it was interrupted, retry after three minutes.",
       );
       try {
         const obj = await bucket().get(imp.key);
@@ -435,6 +437,7 @@ export async function menuTools(req: Request, p: string[], r: Row) {
             max_output_tokens: 9000,
           },
           { restaurantId: r.id, kind: "import" },
+          MENU_READING_TIMEOUT_MS,
         );
         const text = res.output
           ?.flatMap((x: Row) => x.content || [])

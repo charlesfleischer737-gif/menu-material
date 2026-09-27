@@ -134,3 +134,12 @@ const BUCKET = {
   },
 };
 export const env = { ...process.env, DB, BUCKET, LOCAL_DEVELOPMENT: "true" };
+// On Workers, work passed to waitUntil keeps running after the response or
+// after the client leaves. Here everything runs to completion anyway; this
+// records what a Worker would keep, for tests.
+export const keptAlive = new Set<Promise<unknown>>();
+export function waitUntil(promise: Promise<unknown>) {
+  keptAlive.add(promise);
+  const done = () => keptAlive.delete(promise);
+  promise.then(done, done);
+}

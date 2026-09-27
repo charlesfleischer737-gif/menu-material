@@ -695,7 +695,7 @@ function AdminRestaurant({
             </span>
           )}
           {r.cost_estimate === null
-            ? "Cost estimate not configured"
+            ? "No estimated image cost yet"
             : `Estimated provider cost: $${Number(r.cost_estimate).toFixed(2)}`}{" "}
           · {r.support_minutes || 0} support minutes
         </small>
@@ -942,8 +942,10 @@ function readinessDetail(name: string, check: Row) {
     }`;
   if (name === "aiBudget")
     return `${check.percent}% of today’s budget used${
-      check.status === "paused" ? "; AI work is paused" : ""
-    }`;
+      check.freeSharePercent < 100
+        ? `; guests and Free plans have used $${(check.freeSpentCents / 100).toFixed(2)} of their $${(check.freeBudgetCents / 100).toFixed(2)} share${check.freeShareUsedUp ? ", so their new AI work waits" : ""}`
+        : ""
+    }${check.status === "paused" ? "; AI work is paused" : ""}`;
   return `${check.latencyMs} ms`;
 }
 function ReadinessStatus({ readiness }: { readiness: Row }) {
@@ -1074,7 +1076,10 @@ function AiOperations({
         <summary>How budgets and pausing work</summary>
         <p>
           Budgets reset at midnight UTC. Reservations include captions, image
-          guidance, menu reading and images; uncertain requests remain counted.
+          guidance, menu reading and images; finished requests count their
+          measured cost, and uncertain requests remain counted. Guests and Free
+          plans together can use only part of the site-wide budget (set by
+          AI_FREE_BUDGET_SHARE_PERCENT), so paid plans always have the rest.
         </p>
         <p>
           These limits use configured cost estimates, not invoice totals.

@@ -377,6 +377,9 @@ export const aiSpend = sqliteTable(
     reservedCents: integer("reserved_cents").notNull(),
     status: text().notNull().default("reserved"),
     usage: text(),
+    // Reserved under an active paid plan. Guests and Free plans together use
+    // only part of the site-wide daily budget (lib/server/safeguards.ts).
+    paid: integer().notNull().default(0),
     createdAt: integer("created_at").notNull(),
   },
   (t) => [index("idx_spend_day_restaurant").on(t.budgetDay, t.restaurantId)],

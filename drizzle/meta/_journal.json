@@ -141,6 +141,13 @@
       "when": 1790399920786,
       "tag": "0019_pro_feature_comp",
       "breakpoints": true
+    },
+    {
+      "idx": 20,
+      "version": "6",
+      "when": 1790473986271,
+      "tag": "0020_ai_spend_paid_share",
+      "breakpoints": true
     }
   ]
 }

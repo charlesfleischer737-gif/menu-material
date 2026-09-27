@@ -138,7 +138,7 @@ export default function GuestStudio({
       record.draft.analysisSourceId === record.draft.sourceId &&
       record.draft.analysisStatus === "analyzing"
     )
-      void readPhoto(restoredPhoto.normalized);
+      void readPhoto(restoredPhoto, !!record.draft.sample);
     // Resuming restores work; creation always requires the owner's action.
     setRequested(false);
     persisted.current = true;
@@ -285,7 +285,7 @@ export default function GuestStudio({
   // Suggestions follow what's in the photo, as in the workspace. The latest
   // photo's answer is the only one used, and never over the owner's choice.
   const analysisRun = useRef(0);
-  async function readPhoto(normalized: Blob) {
+  async function readPhoto(photo: GuestPhoto, sample: boolean) {
     const run = ++analysisRun.current;
     const settle = (patch: (current: Row) => Row) => {
       if (run !== analysisRun.current) return;
@@ -308,7 +308,11 @@ export default function GuestStudio({
       recommendationFamily: "",
     }));
     try {
-      const result = await readGuestPhoto(normalized);
+      // The sample goes as its own file, so it is never read by the AI service.
+      const result = await readGuestPhoto(
+        photo.normalized,
+        sample ? photo.file : undefined,
+      );
       settle((current) =>
         photoAnalysisRecommendation(current, result, "guest-photo"),
       );
@@ -349,7 +353,7 @@ export default function GuestStudio({
         recommendationDrink: "other",
         adjustments: { ...emptyAdjustments },
       });
-      void readPhoto(normalized);
+      void readPhoto(next, !!options.sample);
     } catch (e) {
       setError((e as Error).message);
     } finally {
@@ -519,7 +523,7 @@ export default function GuestStudio({
             }}
             retryAnalysis={
               photo && state.aiConnected
-                ? () => void readPhoto(photo.normalized)
+                ? () => void readPhoto(photo, !!draft.sample)
                 : undefined
             }
             create={create}
