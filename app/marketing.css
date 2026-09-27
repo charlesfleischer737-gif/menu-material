@@ -1431,6 +1431,45 @@
   text-decoration: underline;
   text-underline-offset: 3px;
 }
+/* Cards without their buttons end with their features. */
+.pw-plan-card > .pw-plan-features:last-child {
+  margin-bottom: 0;
+}
+/* The dialog's buttons stay in view below the plans, which scroll on a
+   laptop screen, with any error just above them. */
+.pw-plans-footer {
+  flex: 0 0 auto;
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 12px 24px;
+  padding: 16px 28px 20px;
+  border-top: 1px solid var(--workspace-line);
+}
+.pw-plans-footer > p {
+  flex: 1 1 260px;
+  margin: 0;
+}
+.pw-plans-footer > .error {
+  flex-basis: 100%;
+}
+.pw-plans-footer .pw-plan-terms,
+.pw-plans-status {
+  color: var(--workspace-muted);
+}
+.pw-plans-footer .pw-plan-terms a {
+  color: var(--workspace-ink);
+}
+.pw-plans-status {
+  font-size: var(--text-subhead);
+}
+.pw-plans-actions {
+  display: flex;
+  flex-wrap: wrap;
+  justify-content: flex-end;
+  gap: 10px;
+  margin-left: auto;
+}
 .pw-plan-current {
   margin-top: 20px;
   padding: 20px;
@@ -1584,6 +1623,15 @@
   }
   .pw-plans-body {
     padding: 0 18px 18px;
+  }
+  .pw-plans-footer {
+    gap: 10px;
+    padding: 12px 18px 16px;
+  }
+  /* Full width, the Pro action first. */
+  .pw-plans-actions {
+    flex-direction: column-reverse;
+    width: 100%;
   }
 }
 @media (prefers-reduced-motion: reduce) {
