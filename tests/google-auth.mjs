@@ -378,7 +378,7 @@ try {
   await verify(repeated, { sub: "new-person", email: user.email });
   await complete(repeated, {
     restaurant: "Returned Bistro",
-    attribution: { source: "launch-test" },
+    attribution: { utmSource: "launch-test" },
   });
   const repeatedRestaurant = await one(
     "SELECT r.* FROM restaurants r JOIN users u ON u.id=r.user_id WHERE u.email=?",
@@ -386,6 +386,7 @@ try {
   );
   assert.equal(repeatedRestaurant.allowance, 0);
   assert.equal(repeatedRestaurant.free_grant, "used");
+  assert.equal(JSON.parse((await one("SELECT details FROM events WHERE restaurant_id=? AND kind='signup_source'", repeatedRestaurant.id)).details).utmSource, "launch-test");
   env.FREE_SIGNUP_GRANTS_PER_DAY = "0";
   const held = await start();
   await verify(held, { sub: "held-person", email: "held.person@gmail.com" });

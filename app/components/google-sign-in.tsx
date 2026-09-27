@@ -181,6 +181,7 @@ export default function GoogleSignIn(props: {
         attribution: savedAttribution(),
         website,
       });
+      forgetAttribution();
       await latest.current.onDone();
     } catch (e) {
       if (alive.current) setError((e as Error).message);
