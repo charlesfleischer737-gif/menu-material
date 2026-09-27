@@ -22,6 +22,27 @@ export const sessions = sqliteTable("sessions", {
     .references(() => users.id),
   expiresAt: integer("expires_at").notNull(),
 });
+// Browsers that have signed in to an account, by a hash of their device
+// cookie. Their sign-ins skip the per-account slowdown that anyone who knows
+// the email can cause (lib/server/core.ts).
+export const trustedDevices = sqliteTable(
+  "trusted_devices",
+  {
+    hash: text().primaryKey(),
+    userId: text("user_id")
+      .notNull()
+      .references(() => users.id),
+    expiresAt: integer("expires_at").notNull(),
+    createdAt: integer("created_at").notNull(),
+  },
+  (t) => [index("idx_trusted_devices_user").on(t.userId)],
+);
+// A one-way hash of each deleted account's email, kept only so signing up
+// again with it doesn't bring back the free signup images.
+export const freeGrantEmails = sqliteTable("free_grant_emails", {
+  hash: text().primaryKey(),
+  createdAt: integer("created_at").notNull(),
+});
 export const invites = sqliteTable("invites", {
   hash: text().primaryKey(),
   email: text().notNull(),
@@ -58,6 +79,10 @@ export const restaurants = sqliteTable("restaurants", {
   publicSuspended: integer("public_suspended").notNull().default(0),
   currency: text().notNull().default("USD"),
   allowance: integer().notNull().default(20),
+  // The free signup images: "held" until a day's grants have room (they are
+  // then added to allowance), or "used" when this email's deleted account
+  // already had them (lib/server/free-grants.ts).
+  freeGrant: text("free_grant"),
   paused: integer().notNull().default(0),
   dailyBudgetCents: integer("daily_budget_cents").notNull().default(2000),
   // Set by an administrator: Pro features, not Pro images, until this time.

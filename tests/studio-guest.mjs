@@ -8,7 +8,8 @@ process.env.LOCAL_DEVELOPMENT = "true";
 process.env.OPENAI_API_KEY = "fixture-only";
 const { handle } = await import("../lib/server/api.ts");
 const { one, id } = await import("../lib/server/core.ts");
-const { transferGuestPhoto } = await import("../lib/guest-studio.ts");
+const { transferGuestPhoto, guestCreationBlock, imagesUnavailableMessage } =
+  await import("../lib/guest-studio.ts");
 const { photoBrief } = await import("../lib/studio.ts");
 let cookie = "",
   checks = 0;
@@ -145,8 +146,61 @@ try {
     "",
   );
   checks++;
+  // When no image can be made now, the studio says so with one message, and
+  // a Create pressed before signup stops before anything is saved.
+  assert.equal(
+    imagesUnavailableMessage,
+    "Photo creation isn’t available right now. Please try again later.",
+  );
+  assert.equal(guestCreationBlock({ imagesAvailable: true }), "");
+  assert.equal(guestCreationBlock({}), "", "a state without the answer");
+  assert.equal(
+    guestCreationBlock({ imagesAvailable: false }),
+    imagesUnavailableMessage,
+  );
+  const closed = { ...state, imagesAvailable: false };
+  const rows = async () =>
+    Promise.all(
+      ["dishes", "assets", "creation_drafts", "jobs"].map(
+        async (table) =>
+          (
+            await one(
+              `SELECT count(*) n FROM ${table} WHERE restaurant_id=?`,
+              state.restaurant.id,
+            )
+          ).n,
+      ),
+    );
+  const before = await rows();
+  const unavailable = { id: id(), revision: 0, requestKey: id() };
+  const closedDraft = { ...photoBrief(), name: "Closed pasta", mode: "photo" };
+  await assert.rejects(
+    transferGuestPhoto(closedDraft, photo, null, closed, unavailable),
+    (error) =>
+      error.code === "images_unavailable" &&
+      error.message === imagesUnavailableMessage,
+  );
+  assert.equal(unavailable.dishId, undefined);
+  assert.deepEqual(await rows(), before, "nothing is saved");
+  // Signing in without Create still hands the photo over; once a dish is
+  // saved (as on a retry after a lost reply), the server decides.
+  await transferGuestPhoto(
+    closedDraft,
+    photo,
+    null,
+    closed,
+    unavailable,
+    undefined,
+    {
+      create: false,
+    },
+  );
+  assert(unavailable.dishId && unavailable.sourceId);
+  await transferGuestPhoto(closedDraft, photo, null, closed, unavailable);
+  assert(unavailable.jobId);
+  checks += 3;
   console.log(
-    `Guest studio: ${checks} checks passed (samples stay samples after signup; sign-in hands the draft and what the photo shows to the workspace without making an image).`,
+    `Guest studio: ${checks} checks passed (samples stay samples after signup; sign-in hands the draft and what the photo shows to the workspace without making an image; when no image can be made, nothing is saved for one).`,
   );
 } finally {
   rmSync(root, { recursive: true, force: true });

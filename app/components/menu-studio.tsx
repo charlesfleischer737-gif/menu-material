@@ -49,6 +49,7 @@ import {
   blockingChecks,
   menuPublishChecks,
   restaurantSettingsChanged,
+  withDishFacts,
   withDishSafety,
   withLibraryLinks,
 } from "@/lib/menu-checks";
@@ -161,6 +162,7 @@ export default function MenuStudio({
         .filter((a) => a.needs_correction)
         .map((a) => a.id as string),
       dishes: state.dishes as { id: string; dietary?: unknown }[],
+      currency: state.restaurant.currency,
     }),
     issues = blockingChecks(checks),
     spec = menuDesignSpec(draft.design);
@@ -463,6 +465,16 @@ export default function MenuStudio({
     else if (seed.openImport) {
       setSource("file");
       setDialog("source");
+    } else if (seed.share) {
+      // "Print your table card": Share, on the live menu, has the card.
+      const live =
+        store.menus.find((m) => m.published && m.isPrimary) ||
+        store.menus.find((m) => m.published);
+      if (live)
+        void act("Opening Share", async () => {
+          if (live.id !== record.id) await store.select(live.id);
+          setDialog("share");
+        });
     } else if (seed.dishId) {
       const dish = (state.dishes as Row[]).find((d) => d.id === seed.dishId);
       if (dish) {
@@ -1372,6 +1384,20 @@ export default function MenuStudio({
                     return dish
                       ? { ...i, dietary: withDishSafety(i.dietary, dish.dietary) }
                       : i;
+                  }),
+                })),
+              }))
+            }
+            applyDishFacts={(ids) =>
+              change((before) => ({
+                ...before,
+                sections: before.sections.map((s) => ({
+                  ...s,
+                  items: s.items.map((i) => {
+                    const dish =
+                      ids.includes(i.id) &&
+                      (state.dishes as Row[]).find((d) => d.id === i.dishId);
+                    return dish ? withDishFacts(i, dish) : i;
                   }),
                 })),
               }))

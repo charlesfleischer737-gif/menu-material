@@ -116,6 +116,29 @@ for (const { id } of showcaseStyles) {
   assert(size <= 100, `${id}-640.webp is ${Math.round(size)} KB`);
   checks++;
 }
+// The Menus & QR codes and Posts screenshots: every copy in each srcset is
+// its listed width, the same shape as the size the img element declares,
+// smaller than the next copy up, and at most 110 KB.
+const { productScreenshots, productScreenshotPath } =
+  await import("../lib/homepage-product.ts");
+for (const shot of Object.values(productScreenshots)) {
+  assert.equal(shot.widths.at(-1), shot.width, `${shot.name} width`);
+  checks++;
+  let previous = 0;
+  for (const width of shot.widths) {
+    const path = "public" + productScreenshotPath(shot.name, width);
+    const metadata = await sharp(path).metadata();
+    assert.equal(metadata.width, width, path);
+    assert(
+      Math.abs(metadata.height - (width * shot.height) / shot.width) <= 1,
+      `${path} is ${metadata.width} × ${metadata.height}`,
+    );
+    const size = await kb(path);
+    assert(size > previous && size <= 110, `${path} is ${Math.round(size)} KB`);
+    previous = size;
+    checks += 3;
+  }
+}
 // Every catalog example has a small tile preview of the same scene.
 const { photoStyles, styleThumbnail } = await import("../lib/photo-styles.ts");
 for (const style of photoStyles) {
@@ -196,5 +219,5 @@ for (const { id, name } of showcaseStyles) {
   checks++;
 }
 console.log(
-  `PASS: ${checks} display-asset checks: homepage photos match their sources at every display size (PSNR), stay within weight budgets and are smaller than their sources; every style tile has a smaller 400 px preview; Explore tiles have 640 and 960 px copies listed at their real widths; the homepage showcase names current catalog styles. Full-resolution originals and export settings are untouched.`,
+  `PASS: ${checks} display-asset checks: homepage photos match their sources at every display size (PSNR), stay within weight budgets and are smaller than their sources; the homepage's product screenshots are listed at their real widths and shape, within 110 KB each; every style tile has a smaller 400 px preview; Explore tiles have 640 and 960 px copies listed at their real widths; the homepage showcase names current catalog styles. Full-resolution originals and export settings are untouched.`,
 );

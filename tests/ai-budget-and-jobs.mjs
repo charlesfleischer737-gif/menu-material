@@ -1377,8 +1377,55 @@ try {
     checks++;
   }
 
+  // Before signup the guest studio hears whether an image can be made now,
+  // and afterwards the account does: a yes or no, never spend figures.
+  {
+    await run("DELETE FROM ai_spend");
+    await siteBudget(1000);
+    const free = await restaurant("images-free"),
+      paid = await restaurant("images-pro", { paid: true });
+    // Signed out, a Free account, a paid one.
+    const available = async () => {
+      const answers = [];
+      for (const cookie of [undefined, free.cookie, paid.cookie])
+        answers.push((await call("state", { cookie })).data.imagesAvailable);
+      return answers;
+    };
+    assert.deepEqual(await available(), [true, true, true]);
+    assert.doesNotMatch(
+      JSON.stringify((await call("state")).data),
+      /cents|spent|budget/i,
+    );
+    // Guests and Free plans have used their share; paid plans keep the rest.
+    for (let n = 0; n < 3; n++)
+      await reserveAi({ restaurantId: free.rid, kind: "image" });
+    assert.deepEqual(await available(), [false, false, true]);
+    // The whole day's budget is used.
+    for (let n = 0; n < 2; n++)
+      await reserveAi({ restaurantId: paid.rid, kind: "image" });
+    assert.deepEqual(await available(), [false, false, false]);
+    await run("DELETE FROM ai_spend");
+    assert.deepEqual(await available(), [true, true, true]);
+    // AI work paused in Administration.
+    await run(
+      "UPDATE app_settings SET value=? WHERE key='ai-controls'",
+      JSON.stringify({ paused: true, dailyBudgetCents: 1000 }),
+    );
+    assert.deepEqual(await available(), [false, false, false]);
+    await siteBudget(1000);
+    // No OpenAI key.
+    env.OPENAI_API_KEY = "";
+    try {
+      assert.deepEqual(await available(), [false, false, false]);
+    } finally {
+      env.OPENAI_API_KEY = "fixture-only";
+    }
+    assert.deepEqual(await available(), [true, true, true]);
+    checks++;
+  }
+
   console.log(
-    `PASS: ${checks} AI budget and job checks: settled spend, free daily cap, paid-plan image budget, stuck-job repair, provider retries and refusals, independent image settling, --once window and runner capacity, uncertain spend, legacy deadlines on an index, storage before calls, budget holds, description prompts, lenient saved styles, fifty images settled from usage, the guests' and Free plans' share, text calls kept alive, cut-off calls settled by housekeeping, the sample, cached and daily-capped photo checks before signup, and same-day retries of failed daily alerts. Provider calls and webhooks are fixtures.`,
+    `PASS: ${checks} AI budget and job checks: settled spend, free daily cap, paid-plan image budget, stuck-job repair, provider retries and refusals, independent image settling, --once window and runner capacity, uncertain spend, legacy deadlines on an index, storage before calls, budget holds, description prompts, lenient saved styles, fifty images settled from usage, the guests' and Free plans' share, text calls kept alive, cut-off calls settled by housekeeping, the sample, cached and daily-capped photo checks before signup, same-day retries of failed daily alerts, and whether images can be made, told before signup. Provider calls and webhooks are fixtures.`,
   );
 } finally {
   runner?.kill();

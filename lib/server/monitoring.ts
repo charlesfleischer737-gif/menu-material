@@ -480,7 +480,7 @@ async function queueStatus() {
     oldestMs: Number.isFinite(oldest) ? Math.max(0, now() - oldest) : null,
   };
 }
-async function budgetStatus() {
+export async function budgetStatus() {
   const { budgetWarnPercent } = monitoringSettings();
   const controls = await aiControls();
   const spent = await one(
@@ -947,5 +947,17 @@ export async function alertMenuReport(address: string, reason: string) {
     `menu-report:${address}`,
     `A guest reported the menu at /m/${address} (${reason}). Review it in Administration → Guest reports.`,
     now() - 86400000,
+  );
+}
+
+/**
+ * Tell the team, once a UTC day, that new accounts' free images are being
+ * held because the day's grants are used up (lib/server/free-grants.ts).
+ */
+export async function alertFreeGrantsUsedUp(cap: number) {
+  await raiseAlert(
+    "free-signup-grants",
+    `Today's ${cap} free-image grants for new accounts are used up. New accounts still open; their free images wait and are granted oldest first as later days allow. If these signups look genuine, raise FREE_SIGNUP_GRANTS_PER_DAY.`,
+    startOfDay(),
   );
 }

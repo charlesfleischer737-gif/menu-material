@@ -2,6 +2,82 @@
 
 Review date: September 26, 2026. Source: `2930393` (main after #28, "Fit the homepage's Try it free button on a phone's first screen"). This follows the [September 25 review](SITE_AUDIT_2026-09-25.md); Appendix A tracks its items.
 
+## Fix status — September 27
+
+Fixes landed in #30 and #31. The homepage demo's AI label (L7) was left out at the owner's request. Items marked **Yours** need the owner; they're collected under [Your follow-ups](#your-follow-ups).
+
+| Item | Status | What changed / what's left |
+|---|---|---|
+| L1 Post Maker traps Free | Fixed (#30) | "+ New" makes a post Free can save; a free design brings its own colors and type; a post made on Pro opens and downloads, with "Make a Free copy" |
+| L2 Allergens skip adjusted menus | Fixed (#30) | Allergens reach every linked item, and diets the dish no longer meets are removed; publishing is blocked on a mismatch, with "Match My Dishes" |
+| L3 About 50 images a day | Fixed in code (#30) | Images settle at their measured cost; the $2 reservation only limits how many run at once. **Yours:** confirm the site budget and model prices |
+| L4 Abandoned calls hold the budget | Fixed (#30) | Cut-off calls are settled within minutes |
+| L5 "Untitled dish" goes public | Fixed (#30) | Publishing and posts stop until the dish is named, with a name field on the spot |
+| L6 No Terms, refund policy, operator or contact | Built (#30); **yours** | Settings for the support email, operator, Terms and refund policy; `/contact` and `/terms`; consent at signup; disclosures by Get Pro and in Checkout; the privacy page rewritten |
+| L7 Homepage demo not labeled as AI | Not changed | Left out at the owner's request |
+| L8 Production settings | **Yours** | Administration → AI operations now lists the launch settings to confirm |
+| B1 Pro looks Free at renewal | Fixed (#30) | Pro features stay while a renewal is charged |
+| B2 Republishing on Free removes the look | Fixed (#30) | A live menu keeps its design and look |
+| B3 Pro-era posts and campaigns can't download | Fixed (#30) | |
+| B4 Checkout blocks deletion | Fixed (#30) | Deletion works after checkout, and administrators can delete an account |
+| B5 Webhook doc; nothing reconciles | Fixed (#30); **yours** | The doc is corrected; a scheduled check records renewals, failed payments and cancellations without webhooks; a paid month no longer depends on `amount_paid`; readiness checks billing. **Yours:** the webhook address and a test-mode run |
+| B6 Checkout disclosures | Fixed (#30) | |
+| A1 Photo checks before signup | Fixed (#30), except Turnstile | Fixed reading for the sample, readings cached by photo, a daily cap per network. **Yours:** Turnstile keys |
+| A2 IPv6 signup cap | Fixed (#31); Turnstile is **yours** | A /48 cap (default 8 a day) beside the /64 cap; a site-wide daily cap on free-image grants (default 300): later accounts open, their images wait in line and the owner is told when, with an alert naming the setting |
+| A3 Free images come back | Fixed (#31) | Corrections give an image back only for the image service's or the site's failures; photos an unfinished image uses can't be deleted; a deleted account's email hash, kept a year, stops a second grant |
+| A4 Sign-in lockout by email | Fixed (#31) | A browser that signed in before skips the per-account slowdown, and the message no longer states the wait |
+| A5 Guest events count requests | Fixed (#31) | Each dish in a view counts against the limits, and a network brings a restaurant at most 500 guest sessions a day |
+| A6 `cf-connecting-ip` | Check built (#30); **yours** | The launch settings show whether it arrives. **Yours:** check it on the hosted site |
+| A7 Guest menus as a spam channel | Fixed (#30) | `nofollow ugc` links, new accounts' menus `noindex`, reserved addresses, and "Report this page" feeding Administration → Guest reports |
+| S1 "Use this look again" on Free | Fixed (#30) | |
+| S2 Signup when images can't be made | Fixed (#31) | The guest studio says, before a photo is added, when no image can be made (no key, paused, or the day's budget for guests and Free used up), and after signup shows that one message and saves nothing |
+| S3 Signing in with 0 images | Fixed (#31) | The balance is checked before anything is saved; the photo stays and Plans is offered, or, for free images on their way, when they arrive. Out-of-images messages no longer say Free images renew |
+| S4, S5 | Not changed | S5 needs the worker running (L8) |
+| M1 Reported photo stays public | Fixed (#31) | A reported photo leaves live menus, specials, the public image route, link previews and its smaller copies; republishing leaves it out; Campaigns won't use it; the owner is told which menus changed. Drafts keep it for a replacement |
+| M2 Photo-made dish stays at $0 | Fixed (#30) | |
+| M3 Pasted layouts shift names and prices | Fixed (#30) | |
+| M4 Full-size guest photos | Fixed (#30) | 480, 960 and 1440 px copies through `srcset`, cached for a week |
+| §5 Low: old publish route | Fixed (#31) | The old single-menu write routes return 410 |
+| P1 Plans buttons below the fold | Fixed (#31) | The buttons sit in a footer that stays in view |
+| T1 Photos to OpenAI before notice | Fixed (#30, #31) | A line under the drop zone says a small copy goes to OpenAI and links the privacy page, which is corrected |
+| T2–T5 | Not changed | T2 would touch the homepage comparison (L7) |
+| E1 No CI | Fixed (#30); **yours** | GitHub Actions runs typecheck, tests, build and the extra suites. **Yours:** require it before merging. The production-build smoke test is still to do |
+| E2–E4 | Not changed | |
+
+**Enhancements (§10)**
+
+| Enhancement | Status | Notes |
+|---|---|---|
+| 1 "Get your menu live" checklist | Built (#31) | In Photo Studio for accounts under 30 days: name and price a dish, publish your menu, print your table card. It hides once done and can be dismissed |
+| 2 "Made with Menu Material" as a link | Built (#30) | Links to the site with `?ref=menu` |
+| 3 Real proof and a trust FAQ | FAQ built (#31); photos **yours** | Six answers on the homepage: AI edits, originals kept, approval, ownership, training, cancelling. Partner restaurants' real results need their photos and permission |
+| 4 Menus & QR codes and Posts sections | Built (#31) | Below the existing sections, with screenshots of a sample restaurant; the comparison is untouched |
+| 5 Funnel measurement | Built (#31) | Administration → Launch funnel: homepage → photo → Create → signup → first export → first publish, signups by source and campaign tags, and Plans, See Pro, Get Pro and the waitlist by feature |
+| 6 A better first post on Free | Not changed | |
+| 7 An allergy-safe guest menu | Built (#31) | "Allergens not listed — ask us", a "No listed allergens" choice, the allergy note always shown, a "Hide allergens" filter that keeps unlisted dishes visible, and price or availability differences listed at publish with "Use My Dishes" |
+| 8 A 14-day Pro trial | Not changed | |
+| 9 Launch checks in readiness | Built (#30) | Administration → AI operations → Launch settings |
+| 10 Cost visibility and separate pools | Partly (#30) | Images settle at measured cost, and guests and Free share 70% of the daily budget; no spend view in Administration yet |
+| 11 Turnstile | **Yours** first | Needs keys; then signup, the pre-signup photo check and the funnel endpoint can use it |
+| 12 A region set at signup | Not changed | |
+
+### Your follow-ups
+
+1. **Terms, refund policy and contact.** Write the Terms and refund policy (with a lawyer), then set `TERMS_URL`, `REFUND_POLICY_URL`, `SUPPORT_EMAIL` and `SITE_OPERATOR`. Signup, Plans, Checkout, `/contact`, `/terms` and the privacy page pick them up. Add the Terms URL in Stripe's settings if Checkout should ask for consent. Have the privacy page and the homepage FAQ reviewed; update the FAQ's ownership answer once the Terms grant rights.
+2. **Domain.** Choose the permanent domain, set `APP_ORIGIN` to it before restaurants print table cards, and redirect any old host.
+3. **Stripe.** Point the webhook at `<APP_ORIGIN>/api/billing/webhook` with the events in `docs/FREE_PRO_PLANS.md`. Run checkout, a renewal, a failed payment and a cancellation in test mode, then set the live keys and `STRIPE_BILLING_ENABLED=true`.
+4. **AI budget.** Confirm the site-wide daily budget (Administration), `AI_FREE_BUDGET_SHARE_PERCENT` (default 70) and the model prices (`AI_IMAGE_*_USD_PER_MILLION_TOKENS`), or set `IMAGE_COST_ESTIMATE_USD`. The launch settings show roughly how many images a day the budget allows.
+5. **Worker and alerts.** Run `npm run worker` continuously; without it, held free images arrive only when their owner opens the workspace, and phones can lose an image mid-render (S5). Point an uptime monitor at `/api/health/ready`, and set `ALERT_WEBHOOK_URL` so budget, worker, billing and daily free-grant alerts reach you.
+6. **Launch settings.** On the hosted site, open Administration → AI operations and clear every "Needs attention": in particular that `cf-connecting-ip` arrives (A6) and that `ADMIN_SETUP_KEY`, `PLAN_LIMITS_ENABLED=false` and `LOCAL_DEVELOPMENT` are gone.
+7. **Deploy.** Sites applies the checked-in migrations; confirm 0020 and 0021 ran.
+8. **Turnstile.** Get keys for signup and the pre-signup photo check.
+9. **Caps.** Tune `FREE_SIGNUP_GRANTS_PER_DAY` (default 300) and `SIGNUPS_PER_WIDE_NETWORK_PER_DAY` (default 8) if launch traffic needs it.
+10. **GitHub.** Require the CI checks before merging to `main` (branch protection).
+11. **Backups.** Back up D1 and R2 together, and restore them once.
+12. **Growth.** Collect partner restaurants' real results for the homepage, and tag launch links with `utm_*` so Launch funnel can attribute signups.
+13. **A browser pass on Free.** Post Maker's New, "Make a Free copy", and downloading a post and a campaign made on Pro after a downgrade.
+14. **L7.** The homepage demo's AI label stays open, as you chose.
+
 ## Bottom line
 
 The site is close.

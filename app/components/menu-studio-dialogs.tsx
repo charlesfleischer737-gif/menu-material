@@ -15,6 +15,7 @@ import {
   Upload,
 } from "lucide-react";
 import { api, dishCount, downloadBlob, type Row } from "@/lib/client";
+import { recordMenuExport } from "@/lib/funnel-client";
 import {
   menuDocumentSchema,
   menuPurposeDefaults,
@@ -1000,6 +1001,7 @@ function CheckFix({
   removeItem,
   attachAddon,
   applyDishTags,
+  applyDishFacts,
   nameDish,
   applyPurpose,
   saveRestaurantName,
@@ -1010,6 +1012,7 @@ function CheckFix({
   removeItem: (id: string) => void;
   attachAddon: (id: string) => void;
   applyDishTags: (id: string) => void;
+  applyDishFacts: (ids: string[]) => void;
   nameDish: (id: string, name: string) => Promise<void>;
   applyPurpose: (purpose: MenuDocument["purpose"]) => void;
   saveRestaurantName: (name: string) => Promise<void>;
@@ -1087,6 +1090,15 @@ function CheckFix({
         Match My Dishes
       </button>
     );
+  if (check.fix === "dish-facts" && check.entryId)
+    return (
+      <button
+        className="md-text-button"
+        onClick={() => applyDishFacts([check.entryId!])}
+      >
+        Use My Dishes
+      </button>
+    );
   if (check.fix === "menu-type" && check.purpose)
     return (
       <button
@@ -1119,6 +1131,7 @@ export function MenuDeliveryDialog({
   removeItem,
   attachAddon,
   applyDishTags,
+  applyDishFacts,
   nameDish,
   applyPurpose,
   saveRestaurantName,
@@ -1141,6 +1154,8 @@ export function MenuDeliveryDialog({
   attachAddon: (id: string) => void;
   /** Give a menu dish the allergens and diets My Dishes has for it. */
   applyDishTags: (id: string) => void;
+  /** Give menu dishes the price and availability My Dishes has for them. */
+  applyDishFacts: (ids: string[]) => void;
   /** Name a dish still called "Untitled dish". */
   nameDish: (id: string, name: string) => Promise<void>;
   applyPurpose: (purpose: MenuDocument["purpose"]) => void;
@@ -1169,6 +1184,10 @@ export function MenuDeliveryDialog({
     menuLocked = !pro && !isPrint && !record.published && liveElsewhere,
     blocking = checks.filter((c) => c.level === "block"),
     warnings = checks.filter((c) => c.level === "warn"),
+    // Linked dishes whose price or availability differ from My Dishes.
+    libraryDifferences = checks.flatMap((c) =>
+      c.fix === "dish-facts" && c.entryId ? [c.entryId] : [],
+    ),
     // The first publication chooses the menu address that QR codes will use
     // (a special published first leaves a stand-in with no dishes).
     choosingAddress =
@@ -1234,6 +1253,7 @@ export function MenuDeliveryDialog({
           result.blob,
           `${menu.restaurant.name}-${menu.title || menu.name}-${menu.paper}${menu.printProfile === "press" ? "-print-shop" : ""}.pdf`,
         );
+        recordMenuExport("pdf", record.id);
         setDownloaded(true);
       } else await published(choosingAddress ? address : undefined);
     } catch (e) {
@@ -1318,6 +1338,7 @@ export function MenuDeliveryDialog({
                       removeItem={removeItem}
                       attachAddon={attachAddon}
                       applyDishTags={applyDishTags}
+                      applyDishFacts={applyDishFacts}
                       nameDish={nameDish}
                       applyPurpose={applyPurpose}
                       saveRestaurantName={saveRestaurantName}
@@ -1326,6 +1347,14 @@ export function MenuDeliveryDialog({
                 ))}
               </ul>
             )}
+            {libraryDifferences.length > 1 && (
+              <button
+                className="md-text-button"
+                onClick={() => applyDishFacts(libraryDifferences)}
+              >
+                Use My Dishes for all {libraryDifferences.length}
+              </button>
+            )}
             {blocking.length + warnings.length > 10 && (
               <small>
                 And {blocking.length + warnings.length - 10} more in the editor.
@@ -1333,7 +1362,8 @@ export function MenuDeliveryDialog({
             )}
             <small>
               Checked: restaurant name, dish names, prices, sample dishes,
-              reported photos, duplicates and descriptions.
+              reported photos, duplicates, descriptions, and linked dishes
+              against My Dishes.
             </small>
           </div>
           {isPrint ? (
@@ -1683,6 +1713,7 @@ export function MenuShareDialog({
                       await menuQrCard(publishedRestaurant, url, qr),
                       `${restaurant.slug}-menu-card-${placement}-4x6.pdf`,
                     );
+                    recordMenuExport("table_card", record.id);
                   })
                 }
               >
@@ -1693,12 +1724,13 @@ export function MenuShareDialog({
                 className="md-text-button"
                 disabled={!qr || busy}
                 onClick={() =>
-                  void run(async () =>
+                  void run(async () => {
                     downloadBlob(
                       await (await fetch(qr)).blob(),
                       `${restaurant.slug}-menu-qr-${placement}.png`,
-                    ),
-                  )
+                    );
+                    recordMenuExport("qr_image", record.id);
+                  })
                 }
               >
                 <Download size={15} /> Save QR image

@@ -12,6 +12,16 @@ export const PRO_PRICE_LABEL = `$${PRO_PLAN.amountCents / 100}`;
 // Every new public account gets these images once. No card, no expiry.
 export const FREE_SIGNUP_IMAGES = 5;
 
+/**
+ * What comes next for someone out of images: Free's are a one-time grant,
+ * so they don't come back; Pro's arrive with each billing period.
+ */
+export function imagesRenewal(plan?: string | null) {
+  return plan === "pro"
+    ? "Your Pro images renew each billing period."
+    : "Free images don’t renew; see Plans for Pro.";
+}
+
 // What Free keeps. Server checks, Pro badges and pricing copy all read these.
 export const FREE_LIVE_MENUS = 1;
 export const FREE_MENU_DESIGN = {

@@ -25,6 +25,7 @@ import {
 } from "@/components/ui/dropdown-menu";
 import { api, type Row } from "@/lib/client";
 import { rememberScroll } from "@/lib/scroll-memory";
+import { imagesLeft } from "@/lib/free-images";
 import {
   hasSavedContent,
   readPreference,
@@ -36,6 +37,7 @@ import Brand from "./brand";
 import CreativeHeader from "./creative-header";
 import WorkspacePlaceholder from "./workspace-placeholder";
 import PhotoStudio from "./photo-studio";
+import LaunchChecklist from "./launch-checklist";
 import { deferredWorkspace } from "./deferred-workspace";
 import { ProBadge } from "./pro-badge";
 import { hasProFeatures } from "@/lib/upgrade";
@@ -250,7 +252,8 @@ export default function CoreWorkspace({
         </DropdownMenuLabel>
         <DropdownMenuItem className="cx-account-credits" onSelect={onPlans}>
           <Sparkles size={16} aria-hidden="true" />
-          {state.remaining} images left · {pro ? "Pro" : "Free"}
+          {imagesLeft(state.remaining, state.freeImages)} ·{" "}
+          {pro ? "Pro" : "Free"}
         </DropdownMenuItem>
         <DropdownMenuSeparator />
         <DropdownMenuItem onSelect={onSettings}>
@@ -325,7 +328,7 @@ export default function CoreWorkspace({
         <div className="cx-sidebar-bottom">
           <button className="cx-credits" onClick={onPlans}>
             <Sparkles size={15} aria-hidden="true" />
-            <span>{state.remaining} images left</span>
+            <span>{imagesLeft(state.remaining, state.freeImages)}</span>
             <span className="cx-plan-chip">{pro ? "Pro" : "Free"}</span>
           </button>
           {accountMenu}
@@ -351,6 +354,21 @@ export default function CoreWorkspace({
                 seed={photoSeed}
                 onSeedUsed={() => setPhotoSeed(null)}
                 onDestination={destination}
+                banner={
+                  <LaunchChecklist
+                    state={state}
+                    active={view === "studio"}
+                    onOpen={(step) => {
+                      // The table card is in Share, on the live menu.
+                      if (step === "tableCard")
+                        setMenuSeed({
+                          token: crypto.randomUUID(),
+                          share: true,
+                        });
+                      navigate(step === "dish" ? "library" : "menu");
+                    }}
+                  />
+                }
               />
             </div>
           )}

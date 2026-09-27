@@ -12,8 +12,8 @@ import {
   saveStudioRelease,
 } from "./studio-release";
 import { billingRoute, billingSummary, billingEnabled } from "./billing";
-import { effectiveStyle, requirePro } from "./entitlements";
 import { validateImageDimensions } from "./image-validation";
+import { imagesAvailable } from "./image-availability";
 import {
   assetVariantKeys,
   neededVariants,
@@ -22,6 +22,7 @@ import {
   saveVariants,
 } from "./photo-variants";
 import { analyzeGuestPhoto } from "./photo-analysis";
+import { freeImagesStatus, signupFreeImages } from "./free-grants";
 import { checkMenuSharing, menuLinkOrigin } from "./menu-sharing";
 import {
   changeMenuAddress,
@@ -30,13 +31,9 @@ import {
   resolveMenuAddress,
   suggestMenuAddress,
 } from "./menu-address";
-import {
-  isPlaceholderRestaurantName,
-  restaurantNameMessage,
-  slugify,
-} from "../restaurant-identity";
+import { isPlaceholderRestaurantName, slugify } from "../restaurant-identity";
 import { normalizeDietary } from "../dietary";
-import { FREE_SIGNUP_IMAGES, freeMenuDesign, isProFeature } from "../plans";
+import { FREE_SIGNUP_IMAGES, isProFeature } from "../plans";
 import {
   menuDocumentsRoute,
   assetInPublishedDocuments,
@@ -109,6 +106,14 @@ import {
   studioReferenceRequest,
 } from "./studio-references";
 import { creationRoute } from "./creation";
+import {
+  funnelReport,
+  launchChecklistFacts,
+  menuExportDetails,
+  recordSignupSource,
+  recordWaitlistJoin,
+  visitorStepRoute,
+} from "./funnel";
 import { libraryRoute } from "./library";
 import {
   advanceBatches,
@@ -158,42 +163,6 @@ const dishSchema = z.object({
     .union([z.boolean(), z.number()])
     .transform((value) => !!value)
     .default(false),
-});
-const menuSchema = z.object({
-  design: z.enum(["bistro", "cafe", "fine", "casual"]).default("bistro"),
-  density: z
-    .enum(["spacious", "comfortable", "compact"])
-    .default("comfortable"),
-  printProfile: z.enum(["home", "press"]).default("home"),
-  title: z.string().max(100).default(""),
-  layout: z.enum(["classic", "grid", "featured"]).default("classic"),
-  appearance: z.enum(["light", "dark"]).default("light"),
-  paper: z.enum(["letter", "a4"]).default("letter"),
-  sections: z
-    .array(
-      z.object({
-        id: z.string().max(100),
-        name: z.string().trim().min(1).max(100),
-        items: z
-          .array(
-            z.object({
-              dishId: z.string().uuid(),
-              photoId: z.string().uuid().nullable().optional(),
-              featured: z.boolean().optional(),
-              crop: z
-                .object({
-                  fit: z.boolean().default(true),
-                  x: z.number().min(0).max(100).default(50),
-                  y: z.number().min(0).max(100).default(50),
-                  zoom: z.number().min(1).max(2).default(1),
-                })
-                .optional(),
-            }),
-          )
-          .max(100),
-      }),
-    )
-    .max(30),
 });
 // A saved look can outlive what it names (a photo style later removed from
 // the catalog). Keep the values that are still valid and use defaults for
@@ -268,6 +237,13 @@ async function signup(req: Request, b: Row) {
           "DELETE FROM sessions WHERE user_id=? AND EXISTS(SELECT 1 FROM invites WHERE hash=? AND used_by IS NULL)",
         )
         .bind(u.id, hash),
+      // Browsers that signed in before are no longer trusted either; this
+      // one is, once it signs in below.
+      db()
+        .prepare(
+          "DELETE FROM trusted_devices WHERE user_id=? AND EXISTS(SELECT 1 FROM invites WHERE hash=? AND used_by IS NULL)",
+        )
+        .bind(u.id, hash),
       db()
         .prepare(
           "UPDATE invites SET used_by=? WHERE hash=? AND used_by IS NULL",
@@ -301,6 +277,11 @@ async function signup(req: Request, b: Row) {
     "An administrator already exists. Ask them for an invitation.",
   );
   if (!invited) await newAccountLimit(req);
+  // Invitations keep their allowance. Otherwise there are no free images for
+  // an email that already had them, and they're held past today's grants.
+  const free = invited
+    ? { allowance: invite.allowance, freeGrant: null }
+    : await signupFreeImages(email);
   const userId = id(),
     rid = id(),
     restaurant = z
@@ -329,14 +310,15 @@ async function signup(req: Request, b: Row) {
       ),
     db()
       .prepare(
-        "INSERT INTO restaurants (id,user_id,name,slug,allowance,created_at) SELECT ?,?,?,?,?,? WHERE EXISTS (SELECT 1 FROM users WHERE id=?)",
+        "INSERT INTO restaurants (id,user_id,name,slug,allowance,free_grant,created_at) SELECT ?,?,?,?,?,?,? WHERE EXISTS (SELECT 1 FROM users WHERE id=?)",
       )
       .bind(
         rid,
         userId,
         restaurant,
         slugify(restaurant) + "-" + rid.slice(0, 8),
-        invite.allowance,
+        free.allowance,
+        free.freeGrant,
         t,
         userId,
       ),
@@ -355,6 +337,8 @@ async function signup(req: Request, b: Row) {
     "This invitation has already been used.",
   );
   await event(rid, "onboarded");
+  // Where the owner came from, if the browser noted it (launch funnel).
+  await recordSignupSource(rid, b.attribution);
   return await createSession(req, userId);
 }
 async function issueInvite(email: string, allowance: number, role = "owner") {
@@ -376,89 +360,6 @@ async function issueInvite(email: string, allowance: number, role = "owner") {
     invite: raw,
     path: `/?invite=${encodeURIComponent(raw)}&email=${encodeURIComponent(email)}${role === "reset" ? "&reset=1" : ""}`,
     expiresAt: now() + 7 * 86400000,
-  };
-}
-async function snapshot(r: Row, draft: Row) {
-  const sections = [];
-  for (const section of draft.sections) {
-    const items = [];
-    for (const item of section.items) {
-      const d = await one(
-        "SELECT * FROM dishes WHERE id=? AND restaurant_id=?",
-        item.dishId,
-        r.id,
-      );
-      assert(d, 400, "One of the dishes in this menu is missing.");
-      let photoId = null;
-      if (item.photoId) {
-        const a = await one(
-          "SELECT * FROM assets WHERE id=? AND restaurant_id=? AND dish_id=? AND approved_at IS NOT NULL AND deleted_at IS NULL",
-          item.photoId,
-          r.id,
-          d.id,
-        );
-        assert(a, 400, "Menu photos must be approved and belong to this dish.");
-        const obj = await bucket().get(a.working_key || a.key);
-        assert(obj, 400, "A menu photo is unavailable. Choose another photo.");
-        await bucket().put(`public/${r.id}/${a.id}`, await obj.arrayBuffer(), {
-          httpMetadata: { contentType: a.working_key ? "image/jpeg" : a.mime },
-        });
-        photoId = a.id;
-      }
-      items.push({
-        id: d.id,
-        name: d.name,
-        description: d.description,
-        price: d.price,
-        available: !!d.available,
-        photoId,
-        featured: item.featured,
-        crop: item.crop,
-      });
-    }
-    sections.push({ id: section.id, name: section.name, items });
-  }
-  let logoId = null;
-  if (r.logo_id) {
-    const a = await one(
-      "SELECT * FROM assets WHERE id=? AND restaurant_id=? AND kind='logo' AND deleted_at IS NULL",
-      r.logo_id,
-      r.id,
-    );
-    if (a) {
-      const obj = await bucket().get(
-        transparentLogo(a) ? a.key : a.working_key || a.key,
-      );
-      if (obj) {
-        await bucket().put(`public/${r.id}/${a.id}`, await obj.arrayBuffer(), {
-          httpMetadata: {
-            contentType: transparentLogo(a) ? a.mime : "image/jpeg",
-          },
-        });
-        logoId = a.id;
-      }
-    }
-  }
-  return {
-    restaurant: {
-      name: r.name,
-      cuisine: r.cuisine,
-      currency: r.currency,
-      brand: r.brand,
-      style: await effectiveStyle(r),
-      orderingUrl: r.ordering_url,
-      timezone: r.timezone,
-      hours: JSON.parse(r.hours),
-      logoId,
-    },
-    sections,
-    design: draft.design,
-    density: draft.density,
-    printProfile: draft.printProfile,
-    title: draft.title,
-    layout: draft.layout,
-    appearance: draft.appearance,
-    paper: draft.paper,
   };
 }
 function assetIsPublished(menu: Row, assetId: string) {
@@ -753,6 +654,8 @@ async function route(req: Request) {
     }
     if (p[0] === "guest-photo-analysis" && method === "POST")
       return await analyzeGuestPhoto(req);
+    if (p[0] === "funnel" && method === "POST")
+      return await visitorStepRoute(req);
     if (p[0] === "public" && p[1]) {
       // Earlier addresses (printed QR codes) resolve to the restaurant's menu.
       const r = (await resolveMenuAddress(p[1])).restaurant;
@@ -807,8 +710,10 @@ async function route(req: Request) {
           404,
           "Image not found.",
         );
+        // Never a photo the owner reported as inaccurate, even one a live
+        // copy still names.
         const a = await one(
-          "SELECT * FROM assets WHERE id=? AND restaurant_id=? AND deleted_at IS NULL AND (approved_at IS NOT NULL OR kind=?)",
+          "SELECT * FROM assets WHERE id=? AND restaurant_id=? AND deleted_at IS NULL AND needs_correction=0 AND (approved_at IS NOT NULL OR kind=?)",
           p[3],
           r.id,
           "logo",
@@ -960,6 +865,9 @@ async function route(req: Request) {
             !(await one("SELECT id FROM users WHERE role='admin'")),
           local: config("LOCAL_DEVELOPMENT") === "true",
           aiConnected: !!config("OPENAI_API_KEY"),
+          // Told before signup, so nobody signs up for an image that can't
+          // be made now.
+          imagesAvailable: await imagesAvailable(),
         });
       const { r } = await owner(req);
       // Each photo's history (from a real photo? which size and look?) comes
@@ -977,6 +885,8 @@ async function route(req: Request) {
           r.id,
         ),
       );
+      // First, as held free images may be granted now.
+      const freeImages = r.free_grant ? await freeImagesStatus(r.id) : null;
       const billing = await billingSummary(r.id),
         saved = storedStyle(r.style);
       return response({
@@ -993,8 +903,11 @@ async function route(req: Request) {
           published: r.published ? JSON.parse(r.published) : null,
         },
         remaining: await remaining(r.id),
+        // Free images held back or already had, for the note by the balance.
+        freeImages,
         billing,
         aiConnected: !!config("OPENAI_API_KEY"),
+        imagesAvailable: await imagesAvailable(billing.plan === "pro"),
         local: config("LOCAL_DEVELOPMENT") === "true",
         // For menu links and QR codes made in the browser.
         menuOrigin: menuLinkOrigin(new URL(req.url).origin),
@@ -1069,6 +982,8 @@ async function route(req: Request) {
           .parse(url.searchParams.get("days") || 30);
         return response(await studioProgressReport(mode, days));
       }
+      if (method === "GET" && p[1] === "funnel")
+        return response(await funnelReport());
       if (
         method === "GET" &&
         p[1] === "photo-correction" &&
@@ -1250,9 +1165,18 @@ async function route(req: Request) {
           b.proUntil === undefined || b.proUntil === null
             ? b.proUntil
             : z.number().int().min(0).max(8.64e15).parse(b.proUntil);
+        const allowance = z
+          .number()
+          .int()
+          .min(0)
+          .max(100000)
+          .parse(b.allowance);
+        // Changing the images decides them: free images still held or
+        // already had (free-grants.ts) are no longer added or mentioned.
         await run(
-          "UPDATE restaurants SET allowance=?,paused=?,daily_budget_cents=COALESCE(?,daily_budget_cents),pro_until=CASE WHEN ?=1 THEN ? ELSE pro_until END WHERE id=?",
-          z.number().int().min(0).max(100000).parse(b.allowance),
+          "UPDATE restaurants SET free_grant=CASE WHEN allowance=? THEN free_grant END,allowance=?,paused=?,daily_budget_cents=COALESCE(?,daily_budget_cents),pro_until=CASE WHEN ?=1 THEN ? ELSE pro_until END WHERE id=?",
+          allowance,
+          allowance,
           b.paused ? 1 : 0,
           b.dailyBudgetCents === undefined
             ? null
@@ -1371,22 +1295,24 @@ async function route(req: Request) {
     if (p[0] === "plan-waitlist" && method === "POST") {
       // One entry per owner; asking again changes nothing.
       const { u, r } = await owner(req);
-      await run(
+      const joined = await run(
         "INSERT OR IGNORE INTO launch_requests (id,kind,email,restaurant,created_at) VALUES (?,'pro',?,?,?)",
         id(),
         u.email,
         r.name,
         now(),
       );
+      // The Pro feature that opened Plans, if one did (launch funnel).
+      if (joined.meta.changes)
+        await recordWaitlistJoin(r.id, await body(req).catch(() => ({})));
       return response({ ok: true });
     }
     const { r } = await owner(req);
     if (
       r.public_suspended &&
       method === "POST" &&
-      ((p[0] === "menu" && p[1] === "publish") ||
-        (["menus", "promotions"].includes(p[0]) &&
-          ["publish", "primary", "live"].includes(p[2])))
+      ["menus", "promotions"].includes(p[0]) &&
+      ["publish", "primary", "live"].includes(p[2])
     )
       throw new AppError(
         403,
@@ -1700,6 +1626,30 @@ async function route(req: Request) {
         );
       }
       if (method === "DELETE") {
+        // A photo an unfinished image is made from (its original, previous
+        // version or inspiration) stays until the image is done: removing it
+        // would fail the image, and a correction failed that way used to
+        // give an image back.
+        const use = a.deleted_at
+          ? null
+          : await one(
+              `SELECT count(*) AS n,max(o.status!='queued' OR o.response_id IS NOT NULL OR o.lease_until>=? OR j.credit_period LIKE 'complimentary:%') AS started
+               FROM jobs j JOIN outputs o ON o.job_id=j.id
+               WHERE j.restaurant_id=? AND o.status NOT IN ('completed','failed')
+                 AND (j.source_id=? OR j.parent_id=? OR EXISTS(SELECT 1 FROM json_each(j.details,'$.style.referenceIds') WHERE value=?))`,
+              now(),
+              r.id,
+              a.id,
+              a.id,
+              a.id,
+            );
+        assert(
+          !use?.n,
+          409,
+          use?.started
+            ? "An image being made uses this photo. You can remove the photo once it’s finished."
+            : "A queued image uses this photo. Cancel it in Photo Studio, or wait until it’s finished, then remove the photo.",
+        );
         const prune = (menu: Row) => ({
           ...menu,
           ...(menu.restaurant
@@ -1919,6 +1869,8 @@ async function route(req: Request) {
       );
       return response({ id: cid });
     }
+    if (p[0] === "launch-checklist" && method === "GET")
+      return response(await launchChecklistFacts(r.id));
     if (p[0] === "events" && method === "POST") {
       const b = await body(req);
       const kind = z
@@ -1928,7 +1880,11 @@ async function route(req: Request) {
           "visit",
           // Which Pro features people meet, and which ones they buy for.
           "upgrade_prompt_shown",
+          // "See Pro" or a Pro button clicked; upgrade_clicked is Get Pro.
+          "upgrade_requested",
           "upgrade_clicked",
+          // A menu's PDF, table card or QR image (lib/funnel.ts).
+          "menu_exported",
         ])
         .parse(b.kind);
       await event(
@@ -1942,70 +1898,20 @@ async function route(req: Request) {
                 .refine(isProFeature, "Unknown feature.")
                 .parse(b.feature),
             }
-          : {},
+          : kind === "menu_exported"
+            ? menuExportDetails(b)
+            : {},
       );
       return response({ ok: true });
     }
-    if (p[0] === "menu" && method === "POST") {
-      assert(
-        !(await one(
-          "SELECT id FROM menu_documents WHERE restaurant_id=? LIMIT 1",
-          r.id,
-        )),
-        409,
-        "Menu Studio has been upgraded. Reload the workspace to keep editing or publishing your saved menus.",
+    // The single menu from before Menus (menu, menu/publish, menu/unpublish).
+    // Pages use menus/*; a hand-made call here published around Free's
+    // one-live-menu limit.
+    if (p[0] === "menu" && method === "POST")
+      throw new AppError(
+        410,
+        "Menu Studio has been upgraded. Reload the page to keep editing and publishing your menus.",
       );
-      if (p[1] === "unpublish") {
-        await run(
-          "UPDATE restaurants SET published=NULL,published_at=NULL WHERE id=?",
-          r.id,
-        );
-        await event(r.id, "menu_unpublished");
-        return response({ ok: true });
-      }
-      if (p[1] === "publish") {
-        const draft = menuSchema.parse(JSON.parse(r.menu_draft));
-        // The older single menu follows the same rule: Free uses the basic design.
-        if (!freeMenuDesign(draft)) await requirePro(r.id, "menuDesigns");
-        assert(
-          draft.sections.some((s) => s.items.length),
-          400,
-          "Add at least one dish before publishing.",
-        );
-        assert(
-          !isPlaceholderRestaurantName(r.name),
-          400,
-          restaurantNameMessage,
-        );
-        const menu = await snapshot(r, draft);
-        await run(
-          "UPDATE restaurants SET published=?,published_at=? WHERE id=?",
-          JSON.stringify(menu),
-          now(),
-          r.id,
-        );
-        await event(r.id, "menu_published");
-        return response({ ok: true, path: "/m/" + r.slug });
-      }
-      const draft = menuSchema.parse(await body(req));
-      for (const section of draft.sections)
-        for (const item of section.items)
-          assert(
-            await one(
-              "SELECT id FROM dishes WHERE id=? AND restaurant_id=?",
-              item.dishId,
-              r.id,
-            ),
-            400,
-            "Menu dish not found.",
-          );
-      await run(
-        "UPDATE restaurants SET menu_draft=? WHERE id=?",
-        JSON.stringify(draft),
-        r.id,
-      );
-      return response({ ok: true });
-    }
     throw new AppError(404, "Not found.");
   } catch (e) {
     if (e instanceof z.ZodError)

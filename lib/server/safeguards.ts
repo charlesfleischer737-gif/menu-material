@@ -10,6 +10,7 @@ import {
   now,
   one,
   run,
+  signedInBefore,
   type Row,
 } from "./core";
 import { imageEntitlement } from "./entitlements";
@@ -269,8 +270,9 @@ export async function finishAi(
   );
 }
 // An IPv6 subscriber is usually given a whole /64, so its addresses count as
-// one caller. IPv4 addresses are used as they are.
-function network(address: string) {
+// one caller. IPv4 addresses are used as they are. `kept` is how many groups
+// of an IPv6 address to keep: 3 for the /48 around it.
+function network(address: string, kept = 4) {
   const ip = address.split("%")[0].toLowerCase();
   if (!ip.includes(":")) return ip;
   const mapped = /^::ffff:(\d{1,3}(?:\.\d{1,3}){3})$/.exec(ip);
@@ -292,20 +294,30 @@ function network(address: string) {
   if (groups.length !== 8 || !groups.every((g) => /^[0-9a-f]{1,4}$/.test(g)))
     return ip;
   return `${groups
-    .slice(0, 4)
+    .slice(0, kept)
     .map((g) => parseInt(g, 16).toString(16))
-    .join(":")}::/64`;
+    .join(":")}::/${kept * 16}`;
 }
 export function caller(req: Request) {
   // Cloudflare overwrites this header at the hosting boundary; do not trust X-Forwarded-For.
   return network(req.headers.get("cf-connecting-ip") || "unidentified");
 }
+// The /48 around an IPv6 caller, or null for IPv4. Homes often get a /56
+// and free tunnel brokers hand out a /48, so moving to another /64 is free.
+export function wideCaller(req: Request) {
+  const wide = network(req.headers.get("cf-connecting-ip") || "", 3);
+  return wide.endsWith("::/48") ? wide : null;
+}
 // Each network can open a few free accounts a day, so free images can't be
-// collected by signing up again and again. Invitations don't count.
+// collected by signing up again and again. Invitations don't count. An IPv6
+// /48 has its own cap as well, a little above one /64's.
 export async function newAccountLimit(req: Request) {
-  const max = Math.floor(setting("SIGNUPS_PER_NETWORK_PER_DAY", 5));
+  const max = Math.floor(setting("SIGNUPS_PER_NETWORK_PER_DAY", 5)),
+    wideMax = Math.floor(setting("SIGNUPS_PER_WIDE_NETWORK_PER_DAY", 8)),
+    wide = wideCaller(req);
   try {
     await limit(`new-account:${caller(req)}`, max, 86400);
+    if (wide) await limit(`new-account:${wide}`, wideMax, 86400);
   } catch (e) {
     if (e instanceof AppError && e.status === 429)
       throw new AppError(
@@ -343,7 +355,9 @@ export async function guestPhotoDailyLimit(req: Request) {
 }
 // After 20 sign-in attempts for one email within 15 minutes of each other,
 // each further attempt waits 1 s, 2 s, 4 s … up to 5 minutes after the last.
-// It slows guessing from many networks without locking the account.
+// It slows guessing from many networks without locking the account. The wait
+// isn't stated, so it can't be timed, and a browser that signed in to the
+// account before skips it: knowing an owner's email can't keep them out.
 const loginWindow = 900000,
   loginFreeAttempts = 20,
   loginMaxWait = 300000;
@@ -351,6 +365,7 @@ const loginKey = (email: string) => digest(`login:email:${email}`);
 export async function loginLimit(req: Request, email: string) {
   // A stranger cannot exhaust an owner's allowance merely by knowing their email.
   await limit(`login:pair:${caller(req)}:${email}`, 10);
+  if (await signedInBefore(req, email)) return;
   const t = now();
   // Claim the attempt atomically, so parallel requests cannot share a slot.
   const claimed = await one(
@@ -369,25 +384,10 @@ export async function loginLimit(req: Request, email: string) {
     t,
   );
   if (claimed) return;
-  const row = await one(
-    "SELECT count,expires_at FROM rate_limits WHERE key=?",
-    loginKey(email),
-  );
-  const wait = row
-    ? row.expires_at -
-      loginWindow +
-      Math.min(
-        loginMaxWait,
-        1000 * 2 ** Math.min(row.count - loginFreeAttempts, 20),
-      ) -
-      t
-    : 1000;
-  const seconds = Math.max(1, Math.ceil(wait / 1000)),
-    [amount, unit] =
-      seconds < 60 ? [seconds, "second"] : [Math.ceil(seconds / 60), "minute"];
+  // Resets are secure links from an administrator or support (auth.tsx).
   throw new AppError(
     429,
-    `Too many sign-in attempts for this account. Try again in ${amount} ${unit}${amount === 1 ? "" : "s"}.`,
+    "Too many sign-in attempts for this account. Please try again later, or request a secure reset link.",
   );
 }
 export async function loginSucceeded(email: string) {
@@ -528,6 +528,13 @@ export async function housekeeping() {
   if (!claim.meta.changes) return;
   await run("DELETE FROM rate_limits WHERE expires_at<?", now());
   await run("DELETE FROM sessions WHERE expires_at<?", now());
+  await run("DELETE FROM trusted_devices WHERE expires_at<?", now());
+  // A deleted account's email hash stops its free images being granted again
+  // for a year (free-grants.ts); the privacy page says so.
+  await run(
+    "DELETE FROM free_grant_emails WHERE created_at<?",
+    now() - 365 * 86400000,
+  );
   await run(
     "DELETE FROM invites WHERE expires_at<? AND role='reset'",
     now() - 86400000,
@@ -535,6 +542,12 @@ export async function housekeeping() {
   // Guest activity on menus is reported for recent weeks; keep 90 days.
   await run(
     "DELETE FROM events WHERE kind IN ('menu_visit','dish_view','ordering_click','call_click','directions_click','reserve_click') AND created_at<?",
+    now() - 90 * 86400000,
+  );
+  // Visitors' funnel steps are reported for the last 30 days (funnel.ts);
+  // keep 90, like guest menu visits.
+  await run(
+    "DELETE FROM events WHERE kind='funnel_step' AND created_at<?",
     now() - 90 * 86400000,
   );
   // What a photo checked before signup showed is kept a week, only so the
@@ -559,4 +572,7 @@ export async function housekeeping() {
     ]);
     await releaseStorage(row.id);
   }
+  // Free images new accounts wait for, as today's grants allow.
+  const { grantHeldImages } = await import("./free-grants");
+  await grantHeldImages();
 }

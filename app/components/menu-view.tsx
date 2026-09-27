@@ -5,6 +5,7 @@ import { menuHero, menuAppearance } from "@/lib/menu-design";
 import { scheduleLabel } from "@/lib/promotions";
 import { money, Row } from "@/lib/client";
 import { brandTypeface, readableBrandInk } from "@/lib/restaurant-look";
+import { allergyNotice } from "@/lib/dietary";
 import MenuDocumentView, { useDishViews } from "./menu-document-view";
 import ReportMenu from "./report-menu";
 import CustomerMenuSwitcher from "./customer-menu-switcher";
@@ -548,6 +549,12 @@ function LegacyMenuView({
               .includes(search.toLowerCase()),
           ),
         ) && <p className="mm-menu-no-results">No dishes match “{search}”.</p>}
+      {/* Menus from before tags existed list no allergens: say so once. */}
+      {!preview && (
+        <p className="mm-menu-allergy">
+          Allergens aren’t listed on this menu. {allergyNotice}
+        </p>
+      )}
       {menu.credit !== false && (
         <footer>
           <a href="/?ref=menu" target="_blank" rel="noopener">

@@ -1,5 +1,11 @@
 import type { Row } from "./core";
-import { effectiveStyle, entitlementSql, requirePro } from "./entitlements";
+import {
+  effectiveStyle,
+  entitlementSql,
+  imageEntitlement,
+  requirePro,
+} from "./entitlements";
+import { imagesRenewal } from "../plans";
 import { settleCorrection } from "./correction-policy";
 import { z } from "zod";
 import { checkStudioGeneration } from "./studio-release";
@@ -530,12 +536,20 @@ export async function enqueue(
       );
       return raced;
     }
+    // Free images on their way, or already had by this email, are explained
+    // rather than an upgrade offered.
+    if (r.free_grant) {
+      const { freeImagesRefusal } = await import("./free-grants");
+      const refusal = await freeImagesRefusal(r.id);
+      assert(!refusal, 402, refusal);
+    }
   }
-  assert(
-    job,
-    402,
-    `You need ${count} image${count === 1 ? "" : "s"} remaining for this request. Check your plan to upgrade or see when your allowance renews.`,
-  );
+  // Free images are a one-time grant, so never "wait until they renew".
+  if (!job)
+    throw new AppError(
+      402,
+      `You need ${count} image${count === 1 ? "" : "s"} remaining for this request. ${imagesRenewal((await imageEntitlement(r.id)).plan)}`,
+    );
   await event(
     r.id,
     "generation_requested",
