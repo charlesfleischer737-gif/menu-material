@@ -25,6 +25,7 @@ import {
   type GuestPhoto,
   type GuestTransfer,
 } from "@/lib/guest-studio";
+import { recordVisitorStep } from "@/lib/funnel-client";
 import Brand from "./brand";
 import { StudioWorkbench } from "./studio-workbench";
 import { FREE_SIGNUP_IMAGES } from "@/lib/plans";
@@ -344,6 +345,7 @@ export default function GuestStudio({
       if ((options.sample || draft.sample) && transfer.current?.dishId)
         transfer.current = null;
       setPhoto(next);
+      if (!options.sample) recordVisitorStep("photo");
       update({
         ...(options.sample || draft.sample
           ? { name: options.sample ? samplePhoto.name : "", description: "" }
@@ -366,6 +368,7 @@ export default function GuestStudio({
     }
   }
   async function create() {
+    recordVisitorStep("create");
     try {
       await persistLocal(true);
     } catch {

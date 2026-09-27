@@ -544,6 +544,12 @@ export async function housekeeping() {
     "DELETE FROM events WHERE kind IN ('menu_visit','dish_view','ordering_click','call_click','directions_click','reserve_click') AND created_at<?",
     now() - 90 * 86400000,
   );
+  // Visitors' funnel steps are reported for the last 30 days (funnel.ts);
+  // keep 90, like guest menu visits.
+  await run(
+    "DELETE FROM events WHERE kind='funnel_step' AND created_at<?",
+    now() - 90 * 86400000,
+  );
   // What a photo checked before signup showed is kept a week, only so the
   // same photo isn't read again (photo-analysis.ts).
   await run(

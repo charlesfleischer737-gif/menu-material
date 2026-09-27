@@ -12,6 +12,7 @@ import Landing from "./menu-material-landing";
 import Brand from "./brand";
 import WorkspacePlaceholder from "./workspace-placeholder";
 import { api, type Row } from "@/lib/client";
+import { recordVisitorStep } from "@/lib/funnel-client";
 import { loadFresh, reloadOnPreloadError } from "@/lib/chunk-reload";
 import { watchJobs } from "@/lib/job-progress";
 import { rememberScroll } from "@/lib/scroll-memory";
@@ -129,6 +130,10 @@ export default function HomeClient({ hasSession }: { hasSession: boolean }) {
   useEffect(() => {
     if (state.user?.id) void api("events", { kind: "visit" }).catch(() => {});
   }, [state.user?.id]);
+  // The launch funnel's first step: the homepage, signed out.
+  useEffect(() => {
+    if (loaded && !state.user) recordVisitorStep("home");
+  }, [loaded, state.user]);
   useEffect(() => {
     let cancelled = false;
     // Without a session cookie the visitor is signed out, so a #studio link
@@ -202,7 +207,12 @@ export default function HomeClient({ hasSession }: { hasSession: boolean }) {
           if (sessionStorage.getItem(key)) return;
           sessionStorage.setItem(key, "1");
         } catch {}
-      }
+      } else if (signedInRef.current)
+        // A click through to Pro from the feature ("See Pro" or a Pro
+        // button), for the launch funnel.
+        void api("events", { kind: "upgrade_requested", feature }).catch(
+          () => {},
+        );
       setPlanFeature(feature);
       setPlans(true);
     };

@@ -10,6 +10,7 @@ import {
   useState,
   type CSSProperties,
   type DragEvent,
+  type ReactNode,
 } from "react";
 import {
   Camera,
@@ -35,6 +36,7 @@ import {
   DropdownMenuTrigger,
 } from "@/components/ui/dropdown-menu";
 import { api, normalizePhoto, type Row } from "@/lib/client";
+import { recordVisitorStep } from "@/lib/funnel-client";
 import { isPlaceholderDishName } from "@/lib/restaurant-identity";
 import { hasProFeatures, requestUpgrade } from "@/lib/upgrade";
 import { ProBadge } from "./pro-badge";
@@ -121,6 +123,7 @@ export default function PhotoStudio({
   seed,
   onSeedUsed,
   onDestination,
+  banner,
 }: {
   active?: boolean;
   state: Row;
@@ -133,6 +136,8 @@ export default function PhotoStudio({
     photoId: string,
     extra?: Row,
   ) => void;
+  /** A row under the page title, such as a new owner's checklist. */
+  banner?: ReactNode;
 }) {
   const draftStore = useCreationDraft(
       "studio",
@@ -745,6 +750,7 @@ export default function PhotoStudio({
       await save();
       await refresh();
       track("upload_complete", a.id);
+      if (!options.sample) recordVisitorStep("photo");
     });
   }
   function requireCreation() {
@@ -804,6 +810,7 @@ export default function PhotoStudio({
       format: request.controls?.format || "menu",
       ...(looks.some((entry) => entry.id === look) ? { look } : {}),
     });
+    recordVisitorStep("create");
     const j = await api("jobs", {
       studioDraftId: draftStore.id,
       ...request,
@@ -1124,6 +1131,7 @@ export default function PhotoStudio({
             New photo
           </button>
         </div>
+        {banner}
       </header>
       <DraftRecovery store={draftStore} />
       {/* Filled when the photo being made is ready or stops. */}

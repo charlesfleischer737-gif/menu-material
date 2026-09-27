@@ -106,6 +106,14 @@ import {
   studioReferenceRequest,
 } from "./studio-references";
 import { creationRoute } from "./creation";
+import {
+  funnelReport,
+  launchChecklistFacts,
+  menuExportDetails,
+  recordSignupSource,
+  recordWaitlistJoin,
+  visitorStepRoute,
+} from "./funnel";
 import { libraryRoute } from "./library";
 import {
   advanceBatches,
@@ -329,6 +337,8 @@ async function signup(req: Request, b: Row) {
     "This invitation has already been used.",
   );
   await event(rid, "onboarded");
+  // Where the owner came from, if the browser noted it (launch funnel).
+  await recordSignupSource(rid, b.attribution);
   return await createSession(req, userId);
 }
 async function issueInvite(email: string, allowance: number, role = "owner") {
@@ -644,6 +654,8 @@ async function route(req: Request) {
     }
     if (p[0] === "guest-photo-analysis" && method === "POST")
       return await analyzeGuestPhoto(req);
+    if (p[0] === "funnel" && method === "POST")
+      return await visitorStepRoute(req);
     if (p[0] === "public" && p[1]) {
       // Earlier addresses (printed QR codes) resolve to the restaurant's menu.
       const r = (await resolveMenuAddress(p[1])).restaurant;
@@ -970,6 +982,8 @@ async function route(req: Request) {
           .parse(url.searchParams.get("days") || 30);
         return response(await studioProgressReport(mode, days));
       }
+      if (method === "GET" && p[1] === "funnel")
+        return response(await funnelReport());
       if (
         method === "GET" &&
         p[1] === "photo-correction" &&
@@ -1281,13 +1295,16 @@ async function route(req: Request) {
     if (p[0] === "plan-waitlist" && method === "POST") {
       // One entry per owner; asking again changes nothing.
       const { u, r } = await owner(req);
-      await run(
+      const joined = await run(
         "INSERT OR IGNORE INTO launch_requests (id,kind,email,restaurant,created_at) VALUES (?,'pro',?,?,?)",
         id(),
         u.email,
         r.name,
         now(),
       );
+      // The Pro feature that opened Plans, if one did (launch funnel).
+      if (joined.meta.changes)
+        await recordWaitlistJoin(r.id, await body(req).catch(() => ({})));
       return response({ ok: true });
     }
     const { r } = await owner(req);
@@ -1852,6 +1869,8 @@ async function route(req: Request) {
       );
       return response({ id: cid });
     }
+    if (p[0] === "launch-checklist" && method === "GET")
+      return response(await launchChecklistFacts(r.id));
     if (p[0] === "events" && method === "POST") {
       const b = await body(req);
       const kind = z
@@ -1861,7 +1880,11 @@ async function route(req: Request) {
           "visit",
           // Which Pro features people meet, and which ones they buy for.
           "upgrade_prompt_shown",
+          // "See Pro" or a Pro button clicked; upgrade_clicked is Get Pro.
+          "upgrade_requested",
           "upgrade_clicked",
+          // A menu's PDF, table card or QR image (lib/funnel.ts).
+          "menu_exported",
         ])
         .parse(b.kind);
       await event(
@@ -1875,7 +1898,9 @@ async function route(req: Request) {
                 .refine(isProFeature, "Unknown feature.")
                 .parse(b.feature),
             }
-          : {},
+          : kind === "menu_exported"
+            ? menuExportDetails(b)
+            : {},
       );
       return response({ ok: true });
     }

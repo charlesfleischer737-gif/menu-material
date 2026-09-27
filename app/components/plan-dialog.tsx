@@ -119,7 +119,8 @@ export default function PlanDialog({
     setWaitlist("sending");
     setError("");
     try {
-      await api("plan-waitlist", {});
+      // The Pro feature that opened Plans, for the launch funnel.
+      await api("plan-waitlist", offered ? { feature: offered } : {});
       setWaitlist("joined");
     } catch (e) {
       if ((e as { status?: number }).status === 404) setWaitlist("noted");
