@@ -15,10 +15,19 @@ const { advanceBatches } = await import("../lib/server/menu-tools.ts");
 const { newMenuDocument, newMenuEntry } =
   await import("../lib/menu-document.ts");
 const { defaultStyle } = await import("../lib/promotions.ts");
-const { FREE_SIGNUP_IMAGES, freeMenuDesign } = await import("../lib/plans.ts");
+const { FREE_SIGNUP_IMAGES, FREE_POST_TEMPLATES, freeMenuDesign } =
+  await import("../lib/plans.ts");
 const { restaurantSettingsChanged } = await import("../lib/menu-checks.ts");
-const { freePostDraft, getPostTemplate } =
-  await import("../lib/post-templates.ts");
+const {
+  choosePostTemplate,
+  freePostCopy,
+  freePostDraft,
+  getPostTemplate,
+  newPostDraft,
+} = await import("../lib/post-templates.ts");
+const { updatePost } = await import("../lib/post-flow.ts");
+// The page's own plan check, from the state it loads.
+const { hasProFeatures } = await import("../lib/upgrade.ts");
 const { recipeFromDraft, emptyStudioLibrary } =
   await import("../lib/studio-library.ts");
 const { photoBrief } = await import("../lib/studio.ts");
@@ -402,6 +411,109 @@ try {
   );
   await call(`creation-drafts/${proPost}`);
   await proOnly(`creation-drafts/${proPost}/duplicate`, {}, "postTemplates");
+  // Post Maker's New, as the page builds it on Free, saves. Pro's new post
+  // starts in the restaurant's look, which Free can't save.
+  state = await call("state");
+  const pro = hasProFeatures(state);
+  assert.equal(pro, false);
+  await call("creation-drafts", post(newPostDraft(state.restaurant, 2, pro)));
+  await call("creation-drafts", post(newPostDraft(state.restaurant, 1, pro)));
+  const branded = { ...state.restaurant, style: state.restaurant.savedStyle };
+  await proOnly(
+    "creation-drafts",
+    post(newPostDraft(branded, 2, true)),
+    "postTemplates",
+  );
+  // A post made on Pro in the restaurant's look opens on Free, and choosing
+  // any free design, as Post Maker does, makes it one Free can save.
+  const chooseDesign = (draft, id, plan) =>
+    updatePost(
+      draft,
+      {
+        ...choosePostTemplate({ ...draft, compositionVersion: 2 }, id, plan),
+        compositionVersion: 2,
+      },
+      state.restaurant,
+    );
+  const burger = {
+    key: crypto.randomUUID(),
+    dishId: dish.id,
+    photoId: crypto.randomUUID(),
+    name: "Smash Burger",
+    quantity: 1,
+  };
+  const made = chooseDesign(
+    { ...newPostDraft(branded, 2, true), items: [burger] },
+    "special",
+    true,
+  );
+  assert.equal(made.brandMode, "restaurant");
+  assert.equal(made.color, look.primary, "Pro keeps the restaurant's colors");
+  const madeOnPro = crypto.randomUUID();
+  await run(
+    "INSERT INTO creation_drafts (id,restaurant_id,kind,draft,revision,updated_at) VALUES (?,?,'post',?,1,?)",
+    madeOnPro,
+    rid,
+    JSON.stringify(made),
+    Date.now(),
+  );
+  const revise = (draft) => ({
+    id: madeOnPro,
+    kind: "post",
+    revision: 1,
+    draft,
+  });
+  assert.equal(
+    (await call(`creation-drafts/${madeOnPro}`)).draft.draft.brandMode,
+    "restaurant",
+  );
+  await proOnly(
+    "creation-drafts",
+    revise(updatePost(made, { title: "Burger night" }, state.restaurant)),
+    "postTemplates",
+  );
+  for (const id of FREE_POST_TEMPLATES) {
+    const chosen = chooseDesign(made, id, pro);
+    assert(freePostDraft(chosen), `${id} makes the post one Free can save`);
+    assert.deepEqual(
+      [chosen.color, chosen.accent, chosen.typography, chosen.brandMode],
+      [
+        getPostTemplate(id).color,
+        getPostTemplate(id).accent,
+        "template",
+        undefined,
+      ],
+    );
+  }
+  await call("creation-drafts", revise(chooseDesign(made, "chef", pro)));
+  // A carousel made on Pro: its Free copy is the first dish as a post and
+  // Story, in a free design's own look, and its words follow that dish.
+  const fries = {
+    ...burger,
+    key: crypto.randomUUID(),
+    dishId: crypto.randomUUID(),
+    photoId: crypto.randomUUID(),
+    name: "Fries",
+  };
+  const carousel = chooseDesign(
+    updatePost(
+      made,
+      { items: [burger, fries], channels: ["feed", "story", "carousel"] },
+      state.restaurant,
+    ),
+    "brunch",
+    true,
+  );
+  assert.equal(carousel.title, "Smash Burger & Fries");
+  assert.equal(freePostDraft(carousel), false);
+  const freeCopy = freePostCopy(carousel, state.restaurant, "chef");
+  assert.deepEqual(
+    [freeCopy.items, freeCopy.channels, freeCopy.template, freeCopy.title],
+    [[burger], ["feed", "story"], "chef", "Smash Burger"],
+  );
+  assert(freePostDraft(freeCopy));
+  await call("creation-drafts", post(freeCopy));
+  checks += 14;
   // Photo and menu drafts are never limited.
   await call("creation-drafts", {
     id: crypto.randomUUID(),
@@ -734,7 +846,7 @@ try {
   checks++;
 
   console.log(
-    `PASS: ${checks} plan limit checks: signup cap per network, Free defaults for the restaurant look, one basic live menu (also across two tabs), three free post designs, Pro-only campaigns, batches, staff links, saved looks and inspiration photos, trimmed insights, the menu credit, admin comps, keeping work after a downgrade, the renewal grace and the switch.`,
+    `PASS: ${checks} plan limit checks: signup cap per network, Free defaults for the restaurant look, one basic live menu (also across two tabs), three free post designs (New posts, free designs over a Pro post's look, and Free copies), Pro-only campaigns, batches, staff links, saved looks and inspiration photos, trimmed insights, the menu credit, admin comps, keeping work after a downgrade, the renewal grace and the switch.`,
   );
 } finally {
   rmSync(root, { recursive: true, force: true });

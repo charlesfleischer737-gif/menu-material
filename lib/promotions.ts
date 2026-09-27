@@ -1,3 +1,5 @@
+import type { Row } from "./client";
+
 export type Style = {
   primary: string;
   accent: string;
@@ -99,4 +101,35 @@ export function scheduleLabel(start: number, end: number, zone: string) {
     timeZoneName: "short",
   });
   return `${format.format(start)} – ${format.format(end)}`;
+}
+/** Campaign data as JSON, keys sorted, without its revision. */
+export function comparable(value: unknown): string {
+  return JSON.stringify(value, (k, v) =>
+    k === "revision"
+      ? undefined
+      : v && typeof v === "object" && !Array.isArray(v)
+        ? Object.fromEntries(
+            Object.keys(v)
+              .sort()
+              .map((key) => [key, v[key]]),
+          )
+        : v,
+  );
+}
+/** The same campaign, apart from the time spent on it. */
+export function sameContent(a: Row | null, b: Row | null) {
+  return (
+    comparable({ ...a, activeMs: 0 }) === comparable({ ...b, activeMs: 0 })
+  );
+}
+/**
+ * Whether a campaign draft has changes to save. Campaigns can't be changed on
+ * Free, so time spent on one (activeMs) isn't saved there. The server would
+ * refuse that save, and with it the download or copied caption that saves
+ * first.
+ */
+export function offerChanged(draft: Row, saved: Row, pro: boolean) {
+  return pro
+    ? comparable(draft) !== comparable(saved)
+    : !sameContent(draft, saved);
 }
