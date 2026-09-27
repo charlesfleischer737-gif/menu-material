@@ -155,6 +155,16 @@ async function publication(
   keptStyle?: Row | null,
 ) {
   await assertMenuReady(r, draft);
+  // A photo the owner reported as inaccurate stays in the draft, where the
+  // publish checks ask for another, but never reaches guests.
+  const reported = new Set(
+    (
+      await all(
+        "SELECT id FROM assets WHERE restaurant_id=? AND needs_correction=1",
+        r.id,
+      )
+    ).map((a) => a.id),
+  );
   const publicDraft = {
     ...draft,
     name: draft.title,
@@ -163,7 +173,14 @@ async function publication(
     // Sold-out dishes stay in the live copy so a quick update can bring them
     // back; guest menus hide them when the menu leaves unavailable dishes out.
     sections: draft.sections
-      .map((s) => ({ ...s, items: s.items.filter((i) => i.visible) }))
+      .map((s) => ({
+        ...s,
+        items: s.items
+          .filter((i) => i.visible)
+          .map((i) =>
+            i.photoId && reported.has(i.photoId) ? { ...i, photoId: null } : i,
+          ),
+      }))
       .filter((s) => s.items.length),
   };
   await validateReferences(r.id, publicDraft, true);
@@ -260,7 +277,7 @@ export async function assetInPublishedDocuments(rid: string, assetId: string) {
   return documents.some((r) => {
     const d = JSON.parse(r.published);
     return (
-      d.restaurant.logoId === assetId ||
+      d.restaurant?.logoId === assetId ||
       d.sections.some((s: Row) =>
         s.items.some((i: Row) => i.photoId === assetId),
       )

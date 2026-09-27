@@ -8,6 +8,7 @@ import {
   DialogDescription,
 } from "@/components/ui/dialog";
 import { api, type Row } from "@/lib/client";
+import { reportedPhotoNotice } from "@/lib/photo-use";
 
 export function PhotoCorrectionSheet({
   assetId,
@@ -26,7 +27,9 @@ export function PhotoCorrectionSheet({
     [reason, setReason] = useState("ingredients"),
     [detail, setDetail] = useState(""),
     [busy, setBusy] = useState(false),
-    [error, setError] = useState("");
+    [error, setError] = useState(""),
+    // The live menus and specials the report took the photo off.
+    [withdrawn, setWithdrawn] = useState("");
   const lock = useRef(false);
   useEffect(() => {
     let active = true;
@@ -73,6 +76,7 @@ export function PhotoCorrectionSheet({
         create ? {} : { reason, detail },
       );
       setReport(result);
+      if (result.withdrawn) setWithdrawn(reportedPhotoNotice(result.withdrawn));
       if (create) void api("jobs/tick", {}).catch(() => {});
       await refresh();
     } catch (e) {
@@ -127,6 +131,11 @@ export function PhotoCorrectionSheet({
           )}
           {!report && !error && <p role="status">Checking this photo…</p>}
           {report && <p role="status">{report.message}</p>}
+          {withdrawn && (
+            <p className="ps2-inline-note" role="status">
+              {withdrawn}
+            </p>
+          )}
           {canReport && (
             <fieldset disabled={busy} className="ps2-correction-form">
               <legend>What changed?</legend>

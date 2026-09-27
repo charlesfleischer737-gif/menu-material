@@ -1,12 +1,13 @@
 import assert from "node:assert/strict";
-import { mkdtempSync, rmSync } from "node:fs";
+import { mkdtempSync, readFileSync, rmSync } from "node:fs";
 import { tmpdir } from "node:os";
 import { join } from "node:path";
 const root = mkdtempSync(join(tmpdir(), "menu-publishing-"));
 process.env.MENU_MATERIAL_DATA_DIR = root;
 process.env.APP_ORIGIN = "http://localhost";
 const { handle } = await import("../lib/server/api.ts");
-const { one, run } = await import("../lib/server/core.ts");
+const { bucket, one, run } = await import("../lib/server/core.ts");
+const { reportedPhotoNotice } = await import("../lib/photo-use.ts");
 const { newMenuDocument, newMenuEntry, menuPrice } =
   await import("../lib/menu-document.ts");
 const {
@@ -1291,8 +1292,256 @@ try {
     restaurantSettingsChanged(lunchRepublished.published, renamed),
     false,
   );
+
+  // A photo reported as inaccurate leaves what guests see at once, as a
+  // deleted one does: live menus, specials and its public copies. Drafts and
+  // history keep it, and publishing again leaves it out.
+  const peachDish = await call("dishes", {
+    name: "Grilled peach",
+    description: "Honey and thyme",
+    price: 9,
+    confirmed: true,
+  });
+  const peachSource = crypto.randomUUID(),
+    peachPhoto = crypto.randomUUID(),
+    peachJob = crypto.randomUUID(),
+    photoBytes = readFileSync("public/pasta.jpg");
+  for (const [assetId, kind] of [
+    [peachSource, "source"],
+    [peachPhoto, "generated"],
+  ]) {
+    await bucket().put(`private/${rid}/${kind}/${assetId}`, photoBytes, {
+      httpMetadata: { contentType: "image/jpeg" },
+    });
+    await run(
+      "INSERT INTO assets (id,restaurant_id,dish_id,kind,key,mime,name,approved_at,created_at) VALUES (?,?,?,?,?,'image/jpeg','peach.jpg',?,?)",
+      assetId,
+      rid,
+      peachDish.id,
+      kind,
+      `private/${rid}/${kind}/${assetId}`,
+      Date.now(),
+      Date.now(),
+    );
+  }
+  // The request that made the AI photo, which a report is about.
+  await run(
+    "INSERT INTO jobs (id,restaurant_id,dish_id,request_key,fingerprint,prompt,details,input_method,source_id,status,created_at) VALUES (?,?,?,?,'fixture','','{}','photo',?,'completed',?)",
+    peachJob,
+    rid,
+    peachDish.id,
+    crypto.randomUUID(),
+    peachSource,
+    Date.now(),
+  );
+  await run(
+    "INSERT INTO outputs (id,job_id,restaurant_id,slot,status,asset_id,created_at) VALUES (?,?,?,0,'completed',?,?)",
+    crypto.randomUUID(),
+    peachJob,
+    rid,
+    peachPhoto,
+    Date.now(),
+  );
+  const peachEntry = () =>
+    newMenuEntry({
+      dishId: peachDish.id,
+      name: "Grilled peach",
+      description: "Honey and thyme",
+      price: 900,
+      photoId: peachPhoto,
+    });
+  // On the main menu, Lunch, and on a menu of its own.
+  const lunchNow = await call(`menus/${lunchMenu.id}`);
+  const lunchPeach = await call(
+    `menus/${lunchMenu.id}`,
+    {
+      revision: lunchNow.revision,
+      draft: {
+        ...lunchNow.draft,
+        sections: [
+          ...lunchNow.draft.sections,
+          section([peachEntry()], "Desserts"),
+        ],
+      },
+    },
+    200,
+    "PUT",
+  );
+  await call(`menus/${lunchMenu.id}/publish`, {
+    revision: lunchPeach.revision,
+  });
+  const dessertMenu = await call("menus", {
+    id: crypto.randomUUID(),
+    draft: newMenuDocument({
+      name: "Desserts",
+      title: "Desserts",
+      sections: [section([peachEntry()], "Desserts")],
+    }),
+  });
+  await call(`menus/${dessertMenu.id}/publish`, {
+    revision: dessertMenu.revision,
+  });
+  // And as tonight's special.
+  const zone = (await call("state")).restaurant.timezone;
+  const { localTime } = await import("../lib/promotions.ts");
+  let special = (
+    await call("promotions", {
+      type: "special",
+      title: "Peach night",
+      price: 1200,
+      startsLocal: localTime(Date.now() - 3600000, zone),
+      endsLocal: localTime(Date.now() + 3600000, zone),
+      items: [{ dishId: peachDish.id, quantity: 1, photoId: peachPhoto }],
+      style: {},
+    })
+  ).promotion;
+  await call(`promotions/${special.id}/approve`, {
+    revision: special.revision,
+    accurate: true,
+  });
+  await call(`promotions/${special.id}/publish`, {
+    revision: special.revision,
+  });
+  // A smaller copy made for phones, and a menu draft from before Menus.
+  await bucket().put(`public/${rid}/${peachPhoto}-w480`, photoBytes);
+  const legacyDraft = JSON.stringify({
+    sections: [
+      {
+        id: "old",
+        name: "Old",
+        items: [{ dishId: peachDish.id, photoId: peachPhoto }],
+      },
+    ],
+  });
+  await run("UPDATE restaurants SET menu_draft=? WHERE id=?", legacyDraft, rid);
+  const peachImage = async () =>
+    (
+      await handle(
+        new Request(
+          `http://localhost/api/public/${slugNow}/assets/${peachPhoto}`,
+        ),
+      )
+    ).status;
+  const hasPeach = (menu) =>
+    menu.sections.some((s) => s.items.some((i) => i.photoId === peachPhoto));
+  let guestMenu = (await call(`public/${slugNow}`)).menu;
+  assert(hasPeach(guestMenu));
+  assert(guestMenu.specials.some((s) => s.id === special.id));
+  assert.equal(await peachImage(), 200);
+
+  const peachReport = await call(`photo-corrections/${peachPhoto}`, {
+    reason: "ingredients",
+    detail: "The peach is a nectarine.",
+  });
+  assert.deepEqual(
+    peachReport.withdrawn.menus.map((m) => [m.id, m.name]).sort(),
+    [
+      [lunchMenu.id, "Lunch"],
+      [dessertMenu.id, "Desserts"],
+    ].sort(),
+    "the owner hears which menus changed",
+  );
+  assert.deepEqual(peachReport.withdrawn.specials, [
+    { id: special.id, title: "Peach night" },
+  ]);
+  const notice = reportedPhotoNotice(peachReport.withdrawn);
+  assert.match(notice, /^Guests no longer see this photo on your live menus “/);
+  assert.match(notice, /“Lunch”/);
+  assert.match(notice, /“Desserts”/);
+  assert.match(
+    notice,
+    /Your special “Peach night” is hidden from guests until it has another photo\.$/,
+  );
+  assert.equal(reportedPhotoNotice({ menus: [], specials: [] }), "");
+  assert.equal(
+    reportedPhotoNotice({
+      menus: [{ id: "brunch", name: "Brunch" }],
+      specials: [{ title: "Tacos" }, { title: "" }],
+    }),
+    "Guests no longer see this photo on your live menu “Brunch”. Choose another photo in Menus and publish again. Your specials “Tacos” and “Special” are hidden from guests until they have another photo.",
+  );
+  assert.equal(
+    reportedPhotoNotice({ menus: [{ id: null, name: "" }] }),
+    "Guests no longer see this photo on your live menu. Choose another photo in Menus and publish again.",
+    "a live menu from before Menus",
+  );
+  for (const id of [lunchMenu.id, dessertMenu.id]) {
+    const menu = await call(`menus/${id}`);
+    assert(!hasPeach(menu.published), "the live copy loses the photo");
+    assert(hasPeach(menu.draft), "the draft keeps it for a replacement");
+    const history = await one(
+      "SELECT snapshot FROM menu_publication_history WHERE menu_id=? ORDER BY created_at DESC LIMIT 1",
+      id,
+    );
+    assert(hasPeach(JSON.parse(history.snapshot)), "history keeps it");
+  }
+  const main = await one(
+    "SELECT published,menu_draft FROM restaurants WHERE id=?",
+    rid,
+  );
+  assert.equal(
+    main.published,
+    (await one("SELECT published FROM menu_documents WHERE id=?", lunchMenu.id))
+      .published,
+    "the main menu's copy still mirrors its document",
+  );
+  assert.equal(main.menu_draft, legacyDraft);
+  assert.equal(await bucket().head(`public/${rid}/${peachPhoto}`), null);
+  assert.equal(await bucket().head(`public/${rid}/${peachPhoto}-w480`), null);
+  assert(await bucket().head(`private/${rid}/generated/${peachPhoto}`));
+  guestMenu = (await call(`public/${slugNow}`)).menu;
+  assert(!hasPeach(guestMenu));
+  assert(
+    !guestMenu.specials.some((s) => s.id === special.id),
+    "the special waits for another photo",
+  );
+  assert.equal(await peachImage(), 404);
+  // Publishing again leaves it out; the draft still shows it, with a warning.
+  const dessertAgain = await call(`menus/${dessertMenu.id}`);
+  const republishedDessert = await call(`menus/${dessertMenu.id}/publish`, {
+    revision: dessertAgain.revision,
+  });
+  assert(!hasPeach(republishedDessert.published));
+  assert(hasPeach(republishedDessert.draft));
+  assert.equal(await peachImage(), 404);
+  // Nor is one served that a live copy still names, as when a publication
+  // races the report.
+  const withOriginal = await call(
+    `menus/${dessertMenu.id}`,
+    {
+      revision: republishedDessert.revision,
+      draft: newMenuDocument({
+        ...republishedDessert.draft,
+        sections: [section([{ ...peachEntry(), photoId: peachSource }])],
+      }),
+    },
+    200,
+    "PUT",
+  );
+  await call(`menus/${dessertMenu.id}/publish`, {
+    revision: withOriginal.revision,
+  });
+  const originalImage = async () =>
+    (
+      await handle(
+        new Request(
+          `http://localhost/api/public/${slugNow}/assets/${peachSource}?menu=${dessertMenu.id}`,
+        ),
+      )
+    ).status;
+  assert.equal(await originalImage(), 200);
+  await run("UPDATE assets SET needs_correction=1 WHERE id=?", peachSource);
+  assert.equal(await originalImage(), 404);
+  // A campaign can't go out again with the reported photo.
+  special = (await call(`promotions/${special.id}`)).promotion;
+  const refusedSpecial = await call(
+    `promotions/${special.id}/publish`,
+    { revision: special.revision },
+    400,
+  );
+  assert.match(refusedSpecial.error, /reported the photo of Grilled peach/);
   console.log(
-    `PASS: ${checks} menu publishing checks: placeholder names, sample dishes, zero prices, automatic checks without an I-checked box, first-publication menu address, address changes with redirects, and dish edits reaching draft and live menus.`,
+    `PASS: ${checks} menu publishing checks: placeholder names, sample dishes, zero prices, automatic checks without an I-checked box, first-publication menu address, address changes with redirects, dish edits reaching draft and live menus, and reported photos leaving live menus, specials and public copies.`,
   );
 } finally {
   rmSync(root, { recursive: true, force: true });

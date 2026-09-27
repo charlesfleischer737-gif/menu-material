@@ -15,7 +15,8 @@ import {
 const root = mkdtempSync(join(tmpdir(), "menu-material-campaigns-"));
 process.env.MENU_MATERIAL_DATA_DIR = root;
 const { handle } = await import("../lib/server/api.ts");
-const { localTime, defaultStyle, offerChanged } =
+const { run } = await import("../lib/server/core.ts");
+const { localTime, defaultStyle, offerChanged, offerPhoto, offerPhotoUsable } =
   await import("../lib/promotions.ts");
 // The page's own plan check, from the state it loads.
 const { hasProFeatures } = await import("../lib/upgrade.ts");
@@ -130,6 +131,37 @@ try {
   await approve(200);
   checks += 2;
 
+  // A photo reported as inaccurate can't go out in a campaign, and the
+  // page's own photo picks skip it.
+  await run("UPDATE assets SET needs_correction=1 WHERE id=?", photo);
+  const reported = await approve(400);
+  assert.equal(
+    reported.error,
+    "You reported the photo of Pasta as inaccurate. Choose another photo.",
+  );
+  let assets = (await call("state")).assets;
+  assert.equal(offerPhotoUsable(assets.find((a) => a.id === photo)), false);
+  assert.equal(offerPhoto(assets, dish), undefined);
+  const another = new FormData();
+  another.set("file", new File([jpg], "again.jpg", { type: "image/jpeg" }));
+  another.set(
+    "normalized",
+    new File([jpg], "again.jpg", { type: "image/jpeg" }),
+  );
+  another.set("dishId", dish);
+  const retaken = (await call("assets", another, 201)).id;
+  assets = (await call("state")).assets;
+  assert.equal(
+    offerPhoto(assets, dish).id,
+    retaken,
+    "its original, to approve",
+  );
+  await call("assets/" + retaken + "/approve", { accurate: true });
+  assets = (await call("state")).assets;
+  assert(offerPhotoUsable(offerPhoto(assets, dish)));
+  await run("UPDATE assets SET needs_correction=0 WHERE id=?", photo);
+  checks += 5;
+
   // After Pro ends, the campaign still downloads and copies its caption. The
   // page doesn't save the time spent on it, which Free would refuse, and
   // real changes stay Pro.
@@ -214,5 +246,5 @@ for (const format of ["story", "feed"])
     checks += 2;
   }
 console.log(
-  `PASS: ${checks} Campaigns checks: a real price before approval, downloads after Pro ends, post fonts, no $0.00, and Story text clear of Instagram's bars.`,
+  `PASS: ${checks} Campaigns checks: a real price before approval, no photos reported as inaccurate, downloads after Pro ends, post fonts, no $0.00, and Story text clear of Instagram's bars.`,
 );

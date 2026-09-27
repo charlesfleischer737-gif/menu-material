@@ -683,8 +683,10 @@ async function route(req: Request) {
           404,
           "Image not found.",
         );
+        // Never a photo the owner reported as inaccurate, even one a live
+        // copy still names.
         const a = await one(
-          "SELECT * FROM assets WHERE id=? AND restaurant_id=? AND deleted_at IS NULL AND (approved_at IS NOT NULL OR kind=?)",
+          "SELECT * FROM assets WHERE id=? AND restaurant_id=? AND deleted_at IS NULL AND needs_correction=0 AND (approved_at IS NOT NULL OR kind=?)",
           p[3],
           r.id,
           "logo",
