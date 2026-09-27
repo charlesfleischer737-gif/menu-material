@@ -424,17 +424,28 @@ export default function GuestStudio({
           {error && (
             <div className="cx-feedback error" role="alert">
               {error}
-              {state.user && (
-                <button
-                  className="cx-link"
-                  disabled={!!busy}
-                  onClick={() => void transferWork(requested)}
-                >
-                  {requested
-                    ? "Retry creating my image"
-                    : "Retry saving my photo"}
-                </button>
-              )}
+              {state.user &&
+                // Out of images, a retry can't work; the photo stays here.
+                (requested && state.remaining < 1 ? (
+                  <button
+                    className="cx-link"
+                    onClick={() =>
+                      window.dispatchEvent(new Event("menu-material:plans"))
+                    }
+                  >
+                    See plans
+                  </button>
+                ) : (
+                  <button
+                    className="cx-link"
+                    disabled={!!busy}
+                    onClick={() => void transferWork(requested)}
+                  >
+                    {requested
+                      ? "Retry creating my image"
+                      : "Retry saving my photo"}
+                  </button>
+                ))}
               {state.user && savedSome && (
                 <button
                   className="cx-link"

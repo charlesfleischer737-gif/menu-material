@@ -283,8 +283,14 @@ try {
     ),
   );
   assert.equal(pending.filter((x) => x.status === "fulfilled").length, 5);
-  assert.equal(pending.find((x) => x.status === "rejected").reason.status, 402);
-  checks += 2;
+  const freeRefusal = pending.find((x) => x.status === "rejected").reason;
+  assert.equal(freeRefusal.status, 402);
+  // Free images are a one-time grant: nothing to wait for.
+  assert.equal(
+    freeRefusal.message,
+    "You need 1 image remaining for this request. Free images don’t renew; see Plans for Pro.",
+  );
+  checks += 3;
   assert.equal((await call("state")).remaining, 0);
   const output = await one(
     "SELECT id FROM outputs WHERE restaurant_id=? LIMIT 1",
@@ -408,7 +414,10 @@ try {
   assert.equal(proJobs.find((x) => x.status === "rejected").reason.status, 402);
   await assert.rejects(
     () => enqueue(r, { dishId: dish.id, requestKey: id(), candidateCount: 1 }),
-    (error) => error.status === 402,
+    (error) =>
+      error.status === 402 &&
+      error.message ===
+        "You need 1 image remaining for this request. Your Pro images renew each billing period.",
     "The 51st image is blocked even when requested alone",
   );
   checks += 2;
@@ -758,6 +767,115 @@ try {
     "Guest reference handoff retry cannot consume another image",
   );
   checks += 9;
+  // Out of images, a guest's handoff checks the balance before saving
+  // anything, and says what comes next; a retry after a lost reply, once
+  // the dish is saved, still finishes.
+  const guestR = await one(
+    "SELECT * FROM restaurants WHERE id=?",
+    guestState.restaurant.id,
+  );
+  const guestJobs = [];
+  for (let n = 0; n < 3; n++)
+    guestJobs.push(
+      await enqueue(guestR, {
+        dishId: transfer.dishId,
+        requestKey: id(),
+        revision: "use up " + n,
+      }),
+    );
+  Object.assign(guestState, await call("state"));
+  assert.equal(guestState.remaining, 0);
+  const guestRows = async () =>
+    Promise.all(
+      ["dishes", "assets", "creation_drafts", "jobs"].map(
+        async (table) =>
+          (
+            await one(
+              `SELECT count(*) n FROM ${table} WHERE restaurant_id=?`,
+              guestR.id,
+            )
+          ).n,
+      ),
+    );
+  const rowsBefore = await guestRows();
+  const emptyTransfer = { id: id(), revision: 0, requestKey: id() };
+  await assert.rejects(
+    transferGuestPhoto(
+      draft,
+      { file, normalized: file, url: "blob:local" },
+      null,
+      guestState,
+      emptyTransfer,
+    ),
+    (error) =>
+      error.code === "no_images" &&
+      error.message ===
+        "You’ve used your available images. Free images don’t renew; see Plans for Pro.",
+  );
+  assert.equal(emptyTransfer.dishId, undefined);
+  assert.deepEqual(await guestRows(), rowsBefore, "nothing is saved");
+  // Signing in without Create still hands the photo over.
+  const handOver = { id: id(), revision: 0, requestKey: id() };
+  await transferGuestPhoto(
+    draft,
+    { file, normalized: file, url: "blob:local" },
+    null,
+    guestState,
+    handOver,
+    undefined,
+    { create: false },
+  );
+  assert(handOver.dishId);
+  // The last image, used by a job whose reply is lost.
+  const [refunded] = await all(
+    "SELECT id,job_id FROM outputs WHERE job_id=?",
+    guestJobs[0].id,
+  );
+  await run("UPDATE outputs SET status='failed' WHERE id=?", refunded.id);
+  Object.assign(guestState, await call("state"));
+  assert.equal(guestState.remaining, 1);
+  const lastTransfer = { id: id(), revision: 0, requestKey: id() };
+  lostJobResponse = true;
+  await assert.rejects(
+    transferGuestPhoto(
+      draft,
+      { file, normalized: file, url: "blob:local" },
+      null,
+      guestState,
+      lastTransfer,
+    ),
+    /Simulated lost job response/,
+  );
+  Object.assign(guestState, await call("state"));
+  assert.equal(guestState.remaining, 0, "the job was made");
+  await transferGuestPhoto(
+    draft,
+    { file, normalized: file, url: "blob:local" },
+    null,
+    guestState,
+    lastTransfer,
+  );
+  assert(lastTransfer.jobId);
+  assert.equal(
+    (
+      await one(
+        "SELECT count(*) n FROM jobs WHERE restaurant_id=? AND dish_id=?",
+        guestR.id,
+        lastTransfer.dishId,
+      )
+    ).n,
+    1,
+    "the retry finds the job it made",
+  );
+  // Retrying a failed image with none left says the same.
+  await assert.rejects(
+    () => retryFailed(guestR, refunded.job_id),
+    (error) =>
+      error.status === 402 &&
+      error.message ===
+        "Not enough images left. Free images don’t renew; see Plans for Pro.",
+  );
+  checks += 9;
   cookie = freeCookie;
   assert.equal((await call("state")).remaining, 1);
   // Two months recorded from notifications, two by the scheduled check.
@@ -836,7 +954,7 @@ try {
   assert.equal(await one("SELECT id FROM restaurants WHERE id=?", rid), null);
   checks += 4;
   console.log(
-    `PASS: ${checks} plan checks: open signup, five free credits, atomic monthly quota, payment verification (coupons and credit count, $0 lines don't), signatures, duplicate/out-of-order webhooks, renewals, renewals and outages caught by the scheduled check without webhooks, billing readiness, cancellation, checkout reuse, checkout terms, account deletion around billing, tenant isolation and loss-safe guest photo handoff. Stripe and AI are fixtures; no payments were made.`,
+    `PASS: ${checks} plan checks: open signup, five free credits, atomic monthly quota, payment verification (coupons and credit count, $0 lines don't), signatures, duplicate/out-of-order webhooks, renewals, renewals and outages caught by the scheduled check without webhooks, billing readiness, cancellation, checkout reuse, checkout terms, account deletion around billing, tenant isolation, loss-safe guest photo handoff, the balance checked before a guest's photo is saved, and out-of-images wording that never promises Free images renew. Stripe and AI are fixtures; no payments were made.`,
   );
 } finally {
   Date.now = realNow;

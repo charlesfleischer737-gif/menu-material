@@ -3,6 +3,7 @@ import { styleFor, emptyAdjustments, resolvePhotoLook } from "./studio";
 import { photoLookContext } from "./photo-recipe";
 import { activeInspirationId } from "./studio-reference";
 import { hasProFeatures } from "./upgrade";
+import { imagesRenewal } from "./plans";
 import {
   rememberPreference,
   workspacePreferenceKey,
@@ -99,6 +100,16 @@ export async function transferGuestPhoto(
   if (transfer.restaurantId && transfer.restaurantId !== state.restaurant.id)
     throw Error(
       "This draft was started in another restaurant account. Sign back in to that account to continue.",
+    );
+  // An account with no images left makes nothing: the photo stays here and
+  // Plans is offered, rather than a saved "Untitled dish" and a failed image.
+  // Skipped once a dish is saved, so a retry after a lost reply still works.
+  if (create && !transfer.dishId && state.remaining < 1)
+    throw Object.assign(
+      Error(
+        `You’ve used your available images. ${imagesRenewal(state.billing?.plan)}`,
+      ),
+      { code: "no_images" },
     );
   transfer.restaurantId = state.restaurant.id;
   transfer.dishKey ||= crypto.randomUUID();
