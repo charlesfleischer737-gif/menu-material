@@ -169,8 +169,8 @@ export default function Privacy() {
           after 90 days. A record of AI usage costs, without your photos or
           text, is kept for accounting. After an account is deleted, a one-way
           hash of its email address is kept for a year, only so the free images
-          for new accounts aren’t given to the same email twice. Stripe keeps its own
-          records of invoices and payments.
+          for new accounts aren’t given to the same email twice. Stripe keeps
+          its own records of invoices and payments.
         </p>
         <p>
           You can delete your account in Settings, under Details. Deletion is
@@ -179,22 +179,24 @@ export default function Privacy() {
           and captions, signs you out everywhere and deletes your customer
           record at Stripe, if you have one. Only a one-way hash of your email
           stays, for a year, so a new account with that email starts without
-          free images.
-          With an active Pro subscription, cancel it first in Plans, under
-          Manage billing; you can delete the account once Pro has ended. Copies
-          you already downloaded or shared can’t be recalled.
+          free images. With an active Pro subscription, cancel it first in
+          Plans, under Manage billing; you can delete the account once Pro has
+          ended. Copies you already downloaded or shared can’t be recalled.
         </p>
         <p>
           The browser uses a sign-in cookie, workspace preferences and a
-          menu-session identifier. After you sign in, it also keeps a device
-          cookie for a year, so it can still sign in to your account while
-          someone else’s repeated attempts are slowing sign-ins to it; a
-          password reset or deleting your account revokes it. The browser also
-          keeps copies of unsaved work so it can be recovered: menu drafts in
-          this browser’s storage, where they remain after the tab is closed, and
-          Photo Studio, post and campaign drafts for the current tab only.
-          Recovery data is cleared after a successful save. On a shared device,
-          sign out and close your browser tab when finished.
+          menu-session identifier. It also keeps the random identifier that lets
+          each getting-started step count once, and, until you sign up or for 30
+          days, the site and campaign tags you first arrived by (described
+          above). After you sign in, it also keeps a device cookie for a year,
+          so it can still sign in to your account while someone else’s repeated
+          attempts are slowing sign-ins to it; a password reset or deleting your
+          account revokes it. The browser also keeps copies of unsaved work so
+          it can be recovered: menu drafts in this browser’s storage, where they
+          remain after the tab is closed, and Photo Studio, post and campaign
+          drafts for the current tab only. Recovery data is cleared after a
+          successful save. On a shared device, sign out and close your browser
+          tab when finished.
         </p>
       </section>
       <section>
