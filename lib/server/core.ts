@@ -253,17 +253,58 @@ export function withRenewedSession(req: Request, res: Response) {
     return copy;
   }
 }
-export async function createSession(req: Request, userId: string) {
-  const s = token();
-  await run(
-    "INSERT INTO sessions (hash,user_id,expires_at) VALUES (?,?,?)",
-    digest(s),
-    userId,
-    now() + sessionDays * 86400000,
+// A browser that signs in keeps a device cookie for a year, so its later
+// sign-ins skip the per-account slowdown that anyone who knows the email can
+// cause (safeguards.ts). Only a hash of it is stored; a password reset or
+// deleting the account revokes it. Only sign-in routes receive it.
+const deviceDays = 365;
+function deviceCookie(req: Request, value: string) {
+  return `menu_material_device=${value}; Path=/api/auth; HttpOnly; SameSite=Lax; Max-Age=${deviceDays * 86400}${new URL(req.url).protocol === "https:" ? "; Secure" : ""}`;
+}
+const deviceToken = (req: Request) =>
+  req.headers
+    .get("cookie")
+    ?.match(/(?:^|;\s*)menu_material_device=([^;]+)/)?.[1];
+/** Whether this browser has signed in before to the account with this email. */
+export async function signedInBefore(req: Request, email: string) {
+  const raw = deviceToken(req);
+  return (
+    !!raw &&
+    !!(await one(
+      "SELECT 1 AS found FROM trusted_devices d JOIN users u ON u.id=d.user_id WHERE d.hash=? AND u.email=? AND d.expires_at>?",
+      digest(raw),
+      email,
+      now(),
+    ))
   );
-  return response({ ok: true }, 200, {
+}
+export async function createSession(req: Request, userId: string) {
+  const s = token(),
+    device = token(),
+    earlier = deviceToken(req);
+  await db().batch([
+    db()
+      .prepare("INSERT INTO sessions (hash,user_id,expires_at) VALUES (?,?,?)")
+      .bind(digest(s), userId, now() + sessionDays * 86400000),
+    // A fresh device token replaces the one this browser had for the account.
+    ...(earlier
+      ? [
+          db()
+            .prepare("DELETE FROM trusted_devices WHERE hash=? AND user_id=?")
+            .bind(digest(earlier), userId),
+        ]
+      : []),
+    db()
+      .prepare(
+        "INSERT INTO trusted_devices (hash,user_id,expires_at,created_at) VALUES (?,?,?,?)",
+      )
+      .bind(digest(device), userId, now() + deviceDays * 86400000, now()),
+  ]);
+  const res = response({ ok: true }, 200, {
     "Set-Cookie": sessionCookie(req, s),
   });
+  res.headers.append("Set-Cookie", deviceCookie(req, device));
+  return res;
 }
 export async function owner(req: Request) {
   const u = await viewer(req);
@@ -279,9 +320,10 @@ export async function admin(req: Request) {
 }
 /**
  * Delete an owner's account: every row that belongs to their restaurant, its
- * stored files (private and public copies), their sessions and the user.
- * AI spend rows stay for budget and invoice reconciliation; they hold no
- * personal details. The owner and administrators share these rules.
+ * stored files (private and public copies), their sessions, signed-in
+ * devices and the user. AI spend rows stay for budget and invoice
+ * reconciliation; they hold no personal details. The owner and
+ * administrators share these rules.
  */
 export async function deleteAccount(u: Row, r: Row) {
   assert(
@@ -371,6 +413,7 @@ export async function deleteAccount(u: Row, r: Row) {
     ].map(owned),
     db().prepare("DELETE FROM restaurants WHERE id=?").bind(rid),
     db().prepare("DELETE FROM sessions WHERE user_id=?").bind(u.id),
+    db().prepare("DELETE FROM trusted_devices WHERE user_id=?").bind(u.id),
     db().prepare("DELETE FROM invites WHERE email=?").bind(u.email),
     db().prepare("DELETE FROM launch_requests WHERE email=?").bind(u.email),
     db().prepare("DELETE FROM users WHERE id=?").bind(u.id),

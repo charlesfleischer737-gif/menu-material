@@ -268,6 +268,13 @@ async function signup(req: Request, b: Row) {
           "DELETE FROM sessions WHERE user_id=? AND EXISTS(SELECT 1 FROM invites WHERE hash=? AND used_by IS NULL)",
         )
         .bind(u.id, hash),
+      // Browsers that signed in before are no longer trusted either; this
+      // one is, once it signs in below.
+      db()
+        .prepare(
+          "DELETE FROM trusted_devices WHERE user_id=? AND EXISTS(SELECT 1 FROM invites WHERE hash=? AND used_by IS NULL)",
+        )
+        .bind(u.id, hash),
       db()
         .prepare(
           "UPDATE invites SET used_by=? WHERE hash=? AND used_by IS NULL",

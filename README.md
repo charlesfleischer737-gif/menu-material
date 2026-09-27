@@ -69,7 +69,9 @@ ADMIN_SETUP_KEY='<server secret>' APP_ORIGIN='https://your-site.example' \
 
 The command prints a private one-use invitation. Open it, choose a password, and name your restaurant. Remove `ADMIN_SETUP_KEY` after creating the first admin. This command creates an invitation only; it does not send email.
 
-Administrator controls are at the bottom of the workspace. Administrators can create email-bound invitations, set total image allowances, pause generation, log support minutes, issue one-use password-reset invitations, and delete an owner's account by typing the owner's email (the owner's own deletion rules apply). Invitations expire in seven days. Share them directly with the intended owner. Password resets revoke existing sessions. Passwords are salted with scrypt; sessions and invitation tokens are stored as hashes. Session cookies are HttpOnly, SameSite=Lax, and Secure on HTTPS.
+Administrator controls are at the bottom of the workspace. Administrators can create email-bound invitations, set total image allowances, pause generation, log support minutes, issue one-use password-reset invitations, and delete an owner's account by typing the owner's email (the owner's own deletion rules apply). Invitations expire in seven days. Share them directly with the intended owner. Password resets revoke existing sessions and trusted devices. Passwords are salted with scrypt; sessions, device cookies and invitation tokens are stored as hashes. Session and device cookies are HttpOnly, SameSite=Lax, and Secure on HTTPS.
+
+**Sign-in limits.** Each network gets 10 sign-in attempts per email every 15 minutes. After 20 attempts for one email from anywhere, further ones wait longer and longer, and the message doesn't say how long. A browser that has signed in to the account before carries a device cookie (a year, sent only to `/api/auth`, replaced at each sign-in) and skips that slowdown, so someone who knows an owner's email can't keep them out; its network's 10 attempts still apply. A new device still waits.
 
 ## One restaurant look
 

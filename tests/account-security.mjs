@@ -21,7 +21,8 @@ let offset = 0;
 Date.now = () => realNow() + offset;
 const { handle } = await import("../lib/server/api.ts");
 const { caller } = await import("../lib/server/safeguards.ts");
-const { all, bucket, digest, one, run } = await import("../lib/server/core.ts");
+const { all, bucket, digest, one, run, signedInBefore } =
+  await import("../lib/server/core.ts");
 const { validateImageDimensions } =
   await import("../lib/server/image-validation.ts");
 const { resolveMenuAddress } = await import("../lib/server/menu-address.ts");
@@ -75,13 +76,19 @@ async function call(
   try {
     json = await res.clone().json();
   } catch {}
-  const setCookie = res.headers.get("set-cookie") || "";
+  // The session cookie, and the device cookie a sign-in also sets.
+  const cookies = res.headers.getSetCookie(),
+    setCookie = cookies[0] || "",
+    deviceCookie =
+      cookies.find((c) => c.startsWith("menu_material_device=")) || "";
   return {
     status: res.status,
     json,
     res,
     setCookie,
     cookie: setCookie.split(";")[0],
+    deviceCookie,
+    device: deviceCookie.split(";")[0],
   };
 }
 async function expect(path, status, options) {
@@ -171,7 +178,10 @@ try {
     body: { email: "owner@example.test", password },
     ip: "198.51.100.100",
   });
-  assert.match(slowed.json.error, /Try again in 1 second\./);
+  // It doesn't say when the next attempt opens, so it can't be timed.
+  const slowedMessage =
+    "Too many sign-in attempts for this account. Please try again later, or request a secure reset link.";
+  assert.equal(slowed.json.error, slowedMessage);
   await expect("auth/login", 200, {
     body: { email: "newcomer@example.test", password },
     ip: "198.51.100.101",
@@ -185,7 +195,7 @@ try {
     body: { email: "owner@example.test", password },
     ip: "198.51.100.103",
   });
-  assert.match(longer.json.error, /Try again in 2 seconds\./);
+  assert.equal(longer.json.error, slowedMessage);
   offset += 2000;
   await expect("auth/login", 200, {
     body: { email: "owner@example.test", password },
@@ -220,6 +230,131 @@ try {
     [401, 429, 429, 429, 429],
   );
   checks++;
+
+  // 20. Someone who knows an owner's email can't keep them out: a browser
+  // that signed in to the account before skips the per-account slowdown,
+  // though its network's own allowance for the email still applies. Only a
+  // hash of its device cookie is kept, and each sign-in replaces it.
+  offset += 16 * 60000; // past the slowdown above
+  const ownersBrowser = await expect("auth/login", 200, {
+    body: { email: "owner@example.test", password },
+    ip: "192.0.2.90",
+  });
+  assert.match(
+    ownersBrowser.deviceCookie,
+    /^menu_material_device=[\w-]{43}; Path=\/api\/auth; HttpOnly; SameSite=Lax; Max-Age=31536000$/,
+  );
+  const deviceHash = (device) => digest(device.split("=")[1]);
+  const ownerId = (
+    await one("SELECT id FROM users WHERE email='owner@example.test'")
+  ).id;
+  assert.equal(
+    (
+      await one(
+        "SELECT user_id FROM trusted_devices WHERE hash=?",
+        deviceHash(ownersBrowser.device),
+      )
+    ).user_id,
+    ownerId,
+  );
+  assert.equal(
+    await one(
+      "SELECT 1 FROM trusted_devices WHERE hash=?",
+      ownersBrowser.device.split("=")[1],
+    ),
+    null,
+    "only a hash is stored",
+  );
+  const newcomersBrowser = await expect("auth/login", 200, {
+    body: { email: "newcomer@example.test", password },
+    ip: "192.0.2.95",
+  });
+  for (let n = 0; n < 25; n++)
+    await call("auth/login", {
+      body: { email: "owner@example.test", password: "attacker guess " + n },
+      ip: `198.51.101.${n + 1}`,
+    });
+  const newDevice = await expect("auth/login", 429, {
+    body: { email: "owner@example.test", password },
+    ip: "192.0.2.91",
+  });
+  assert.equal(newDevice.json.error, slowedMessage);
+  // Another account's device cookie doesn't count.
+  await expect("auth/login", 429, {
+    body: { email: "owner@example.test", password },
+    ip: "192.0.2.96",
+    cookie: newcomersBrowser.device,
+  });
+  // The owner's browser gets through, from any network; a wrong password
+  // from it is simply wrong.
+  await expect("auth/login", 401, {
+    body: { email: "owner@example.test", password: "a typo" },
+    ip: "192.0.2.97",
+    cookie: ownersBrowser.device,
+  });
+  const rotated = await expect("auth/login", 200, {
+    body: { email: "owner@example.test", password },
+    ip: "192.0.2.97",
+    cookie: ownersBrowser.device,
+  });
+  assert.notEqual(rotated.device, ownersBrowser.device);
+  assert.equal(
+    await one(
+      "SELECT 1 FROM trusted_devices WHERE hash=?",
+      deviceHash(ownersBrowser.device),
+    ),
+    null,
+  );
+  // Its network's allowance for the email still applies: 10 tries in 15
+  // minutes.
+  for (let n = 0; n < 8; n++)
+    await expect("auth/login", 401, {
+      body: { email: "owner@example.test", password: "another typo " + n },
+      ip: "192.0.2.97",
+      cookie: rotated.device,
+    });
+  const paired = await expect("auth/login", 429, {
+    body: { email: "owner@example.test", password },
+    ip: "192.0.2.97",
+    cookie: rotated.device,
+  });
+  assert.equal(
+    paired.json.error,
+    "Too many attempts. Please try again in a few minutes.",
+  );
+  // An expired device cookie is a new device, and one sent over HTTPS is
+  // Secure.
+  const fromBrowser = (device) =>
+    new Request("http://localhost/api/auth/login", {
+      headers: { cookie: device },
+    });
+  assert(
+    await signedInBefore(fromBrowser(rotated.device), "owner@example.test"),
+  );
+  await run(
+    "UPDATE trusted_devices SET expires_at=? WHERE hash=?",
+    Date.now() - 1,
+    deviceHash(rotated.device),
+  );
+  assert(
+    !(await signedInBefore(fromBrowser(rotated.device), "owner@example.test")),
+  );
+  const overHttps = await handle(
+    new Request("https://localhost/api/auth/login", {
+      method: "POST",
+      headers: {
+        "cf-connecting-ip": "192.0.2.98",
+        "Content-Type": "application/json",
+      },
+      body: JSON.stringify({ email: "owner@example.test", password }),
+    }),
+  );
+  assert.equal(overHttps.status, 200);
+  assert.match(
+    overHttps.headers.getSetCookie()[1],
+    /^menu_material_device=.+; Secure$/,
+  );
+  checks += 4;
 
   // 9. Passwords are stored with their scrypt parameters; older hashes still
   // sign in and are upgraded then.
@@ -369,6 +504,14 @@ try {
     "owner@example.test",
     secondReset.json.invite,
     200,
+  );
+  // The reset also ends trust in every browser that signed in before; the
+  // one that used the link is trusted from now on.
+  assert.deepEqual(
+    (
+      await all("SELECT hash FROM trusted_devices WHERE user_id=?", ownerId)
+    ).map((d) => d.hash),
+    [deviceHash(reclaimed.device)],
   );
   await redeemReset("owner@example.test", leftover, 403, "attacker password 1");
   await expect("auth/login", 200, {
@@ -1173,6 +1316,10 @@ try {
     "ai_spend",
   ])
     assert(before[table], `fixture has ${table} rows`);
+  assert(
+    await one("SELECT 1 FROM trusted_devices WHERE user_id=?", freeUser),
+    "fixture has a trusted device",
+  );
   assert(filesUnder(`private/${freeRid}`).length > 5);
   assert(filesUnder(`public/${freeRid}`).length > 0);
   const joeFiles = filesUnder(`private/${joeRid}`).length;
@@ -1242,6 +1389,7 @@ try {
   assert.equal(await one("SELECT id FROM users WHERE id=?", freeUser), null);
   for (const [table, column, value] of [
     ["sessions", "user_id", freeUser],
+    ["trusted_devices", "user_id", freeUser],
     ["invites", "email", "free@example.test"],
     ["launch_requests", "email", "free@example.test"],
   ])
@@ -1344,6 +1492,10 @@ try {
   );
   assert.equal(await one("SELECT id FROM users WHERE id=?", joeUser), null);
   assert.equal(
+    await one("SELECT 1 FROM trusted_devices WHERE user_id=?", joeUser),
+    null,
+  );
+  assert.equal(
     await one("SELECT * FROM billing_accounts WHERE restaurant_id=?", joeRid),
     null,
   );
@@ -1358,7 +1510,7 @@ try {
   checks++;
 
   console.log(
-    `PASS: ${checks} account security checks: per-network limits on the IPv6 /64 with no site-wide lockout, a per-account sign-in slowdown, versioned password hashes, sliding sessions, revocable reset and setup links, the Pro waitlist, once-only free images, ID validation, lenient saved looks, staff link scope and limits, WebP and AVIF uploads, transparent logos, cacheable public images, admin takedown, menu-address squatting, signup time zones, account deletion and administrator account deletion.`,
+    `PASS: ${checks} account security checks: per-network limits on the IPv6 /64 with no site-wide lockout, a per-account sign-in slowdown that states no wait and that browsers which signed in before skip, versioned password hashes, sliding sessions, revocable reset and setup links, the Pro waitlist, once-only free images, ID validation, lenient saved looks, staff link scope and limits, WebP and AVIF uploads, transparent logos, cacheable public images, admin takedown, menu-address squatting, signup time zones, account deletion and administrator account deletion.`,
   );
 } finally {
   rmSync(root, { recursive: true, force: true });

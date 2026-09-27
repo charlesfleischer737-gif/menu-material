@@ -10,6 +10,7 @@ import {
   now,
   one,
   run,
+  signedInBefore,
   type Row,
 } from "./core";
 import { imageEntitlement } from "./entitlements";
@@ -343,7 +344,9 @@ export async function guestPhotoDailyLimit(req: Request) {
 }
 // After 20 sign-in attempts for one email within 15 minutes of each other,
 // each further attempt waits 1 s, 2 s, 4 s … up to 5 minutes after the last.
-// It slows guessing from many networks without locking the account.
+// It slows guessing from many networks without locking the account. The wait
+// isn't stated, so it can't be timed, and a browser that signed in to the
+// account before skips it: knowing an owner's email can't keep them out.
 const loginWindow = 900000,
   loginFreeAttempts = 20,
   loginMaxWait = 300000;
@@ -351,6 +354,7 @@ const loginKey = (email: string) => digest(`login:email:${email}`);
 export async function loginLimit(req: Request, email: string) {
   // A stranger cannot exhaust an owner's allowance merely by knowing their email.
   await limit(`login:pair:${caller(req)}:${email}`, 10);
+  if (await signedInBefore(req, email)) return;
   const t = now();
   // Claim the attempt atomically, so parallel requests cannot share a slot.
   const claimed = await one(
@@ -369,25 +373,10 @@ export async function loginLimit(req: Request, email: string) {
     t,
   );
   if (claimed) return;
-  const row = await one(
-    "SELECT count,expires_at FROM rate_limits WHERE key=?",
-    loginKey(email),
-  );
-  const wait = row
-    ? row.expires_at -
-      loginWindow +
-      Math.min(
-        loginMaxWait,
-        1000 * 2 ** Math.min(row.count - loginFreeAttempts, 20),
-      ) -
-      t
-    : 1000;
-  const seconds = Math.max(1, Math.ceil(wait / 1000)),
-    [amount, unit] =
-      seconds < 60 ? [seconds, "second"] : [Math.ceil(seconds / 60), "minute"];
+  // Resets are secure links from an administrator or support (auth.tsx).
   throw new AppError(
     429,
-    `Too many sign-in attempts for this account. Try again in ${amount} ${unit}${amount === 1 ? "" : "s"}.`,
+    "Too many sign-in attempts for this account. Please try again later, or request a secure reset link.",
   );
 }
 export async function loginSucceeded(email: string) {
@@ -528,6 +517,7 @@ export async function housekeeping() {
   if (!claim.meta.changes) return;
   await run("DELETE FROM rate_limits WHERE expires_at<?", now());
   await run("DELETE FROM sessions WHERE expires_at<?", now());
+  await run("DELETE FROM trusted_devices WHERE expires_at<?", now());
   await run(
     "DELETE FROM invites WHERE expires_at<? AND role='reset'",
     now() - 86400000,

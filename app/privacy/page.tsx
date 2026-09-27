@@ -168,12 +168,15 @@ export default function Privacy() {
         </p>
         <p>
           The browser uses a sign-in cookie, workspace preferences and a
-          menu-session identifier. It also keeps copies of unsaved work so it
-          can be recovered: menu drafts in this browser’s storage, where they
-          remain after the tab is closed, and Photo Studio, post and campaign
-          drafts for the current tab only. Recovery data is cleared after a
-          successful save. On a shared device, sign out and close your browser
-          tab when finished.
+          menu-session identifier. After you sign in, it also keeps a device
+          cookie for a year, so it can still sign in to your account while
+          someone else’s repeated attempts are slowing sign-ins to it; a
+          password reset or deleting your account revokes it. The browser also
+          keeps copies of unsaved work so it can be recovered: menu drafts in
+          this browser’s storage, where they remain after the tab is closed, and
+          Photo Studio, post and campaign drafts for the current tab only.
+          Recovery data is cleared after a successful save. On a shared device,
+          sign out and close your browser tab when finished.
         </p>
       </section>
       <section>
