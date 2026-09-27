@@ -45,7 +45,9 @@ export default function Privacy() {
           Photos not saved to an account expire 24 hours after your last change
           and are deleted the next time Photo Studio opens. To suggest styles
           before signup, a small copy of the photo is sent to OpenAI to see what
-          it shows; Menu Material does not store it.
+          it shows; Menu Material does not store the photo. What it shows (for
+          example “a burger”) is kept for a week, by a fingerprint of the
+          photo, so the same photo isn’t sent again.
         </p>
       </section>
       <section>
