@@ -22,10 +22,13 @@ import {
   type Row,
 } from "@/lib/client";
 import {
+  comparable,
   defaultStyle,
   localTime,
   localToInstant,
+  offerChanged,
   offerTypes,
+  sameContent,
 } from "@/lib/promotions";
 import {
   exportFormats,
@@ -34,24 +37,6 @@ import {
   type ExportFormat,
 } from "@/lib/offer-export";
 
-function comparable(value: unknown): string {
-  return JSON.stringify(value, (k, v) =>
-    k === "revision"
-      ? undefined
-      : v && typeof v === "object" && !Array.isArray(v)
-        ? Object.fromEntries(
-            Object.keys(v)
-              .sort()
-              .map((key) => [key, v[key]]),
-          )
-        : v,
-  );
-}
-function sameContent(a: Row | null, b: Row | null) {
-  return (
-    comparable({ ...a, activeMs: 0 }) === comparable({ ...b, activeMs: 0 })
-  );
-}
 class DraftSaveError extends Error {}
 
 function initial(r: Row, seed: Row = {}) {
@@ -302,7 +287,7 @@ export default function PromotionWorkspace({
     const previous = saved.current,
       draft = current.current;
     if (!previous || !draft) throw Error("Choose a promotion first.");
-    if (comparable(draft) === comparable(previous.draft)) {
+    if (!offerChanged(draft, previous.draft, pro)) {
       saveFailed.current = false;
       setSaveError("");
       setStatus(draftStatus.saved);
@@ -342,7 +327,7 @@ export default function PromotionWorkspace({
     } finally {
       saving.current = null;
     }
-  }, [r.id]);
+  }, [r.id, pro]);
   useEffect(() => {
     if (!form) return;
     if (saved.current && comparable(form) !== comparable(saved.current.draft)) {
@@ -406,11 +391,19 @@ export default function PromotionWorkspace({
     }
   };
   const open = async (p: Row) => {
-    if (current.current) await persist();
+    // On Free, edits the server refuses never keep another campaign closed.
+    if (current.current)
+      await persist().catch((e) => {
+        if (pro) throw e;
+      });
     p = (await api("promotions/" + p.id)).promotion;
     let pending: Row | null = null;
     try {
-      pending = JSON.parse(sessionStorage.getItem(recoveryKey(p.id)) || "null");
+      // Unsaved edits come back only with Pro: Free can't save them.
+      if (pro)
+        pending = JSON.parse(
+          sessionStorage.getItem(recoveryKey(p.id)) || "null",
+        );
     } catch {}
     const restored = pending?.revision === p.revision;
     saved.current = p;
