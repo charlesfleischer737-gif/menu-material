@@ -57,12 +57,21 @@ export async function settleCorrection(jobId: string) {
   if (!row || row.credited_at || ["review", "resolved"].includes(row.status))
     return;
   if (row.job_status === "failed") {
-    // Only the service failing gives an image back, not a cancellation.
-    const cancelled = await one(
-      "SELECT 1 AS found FROM outputs WHERE job_id=? AND error LIKE 'Cancelled before creation%' LIMIT 1",
+    // Only a failure of the image service or of the site gives an image
+    // back. The owner's own doing goes to the team instead: a cancellation,
+    // a full workspace, wording the service's safety check declined (the
+    // report's details are in the prompt), or a photo the correction uses
+    // that they removed or reported while it waited. The matched wording is
+    // generation.ts's and the cancel route's.
+    const ownerCaused = await one(
+      `SELECT 1 AS found FROM jobs j WHERE j.id=? AND (
+        EXISTS(SELECT 1 FROM outputs o WHERE o.job_id=j.id AND (o.error LIKE 'Cancelled before creation%' OR o.error LIKE '%storage is full%' OR o.error LIKE '%safety check declined%'))
+        OR EXISTS(SELECT 1 FROM assets a WHERE a.restaurant_id=j.restaurant_id
+          AND (a.deleted_at IS NOT NULL OR a.needs_correction=1)
+          AND (a.id IN (j.source_id,j.parent_id) OR a.id IN (SELECT value FROM json_each(j.details,'$.style.referenceIds')))))`,
       jobId,
     );
-    if (cancelled) await holdForReview(row.original_job_id);
+    if (ownerCaused) await holdForReview(row.original_job_id);
     else await restoreCorrectionCredit(row.original_job_id);
   } else if (row.job_status === "completed")
     await run(
@@ -110,6 +119,6 @@ export function correctionView(row: Row, resultId?: string) {
     message: messages[row.status] || messages.review,
     resolution: row.resolution,
     policy:
-      "One complimentary correction per original image request. If it can’t be made, we restore 1 image. If it’s still inaccurate, Pro restores 1 image automatically, up to 3 times per restaurant in 30 days; other reports receive team review.",
+      "One complimentary correction per original image request. If it can’t be made on our side, we restore 1 image. If it’s still inaccurate, Pro restores 1 image automatically, up to 3 times per restaurant in 30 days; other reports receive team review.",
   };
 }

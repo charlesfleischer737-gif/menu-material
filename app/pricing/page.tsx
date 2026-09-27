@@ -1,7 +1,10 @@
+import type { ReactNode } from "react";
 import PublicInformation from "../components/public-information";
 import PlanCards from "../components/plan-cards";
 import { billingEnabled } from "@/lib/server/billing";
 import { passwordResetEnabled } from "@/lib/server/password-reset";
+import { config } from "@/lib/server/core";
+import { siteContact } from "@/lib/site-contact";
 import { pageMetadata } from "../site-metadata";
 import { FREE_SIGNUP_IMAGES, PRO_PLAN, PRO_PRICE_LABEL } from "@/lib/plans";
 export const dynamic = "force-dynamic";
@@ -12,7 +15,24 @@ export const metadata = pageMetadata({
 });
 export default function Pricing() {
   const enabled = billingEnabled();
-  const questions: [string, string][] = [
+  const { supportEmail, termsUrl, refundPolicyUrl } = siteContact(config);
+  const email = supportEmail && (
+    <a href={`mailto:${supportEmail}`}>{supportEmail}</a>
+  );
+  // Refunds are whatever the owner's policy or Terms say; nothing is
+  // promised here.
+  const refunds = refundPolicyUrl ? (
+    <>
+      {" "}
+      For refunds, see the <a href={refundPolicyUrl}>refund policy</a>.
+    </>
+  ) : termsUrl ? (
+    <>
+      {" "}
+      For refunds, see the <a href="/terms">Terms</a>.
+    </>
+  ) : null;
+  const questions: [string, ReactNode][] = [
     [
       "What uses an image?",
       "Each new photo or AI revision uses one image. Cropping, touch-ups, menus, post layouts and downloads never use one, and images that fail to create are returned.",
@@ -31,13 +51,26 @@ export default function Pricing() {
     ],
     [
       "How does Pro work?",
-      enabled
-        ? `Pro is ${PRO_PRICE_LABEL} a month for ${PRO_PLAN.imagesPerPeriod} images each billing period. Unused images don’t roll over, and you can cancel future renewals from Plans in your workspace.`
-        : `Pro will be ${PRO_PRICE_LABEL} a month for ${PRO_PLAN.imagesPerPeriod} images each billing period, with payment and cancellation in Plans. Subscriptions aren’t open yet.`,
+      enabled ? (
+        <>
+          Pro is {PRO_PRICE_LABEL} a month for {PRO_PLAN.imagesPerPeriod} images
+          each billing period, and renews every month until you cancel. Unused
+          images don’t roll over. Cancel anytime from Plans in your workspace,
+          under Manage billing.
+          {email && <> Can’t sign in? Email {email}.</>}
+        </>
+      ) : (
+        `Pro will be ${PRO_PRICE_LABEL} a month for ${PRO_PLAN.imagesPerPeriod} images each billing period, with payment and cancellation in Plans. Subscriptions aren’t open yet.`
+      ),
     ],
     [
       "What happens if I cancel?",
-      "Pro lasts until the end of the billing period. Your photos, posts, menus and saved looks stay available, and live menus stay live.",
+      <>
+        Pro lasts until the end of the billing period you’ve paid for, then
+        doesn’t renew. Your photos, posts, menus and saved looks stay available,
+        and live menus stay live.
+        {enabled && refunds}
+      </>,
     ],
     [
       "Is the quality the same on every plan?",
@@ -50,6 +83,14 @@ export default function Pricing() {
         : "An administrator can provide a secure reset link while email recovery is being connected.",
     ],
   ];
+  if (email)
+    questions.push([
+      "How do I get help?",
+      <>
+        Email {email}. Include your account’s email address and your
+        restaurant’s name.
+      </>,
+    ]);
   return (
     <PublicInformation
       title="A little budget. A lot of good-looking food."

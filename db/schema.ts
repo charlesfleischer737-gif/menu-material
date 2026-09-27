@@ -44,6 +44,27 @@ export const googleAuthFlows = sqliteTable(
   },
   (t) => [index("idx_google_auth_flows_expiry").on(t.expiresAt)],
 );
+// Browsers that have signed in to an account, by a hash of their device
+// cookie. Their sign-ins skip the per-account slowdown that anyone who knows
+// the email can cause (lib/server/core.ts).
+export const trustedDevices = sqliteTable(
+  "trusted_devices",
+  {
+    hash: text().primaryKey(),
+    userId: text("user_id")
+      .notNull()
+      .references(() => users.id),
+    expiresAt: integer("expires_at").notNull(),
+    createdAt: integer("created_at").notNull(),
+  },
+  (t) => [index("idx_trusted_devices_user").on(t.userId)],
+);
+// A one-way hash of each deleted account's email, kept only so signing up
+// again with it doesn't bring back the free signup images.
+export const freeGrantEmails = sqliteTable("free_grant_emails", {
+  hash: text().primaryKey(),
+  createdAt: integer("created_at").notNull(),
+});
 export const invites = sqliteTable("invites", {
   hash: text().primaryKey(),
   email: text().notNull(),
@@ -80,6 +101,10 @@ export const restaurants = sqliteTable("restaurants", {
   publicSuspended: integer("public_suspended").notNull().default(0),
   currency: text().notNull().default("USD"),
   allowance: integer().notNull().default(20),
+  // The free signup images: "held" until a day's grants have room (they are
+  // then added to allowance), or "used" when this email's deleted account
+  // already had them (lib/server/free-grants.ts).
+  freeGrant: text("free_grant"),
   paused: integer().notNull().default(0),
   dailyBudgetCents: integer("daily_budget_cents").notNull().default(2000),
   // Set by an administrator: Pro features, not Pro images, until this time.
@@ -399,6 +424,9 @@ export const aiSpend = sqliteTable(
     reservedCents: integer("reserved_cents").notNull(),
     status: text().notNull().default("reserved"),
     usage: text(),
+    // Reserved under an active paid plan. Guests and Free plans together use
+    // only part of the site-wide daily budget (lib/server/safeguards.ts).
+    paid: integer().notNull().default(0),
     createdAt: integer("created_at").notNull(),
   },
   (t) => [index("idx_spend_day_restaurant").on(t.budgetDay, t.restaurantId)],
@@ -452,27 +480,41 @@ export const menuImports = sqliteTable(
   },
   (t) => [index("idx_imports_restaurant").on(t.restaurantId)],
 );
-export const menuDocuments = sqliteTable("menu_documents", {
-  id: text().primaryKey(),
-  restaurantId: text("restaurant_id").notNull().references(() => restaurants.id),
-  draft: text().notNull(),
-  revision: integer().notNull().default(1),
-  published: text(),
-  publishedRevision: integer("published_revision"),
-  publishedAt: integer("published_at"),
-  isPrimary: integer("is_primary").notNull().default(0),
-  archivedAt: integer("archived_at"),
-  createdAt: integer("created_at").notNull(),
-  updatedAt: integer("updated_at").notNull(),
-}, t => [index("idx_menu_documents_restaurant").on(t.restaurantId)]);
-export const menuPublicationHistory = sqliteTable("menu_publication_history", {
-  id: text().primaryKey(),
-  menuId: text("menu_id").notNull().references(() => menuDocuments.id),
-  restaurantId: text("restaurant_id").notNull().references(() => restaurants.id),
-  snapshot: text().notNull(),
-  revision: integer().notNull(),
-  createdAt: integer("created_at").notNull(),
-}, t => [index("idx_menu_history_document").on(t.menuId)]);
+export const menuDocuments = sqliteTable(
+  "menu_documents",
+  {
+    id: text().primaryKey(),
+    restaurantId: text("restaurant_id")
+      .notNull()
+      .references(() => restaurants.id),
+    draft: text().notNull(),
+    revision: integer().notNull().default(1),
+    published: text(),
+    publishedRevision: integer("published_revision"),
+    publishedAt: integer("published_at"),
+    isPrimary: integer("is_primary").notNull().default(0),
+    archivedAt: integer("archived_at"),
+    createdAt: integer("created_at").notNull(),
+    updatedAt: integer("updated_at").notNull(),
+  },
+  (t) => [index("idx_menu_documents_restaurant").on(t.restaurantId)],
+);
+export const menuPublicationHistory = sqliteTable(
+  "menu_publication_history",
+  {
+    id: text().primaryKey(),
+    menuId: text("menu_id")
+      .notNull()
+      .references(() => menuDocuments.id),
+    restaurantId: text("restaurant_id")
+      .notNull()
+      .references(() => restaurants.id),
+    snapshot: text().notNull(),
+    revision: integer().notNull(),
+    createdAt: integer("created_at").notNull(),
+  },
+  (t) => [index("idx_menu_history_document").on(t.menuId)],
+);
 export const staffLinks = sqliteTable(
   "staff_links",
   {

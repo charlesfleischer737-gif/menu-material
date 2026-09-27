@@ -63,6 +63,19 @@ function isHeading(line: string) {
 }
 const dietaryLine = (line: string) =>
   !!dietaryTag(normalizeDietary([line])[0] || "");
+/** "potato purée, charred leeks, jus" or "with fries" describes a dish. */
+const readsLikeDescription = (text: string) =>
+  /^\p{Ll}/u.test(text) || text.includes(",") || continuation.test(text);
+/** The words before a price at the end of a line: "Burger" in "Burger 14". */
+const pricedLine = (line: string) =>
+  (line.match(endsWithRange) ||
+    line.match(endsWithPrice) ||
+    line.match(marketPrice))?.[1]?.trim() || "";
+/** "chimichurri, fries 32": a description with a price. */
+const pricedDescription = (line: string) => {
+  const head = pricedLine(line);
+  return !!head && readsLikeDescription(head);
+};
 /** "BEEF, CHEDDAR, PICKLES" or "WITH FRIES" under a dish describes it. */
 const describesDish = (line: string) =>
   line.includes(",") ||
@@ -81,7 +94,9 @@ function headingLike(line: string) {
     /[\d,.;!?]/.test(line) ||
     !/^\p{Lu}/u.test(line) ||
     continuation.test(line) ||
-    dietaryLine(line)
+    dietaryLine(line) ||
+    // "Soup of the Day" is a dish, not a section.
+    /(?<!\p{L})(?:of the day|du jour|del giorno)(?!\p{L})/iu.test(line)
   )
     return false;
   return (
@@ -299,10 +314,26 @@ export function parsePastedMenu(
         dishAt = n;
       } else if (
         (isHeading(line) && !(afterDish && describesDish(line))) ||
-        (headingLike(line) && dishLine(next))
+        (headingLike(line) &&
+          (dishLine(next) ||
+            (!readsLikeDescription(next) &&
+              !pricedLine(next) &&
+              pricedDescription(lines[n + 2] || ""))))
       ) {
         if (section.items.length) sections.push(section);
         section = newSection(line.replace(/:$/, ""));
+      } else if (!readsLikeDescription(line) && pricedDescription(next)) {
+        // "Hanger Steak" above "chimichurri, fries 32" starts a dish; the
+        // line below describes and prices it.
+        section.items.push(
+          newMenuEntry({
+            name: line.slice(0, 120),
+            description: "",
+            price: null,
+            sourceReviewed: false,
+          }),
+        );
+        dishAt = n;
       } else if (previous) {
         previous.description += (previous.description ? " " : "") + line;
         if (range) flag(previous, "price");
@@ -329,6 +360,28 @@ export function parsePastedMenu(
           : market![1];
     const { name, description } = splitName(head);
     dishAt = n;
+    // "Roast Chicken", then "potato purée, charred leeks, jus 26": a priced
+    // line that reads like a description describes and prices the dish above,
+    // which had neither. The owner checks the price.
+    if (
+      afterDish &&
+      !sized &&
+      previous.priceMode === "single" &&
+      previous.price == null &&
+      !previous.description &&
+      readsLikeDescription(name)
+    ) {
+      previous.description = [name, description].filter(Boolean).join(" — ");
+      if (single) previous.price = cents(single[2]);
+      else {
+        previous.priceMode = "label";
+        previous.priceLabel = market
+          ? "Market price"
+          : range![2].replace(/\s*[–—]\s*|\s+to\s+|-/i, "–");
+      }
+      flag(previous, "price");
+      continue;
+    }
     if (single && previous && isAddonName(name)) {
       previous.additions = [
         ...previous.additions,
@@ -355,6 +408,8 @@ export function parsePastedMenu(
           : "",
     });
     if (range) flag(entry, "price");
+    // A dish name rarely starts in lowercase; it may be a description.
+    if (/^\p{Ll}/u.test(name)) flag(entry, "name");
     if (sized) {
       const heading = sizes.get(section.id);
       const labels =

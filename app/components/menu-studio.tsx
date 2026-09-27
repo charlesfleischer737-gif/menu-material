@@ -49,10 +49,14 @@ import {
   blockingChecks,
   menuPublishChecks,
   restaurantSettingsChanged,
+  withDishFacts,
+  withDishSafety,
   withLibraryLinks,
 } from "@/lib/menu-checks";
 import { addonLabel, inferMenuPurpose, isAddonName } from "@/lib/menu-paste";
 import { normalizeDietary } from "@/lib/dietary";
+import { isPlaceholderDishName } from "@/lib/restaurant-identity";
+import { menuPhotoIds, preparePhotoCopies } from "@/lib/menu-photo-copies";
 import type { MenuContact } from "@/lib/restaurant-contact";
 import type { MenuPdfResult } from "@/lib/menu-pdf-v2";
 import { useMenuDocument, type SavedMenu } from "./use-menu-document";
@@ -157,6 +161,8 @@ export default function MenuStudio({
       correctionPhotoIds: (state.assets as Row[])
         .filter((a) => a.needs_correction)
         .map((a) => a.id as string),
+      dishes: state.dishes as { id: string; dietary?: unknown }[],
+      currency: state.restaurant.currency,
     }),
     issues = blockingChecks(checks),
     spec = menuDesignSpec(draft.design);
@@ -459,6 +465,16 @@ export default function MenuStudio({
     else if (seed.openImport) {
       setSource("file");
       setDialog("source");
+    } else if (seed.share) {
+      // "Print your table card": Share, on the live menu, has the card.
+      const live =
+        store.menus.find((m) => m.published && m.isPrimary) ||
+        store.menus.find((m) => m.published);
+      if (live)
+        void act("Opening Share", async () => {
+          if (live.id !== record.id) await store.select(live.id);
+          setDialog("share");
+        });
     } else if (seed.dishId) {
       const dish = (state.dishes as Row[]).find((d) => d.id === seed.dishId);
       if (dish) {
@@ -604,6 +620,7 @@ export default function MenuStudio({
   const settingsChanged = restaurantSettingsChanged(
     record.published,
     state.restaurant,
+    { look: pro },
   );
   const draftLive =
     !!record.published &&
@@ -1151,6 +1168,7 @@ export default function MenuStudio({
                 {panel === "design" ? (
                   <MenuDesignInspector
                     menu={draft}
+                    live={record.published}
                     change={patch}
                     choose={() => setDialog("design")}
                     pro={pro}
@@ -1298,6 +1316,7 @@ export default function MenuStudio({
           <MenuDesignPicker
             menu={menu}
             pro={pro}
+            liveDesign={record.published?.design}
             close={() => setDialog("")}
             apply={(design) => {
               patch({ design });
@@ -1353,6 +1372,65 @@ export default function MenuStudio({
               }))
             }
             attachAddon={attachAddon}
+            applyDishTags={(id) =>
+              change((before) => ({
+                ...before,
+                sections: before.sections.map((s) => ({
+                  ...s,
+                  items: s.items.map((i) => {
+                    const dish =
+                      i.id === id &&
+                      (state.dishes as Row[]).find((d) => d.id === i.dishId);
+                    return dish
+                      ? { ...i, dietary: withDishSafety(i.dietary, dish.dietary) }
+                      : i;
+                  }),
+                })),
+              }))
+            }
+            applyDishFacts={(ids) =>
+              change((before) => ({
+                ...before,
+                sections: before.sections.map((s) => ({
+                  ...s,
+                  items: s.items.map((i) => {
+                    const dish =
+                      ids.includes(i.id) &&
+                      (state.dishes as Row[]).find((d) => d.id === i.dishId);
+                    return dish ? withDishFacts(i, dish) : i;
+                  }),
+                })),
+              }))
+            }
+            nameDish={async (id, name) => {
+              const dishId = items.find((i) => i.id === id)?.dishId;
+              change((before) => ({
+                ...before,
+                sections: before.sections.map((s) => ({
+                  ...s,
+                  items: s.items.map((i) => (i.id === id ? { ...i, name } : i)),
+                })),
+              }));
+              // A dish My Dishes still calls "Untitled dish" takes the name
+              // there too, and other menus showing it follow.
+              const dish = (state.dishes as Row[]).find((d) => d.id === dishId);
+              if (!dish || !isPlaceholderDishName(dish.name)) return;
+              await store.saveNow();
+              await api(`dishes/${dish.id}`, {
+                name,
+                description: dish.description || "",
+                category: dish.category || "Dishes",
+                preserve: dish.preserve || "",
+                portion: dish.portion || "",
+                plating: dish.plating || "",
+                setting: dish.setting || "Natural daylight",
+                price: (Number(dish.price) || 0) / 100,
+                available: !!dish.available,
+                confirmed: true,
+                revision: dish.revision,
+              });
+              await refresh();
+            }}
             applyPurpose={applyPurpose}
             saveRestaurantName={async (name) => {
               await api("restaurant/name", { name });
@@ -1361,6 +1439,8 @@ export default function MenuStudio({
             published={async (address) => {
               const first = !record.published;
               await documentAction("publish", address ? { address } : {});
+              // Smaller copies of the photos, for guests' phones.
+              void preparePhotoCopies(menuPhotoIds(draft)).catch(() => {});
               // Share opens by itself when a menu first goes live; later
               // updates keep the same link and QR code.
               setDialog(first ? "share" : "");
@@ -1460,7 +1540,11 @@ export default function MenuStudio({
                       {m.draft.sections.reduce((n, s) => n + s.items.length, 0)}{" "}
                       dishes · {m.published ? "Published" : "Draft"}
                       {m.isPrimary ? " · Main menu" : ""}
-                      {restaurantSettingsChanged(m.published, state.restaurant)
+                      {restaurantSettingsChanged(
+                        m.published,
+                        state.restaurant,
+                        { look: pro },
+                      )
                         ? " · Republish to apply your restaurant settings"
                         : ""}
                     </small>
@@ -1569,7 +1653,7 @@ export default function MenuStudio({
         {dialog === "dish-library" && item && section && (
           <MenuDialog
             title={item.dishId ? "Update My Dishes" : "Save to My Dishes"}
-            description="Keep these details in your dish library for new menus. Your other menus and your live menu don’t change; guests see this edit when you publish this menu."
+            description="Keep these details in your dish library for new menus. Your other menus and your live menu keep their own details, except that new allergens and removed diets reach every menu straight away. Guests see the rest of this edit when you publish this menu."
             close={() => setDialog("")}
           >
             <h3>{item.name || "Untitled dish"}</h3>
@@ -1629,10 +1713,15 @@ export default function MenuStudio({
                   await store.saveNow();
                   await refresh();
                   setDialog("");
+                  const synced = (result.menus || []) as Row[];
                   tell(
-                    item.dishId
-                      ? "My Dishes updated. Your other menus and live menus are unchanged."
-                      : "Saved to My Dishes. You can now use its photos on this menu.",
+                    !item.dishId
+                      ? "Saved to My Dishes. You can now use its photos on this menu."
+                      : synced.length
+                        ? `My Dishes updated. Allergens and diets also changed on ${synced
+                            .map((m) => `${m.name}${m.live ? " (live)" : ""}`)
+                            .join(", ")}.`
+                        : "My Dishes updated. Your other menus and live menus are unchanged.",
                   );
                 })
               }

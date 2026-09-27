@@ -67,11 +67,13 @@ import {
 } from "@/lib/style-relevance";
 import { styleThumbnail, type PhotoStyle } from "@/lib/photo-styles";
 import type { Row } from "@/lib/client";
+import { isPlaceholderDishName } from "@/lib/restaurant-identity";
 import { track } from "./creation-shared";
 import { useStudioLibrary } from "./use-studio-library";
 import { PhotoInspirationSheet } from "./photo-inspiration-sheet";
 import { ProBadge } from "./pro-badge";
 import { FREE_SIGNUP_IMAGES, proFeatures, type ProFeature } from "@/lib/plans";
+import { freeImagesNote } from "@/lib/free-images";
 import { hasProFeatures, requestUpgrade } from "@/lib/upgrade";
 import WorkspaceActionBar from "./workspace-action-bar";
 import { StudioStyleLibrary, type LibraryOrigin } from "./studio-style-library";
@@ -91,6 +93,7 @@ import {
   recipeFromDraft,
   type SavedLook,
 } from "@/lib/studio-library";
+import { guestCreationBlock } from "@/lib/guest-studio";
 
 // The generated master is square, portrait or landscape; these are the four
 // shapes owners reach for. Other saved destinations stay selectable.
@@ -512,7 +515,11 @@ export function StudioWorkbench({
   // A guest who has signed in (the guest studio hands their work over) sees
   // their account's real allowance and availability.
   const signedOutGuest = !!state.guest && !state.user;
+  // The guest studio says so before a photo is added, and after signup, when
+  // no image can be made now: one message, in place of Create's usual note.
+  const guestUnavailable = state.guest ? guestCreationBlock(state) : "";
   const canCreate =
+    !guestUnavailable &&
     !creationBlock &&
     !inspirationBlock &&
     photoReady &&
@@ -523,6 +530,7 @@ export function StudioWorkbench({
     (b.look !== "reference" || !!referencePhoto) &&
     !b.menuDocument;
   const reason =
+    guestUnavailable ||
     creationBlock ||
     inspirationBlock ||
     (b.menuDocument
@@ -540,10 +548,17 @@ export function StudioWorkbench({
             : !signedOutGuest && !state.aiConnected
               ? "Photo creation is temporarily unavailable. Your work is saved."
               : state.remaining <= 0
-                ? "You’ve used your available images."
+                ? freeImagesNote(state.freeImages) ||
+                  "You’ve used your available images."
                 : signedOutGuest
                   ? `Create a free account to continue · ${FREE_SIGNUP_IMAGES} free images`
                   : `Uses 1 image · ${state.remaining} left`);
+  // Out of images, plans are offered; free images on their way need none.
+  const offerPlans =
+    !signedOutGuest &&
+    !guestUnavailable &&
+    state.remaining <= 0 &&
+    state.freeImages?.status !== "held";
   const showImage =
     b.look === "keep" && source
       ? source
@@ -846,12 +861,15 @@ export function StudioWorkbench({
       </span>
     </p>
   );
-  // Under the canvas: what becomes of the photo. A signed-out guest gets no
-  // note.
+  // Under the canvas: what becomes of the photo. A signed-out guest gets the
+  // privacy line instead; after signup, the note waits until the photo can
+  // be created.
   const stageNote = guestOnly
     ? ""
     : state.guest
-      ? "Your photo is saved to your account when you create it."
+      ? guestUnavailable || state.remaining <= 0
+        ? ""
+        : "Your photo is saved to your account when you create it."
       : b.mode === "description"
         ? "Illustrations are labeled as illustrations."
         : "Your original photo is always kept.";
@@ -1037,7 +1055,7 @@ export function StudioWorkbench({
                 <button
                   className="st-dropzone"
                   disabled={!!busy}
-                  aria-describedby="st-dropzone-hint"
+                  aria-describedby={`st-dropzone-hint${guestOnly ? " st-guest-privacy" : ""}`}
                   onClick={() => upload.current?.click()}
                 >
                   <span className="st-dropzone-icon" aria-hidden="true">
@@ -1074,6 +1092,25 @@ export function StudioWorkbench({
                 <span>
                   <ShieldCheck size={14} aria-hidden="true" />
                   {stageNote}
+                </span>
+              )}
+              {/* Before signup a photo is read for style suggestions as soon
+                  as it's added, so this is said first. Matches the privacy
+                  page's "Information we store". */}
+              {guestOnly && b.mode === "photo" && (
+                <span className="st-guest-privacy">
+                  <ShieldCheck size={14} aria-hidden="true" />
+                  <span id="st-guest-privacy">
+                    To suggest styles, a small copy goes to OpenAI. Your photo
+                    isn’t saved until you create an account.{" "}
+                    <a
+                      href="/privacy#information"
+                      target="_blank"
+                      rel="noreferrer"
+                    >
+                      Privacy
+                    </a>
+                  </span>
                 </span>
               )}
               {source && !state.guest && b.mode === "photo" && (
@@ -1463,6 +1500,22 @@ export function StudioWorkbench({
                 </h2>
                 <span className="st-optional">Optional</span>
               </div>
+              {b.mode !== "description" &&
+                !b.sample &&
+                (!dish || isPlaceholderDishName(dish.name)) && (
+                // A new photo becomes a dish in My Dishes; its name is what
+                // menus and posts show, so ask for it while it has none.
+                <label className="st-field">
+                  <span>Dish name</span>
+                  <input
+                    className="st-input"
+                    value={b.name || ""}
+                    maxLength={100}
+                    placeholder="What’s this dish called?"
+                    onChange={(event) => update({ name: event.target.value })}
+                  />
+                </label>
+              )}
               <textarea
                 className="st-input st-details"
                 aria-labelledby="st-details-title"
@@ -1479,13 +1532,14 @@ export function StudioWorkbench({
               </span>
             </section>
 
+            {/* Shown before a photo is added when no image can be made. */}
             <WorkspaceActionBar
-              className={`st-action${photoReady ? "" : " is-waiting"}`}
+              className={`st-action${photoReady || guestUnavailable ? "" : " is-waiting"}`}
             >
               {createButton}
               <p className="st-action-note">
                 {reason}
-                {!signedOutGuest && state.remaining <= 0 && (
+                {offerPlans && (
                   <button
                     className="st-text-button"
                     onClick={() =>

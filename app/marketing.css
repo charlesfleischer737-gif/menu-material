@@ -1062,6 +1062,168 @@
   }
 }
 
+/* Menus & QR codes, and Posts: what else Menu Material makes, each beside a
+   screenshot of it. Stone and white bands alternate; side by side from 900px,
+   the screenshots take turns on the right and the left. */
+.pw-product {
+  display: grid;
+  gap: clamp(32px, 4vw, 44px);
+  padding: var(--pw-band) var(--pw-gutter);
+  background: var(--gray-100);
+}
+.pw-product.is-posts {
+  background: var(--workspace-surface);
+}
+.pw-product-copy {
+  max-width: 560px;
+}
+.pw-product-label {
+  color: var(--green);
+  font-size: var(--text-subhead);
+  font-weight: 650;
+}
+.pw-product h2 {
+  margin-top: 10px;
+  font-size: var(--pw-heading);
+  font-weight: 700;
+  line-height: 1.08;
+  letter-spacing: var(--tracking-display);
+  text-wrap: balance;
+}
+.pw-product-lead {
+  margin-top: 14px;
+  font-size: var(--pw-section-lead);
+  line-height: 1.45;
+  letter-spacing: -0.012em;
+  color: var(--pw-muted);
+  text-wrap: pretty;
+}
+.pw-product-points {
+  display: grid;
+  gap: 12px;
+  margin: 24px 0 0;
+  padding: 0;
+  list-style: none;
+}
+.pw-product-points li {
+  display: grid;
+  grid-template-columns: 17px minmax(0, 1fr);
+  gap: 12px;
+  font-size: var(--text-callout);
+  line-height: 1.47;
+}
+.pw-product-points svg {
+  margin-top: 3px;
+  color: var(--green);
+}
+.pw-product-plans {
+  display: grid;
+  gap: 8px;
+  margin: 26px 0 0;
+}
+.pw-product-plans > div {
+  display: grid;
+  grid-template-columns: 3rem minmax(0, 1fr);
+  gap: 12px;
+  padding: 14px 16px;
+  border-radius: var(--radius-control);
+  background: var(--workspace-surface);
+  font-size: var(--text-subhead);
+  line-height: 1.5;
+}
+.pw-product.is-posts .pw-product-plans > div {
+  background: var(--gray-100);
+}
+.pw-product-plans dt {
+  font-weight: 700;
+}
+.pw-product-plans dd {
+  margin: 0;
+  color: var(--pw-muted);
+}
+.pw-product-link {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  min-height: 44px;
+  margin-top: 12px;
+  color: var(--green);
+  font-size: var(--text-callout);
+  font-weight: 600;
+  text-decoration: underline;
+  text-underline-offset: 3px;
+}
+.pw-product-shot {
+  justify-self: center;
+  width: min(420px, 100%);
+  margin: 0;
+}
+.pw-product-shot img {
+  display: block;
+  width: 100%;
+  height: auto;
+  border-radius: 18px;
+  box-shadow: var(--shadow-panel);
+}
+/* The guest menu sits in a phone's dark bezel. */
+.pw-product-shot.is-phone {
+  width: min(300px, 72vw);
+}
+.pw-product-shot.is-phone img {
+  border: 9px solid var(--green-ink);
+  border-radius: 40px;
+}
+.pw-product-shot figcaption {
+  margin-top: 14px;
+  color: var(--pw-muted);
+  font-size: var(--text-caption);
+  line-height: 1.45;
+  text-align: center;
+}
+@media (min-width: 900px) {
+  .pw-product {
+    grid-template-columns: minmax(0, 1fr) minmax(0, 1fr);
+    align-items: center;
+    column-gap: clamp(40px, 6vw, 88px);
+  }
+  .pw-product.is-posts .pw-product-shot {
+    order: -1;
+  }
+  .pw-product-copy {
+    justify-self: end;
+  }
+  .pw-product.is-posts .pw-product-copy {
+    justify-self: start;
+  }
+}
+
+/* Questions about the photos and the plan, below the product sections. */
+.pw-home-faq {
+  padding: var(--pw-band) var(--pw-gutter);
+  background: var(--gray-100);
+}
+.pw-home-faq > .pw-faq,
+.pw-home-faq-more {
+  max-width: 760px;
+  margin-inline: auto;
+}
+.pw-home-faq .pw-faq details p {
+  margin: -2px 0 22px;
+  color: var(--pw-muted);
+  font-size: var(--text-callout);
+  line-height: 1.55;
+}
+.pw-home-faq a {
+  color: inherit;
+  text-decoration: underline;
+  text-underline-offset: 3px;
+}
+.pw-home-faq-more {
+  margin-top: 24px;
+  color: var(--pw-muted);
+  font-size: var(--text-subhead);
+}
+
 /* Closing call to action: an evergreen band lit from the top edge. */
 .pw-start {
   display: flex;
@@ -1230,7 +1392,8 @@
   line-height: 1.53;
   color: rgb(29 29 31 / 86%);
 }
-.pw-information > section a {
+.pw-information > section a,
+.pw-information-intro a {
   color: var(--green);
   text-decoration: underline;
   text-underline-offset: 3px;
@@ -1391,6 +1554,17 @@
   font-size: var(--text-subhead);
   text-align: center;
 }
+/* Renewal and cancellation terms under Get Pro. */
+.pw-plan-terms {
+  font-size: var(--text-caption);
+  line-height: 1.45;
+  color: var(--on-dark-muted);
+}
+.pw-plan-terms a {
+  color: var(--on-dark);
+  text-decoration: underline;
+  text-underline-offset: 3px;
+}
 .pw-plans-dialog {
   display: flex;
   flex-direction: column;
@@ -1419,6 +1593,49 @@
 }
 .pw-plans-body .pw-plan-grid {
   margin-block: 20px 0;
+}
+.pw-plans-body .fine a {
+  text-decoration: underline;
+  text-underline-offset: 3px;
+}
+/* Cards without their buttons end with their features. */
+.pw-plan-card > .pw-plan-features:last-child {
+  margin-bottom: 0;
+}
+/* The dialog's buttons stay in view below the plans, which scroll on a
+   laptop screen, with any error just above them. */
+.pw-plans-footer {
+  flex: 0 0 auto;
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 12px 24px;
+  padding: 16px 28px 20px;
+  border-top: 1px solid var(--workspace-line);
+}
+.pw-plans-footer > p {
+  flex: 1 1 260px;
+  margin: 0;
+}
+.pw-plans-footer > .error {
+  flex-basis: 100%;
+}
+.pw-plans-footer .pw-plan-terms,
+.pw-plans-status {
+  color: var(--workspace-muted);
+}
+.pw-plans-footer .pw-plan-terms a {
+  color: var(--workspace-ink);
+}
+.pw-plans-status {
+  font-size: var(--text-subhead);
+}
+.pw-plans-actions {
+  display: flex;
+  flex-wrap: wrap;
+  justify-content: flex-end;
+  gap: 10px;
+  margin-left: auto;
 }
 .pw-plan-current {
   margin-top: 20px;
@@ -1573,6 +1790,15 @@
   }
   .pw-plans-body {
     padding: 0 18px 18px;
+  }
+  .pw-plans-footer {
+    gap: 10px;
+    padding: 12px 18px 16px;
+  }
+  /* Full width, the Pro action first. */
+  .pw-plans-actions {
+    flex-direction: column-reverse;
+    width: 100%;
   }
 }
 @media (prefers-reduced-motion: reduce) {

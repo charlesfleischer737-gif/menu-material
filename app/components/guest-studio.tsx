@@ -25,9 +25,11 @@ import {
   type GuestPhoto,
   type GuestTransfer,
 } from "@/lib/guest-studio";
+import { recordVisitorStep } from "@/lib/funnel-client";
 import Brand from "./brand";
 import { StudioWorkbench } from "./studio-workbench";
 import { FREE_SIGNUP_IMAGES } from "@/lib/plans";
+import { imagesLeft } from "@/lib/free-images";
 export default function GuestStudio({
   state,
   onSignIn,
@@ -138,7 +140,7 @@ export default function GuestStudio({
       record.draft.analysisSourceId === record.draft.sourceId &&
       record.draft.analysisStatus === "analyzing"
     )
-      void readPhoto(restoredPhoto.normalized);
+      void readPhoto(restoredPhoto, !!record.draft.sample);
     // Resuming restores work; creation always requires the owner's action.
     setRequested(false);
     persisted.current = true;
@@ -228,7 +230,10 @@ export default function GuestStudio({
         if (create) void api("jobs/tick", {}).catch(() => {});
         await onFinish();
       } catch (e) {
-        setError((e as Error).message);
+        // Nothing was saved, and the Create bar already says images can't
+        // be made now: no alert and no Retry.
+        if ((e as { code?: string }).code !== "images_unavailable")
+          setError((e as Error).message);
       } finally {
         lock.current = false;
         transferring.current = false;
@@ -285,7 +290,7 @@ export default function GuestStudio({
   // Suggestions follow what's in the photo, as in the workspace. The latest
   // photo's answer is the only one used, and never over the owner's choice.
   const analysisRun = useRef(0);
-  async function readPhoto(normalized: Blob) {
+  async function readPhoto(photo: GuestPhoto, sample: boolean) {
     const run = ++analysisRun.current;
     const settle = (patch: (current: Row) => Row) => {
       if (run !== analysisRun.current) return;
@@ -308,7 +313,11 @@ export default function GuestStudio({
       recommendationFamily: "",
     }));
     try {
-      const result = await readGuestPhoto(normalized);
+      // The sample goes as its own file, so it is never read by the AI service.
+      const result = await readGuestPhoto(
+        photo.normalized,
+        sample ? photo.file : undefined,
+      );
       settle((current) =>
         photoAnalysisRecommendation(current, result, "guest-photo"),
       );
@@ -336,6 +345,7 @@ export default function GuestStudio({
       if ((options.sample || draft.sample) && transfer.current?.dishId)
         transfer.current = null;
       setPhoto(next);
+      if (!options.sample) recordVisitorStep("photo");
       update({
         ...(options.sample || draft.sample
           ? { name: options.sample ? samplePhoto.name : "", description: "" }
@@ -349,7 +359,7 @@ export default function GuestStudio({
         recommendationDrink: "other",
         adjustments: { ...emptyAdjustments },
       });
-      void readPhoto(normalized);
+      void readPhoto(next, !!options.sample);
     } catch (e) {
       setError((e as Error).message);
     } finally {
@@ -358,6 +368,7 @@ export default function GuestStudio({
     }
   }
   async function create() {
+    recordVisitorStep("create");
     try {
       await persistLocal(true);
     } catch {
@@ -394,7 +405,7 @@ export default function GuestStudio({
             <span className="cx-guest-free">
               <Sparkles size={15} />
               {state.user
-                ? `${state.remaining} ${state.remaining === 1 ? "image" : "images"} left`
+                ? imagesLeft(state.remaining, state.freeImages)
                 : `${FREE_SIGNUP_IMAGES} free images`}
             </span>
           </nav>
@@ -417,17 +428,31 @@ export default function GuestStudio({
           {error && (
             <div className="cx-feedback error" role="alert">
               {error}
-              {state.user && (
-                <button
-                  className="cx-link"
-                  disabled={!!busy}
-                  onClick={() => void transferWork(requested)}
-                >
-                  {requested
-                    ? "Retry creating my image"
-                    : "Retry saving my photo"}
-                </button>
-              )}
+              {state.user &&
+                // Out of images, a retry can't work; the photo stays here.
+                // Free images on their way need no plan.
+                (requested && state.remaining < 1 ? (
+                  state.freeImages?.status === "held" ? null : (
+                    <button
+                      className="cx-link"
+                      onClick={() =>
+                        window.dispatchEvent(new Event("menu-material:plans"))
+                      }
+                    >
+                      See plans
+                    </button>
+                  )
+                ) : (
+                  <button
+                    className="cx-link"
+                    disabled={!!busy}
+                    onClick={() => void transferWork(requested)}
+                  >
+                    {requested
+                      ? "Retry creating my image"
+                      : "Retry saving my photo"}
+                  </button>
+                ))}
               {state.user && savedSome && (
                 <button
                   className="cx-link"
@@ -474,7 +499,6 @@ export default function GuestStudio({
               ...state,
               guest: true,
               remaining: state.user ? state.remaining : 5,
-              aiConnected: state.user ? state.aiConnected : true,
             }}
             selected={selected}
             source={photo?.url || ""}
@@ -519,7 +543,7 @@ export default function GuestStudio({
             }}
             retryAnalysis={
               photo && state.aiConnected
-                ? () => void readPhoto(photo.normalized)
+                ? () => void readPhoto(photo, !!draft.sample)
                 : undefined
             }
             create={create}

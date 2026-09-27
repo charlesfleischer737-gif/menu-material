@@ -15,9 +15,19 @@ const { advanceBatches } = await import("../lib/server/menu-tools.ts");
 const { newMenuDocument, newMenuEntry } =
   await import("../lib/menu-document.ts");
 const { defaultStyle } = await import("../lib/promotions.ts");
-const { FREE_SIGNUP_IMAGES, freeMenuDesign } = await import("../lib/plans.ts");
-const { freePostDraft, getPostTemplate } =
-  await import("../lib/post-templates.ts");
+const { FREE_SIGNUP_IMAGES, FREE_POST_TEMPLATES, freeMenuDesign } =
+  await import("../lib/plans.ts");
+const { restaurantSettingsChanged } = await import("../lib/menu-checks.ts");
+const {
+  choosePostTemplate,
+  freePostCopy,
+  freePostDraft,
+  getPostTemplate,
+  newPostDraft,
+} = await import("../lib/post-templates.ts");
+const { updatePost } = await import("../lib/post-flow.ts");
+// The page's own plan check, from the state it loads.
+const { hasProFeatures } = await import("../lib/upgrade.ts");
 const { recipeFromDraft, emptyStudioLibrary } =
   await import("../lib/studio-library.ts");
 const { photoBrief } = await import("../lib/studio.ts");
@@ -199,6 +209,27 @@ try {
     { ip: "203.0.113.9" },
   );
   checks += 2;
+  // An IPv6 /48 holds 65,536 /64s, so it has a daily cap of its own: eight
+  // accounts, whichever of its /64s they come from.
+  const wideSignup = (n, ip, expected = 200) => {
+    cookie = "";
+    return call(
+      "auth/signup",
+      { email: `wide${n}@plan-limits.test`, password, restaurant: "Wide" },
+      expected,
+      { ip },
+    );
+  };
+  for (let n = 0; n < 5; n++) await wideSignup(n, `2001:db8:5:1::${n + 1}`);
+  await wideSignup(5, "2001:db8:5:1::99", 429);
+  for (let n = 5; n < 8; n++) await wideSignup(n, `2001:db8:5:2::${n + 1}`);
+  assert.match((await wideSignup(8, "2001:db8:5:3::1", 429)).error, /tomorrow/);
+  await wideSignup(8, "2001:db8:6:1::1");
+  assert.equal(
+    (await one("SELECT count(*) AS n FROM users WHERE email LIKE 'wide%'")).n,
+    9,
+  );
+  checks++;
 
   // 2. A new free account: images to start, no Pro features.
   cookie = "";
@@ -319,6 +350,22 @@ try {
     price: 6,
     confirmed: true,
   });
+  // The single menu from before Menus is gone, so a hand-made call can't put
+  // a second menu live beside one published in Menus.
+  const oldSingleMenu = async () => {
+    await call(
+      "menu",
+      {
+        sections: [
+          { id: "old", name: "Old", items: [{ dishId: tabsDish.id }] },
+        ],
+      },
+      410,
+    );
+    await call("menu/publish", {}, 410);
+    await call("menu/unpublish", {}, 410);
+  };
+  await oldSingleMenu();
   const tabMenu = () =>
     call("menus", {
       id: crypto.randomUUID(),
@@ -349,7 +396,13 @@ try {
     ).n,
     1,
   );
-  checks += 2;
+  await oldSingleMenu();
+  const tabsLive = await one(
+    "SELECT m.published AS menu,r.published AS main FROM menu_documents m JOIN restaurants r ON r.id=m.restaurant_id WHERE r.user_id=? AND m.published IS NOT NULL",
+    tabsRid,
+  );
+  assert.equal(tabsLive.main, tabsLive.menu, "guests see only that menu");
+  checks += 3;
   cookie = ownerCookie;
 
   // 6. Posts: three designs, one photo, a post or Story, the design's colors.
@@ -401,6 +454,109 @@ try {
   );
   await call(`creation-drafts/${proPost}`);
   await proOnly(`creation-drafts/${proPost}/duplicate`, {}, "postTemplates");
+  // Post Maker's New, as the page builds it on Free, saves. Pro's new post
+  // starts in the restaurant's look, which Free can't save.
+  state = await call("state");
+  const pro = hasProFeatures(state);
+  assert.equal(pro, false);
+  await call("creation-drafts", post(newPostDraft(state.restaurant, 2, pro)));
+  await call("creation-drafts", post(newPostDraft(state.restaurant, 1, pro)));
+  const branded = { ...state.restaurant, style: state.restaurant.savedStyle };
+  await proOnly(
+    "creation-drafts",
+    post(newPostDraft(branded, 2, true)),
+    "postTemplates",
+  );
+  // A post made on Pro in the restaurant's look opens on Free, and choosing
+  // any free design, as Post Maker does, makes it one Free can save.
+  const chooseDesign = (draft, id, plan) =>
+    updatePost(
+      draft,
+      {
+        ...choosePostTemplate({ ...draft, compositionVersion: 2 }, id, plan),
+        compositionVersion: 2,
+      },
+      state.restaurant,
+    );
+  const burger = {
+    key: crypto.randomUUID(),
+    dishId: dish.id,
+    photoId: crypto.randomUUID(),
+    name: "Smash Burger",
+    quantity: 1,
+  };
+  const made = chooseDesign(
+    { ...newPostDraft(branded, 2, true), items: [burger] },
+    "special",
+    true,
+  );
+  assert.equal(made.brandMode, "restaurant");
+  assert.equal(made.color, look.primary, "Pro keeps the restaurant's colors");
+  const madeOnPro = crypto.randomUUID();
+  await run(
+    "INSERT INTO creation_drafts (id,restaurant_id,kind,draft,revision,updated_at) VALUES (?,?,'post',?,1,?)",
+    madeOnPro,
+    rid,
+    JSON.stringify(made),
+    Date.now(),
+  );
+  const revise = (draft) => ({
+    id: madeOnPro,
+    kind: "post",
+    revision: 1,
+    draft,
+  });
+  assert.equal(
+    (await call(`creation-drafts/${madeOnPro}`)).draft.draft.brandMode,
+    "restaurant",
+  );
+  await proOnly(
+    "creation-drafts",
+    revise(updatePost(made, { title: "Burger night" }, state.restaurant)),
+    "postTemplates",
+  );
+  for (const id of FREE_POST_TEMPLATES) {
+    const chosen = chooseDesign(made, id, pro);
+    assert(freePostDraft(chosen), `${id} makes the post one Free can save`);
+    assert.deepEqual(
+      [chosen.color, chosen.accent, chosen.typography, chosen.brandMode],
+      [
+        getPostTemplate(id).color,
+        getPostTemplate(id).accent,
+        "template",
+        undefined,
+      ],
+    );
+  }
+  await call("creation-drafts", revise(chooseDesign(made, "chef", pro)));
+  // A carousel made on Pro: its Free copy is the first dish as a post and
+  // Story, in a free design's own look, and its words follow that dish.
+  const fries = {
+    ...burger,
+    key: crypto.randomUUID(),
+    dishId: crypto.randomUUID(),
+    photoId: crypto.randomUUID(),
+    name: "Fries",
+  };
+  const carousel = chooseDesign(
+    updatePost(
+      made,
+      { items: [burger, fries], channels: ["feed", "story", "carousel"] },
+      state.restaurant,
+    ),
+    "brunch",
+    true,
+  );
+  assert.equal(carousel.title, "Smash Burger & Fries");
+  assert.equal(freePostDraft(carousel), false);
+  const freeCopy = freePostCopy(carousel, state.restaurant, "chef");
+  assert.deepEqual(
+    [freeCopy.items, freeCopy.channels, freeCopy.template, freeCopy.title],
+    [[burger], ["feed", "story"], "chef", "Smash Burger"],
+  );
+  assert(freePostDraft(freeCopy));
+  await call("creation-drafts", post(freeCopy));
+  checks += 14;
   // Photo and menu drafts are never limited.
   await call("creation-drafts", {
     id: crypto.randomUUID(),
@@ -518,6 +674,7 @@ try {
   assert.equal(state.billing.plan, "free");
   assert.equal(state.remaining, FREE_SIGNUP_IMAGES, "a comp adds no images");
   assert.equal(state.restaurant.style.primary, look.primary);
+  dinner = await edit(dinner, { design: "fine", appearance: "dark" });
   dinner = await publish(dinner);
   lunch = await publish(lunch);
   guest = await guestMenu();
@@ -555,10 +712,34 @@ try {
     "a live menu keeps its look until it's published again",
   );
   assert.equal((await guestMenu(`?menu=${dinner.id}`)).title, "Dinner");
-  // Published again on Free: allowed, in the neutral look.
+  // Published again on Free: allowed, and it keeps the look it's live in.
   lunch = await publish(lunch);
   guest = await guestMenu();
-  assert.equal(guest.restaurant.style.primary, defaultStyle.primary);
+  assert.equal(
+    guest.restaurant.style.primary,
+    look.primary,
+    "a live menu published again on Free keeps its look",
+  );
+  // So Menus doesn't ask to republish for a look Free can't apply.
+  state = await call("state");
+  const liveLunch = (await call(`menus/${lunch.id}`)).published;
+  assert.equal(restaurantSettingsChanged(liveLunch, state.restaurant), true);
+  assert.equal(
+    restaurantSettingsChanged(liveLunch, state.restaurant, { look: false }),
+    false,
+  );
+  // A menu live in a Pro design can be published again in it (to fix a
+  // price or an allergen), but not moved to another Pro design.
+  dinner = await publish(dinner);
+  assert.equal((await call(`menus/${dinner.id}`)).published.design, "fine");
+  dinner = await edit(dinner, { design: "cafe" });
+  await proOnly(
+    `menus/${dinner.id}/publish`,
+    { revision: dinner.revision },
+    "menuDesigns",
+  );
+  dinner = await edit(dinner, { design: "fine" });
+  checks += 3;
   // Saved looks stay and can be renamed; adding another is Pro.
   const library = await call("studio-library");
   assert.equal(library.looks.length, 1);
@@ -657,11 +838,23 @@ try {
     "sub_limits:1",
   );
   assert.equal((await featureAccess(rid)).source, "free");
-  // A paid period covering today.
+  // Renewing: Stripe has started the new period but not yet charged its
+  // invoice. Pro features stay on (the guest menu keeps no credit), and the
+  // plan says the renewal is on its way, not that a payment failed.
   await run(
     "UPDATE billing_accounts SET status='active' WHERE restaurant_id=?",
     rid,
   );
+  await run(
+    "UPDATE billing_periods SET ends_at=? WHERE id=?",
+    Date.now() - 60000,
+    "sub_limits:1",
+  );
+  access = await featureAccess(rid);
+  assert.equal(access.source, "renewing");
+  assert.equal(access.unlocked, true);
+  assert.equal((await guestMenu()).credit, false);
+  // A paid period covering today.
   await run(
     "UPDATE billing_periods SET starts_at=?,ends_at=? WHERE id=?",
     Date.now() - day,
@@ -676,7 +869,7 @@ try {
     rid,
   );
   assert.equal((await featureAccess(rid)).source, "free");
-  checks += 7;
+  checks += 10;
 
   // 12. One switch lifts every limit.
   env.PLAN_LIMITS_ENABLED = "false";
@@ -696,7 +889,7 @@ try {
   checks++;
 
   console.log(
-    `PASS: ${checks} plan limit checks: signup cap per network, Free defaults for the restaurant look, one basic live menu (also across two tabs), three free post designs, Pro-only campaigns, batches, staff links, saved looks and inspiration photos, trimmed insights, the menu credit, admin comps, keeping work after a downgrade, the renewal grace and the switch.`,
+    `PASS: ${checks} plan limit checks: signup cap per network and per IPv6 /48, Free defaults for the restaurant look, one basic live menu (also across two tabs, and with the old single-menu routes gone), three free post designs (New posts, free designs over a Pro post's look, and Free copies), Pro-only campaigns, batches, staff links, saved looks and inspiration photos, trimmed insights, the menu credit, admin comps, keeping work after a downgrade, the renewal grace and the switch.`,
   );
 } finally {
   rmSync(root, { recursive: true, force: true });

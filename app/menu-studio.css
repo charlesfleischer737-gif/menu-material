@@ -909,7 +909,8 @@
 .md-checks li.is-blocking::before {
   background: var(--workspace-error);
 }
-.md-checks li > .md-text-button {
+.md-checks li > .md-text-button,
+.md-checks > .md-text-button {
   justify-self: start;
   min-height: 32px;
   padding: 0;
@@ -2579,6 +2580,86 @@
   margin: 45px 0 7px;
   letter-spacing: 0.3px;
 }
+.md-guest-credit a {
+  color: inherit;
+  text-decoration: none;
+}
+.md-guest-credit a:hover,
+.md-guest-credit a:focus-visible {
+  text-decoration: underline;
+}
+/* "Report this page": quiet, at the very foot of a guest menu. */
+.md-guest-report-link {
+  display: block;
+  margin: 4px auto 12px;
+  padding: 6px 10px;
+  border: 0;
+  background: none;
+  color: var(--md-muted);
+  font: inherit;
+  font-size: 0.75rem;
+  text-decoration: underline;
+  cursor: pointer;
+}
+.md-guest-report {
+  display: grid;
+  gap: 10px;
+  max-width: 420px;
+  margin: 8px auto 20px;
+  color: var(--md-ink);
+  font-size: 0.875rem;
+}
+.md-guest-report fieldset {
+  display: grid;
+  gap: 6px;
+  margin: 0;
+  padding: 0;
+  border: 0;
+}
+.md-guest-report legend {
+  margin-bottom: 4px;
+  font-weight: 600;
+}
+.md-guest-report label {
+  display: flex;
+  gap: 8px;
+  align-items: baseline;
+}
+.md-guest-report label:has(textarea) {
+  display: grid;
+  gap: 4px;
+}
+.md-guest-report textarea {
+  width: 100%;
+  padding: 8px;
+  border: 1px solid var(--md-rule);
+  border-radius: 8px;
+  background: var(--md-paper);
+  color: var(--md-ink);
+  font: inherit;
+}
+.md-guest-report-actions {
+  display: flex;
+  gap: 8px;
+}
+.md-guest-report button {
+  min-height: 40px;
+  padding: 8px 14px;
+  border: 1px solid var(--md-rule);
+  border-radius: 999px;
+  background: var(--md-paper);
+  color: var(--md-ink);
+  font: inherit;
+  cursor: pointer;
+}
+.md-guest-report button[type="submit"] {
+  border-color: var(--md-ink);
+  background: var(--md-ink);
+  color: var(--md-paper);
+}
+.md-guest-report [role="alert"] {
+  color: #b42318;
+}
 .md-guest-empty {
   padding: 35px 0;
   font-size: 0.875rem;
@@ -3982,15 +4063,113 @@
     1rem "Post Sans",
     sans-serif;
 }
-.md-guest > .md-guest-diet {
-  display: block;
+/* A short menu has no search bar: its filters sit above the dishes. */
+.md-guest-filters {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: flex-start;
+  gap: 8px;
   margin: 0 0 24px;
+}
+.md-guest-filters > .md-guest-allergens[open] {
+  flex-basis: 100%;
 }
 .md-guest-allergy {
   margin: 24px 0 0;
   color: var(--md-muted);
   font-size: 0.875rem;
   line-height: 1.6;
+}
+/* "Hide dishes with": a disclosure in the diet choice's field style. */
+.md-guest-allergens > summary {
+  width: fit-content;
+  max-width: 100%;
+  min-height: 44px;
+  padding: 0 12px;
+  border: 1px solid var(--md-rule);
+  border-radius: 5px;
+  background-color: var(--md-paper);
+  color: var(--md-ink);
+  font:
+    1rem "Post Sans",
+    sans-serif;
+}
+.md-guest-allergens > summary:focus-visible {
+  outline: 2px solid var(--md-ink);
+  outline-offset: 3px;
+}
+.md-guest-allergen-panel {
+  display: grid;
+  gap: 10px;
+  margin-top: 8px;
+  padding: 12px 14px 14px;
+  border: 1px solid var(--md-rule);
+  border-radius: 5px;
+  background: var(--md-paper);
+  color: var(--md-ink);
+  font:
+    0.9375rem/1.5 "Post Sans",
+    sans-serif;
+}
+.md-guest-allergen-panel fieldset {
+  min-width: 0;
+  margin: 0;
+  padding: 0;
+  border: 0;
+}
+.md-guest-allergen-panel legend {
+  padding: 0;
+  font-weight: 650;
+}
+.md-guest-allergen-options {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(8.5rem, 1fr));
+  column-gap: 12px;
+}
+.md-guest-allergen-options label {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  min-height: 44px;
+  cursor: pointer;
+}
+.md-guest .md-guest-allergen-options input {
+  flex: none;
+  width: 20px;
+  height: 20px;
+  margin: 0;
+  padding: 0;
+  accent-color: var(--md-ink);
+}
+.md-guest-allergen-panel > p {
+  color: var(--md-muted);
+  font-size: 0.875rem;
+}
+.md-guest .md-guest-allergen-panel > button {
+  justify-self: start;
+  min-height: 44px;
+  padding: 8px 12px;
+  border: 1px solid var(--md-rule);
+  border-radius: 8px;
+  background: transparent;
+  color: var(--md-ink);
+  font:
+    0.875rem "Post Sans",
+    sans-serif;
+  cursor: pointer;
+}
+/* A dish whose allergens nobody has listed says "ask us", quieter than a
+   listed allergen. */
+.md-guest .md-guest-item > p.md-guest-dietary.md-guest-unlisted {
+  color: var(--md-muted);
+}
+.md-guest-item > p.md-guest-dietary + p.md-guest-unlisted {
+  margin-top: 2px;
+}
+.md-guest-hidden {
+  color: var(--md-muted);
+  font-size: 0.875rem;
+  font-style: italic;
 }
 @media (max-width: 740px) {
   main.md-guest {

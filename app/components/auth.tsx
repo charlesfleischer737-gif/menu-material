@@ -9,9 +9,11 @@ import {
   DialogDescription,
 } from "@/components/ui/dialog";
 import { api } from "@/lib/client";
+import { forgetAttribution, savedAttribution } from "@/lib/attribution";
 import { isPlaceholderRestaurantName } from "@/lib/restaurant-identity";
 import Brand from "./brand";
 import GoogleSignIn from "./google-sign-in";
+import { useSiteContact } from "./site-contact";
 import { FREE_SIGNUP_IMAGES, PRO_PRICE_LABEL } from "@/lib/plans";
 export default function Auth({
   open,
@@ -47,6 +49,7 @@ export default function Auth({
   const passwordInput = useRef<HTMLInputElement>(null);
   const linkLoaded = useRef(false);
   const [googleStep, setGoogleStep] = useState<"link" | "signup" | null>(null);
+  const { termsUrl } = useSiteContact();
   useEffect(() => {
     if (!open) {
       setGoogleStep(null);
@@ -129,7 +132,10 @@ export default function Auth({
         website,
         // A new restaurant's hours ("open now") use the owner's time zone.
         timezone: Intl.DateTimeFormat().resolvedOptions().timeZone,
+        // Where the owner first came from, for the launch funnel.
+        ...(mode === "signup" ? { attribution: savedAttribution() } : {}),
       });
+      if (mode === "signup") forgetAttribution();
       await onDone();
       setOpen(false);
       history.replaceState({}, "", location.pathname + location.hash);
@@ -402,6 +408,19 @@ export default function Auth({
           <Button variant="outline" disabled={busy} onClick={forgotPassword}>
             Request a new reset link
           </Button>
+        )}
+        {mode === "signup" && !resetting && termsUrl && (
+          <p className="fine">
+            By creating an account you agree to the{" "}
+            <a href="/terms" target="_blank" rel="noreferrer">
+              Terms
+            </a>{" "}
+            and the{" "}
+            <a href="/privacy" target="_blank" rel="noreferrer">
+              Privacy policy
+            </a>
+            .
+          </p>
         )}
         {mode === "signup" && !resetting && (
           <p className="fine">

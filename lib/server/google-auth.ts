@@ -24,7 +24,8 @@ import {
   newAccountLimit,
   publicLimit,
 } from "./safeguards";
-import { FREE_SIGNUP_IMAGES } from "../plans";
+import { signupFreeImages } from "./free-grants";
+import { recordSignupSource } from "./funnel";
 import { isPlaceholderRestaurantName, slugify } from "../restaurant-identity";
 
 const flowLifetime = 10 * 60 * 1000;
@@ -237,6 +238,7 @@ export async function googleAuthRoute(
       password: z.string().max(128).optional(),
       restaurant: z.string().trim().max(100).optional(),
       timezone: z.string().max(80).optional(),
+      attribution: z.unknown().optional(),
       website: z.string().max(500).optional(),
     })
     .parse(await body(req));
@@ -297,6 +299,7 @@ export async function googleAuthRoute(
   );
   await newAccountLimit(req);
   await consume(f);
+  const free = await signupFreeImages(f.email);
   const userId = id(),
     restaurantId = id(),
     t = now();
@@ -309,14 +312,15 @@ export async function googleAuthRoute(
         .bind(userId, f.email, GOOGLE_ONLY_PASSWORD, t),
       db()
         .prepare(
-          "INSERT INTO restaurants (id,user_id,name,slug,allowance,timezone,created_at) VALUES (?,?,?,?,?,?,?)",
+          "INSERT INTO restaurants (id,user_id,name,slug,allowance,free_grant,timezone,created_at) VALUES (?,?,?,?,?,?,?,?)",
         )
         .bind(
           restaurantId,
           userId,
           input.restaurant,
           slugify(input.restaurant) + "-" + restaurantId.slice(0, 8),
-          FREE_SIGNUP_IMAGES,
+          free.allowance,
+          free.freeGrant,
           timezone(input.timezone),
           t,
         ),
@@ -329,6 +333,7 @@ export async function googleAuthRoute(
   } catch (e) {
     conflict(e);
   }
+  await recordSignupSource(restaurantId, input.attribution);
   await event(restaurantId, "onboarded", null, { method: "google" });
   return signedIn(req, userId);
 }

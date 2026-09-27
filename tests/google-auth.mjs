@@ -373,6 +373,28 @@ try {
     await one("SELECT * FROM google_auth_flows WHERE email=?", user.email),
     null,
   );
+  // Google signup shares email signup's anti-abuse allowance and attribution.
+  const repeated = await start();
+  await verify(repeated, { sub: "new-person", email: user.email });
+  await complete(repeated, {
+    restaurant: "Returned Bistro",
+    attribution: { source: "launch-test" },
+  });
+  const repeatedRestaurant = await one(
+    "SELECT r.* FROM restaurants r JOIN users u ON u.id=r.user_id WHERE u.email=?",
+    user.email,
+  );
+  assert.equal(repeatedRestaurant.allowance, 0);
+  assert.equal(repeatedRestaurant.free_grant, "used");
+  env.FREE_SIGNUP_GRANTS_PER_DAY = "0";
+  const held = await start();
+  await verify(held, { sub: "held-person", email: "held.person@gmail.com" });
+  await complete(held, { restaurant: "Held Bistro" });
+  const heldRestaurant = await one(
+    "SELECT r.* FROM restaurants r JOIN users u ON u.id=r.user_id WHERE u.email='held.person@gmail.com'",
+  );
+  assert.equal(heldRestaurant.allowance, 0);
+  assert.equal(heldRestaurant.free_grant, "held");
   console.log(
     `Google sign-in: ${checks} route/security checks passed, plus identity, cookie, data preservation, recovery and deletion assertions.`,
   );

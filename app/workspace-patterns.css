@@ -833,6 +833,20 @@
   margin: 8px 0 16px;
   color: var(--workspace-muted);
 }
+.admin-explanation h3 {
+  font-size: var(--text-subhead);
+  margin: 16px 0 8px;
+}
+.admin-launch-checks {
+  margin: 0 0 16px;
+  padding-left: 20px;
+  font-size: var(--text-subhead);
+  line-height: 1.5;
+  color: var(--workspace-muted);
+}
+.admin-launch-checks li + li {
+  margin-top: 6px;
+}
 @media (max-width: 760px) {
   .cx-app .mm-header h1,
   .cx-app .cx-feature-header h1,

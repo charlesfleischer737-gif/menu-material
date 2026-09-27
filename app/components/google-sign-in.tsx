@@ -1,4 +1,5 @@
 "use client";
+import { forgetAttribution, savedAttribution } from "@/lib/attribution";
 import { useEffect, useRef, useState } from "react";
 import { Button } from "@/components/ui/button";
 import { api } from "@/lib/client";
@@ -177,6 +178,7 @@ export default function GoogleSignIn(props: {
         password: step === "link" ? password : undefined,
         restaurant: step === "signup" ? restaurant : undefined,
         timezone: Intl.DateTimeFormat().resolvedOptions().timeZone,
+        attribution: savedAttribution(),
         website,
       });
       await latest.current.onDone();

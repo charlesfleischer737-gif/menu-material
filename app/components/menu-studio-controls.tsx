@@ -36,7 +36,7 @@ import {
   type MenuSection,
 } from "@/lib/menu-document";
 import { menuDesignSpec } from "@/lib/menu-design-system";
-import { freeMenuDesign } from "@/lib/plans";
+import { freeCanPublish } from "@/lib/plans";
 import { ProNote } from "./pro-badge";
 import DietaryPicker from "./dietary-picker";
 export const MenuActionContext = createContext({ busy: "", error: "" });
@@ -501,6 +501,12 @@ export function MenuItemInspector({
           fieldClass="md-field"
           onChange={(dietary) => change({ dietary })}
         />
+        {item.dishId && (
+          <p className="md-help">
+            Guests always see the allergens in My Dishes. A diet, or No listed
+            allergens, shows only if My Dishes has it too.
+          </p>
+        )}
       </details>
       <Field label="Section">
         <select value={section.id} onChange={(e) => move(e.target.value)}>
@@ -727,11 +733,14 @@ export function MenuSectionInspector({
 }
 export function MenuDesignInspector({
   menu,
+  live,
   change,
   choose,
   pro = true,
 }: {
   menu: MenuDocument;
+  /** The live copy, whose design Free can keep publishing. */
+  live?: Parameters<typeof freeCanPublish>[1];
   change: (patch: Partial<MenuDocument>) => void;
   choose: () => void;
   /** Without Pro, Pro options can be tried in the draft but not published. */
@@ -741,7 +750,7 @@ export function MenuDesignInspector({
   const proLabel = pro ? "" : " (Pro)";
   return (
     <div className="md-inspector-content">
-      {!pro && !freeMenuDesign(menu) && (
+      {!pro && !freeCanPublish(menu, live) && (
         <ProNote feature="menuDesigns">
           You’re trying Pro options. Free menus publish in The Brasserie, in
           light, without custom colors or a photo on every dish.

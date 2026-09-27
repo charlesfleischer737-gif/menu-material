@@ -1,3 +1,4 @@
+import { createHash } from "node:crypto";
 import { z } from "zod";
 import { foodFamilies, PIPELINE_VERSION } from "../studio";
 import { drinkKinds } from "../studio-onboarding";
@@ -18,6 +19,7 @@ import { provider } from "./generation";
 import { validateImageDimensions } from "./image-validation";
 import {
   GUEST_AI,
+  guestPhotoDailyLimit,
   limitedForm,
   publicLimit,
   type AiCharge,
@@ -166,9 +168,26 @@ export async function analyzePhoto(r: Row, sourceId: string) {
     throw error;
   }
 }
+// The built-in sample photo (samplePhoto in lib/studio.ts), known by the
+// SHA-256 of its file, and what it shows. Trying it never calls the AI
+// service.
+const sample = {
+  sha256: "f9b9891a05eadeef34834868b4abb8b79a7cf985c79c00a3423e1bb0210897c9",
+  reading: {
+    family: "Burgers & sandwiches",
+    subject: "Sesame-seed burger with lettuce, tomato and cheese",
+    confidence: "high",
+    drinkKind: "other",
+    issue: "none",
+    menuDocument: false,
+    advice: advice.none,
+  },
+};
 // Photo Studio before signup: the photo is read to suggest styles, never
 // stored. Visitors have no restaurant, so each network gets its own hourly
-// allowance and the checks share the site-wide AI budget.
+// and daily allowance and the checks share the site-wide AI budget. The
+// sample, and a photo already read this week (remembered by its hash), cost
+// no call.
 export async function analyzeGuestPhoto(req: Request) {
   await publicLimit(req, "guest-photo-analysis", 20, 3600);
   assert(
@@ -188,11 +207,31 @@ export async function analyzeGuestPhoto(req: Request) {
     400,
     "This file is not a supported photo.",
   );
+  const hash = createHash("sha256").update(bytes).digest("hex");
+  if (hash === sample.sha256) return response(sample.reading);
   validateImageDimensions(bytes, "image/jpeg", true);
-  const { value } = await readPhoto(
+  const model = config("OPENAI_TEXT_MODEL", "gpt-4.1-mini"),
+    version = `${model}:${PIPELINE_VERSION}:analysis-v2`;
+  // The id event() gives the reading stored below.
+  const known = await one(
+    "SELECT details FROM events WHERE id=?",
+    digest(`null:guest_photo_analysis:${hash}:${version}`),
+  );
+  if (known) return response(JSON.parse(known.details).reading);
+  await guestPhotoDailyLimit(req);
+  const { value, usage } = await readPhoto(
     `data:image/jpeg;base64,${Buffer.from(bytes).toString("base64")}`,
-    config("OPENAI_TEXT_MODEL", "gpt-4.1-mini"),
+    model,
     { restaurantId: GUEST_AI, kind: "analysis" },
   );
+  // Only what the photo shows is kept, never the photo; housekeeping removes
+  // it after a week.
+  await event(
+    null,
+    "guest_photo_analysis",
+    hash,
+    { model, reading: value, usage },
+    version,
+  ).catch(() => {});
   return response(value);
 }

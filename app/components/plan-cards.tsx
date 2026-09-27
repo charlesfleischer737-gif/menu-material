@@ -1,7 +1,7 @@
 "use client";
-import type { ReactNode } from "react";
 import { Check } from "lucide-react";
 import { FREE_SIGNUP_IMAGES, PRO_PLAN, PRO_PRICE_LABEL } from "@/lib/plans";
+import { useSiteContact } from "./site-contact";
 /* eslint-disable @next/next/no-html-link-for-pages --
    Plain links on purpose: next/link's client navigation throws in the vinext
    production build ("navigateClientSide is not a function"), so a <Link>
@@ -20,22 +20,48 @@ function Features({ items }: { items: string[] }) {
   );
 }
 
+/**
+ * Renewal and cancellation, shown next to Get Pro before anyone pays. The
+ * billing portal is set to cancel at the end of the paid period
+ * (docs/FREE_PRO_PLANS.md).
+ */
+export function PlanTerms() {
+  const { termsUrl, refundPolicyUrl } = useSiteContact();
+  return (
+    <p className="pw-plan-terms">
+      Renews monthly until you cancel. Cancel anytime in Plans, under Manage
+      billing, and Pro stays until the end of the month you’ve paid for.
+      {termsUrl && (
+        <>
+          {" "}
+          <a href="/terms" target="_blank" rel="noreferrer">
+            Terms
+          </a>
+        </>
+      )}
+      {refundPolicyUrl && (
+        <>
+          {termsUrl ? " · " : " "}
+          <a href={refundPolicyUrl} target="_blank" rel="noreferrer">
+            Refund policy
+          </a>
+        </>
+      )}
+    </p>
+  );
+}
+
 export default function PlanCards({
   enabled = false,
-  onUpgrade,
-  onFree,
-  busy = false,
-  comingSoon,
   proFirst = false,
+  actions = true,
 }: {
   enabled?: boolean;
-  onUpgrade?: () => void;
-  onFree?: () => void;
-  busy?: boolean;
-  /** Replaces the Pro card's "open soon" note while billing is off. */
-  comingSoon?: ReactNode;
   /** Lead with Pro when the cards stack, for an offer of a Pro feature. */
   proFirst?: boolean;
+  /** False leaves out the cards' buttons: the Plans dialog keeps its own in
+      view below the cards. */
+  actions?: boolean;
 }) {
   return (
     <div className={`pw-plan-grid ${proFirst ? "is-pro-first" : ""}`}>
@@ -55,17 +81,13 @@ export default function PlanCards({
             "Free images never expire. No credit card",
           ]}
         />
-        <div className="pw-plan-action">
-          {onFree ? (
-            <button className="cx-btn" disabled={busy} onClick={onFree}>
-              Continue free
-            </button>
-          ) : (
+        {actions && (
+          <div className="pw-plan-action">
             <a className="cx-btn" href="/#studio">
               Try it free
             </a>
-          )}
-        </div>
+          </div>
+        )}
       </article>
       <article className="pw-plan-card is-pro">
         <div className="pw-plan-name">
@@ -94,28 +116,23 @@ export default function PlanCards({
             "Cancel future renewals anytime",
           ]}
         />
-        <div className="pw-plan-action">
-          {enabled ? (
-            onUpgrade ? (
-              <button className="cx-btn" disabled={busy} onClick={onUpgrade}>
-                {busy
-                  ? "Opening secure checkout…"
-                  : `Get Pro — ${PRO_PRICE_LABEL}/month`}
-              </button>
+        {actions && (
+          <div className="pw-plan-action">
+            {enabled ? (
+              <>
+                <a className="cx-btn" href="/?upgrade=1">
+                  Get Pro — {PRO_PRICE_LABEL}/month
+                </a>
+                <PlanTerms />
+              </>
             ) : (
-              <a className="cx-btn" href="/?upgrade=1">
-                Get Pro — {PRO_PRICE_LABEL}/month
-              </a>
-            )
-          ) : (
-            (comingSoon ?? (
               <p className="pw-plan-soon">
                 Subscriptions open soon. Start with {FREE_SIGNUP_IMAGES} free
                 images today.
               </p>
-            ))
-          )}
-        </div>
+            )}
+          </div>
+        )}
       </article>
     </div>
   );

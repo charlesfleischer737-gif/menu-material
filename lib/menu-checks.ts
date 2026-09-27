@@ -1,13 +1,23 @@
 import {
   menuContentIssues,
+  menuPrice,
   menuPurposeDefaults,
   visibleMenuSections,
   type MenuDocument,
+  type MenuEntry,
   type MenuSection,
 } from "./menu-document";
 import { inferMenuPurpose, isAddonName } from "./menu-paste";
-import { normalizeDietary } from "./dietary";
 import {
+  allergenTags,
+  dietaryTag,
+  dietaryTags,
+  normalizeDietary,
+  suitsDiet,
+} from "./dietary";
+import {
+  dishNameMessage,
+  isPlaceholderDishName,
   isPlaceholderRestaurantName,
   restaurantNameMessage,
 } from "./restaurant-identity";
@@ -20,7 +30,15 @@ export type MenuCheck = {
   message: string;
   entryId?: string;
   sectionId?: string;
-  fix?: "restaurant-name" | "edit" | "remove" | "attach-addon" | "menu-type";
+  fix?:
+    | "restaurant-name"
+    | "edit"
+    | "remove"
+    | "attach-addon"
+    | "menu-type"
+    | "dish-tags"
+    | "dish-name"
+    | "dish-facts";
   purpose?: MenuDocument["purpose"];
 };
 
@@ -62,9 +80,23 @@ export function menuPublishChecks(
     sampleDishIds?: Iterable<string>;
     /** Photos the owner reported as inaccurate. */
     correctionPhotoIds?: Iterable<string>;
+    /**
+     * My Dishes, for the allergens and diets linked menu dishes must show,
+     * and the prices and availability they're compared with.
+     */
+    dishes?: Iterable<{
+      id: string;
+      dietary?: unknown;
+      price?: unknown;
+      available?: unknown;
+    }>;
+    /** For prices in those comparisons. */
+    currency?: string;
   },
 ): MenuCheck[] {
   const checks: MenuCheck[] = [];
+  const library = [...(context.dishes || [])];
+  const dishTags = new Map(library.map((dish) => [dish.id, dish.dietary]));
   if (isPlaceholderRestaurantName(context.restaurantName))
     checks.push({
       id: "restaurant-name",
@@ -111,6 +143,27 @@ export function menuPublishChecks(
           sectionId: section.id,
           fix: above ? "attach-addon" : "edit",
         });
+      if (isPlaceholderDishName(item.name))
+        checks.push({
+          id: `dish-name:${item.id}`,
+          level: "block",
+          message: dishNameMessage,
+          entryId: item.id,
+          sectionId: section.id,
+          fix: "dish-name",
+        });
+      if (item.dishId && dishTags.has(item.dishId)) {
+        const gaps = dishSafetyGaps(item.dietary, dishTags.get(item.dishId));
+        if (gaps.missing.length || gaps.unsupported.length)
+          checks.push({
+            id: `dish-tags:${item.id}`,
+            level: "block",
+            message: dishSafetyMessage(label, gaps),
+            entryId: item.id,
+            sectionId: section.id,
+            fix: "dish-tags",
+          });
+      }
       if (item.dishId && samples.has(item.dishId))
         checks.push({
           id: `sample:${item.id}`,
@@ -155,6 +208,25 @@ export function menuPublishChecks(
       if (!item.description.trim())
         undescribed.push({ id: item.id, name: label, sectionId: section.id });
       if (!item.available) soldOut.push(label);
+    }
+  // Linked dishes whose price or availability differ from My Dishes, sold
+  // out ones included. A menu may mean it (a lunch price), so these never
+  // block; "Use My Dishes" takes the library's values.
+  const libraryDishes = new Map(library.map((dish) => [dish.id, dish]));
+  for (const section of menu.sections)
+    for (const item of section.items) {
+      const dish =
+        item.visible && item.dishId && libraryDishes.get(item.dishId);
+      const differences = dish ? dishFactDifferences(item, dish) : {};
+      if (!Object.keys(differences).length) continue;
+      checks.push({
+        id: `dish-facts:${item.id}`,
+        level: "warn",
+        message: dishFactsMessage(item, differences, context.currency),
+        entryId: item.id,
+        sectionId: section.id,
+        fix: "dish-facts",
+      });
     }
   if (undescribed.length)
     checks.push({
@@ -233,10 +305,13 @@ export const blockingChecks = (checks: MenuCheck[]) =>
  * A published menu keeps the restaurant's name, logo, colors, currency,
  * cuisine and ordering link from when it was published. True when the
  * owner's settings have changed since, so publishing again would show them.
+ * Without Pro (`look: false`) a live menu keeps its colors when published
+ * again, so only the other settings count.
  */
 export function restaurantSettingsChanged(
   published: Row | null | undefined,
   restaurant: Row,
+  { look: withLook = true }: { look?: boolean } = {},
 ) {
   const shown = published?.restaurant;
   if (!shown) return false;
@@ -249,9 +324,10 @@ export function restaurantSettingsChanged(
     (shown.orderingUrl || "") !== (restaurant.ordering_url || "") ||
     (shown.logoId || null) !==
       ((published.showLogo !== false && restaurant.logo_id) || null) ||
-    look.primary !== style.primary ||
-    look.accent !== style.accent ||
-    look.typography !== style.typography
+    (withLook &&
+      (look.primary !== style.primary ||
+        look.accent !== style.accent ||
+        look.typography !== style.typography))
   );
 }
 
@@ -278,8 +354,128 @@ const sameTags = (a: unknown, b: unknown) =>
   JSON.stringify(normalizeDietary(a)) === JSON.stringify(normalizeDietary(b));
 
 /**
+ * A claim a menu dish may make only when My Dishes makes it too: a diet the
+ * dish suits, or "no listed allergens".
+ */
+function backedClaim(value: string, facts: string[]) {
+  const kind = dietaryTag(value)?.kind;
+  return kind === "diet"
+    ? suitsDiet(facts, value)
+    : kind === "none"
+      ? facts.includes(value)
+      : true;
+}
+/**
+ * Allergens and diet claims are safety facts, so My Dishes has the last word
+ * on a menu dish linked to it: the menu shows every allergen the dish has and
+ * no diet the dish doesn't suit, and says "no listed allergens" only when My
+ * Dishes does. A menu can still add allergens of its own or leave a claim
+ * out, never the reverse. Notes are kept as written.
+ */
+export function withDishSafety(item: unknown, dish: unknown): string[] {
+  const facts = normalizeDietary(dish);
+  return normalizeDietary([
+    ...normalizeDietary(item).filter((value) => backedClaim(value, facts)),
+    ...facts.filter((value) => dietaryTag(value)?.kind === "allergen"),
+  ]);
+}
+/** What a linked menu dish leaves out, or claims, against My Dishes. */
+export function dishSafetyGaps(item: unknown, dish: unknown) {
+  const own = normalizeDietary(item),
+    facts = normalizeDietary(dish);
+  return {
+    missing: allergenTags.filter(
+      (tag) => facts.includes(tag.id) && !own.includes(tag.id),
+    ),
+    unsupported: dietaryTags.filter(
+      (tag) =>
+        tag.kind !== "allergen" &&
+        own.includes(tag.id) &&
+        !backedClaim(tag.id, facts),
+    ),
+  };
+}
+const listed = (labels: string[]) =>
+  labels.length < 2
+    ? labels.join("")
+    : `${labels.slice(0, -1).join(", ")} and ${labels[labels.length - 1]}`;
+function dishSafetyMessage(
+  label: string,
+  { missing, unsupported: claimed }: ReturnType<typeof dishSafetyGaps>,
+) {
+  // A missing allergen already says the dish has one.
+  const unsupported = missing.length
+    ? claimed.filter((tag) => tag.kind === "diet")
+    : claimed;
+  const contains = listed(missing.map((tag) => tag.label.toLowerCase())),
+    marked = listed(
+      unsupported.map((tag) =>
+        tag.kind === "diet" ? tag.label : `“${tag.label}”`,
+      ),
+    );
+  if (!unsupported.length)
+    return `My Dishes says ${label} contains ${contains}. Show it on this menu too.`;
+  if (!missing.length)
+    return `${label} is marked ${marked} here, but not in My Dishes.`;
+  return `${label} doesn’t match My Dishes: it contains ${contains}, and it isn’t marked ${marked} there.`;
+}
+
+type DishPriceFacts = { price?: unknown; available?: unknown };
+/**
+ * The My Dishes price and availability a linked menu dish would take, where
+ * they differ from its own. A My Dishes price of 0 means it has no price
+ * there yet, and a menu dish priced by size or label has no single price to
+ * compare, so neither counts.
+ */
+export function dishFactDifferences(
+  item: Pick<MenuEntry, "priceMode" | "price" | "available">,
+  dish: DishPriceFacts,
+): { price?: number; available?: boolean } {
+  const differences: { price?: number; available?: boolean } = {};
+  if (
+    typeof dish.price === "number" &&
+    dish.price > 0 &&
+    (item.priceMode ?? "single") === "single" &&
+    item.price !== dish.price
+  )
+    differences.price = dish.price;
+  if (dish.available != null && !!dish.available !== item.available)
+    differences.available = !!dish.available;
+  return differences;
+}
+/** "Use My Dishes": a menu dish with its library price and availability. */
+export function withDishFacts<
+  T extends Pick<MenuEntry, "priceMode" | "price" | "available">,
+>(item: T, dish: DishPriceFacts): T {
+  return { ...item, ...dishFactDifferences(item, dish) };
+}
+/** "Pad Thai: $15.00 and available here, $16.00 and unavailable in My Dishes." */
+function dishFactsMessage(
+  item: Pick<MenuEntry, "name" | "price" | "available">,
+  differences: ReturnType<typeof dishFactDifferences>,
+  currency = "USD",
+) {
+  const here: string[] = [],
+    there: string[] = [];
+  const state = (available: boolean) =>
+    available ? "available" : "unavailable";
+  if (differences.price !== undefined) {
+    here.push(
+      item.price == null ? "no price" : menuPrice(item.price, currency),
+    );
+    there.push(menuPrice(differences.price, currency));
+  }
+  if (differences.available !== undefined) {
+    here.push(state(item.available));
+    there.push(state(differences.available));
+  }
+  return `${item.name.trim() || "This dish"}: ${here.join(" and ")} here, ${there.join(" and ")} in My Dishes.`;
+}
+
+/**
  * Menu dishes gain their My Dishes link, any approved photo it has, and its
- * dietary and allergen tags when the menu dish has none of its own.
+ * dietary and allergen tags: all of them when the menu dish has none of its
+ * own, otherwise the dish's allergens join the menu's (see withDishSafety).
  */
 export function withLibraryLinks(
   menu: MenuDocument,
@@ -305,7 +501,9 @@ export function withLibraryLinks(
       const linked = {
         ...i,
         dishId: link.dishId,
-        dietary: i.dietary.length ? i.dietary : normalizeDietary(link.dietary),
+        dietary: i.dietary.length
+          ? withDishSafety(i.dietary, link.dietary)
+          : normalizeDietary(link.dietary),
       };
       if (i.photoId || !link.photoId) return linked;
       added++;
@@ -332,11 +530,15 @@ export function withLibraryLinks(
  * previous value follow the dish; anything tailored on this menu (a brunch
  * price, a shorter description) stays as the owner set it. A menu dish with
  * no tags (imports start with none) counts as not set, so tag edits reach it.
+ * Allergens and diet claims are the exception: tailored tags still gain the
+ * dish's allergens and lose diets it no longer suits. `safetyOnly` carries
+ * just that, for menus that otherwise keep their own details.
  */
 export function applyDishUpdate<T extends { sections: MenuSection[] }>(
   menu: T,
   before: DishFacts,
   after: DishFacts,
+  { safetyOnly = false }: { safetyOnly?: boolean } = {},
 ): { menu: T; changed: number } {
   let changed = 0;
   const sections = menu.sections.map((section) => ({
@@ -344,6 +546,18 @@ export function applyDishUpdate<T extends { sections: MenuSection[] }>(
     items: section.items.map((item) => {
       if (item.dishId !== after.id) return item;
       const next = { ...item };
+      if (!sameTags(before.dietary, after.dietary))
+        next.dietary =
+          !safetyOnly &&
+          (sameTags(item.dietary, before.dietary) ||
+            !normalizeDietary(item.dietary).length)
+            ? normalizeDietary(after.dietary)
+            : withDishSafety(item.dietary, after.dietary);
+      if (safetyOnly) {
+        if (sameTags(next.dietary, item.dietary)) return item;
+        changed++;
+        return next;
+      }
       if (before.name !== after.name && item.name === before.name)
         next.name = after.name;
       if (
@@ -362,12 +576,6 @@ export function applyDishUpdate<T extends { sections: MenuSection[] }>(
         item.available === before.available
       )
         next.available = after.available;
-      if (
-        !sameTags(before.dietary, after.dietary) &&
-        (sameTags(item.dietary, before.dietary) ||
-          !normalizeDietary(item.dietary).length)
-      )
-        next.dietary = normalizeDietary(after.dietary);
       if (JSON.stringify(next) === JSON.stringify(item)) return item;
       changed++;
       return next;

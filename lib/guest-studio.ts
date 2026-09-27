@@ -3,14 +3,34 @@ import { styleFor, emptyAdjustments, resolvePhotoLook } from "./studio";
 import { photoLookContext } from "./photo-recipe";
 import { activeInspirationId } from "./studio-reference";
 import { hasProFeatures } from "./upgrade";
+import { imagesRenewal } from "./plans";
+import { freeImagesNote } from "./free-images";
 import {
   rememberPreference,
   workspacePreferenceKey,
 } from "./workspace-navigation";
 export type GuestPhoto = { file: File; normalized: Blob; url: string };
+// What a guest hears, before and after signup, when no image can be made.
+export const imagesUnavailableMessage =
+  "Photo creation isn’t available right now. Please try again later.";
+/**
+ * Why the guest studio can't make an image now, said before a photo is
+ * added or an account made; "" when it can. /api/state's imagesAvailable
+ * covers the AI key, a pause and the day's budget.
+ */
+export function guestCreationBlock(state: Row) {
+  return state.imagesAvailable === false ? imagesUnavailableMessage : "";
+}
 // What's in a photo chosen before signup, to suggest styles. Only a small
 // copy is sent (the model reads photos at 512 px), and nothing is stored.
-export async function readGuestPhoto(normalized: Blob) {
+// The built-in sample is sent as its own file, which the server knows and
+// answers without reading.
+export async function readGuestPhoto(normalized: Blob, sample?: File) {
+  if (sample) {
+    const form = new FormData();
+    form.set("file", sample, "photo.jpg");
+    return api("guest-photo-analysis", form);
+  }
   const bitmap = await createImageBitmap(normalized);
   const scale = Math.min(1, 768 / Math.max(bitmap.width, bitmap.height));
   const canvas = document.createElement("canvas");
@@ -55,6 +75,12 @@ export async function transferGuestPhoto(
   persistProgress: () => Promise<void> = async () => {},
   { create = true }: { create?: boolean } = {},
 ) {
+  // No image can be made now: stop before anything is saved (the studio
+  // already says so). Once a dish is saved, as on a retry after a lost
+  // reply, the server decides.
+  const unavailable = create && !transfer.dishId && guestCreationBlock(state);
+  if (unavailable)
+    throw Object.assign(Error(unavailable), { code: "images_unavailable" });
   const activeReference = activeInspirationId(draft, state.restaurant);
   if ((draft.look === "reference" || activeReference) && !reference)
     throw Error(
@@ -75,6 +101,19 @@ export async function transferGuestPhoto(
   if (transfer.restaurantId && transfer.restaurantId !== state.restaurant.id)
     throw Error(
       "This draft was started in another restaurant account. Sign back in to that account to continue.",
+    );
+  // An account with no images left makes nothing: the photo stays here and
+  // Plans is offered, rather than a saved "Untitled dish" and a failed image.
+  // Skipped once a dish is saved, so a retry after a lost reply still works.
+  if (create && !transfer.dishId && state.remaining < 1)
+    throw Object.assign(
+      Error(
+        state.freeImages?.status === "held"
+          ? // A new account's free images on their way (lib/free-images.ts).
+            `${freeImagesNote(state.freeImages)} Your photo stays here, so you can create it then.`
+          : `${freeImagesNote(state.freeImages) || "You’ve used your available images."} ${imagesRenewal(state.billing?.plan)}`,
+      ),
+      { code: "no_images" },
     );
   transfer.restaurantId = state.restaurant.id;
   transfer.dishKey ||= crypto.randomUUID();

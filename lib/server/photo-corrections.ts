@@ -12,6 +12,7 @@ import {
 } from "./core";
 import { enqueue } from "./generation";
 import { imageEntitlement } from "./entitlements";
+import { withdrawReportedPhoto } from "./reported-photos";
 import {
   correctionView,
   holdForReview,
@@ -66,6 +67,9 @@ export async function photoCorrectionsRoute(req: Request, p: string[], r: Row) {
     "SELECT id FROM outputs WHERE job_id=? AND status='completed' AND credit_period NOT LIKE 'complimentary:%'",
     rootId,
   );
+  // Where guests stopped seeing the photo once it was reported.
+  let withdrawn: Awaited<ReturnType<typeof withdrawReportedPhoto>> | null =
+    null;
   if (req.method === "GET") {
     if (!row)
       return response({
@@ -124,6 +128,7 @@ export async function photoCorrectionsRoute(req: Request, p: string[], r: Row) {
         },
         `${rootId}:${input.reason}`,
       );
+      withdrawn = await withdrawReportedPhoto(r.id, assetId);
       // Reporting the correction itself is the one-shot allowance recovery
       // path on Pro. Free images are once per account, so on the free plan
       // the report goes to the team instead of restoring an image.
@@ -202,5 +207,6 @@ export async function photoCorrectionsRoute(req: Request, p: string[], r: Row) {
   return response({
     ...correctionView(row!, result?.asset_id),
     isCorrection: !!parentCorrection,
+    ...(withdrawn ? { withdrawn } : {}),
   });
 }

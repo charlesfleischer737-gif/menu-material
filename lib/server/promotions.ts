@@ -166,6 +166,11 @@ async function offerContent(r: Row, draft: Row, ready = false) {
         400,
         `Approve an accurate photo of ${dish.name} first.`,
       );
+      assert(
+        !asset.needs_correction,
+        400,
+        `You reported the photo of ${dish.name} as inaccurate. Choose another photo.`,
+      );
     }
     items.push({ ...item, name: dish.name });
   }
@@ -198,8 +203,10 @@ export async function publicMenu(r: Row, t = now()) {
   if (live.length) {
     const [dishRows, assetRows] = await Promise.all([
       all("SELECT id FROM dishes WHERE restaurant_id=? AND available=1", r.id),
+      // A special whose photo was deleted or reported as inaccurate waits
+      // for another photo.
       all(
-        "SELECT id FROM assets WHERE restaurant_id=? AND approved_at IS NOT NULL AND deleted_at IS NULL",
+        "SELECT id FROM assets WHERE restaurant_id=? AND approved_at IS NOT NULL AND deleted_at IS NULL AND needs_correction=0",
         r.id,
       ),
     ]);

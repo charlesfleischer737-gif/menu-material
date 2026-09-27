@@ -12,6 +12,16 @@ export const PRO_PRICE_LABEL = `$${PRO_PLAN.amountCents / 100}`;
 // Every new public account gets these images once. No card, no expiry.
 export const FREE_SIGNUP_IMAGES = 5;
 
+/**
+ * What comes next for someone out of images: Free's are a one-time grant,
+ * so they don't come back; Pro's arrive with each billing period.
+ */
+export function imagesRenewal(plan?: string | null) {
+  return plan === "pro"
+    ? "Your Pro images renew each billing period."
+    : "Free images don’t renew; see Plans for Pro.";
+}
+
 // What Free keeps. Server checks, Pro badges and pricing copy all read these.
 export const FREE_LIVE_MENUS = 1;
 export const FREE_MENU_DESIGN = {
@@ -40,6 +50,28 @@ export function freeMenuDesign(menu: {
     (menu.appearance ?? FREE_MENU_DESIGN.appearance) ===
       FREE_MENU_DESIGN.appearance &&
     menu.colorMode !== "custom"
+  );
+}
+
+/**
+ * What Free can publish: the basic design, or, for a menu that's already
+ * live, the design and colors it's live in, so a downgrade never forces a
+ * live menu to change its look to fix a price or an allergen.
+ */
+export function freeCanPublish(
+  menu: Parameters<typeof freeMenuDesign>[0] & { color?: string },
+  live?: (Parameters<typeof freeMenuDesign>[0] & { color?: string }) | null,
+) {
+  if (freeMenuDesign(menu)) return true;
+  if (!live) return false;
+  return (
+    (menu.design ?? FREE_MENU_DESIGN.design) ===
+      (live.design ?? FREE_MENU_DESIGN.design) &&
+    (menu.layout ?? "classic") === (live.layout ?? "classic") &&
+    (menu.appearance ?? FREE_MENU_DESIGN.appearance) ===
+      (live.appearance ?? FREE_MENU_DESIGN.appearance) &&
+    (menu.colorMode ?? "restaurant") === (live.colorMode ?? "restaurant") &&
+    (menu.colorMode !== "custom" || menu.color === live.color)
   );
 }
 

@@ -16,12 +16,19 @@ let offset = 0;
 Date.now = () => realNow() + offset;
 const { handle } = await import("../lib/server/api.ts");
 const { one, all, run, id, digest } = await import("../lib/server/core.ts");
-const { reserveAi, settledCents } = await import("../lib/server/safeguards.ts");
+const {
+  reserveAi,
+  settledCents,
+  aiBudgetRoom,
+  freeBudgetShare,
+  GUEST_AI,
+  MENU_READING_TIMEOUT_MS,
+} = await import("../lib/server/safeguards.ts");
 const { tick, provider, enqueue, jobStatus } =
   await import("../lib/server/generation.ts");
 const { flushMonitoring, reportError } =
   await import("../lib/server/monitoring.ts");
-const { env } = await import("../lib/local-runtime.ts");
+const { env, keptAlive } = await import("../lib/local-runtime.ts");
 
 const image = readFileSync("public/pasta.jpg");
 const logs = [];
@@ -256,9 +263,42 @@ try {
     40,
   );
   assert.equal(settledCents("caption", {}), null, "no usage keeps it all");
-  assert.equal(settledCents("image", {}), null, "no estimate keeps it all");
+  // Without an estimate, an image counts the usage the Images API reports:
+  // text input, image input and output tokens, at gpt-image-1's list prices
+  // by default. Input not reported as text is priced as image input.
+  assert.equal(
+    settledCents("image", {
+      input_tokens: 1000,
+      input_tokens_details: { text_tokens: 200, image_tokens: 800 },
+      output_tokens: 4000,
+    }),
+    16.9,
+    "$0.001 + $0.008 + $0.16",
+  );
+  assert.equal(
+    settledCents("image", { input_tokens: 500, output_tokens: 1000 }),
+    4.5,
+  );
+  assert.equal(
+    settledCents("image", {}),
+    null,
+    "no estimate and no usage keeps it all",
+  );
+  assert.equal(settledCents("image", { output_tokens: 1000 }), null);
+  env.AI_IMAGE_OUTPUT_USD_PER_MILLION_TOKENS = "80";
+  assert.equal(
+    settledCents("image", { input_tokens: 0, output_tokens: 1000 }),
+    8,
+    "configured image prices apply",
+  );
+  delete env.AI_IMAGE_OUTPUT_USD_PER_MILLION_TOKENS;
   env.IMAGE_COST_ESTIMATE_USD = "0.07";
   assert.equal(settledCents("image", {}), 7);
+  assert.equal(
+    settledCents("image", { input_tokens: 500, output_tokens: 1000 }),
+    7,
+    "a set estimate wins over usage",
+  );
   env.AI_TEXT_INPUT_USD_PER_MILLION_TOKENS = "2";
   env.AI_TEXT_OUTPUT_USD_PER_MILLION_TOKENS = "8";
   assert.equal(
@@ -270,6 +310,9 @@ try {
   delete env.AI_TEXT_OUTPUT_USD_PER_MILLION_TOKENS;
   checks++;
   env.AI_FREE_DAILY_TEXT_CALLS = "1000";
+  // Guests and Free plans share only part of the site-wide budget (section
+  // 17); here they may use all of it.
+  env.AI_FREE_BUDGET_SHARE_PERCENT = "100";
   const kitchen = await restaurant("settle-kitchen");
   await provider(
     "responses",
@@ -286,7 +329,8 @@ try {
     { status: "submitted", reserved_cents: 0.03 },
   );
   checks++;
-  // A reservation of $0.10 per caption would reach this $2.50 budget after 25.
+  // Unsettled, 60 captions at their $0.01 reservation would leave no room for
+  // an image in this $2.50 budget.
   await run("DELETE FROM ai_spend");
   await siteBudget(250);
   for (let n = 0; n < 60; n++)
@@ -343,13 +387,14 @@ try {
       )
     ).map((row) => [row.id, row.status, row.reserved_cents]),
     [
-      ["caption-dropped", "uncertain", 10],
-      ["caption-unreadable", "uncertain", 10],
+      ["caption-dropped", "uncertain", 1],
+      ["caption-unreadable", "uncertain", 1],
     ],
   );
   checks++;
-  // Images settle to IMAGE_COST_ESTIMATE_USD when it is set, otherwise they
-  // keep their full reservation.
+  // Images settle to IMAGE_COST_ESTIMATE_USD when it is set, otherwise to
+  // the cost of the usage the provider reports; without usage they keep
+  // their full reservation.
   const estimated = await newJob(kitchen);
   await tick(kitchen.rid);
   assert.equal(await jobState(estimated.id), "completed");
@@ -361,6 +406,7 @@ try {
     [estimatedSpend.status, estimatedSpend.reserved_cents],
     ["submitted", 7],
   );
+  assert.equal((await output(estimated.id)).cost_estimate, 0.07);
   delete env.IMAGE_COST_ESTIMATE_USD;
   const unestimated = await newJob(kitchen, { revision: "brighter" });
   await tick(kitchen.rid);
@@ -371,10 +417,32 @@ try {
         `${(await output(unestimated.id)).id}:1`,
       )
     ).reserved_cents,
+    4.5,
+    "500 input and 1,000 output tokens",
+  );
+  assert.equal(
+    (await output(unestimated.id)).cost_estimate,
+    0.045,
+    "the dashboard shows the measured cost",
+  );
+  const unmeasured = await newJob(kitchen, { revision: "no usage" });
+  imagePlan.push(() =>
+    Response.json({ data: [{ b64_json: image.toString("base64") }] }),
+  );
+  await tick(kitchen.rid);
+  assert.equal(await jobState(unmeasured.id), "completed");
+  assert.equal(
+    (
+      await one(
+        "SELECT reserved_cents FROM ai_spend WHERE id=?",
+        `${(await output(unmeasured.id)).id}:1`,
+      )
+    ).reserved_cents,
     200,
   );
   checks++;
   delete env.AI_FREE_DAILY_TEXT_CALLS;
+  delete env.AI_FREE_BUDGET_SHARE_PERCENT;
 
   // 2. Free plans have a daily cap on calls other than images.
   await run("DELETE FROM ai_spend");
@@ -966,6 +1034,312 @@ try {
   );
   checks++;
 
+  // 16. With default settings a finished image counts the cost of the usage
+  // the provider reports, not its $2 reservation, so fifty images in a day no
+  // longer hold the next one: neither ten free accounts' five each before a
+  // Pro image, nor one Pro account's fifty before a new signup's first.
+  await settleLeftovers();
+  await run("DELETE FROM ai_spend");
+  await siteBudget(10000);
+  async function makeImages(fixture, count) {
+    const jobs = [];
+    for (let n = 0; n < count; n++)
+      jobs.push((await newJob(fixture, { revision: id() })).id);
+    for (let n = 0; n < count; n++) await tick(fixture.rid);
+    for (const job of jobs) assert.equal(await jobState(job), "completed");
+  }
+  for (let n = 0; n < 10; n++)
+    await makeImages(await restaurant(`fifty-free-${n}`), 5);
+  const fifty = await one(
+    "SELECT COUNT(*) AS n,SUM(reserved_cents) AS cents FROM ai_spend WHERE budget_day=? AND kind='image' AND status='submitted'",
+    day(),
+  );
+  assert.deepEqual([fifty.n, fifty.cents], [50, 225], "4.5 cents each");
+  // The next image, a Pro restaurant's, is made; and after that account's
+  // own fifty, so is a new signup's first.
+  const fiftyPro = await restaurant("fifty-pro", { paid: true });
+  await makeImages(fiftyPro, 1);
+  await makeImages(fiftyPro, 49);
+  await makeImages(await restaurant("fifty-signup"), 1);
+  checks++;
+
+  // 17. Guests and Free plans together use at most
+  // AI_FREE_BUDGET_SHARE_PERCENT (default 70) of the site-wide budget, checked
+  // in the same atomic reservation, so an active paid plan always has the
+  // rest. At 100 they share all of it, as before.
+  assert.equal(freeBudgetShare(), 70);
+  await settleLeftovers();
+  await run("DELETE FROM ai_spend");
+  await siteBudget(1000);
+  env.AI_FREE_BUDGET_SHARE_PERCENT = "60";
+  const shareFree = await restaurant("share-free"),
+    sharePro = await restaurant("share-pro", { paid: true });
+  for (let n = 0; n < 3; n++)
+    await reserveAi({ restaurantId: shareFree.rid, kind: "image" });
+  await assert.rejects(
+    () => reserveAi({ restaurantId: shareFree.rid, kind: "image" }),
+    (e) => e.status === 429 && /AI budget has been reached/.test(e.message),
+  );
+  await assert.rejects(
+    () => reserveAi({ restaurantId: GUEST_AI, kind: "analysis" }),
+    (e) => e.status === 429 && /Tell us what’s in your photo/.test(e.message),
+    "guests share the same part",
+  );
+  assert.equal(await aiBudgetRoom(shareFree.rid, "image"), false);
+  assert.equal(await aiBudgetRoom(sharePro.rid, "image"), true);
+  for (let n = 0; n < 2; n++)
+    await reserveAi({ restaurantId: sharePro.rid, kind: "image" });
+  await assert.rejects(
+    () => reserveAi({ restaurantId: sharePro.rid, kind: "image" }),
+    (e) => e.status === 429,
+    "the site-wide budget still applies",
+  );
+  assert.deepEqual(
+    (
+      await all(
+        "SELECT paid,SUM(reserved_cents) AS cents FROM ai_spend GROUP BY paid ORDER BY paid",
+      )
+    ).map((row) => [row.paid, row.cents]),
+    [
+      [0, 600],
+      [1, 400],
+    ],
+  );
+  checks++;
+  // Queued images: a Free restaurant's waits while a paid one's is made.
+  await run("DELETE FROM ai_spend");
+  await run(
+    "INSERT INTO ai_spend (id,restaurant_id,kind,budget_day,reserved_cents,status,created_at) VALUES (?,?,'caption',?,500,'submitted',?)",
+    id(),
+    shareFree.rid,
+    day(),
+    Date.now(),
+  );
+  const waitingFree = await newJob(shareFree),
+    madePro = await newJob(sharePro);
+  await tick(shareFree.rid);
+  await tick(sharePro.rid);
+  out = await output(waitingFree.id);
+  assert.deepEqual([out.status, out.error], ["queued", HELD]);
+  assert.equal(await jobState(madePro.id), "completed");
+  env.AI_FREE_BUDGET_SHARE_PERCENT = "100";
+  offset += 61000;
+  await tick(shareFree.rid);
+  assert.equal(await jobState(waitingFree.id), "completed");
+  delete env.AI_FREE_BUDGET_SHARE_PERCENT;
+  checks++;
+
+  // 18. A text call runs on to its settlement if the page that asked for it
+  // closes: it is kept alive from the start, as images are. (On Workers a
+  // closed connection cancels whatever is not kept alive.)
+  await run("DELETE FROM ai_spend");
+  await siteBudget(10000);
+  env.AI_FREE_DAILY_TEXT_CALLS = "1000";
+  const closing = await restaurant("closing-tab");
+  let answer = null;
+  textReply = () =>
+    new Promise((resolve) => {
+      answer = () =>
+        resolve(
+          Response.json({
+            output: [
+              { content: [{ type: "output_text", text: "Fixture caption" }] },
+            ],
+            usage: { input_tokens: 300, output_tokens: 60 },
+          }),
+        );
+    });
+  const alreadyKept = new Set(keptAlive);
+  const leaving = provider(
+    "responses",
+    "POST",
+    { input: "caption" },
+    { restaurantId: closing.rid, kind: "caption", key: "caption-kept" },
+  );
+  const kept = [...keptAlive].filter((work) => !alreadyKept.has(work));
+  assert.equal(kept.length, 1, "kept alive before anything is sent");
+  await eventually(() => !!answer);
+  assert.equal(
+    (await one("SELECT status FROM ai_spend WHERE id='caption-kept'")).status,
+    "reserved",
+  );
+  answer();
+  // What a Worker keeps running once the client has gone.
+  await Promise.all(kept);
+  assert.deepEqual(
+    {
+      ...(await one(
+        "SELECT status,reserved_cents FROM ai_spend WHERE id='caption-kept'",
+      )),
+    },
+    { status: "submitted", reserved_cents: 0.03 },
+  );
+  await leaving;
+  textReply = null;
+  delete env.AI_FREE_DAILY_TEXT_CALLS;
+  checks++;
+
+  // 19. A call cut off before it settled (a Worker stopped mid-call, or a
+  // menu reading outliving the time a closed tab allows) no longer holds the
+  // budget until midnight UTC. With a provider that never answers, visitors'
+  // photo checks fill the guests' share and hold a Pro image. Twice their
+  // timeout later the worker's housekeeping counts them as uncertain, at the
+  // most a finished check cost that day; a menu reading waits twice its own
+  // longer timeout.
+  await settleLeftovers();
+  await run("DELETE FROM ai_spend");
+  await siteBudget(250);
+  env.AI_ANALYSIS_RESERVE_USD = "0.25";
+  const guestCheck = async (bytes, network) => {
+    const form = new FormData();
+    form.set("file", new File([bytes], "photo.jpg", { type: "image/jpeg" }));
+    const res = await handle(
+      new Request("http://localhost/api/guest-photo-analysis", {
+        method: "POST",
+        headers: { "cf-connecting-ip": network },
+        body: form,
+      }),
+    );
+    return { status: res.status, data: await res.json() };
+  };
+  const photo = (n) => Buffer.concat([image, Buffer.from([n])]);
+  const replyReading = () =>
+    Response.json({
+      output: [
+        {
+          content: [
+            {
+              type: "output_text",
+              text: JSON.stringify({
+                family: "Pizza",
+                subject: "Margherita pizza",
+                confidence: "high",
+                drinkKind: "other",
+                menuDocument: false,
+                issue: "none",
+              }),
+            },
+          ],
+        },
+      ],
+      usage: { input_tokens: 400, output_tokens: 40 },
+    });
+  const workerTick = () =>
+    call("internal/tick", {
+      body: {},
+      headers: { authorization: "Bearer fixture-runner-secret" },
+    });
+  const guestSpend = async (status) =>
+    (
+      await all(
+        "SELECT reserved_cents FROM ai_spend WHERE restaurant_id=? AND status=? ORDER BY created_at",
+        GUEST_AI,
+        status,
+      )
+    ).map((row) => row.reserved_cents);
+  textReply = replyReading;
+  assert.equal((await guestCheck(photo(0), "192.0.2.1")).status, 200);
+  assert.deepEqual(await guestSpend("submitted"), [0.03]);
+  textReply = () => new Promise(() => {});
+  // Their visitors leave, and nothing answers or settles them.
+  for (let n = 1; n <= 6; n++) void guestCheck(photo(n), `192.0.2.${10 + n}`);
+  const reader = await restaurant("cut-reader");
+  void provider(
+    "responses",
+    "POST",
+    {},
+    { restaurantId: reader.rid, kind: "import", key: "import-cut" },
+    MENU_READING_TIMEOUT_MS,
+  );
+  await eventually(
+    async () =>
+      (await one("SELECT COUNT(*) AS n FROM ai_spend WHERE status='reserved'"))
+        .n === 7,
+  );
+  const cutPro = await restaurant("cut-pro", { paid: true });
+  assert.equal(await aiBudgetRoom(cutPro.rid, "image"), false, "held");
+  assert.equal((await guestCheck(photo(7), "192.0.2.30")).status, 429);
+  offset += 40000;
+  await workerTick();
+  assert.deepEqual(await guestSpend("reserved"), Array(6).fill(25));
+  offset += 61000;
+  await workerTick();
+  assert.deepEqual(await guestSpend("uncertain"), Array(6).fill(0.03));
+  assert.deepEqual(
+    {
+      ...(await one(
+        "SELECT status,reserved_cents FROM ai_spend WHERE id='import-cut'",
+      )),
+    },
+    { status: "reserved", reserved_cents: 5 },
+  );
+  assert.equal(await aiBudgetRoom(cutPro.rid, "image"), true, "no longer");
+  textReply = replyReading;
+  assert.equal((await guestCheck(photo(8), "192.0.2.31")).status, 200);
+  offset += 150000;
+  await workerTick();
+  assert.deepEqual(
+    {
+      ...(await one(
+        "SELECT status,reserved_cents FROM ai_spend WHERE id='import-cut'",
+      )),
+    },
+    { status: "uncertain", reserved_cents: 5 },
+    "no reading finished today, so it keeps its $0.05 reservation",
+  );
+  delete env.AI_ANALYSIS_RESERVE_USD;
+  checks++;
+
+  // 20. Before signup, the sample photo has a fixed reading, and a photo read
+  // in the past week is answered from that reading, so neither calls the AI
+  // service or counts toward a network's daily checks. Besides 20 an hour,
+  // each network gets AI_GUEST_DAILY_CALLS_PER_NETWORK (default 60) a day.
+  await run("DELETE FROM ai_spend");
+  await siteBudget(10000);
+  let readings = 0;
+  textReply = () => {
+    readings++;
+    return replyReading();
+  };
+  const sampleFile = readFileSync("public/burger-phone-original.jpg");
+  const sampleRead = await guestCheck(sampleFile, "192.0.2.40");
+  assert.equal(sampleRead.status, 200);
+  assert.deepEqual(
+    [
+      sampleRead.data.family,
+      sampleRead.data.confidence,
+      sampleRead.data.menuDocument,
+    ],
+    ["Burgers & sandwiches", "high", false],
+  );
+  const firstRead = await guestCheck(photo(100), "192.0.2.41");
+  const againRead = await guestCheck(photo(100), "192.0.2.42");
+  assert.equal(firstRead.data.subject, "Margherita pizza");
+  assert.deepEqual(againRead.data, firstRead.data);
+  assert.equal(readings, 1, "the sample and a repeated photo make no call");
+  assert.deepEqual(await guestSpend("submitted"), [0.03]);
+  checks++;
+  env.AI_GUEST_DAILY_CALLS_PER_NETWORK = "2";
+  for (const n of [101, 102])
+    assert.equal((await guestCheck(photo(n), "192.0.2.43")).status, 200);
+  const capped = await guestCheck(photo(103), "192.0.2.43");
+  assert.equal(capped.status, 429);
+  assert.match(capped.data.error, /used up for today/);
+  assert.equal((await guestCheck(photo(100), "192.0.2.43")).status, 200);
+  assert.equal((await guestCheck(sampleFile, "192.0.2.43")).status, 200);
+  assert.equal(readings, 3);
+  offset += 86400000;
+  assert.equal((await guestCheck(photo(103), "192.0.2.43")).status, 200);
+  delete env.AI_GUEST_DAILY_CALLS_PER_NETWORK;
+  checks++;
+  // A reading is kept a week.
+  offset += 8 * 86400000;
+  await workerTick();
+  assert.equal((await guestCheck(photo(100), "192.0.2.44")).status, 200);
+  assert.equal(readings, 5, "read again once the week is over");
+  textReply = null;
+  checks++;
+
   // A once-a-day budget alert that fails to deliver is retried within
   // minutes, not the next day, and is still sent only once that day.
   {
@@ -1003,8 +1377,55 @@ try {
     checks++;
   }
 
+  // Before signup the guest studio hears whether an image can be made now,
+  // and afterwards the account does: a yes or no, never spend figures.
+  {
+    await run("DELETE FROM ai_spend");
+    await siteBudget(1000);
+    const free = await restaurant("images-free"),
+      paid = await restaurant("images-pro", { paid: true });
+    // Signed out, a Free account, a paid one.
+    const available = async () => {
+      const answers = [];
+      for (const cookie of [undefined, free.cookie, paid.cookie])
+        answers.push((await call("state", { cookie })).data.imagesAvailable);
+      return answers;
+    };
+    assert.deepEqual(await available(), [true, true, true]);
+    assert.doesNotMatch(
+      JSON.stringify((await call("state")).data),
+      /cents|spent|budget/i,
+    );
+    // Guests and Free plans have used their share; paid plans keep the rest.
+    for (let n = 0; n < 3; n++)
+      await reserveAi({ restaurantId: free.rid, kind: "image" });
+    assert.deepEqual(await available(), [false, false, true]);
+    // The whole day's budget is used.
+    for (let n = 0; n < 2; n++)
+      await reserveAi({ restaurantId: paid.rid, kind: "image" });
+    assert.deepEqual(await available(), [false, false, false]);
+    await run("DELETE FROM ai_spend");
+    assert.deepEqual(await available(), [true, true, true]);
+    // AI work paused in Administration.
+    await run(
+      "UPDATE app_settings SET value=? WHERE key='ai-controls'",
+      JSON.stringify({ paused: true, dailyBudgetCents: 1000 }),
+    );
+    assert.deepEqual(await available(), [false, false, false]);
+    await siteBudget(1000);
+    // No OpenAI key.
+    env.OPENAI_API_KEY = "";
+    try {
+      assert.deepEqual(await available(), [false, false, false]);
+    } finally {
+      env.OPENAI_API_KEY = "fixture-only";
+    }
+    assert.deepEqual(await available(), [true, true, true]);
+    checks++;
+  }
+
   console.log(
-    `PASS: ${checks} AI budget and job checks: settled spend, free daily cap, paid-plan image budget, stuck-job repair, provider retries and refusals, independent image settling, --once window and runner capacity, uncertain spend, legacy deadlines on an index, storage before calls, budget holds, description prompts, lenient saved styles and same-day retries of failed daily alerts. Provider calls and webhooks are fixtures.`,
+    `PASS: ${checks} AI budget and job checks: settled spend, free daily cap, paid-plan image budget, stuck-job repair, provider retries and refusals, independent image settling, --once window and runner capacity, uncertain spend, legacy deadlines on an index, storage before calls, budget holds, description prompts, lenient saved styles, fifty images settled from usage, the guests' and Free plans' share, text calls kept alive, cut-off calls settled by housekeeping, the sample, cached and daily-capped photo checks before signup, same-day retries of failed daily alerts, and whether images can be made, told before signup. Provider calls and webhooks are fixtures.`,
   );
 } finally {
   runner?.kill();

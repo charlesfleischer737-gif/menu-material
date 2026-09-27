@@ -1,5 +1,11 @@
 import type { Row } from "./core";
-import { effectiveStyle, entitlementSql, requirePro } from "./entitlements";
+import {
+  effectiveStyle,
+  entitlementSql,
+  imageEntitlement,
+  requirePro,
+} from "./entitlements";
+import { imagesRenewal } from "../plans";
 import { settleCorrection } from "./correction-policy";
 import { z } from "zod";
 import { checkStudioGeneration } from "./studio-release";
@@ -19,6 +25,8 @@ import {
   aiControls,
   reserveStorage,
   releaseStorage,
+  settledCents,
+  TEXT_TIMEOUT_MS,
 } from "./safeguards";
 import {
   all,
@@ -528,12 +536,20 @@ export async function enqueue(
       );
       return raced;
     }
+    // Free images on their way, or already had by this email, are explained
+    // rather than an upgrade offered.
+    if (r.free_grant) {
+      const { freeImagesRefusal } = await import("./free-grants");
+      const refusal = await freeImagesRefusal(r.id);
+      assert(!refusal, 402, refusal);
+    }
   }
-  assert(
-    job,
-    402,
-    `You need ${count} image${count === 1 ? "" : "s"} remaining for this request. Check your plan to upgrade or see when your allowance renews.`,
-  );
+  // Free images are a one-time grant, so never "wait until they renew".
+  if (!job)
+    throw new AppError(
+      402,
+      `You need ${count} image${count === 1 ? "" : "s"} remaining for this request. ${imagesRenewal((await imageEntitlement(r.id)).plan)}`,
+    );
   await event(
     r.id,
     "generation_requested",
@@ -581,12 +597,24 @@ export async function enqueue(
   if (parent) await event(r.id, "revision_requested", jobId).catch(() => {});
   return job;
 }
-export async function provider(
+// A call runs on to its settlement even if the page that asked for it closes.
+// On Workers a closed connection cancels the request, and an unsettled
+// reservation would count in full until midnight UTC.
+export function provider(
   path: string,
   method = "GET",
   body?: unknown,
   charge?: AiCharge,
-  timeoutMs = 25000,
+  timeoutMs = TEXT_TIMEOUT_MS,
+) {
+  return keepAlive(send(path, method, body, charge, timeoutMs));
+}
+async function send(
+  path: string,
+  method: string,
+  body: unknown,
+  charge: AiCharge | undefined,
+  timeoutMs: number,
 ) {
   assert(
     method !== "POST" || charge,
@@ -837,6 +865,9 @@ async function saveImage(o: Row, result: string, usage: unknown) {
   const job = await one("SELECT * FROM jobs WHERE id=?", o.job_id);
   assert(job, 404, "Generation not found.");
   const { model, quality, size } = JSON.parse(job.details).rendering ?? {};
+  // The dashboard's estimated provider cost: IMAGE_COST_ESTIMATE_USD, or the
+  // measured cost of the reported usage.
+  const cents = settledCents("image", usage);
   await db().batch([
     db()
       .prepare(
@@ -859,9 +890,7 @@ async function saveImage(o: Row, result: string, usage: unknown) {
       .bind(
         aId,
         JSON.stringify(usage ?? {}),
-        config("IMAGE_COST_ESTIMATE_USD")
-          ? Number(config("IMAGE_COST_ESTIMATE_USD"))
-          : null,
+        cents === null ? null : cents / 100,
         o.id,
       ),
   ]);

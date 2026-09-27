@@ -4,8 +4,10 @@ import { Copy } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { StudioReleasePanel } from "./studio-release-panel";
 import { StudioProgressPanel } from "./studio-progress-panel";
+import { LaunchFunnelPanel } from "./launch-funnel-panel";
 import { api, type Row } from "@/lib/client";
 import CreativeHeader from "./creative-header";
+import { MenuReports } from "./menu-reports";
 import WorkspacePlaceholder from "./workspace-placeholder";
 import {
   AdminOperationStatus,
@@ -26,7 +28,10 @@ export function Admin({ act, refresh, busy }: AdminProps) {
     [reset, setReset] = useState(false),
     [loadError, setLoadError] = useState(""),
     [loading, setLoading] = useState(true),
-    [checkedAt, setCheckedAt] = useState(0);
+    [checkedAt, setCheckedAt] = useState(0),
+    // Shown above the list, since a deleted restaurant's card (and the
+    // status beside its controls) goes with it.
+    [deleted, setDeleted] = useState("");
   const loadRequest = useRef<Promise<void> | null>(null);
   const invite = useAdminOperation(act, busy);
   const aiOperation = useAdminOperation(act, busy);
@@ -115,6 +120,14 @@ export function Admin({ act, refresh, busy }: AdminProps) {
           ))}
         </section>
       )}
+      {data && data.menuReports?.length > 0 && (
+        <MenuReports
+          reports={data.menuReports}
+          busy={busy || (loading ? "Refreshing administration" : "")}
+          act={act}
+          done={load}
+        />
+      )}
       {data && (
         <AiOperations
           key={JSON.stringify(data.controls)}
@@ -138,6 +151,7 @@ export function Admin({ act, refresh, busy }: AdminProps) {
         />
       )}
       {data && <StudioProgressPanel />}
+      {data && <LaunchFunnelPanel />}
       {data && (
         <section className="admin-access-panel">
           <h2>Account access</h2>
@@ -273,6 +287,11 @@ export function Admin({ act, refresh, busy }: AdminProps) {
           No restaurants yet. Create an invitation to welcome the first owner.
         </p>
       )}
+      {deleted && (
+        <p className="admin-empty-note" role="status">
+          {deleted}
+        </p>
+      )}
       <div className="admin-restaurants">
         {data?.restaurants.map((r: Row) => (
           <AdminRestaurant
@@ -284,6 +303,7 @@ export function Admin({ act, refresh, busy }: AdminProps) {
               await load();
               await refresh();
             }}
+            onDeleted={() => setDeleted(`${r.name}’s account was deleted.`)}
           />
         ))}
       </div>
@@ -648,15 +668,18 @@ function AdminRestaurant({
   act,
   refresh,
   busy,
-}: AdminProps & { restaurant: Row }) {
+  onDeleted,
+}: AdminProps & { restaurant: Row; onDeleted: () => void }) {
   const [allowance, setAllowance] = useState(r.allowance),
     [paused, setPaused] = useState(!!r.paused),
     [proUntil, setProUntil] = useState(compDate(r.pro_until)),
     [budget, setBudget] = useState(r.daily_budget_cents / 100),
-    [minutes, setMinutes] = useState(15);
+    [minutes, setMinutes] = useState(15),
+    [confirmation, setConfirmation] = useState("");
   const settings = useAdminOperation(act, busy);
   const support = useAdminOperation(act, busy);
   const takedown = useAdminOperation(act, busy);
+  const removal = useAdminOperation(act, busy);
   return (
     <div className="admin-restaurant">
       <div>
@@ -674,7 +697,7 @@ function AdminRestaurant({
             </span>
           )}
           {r.cost_estimate === null
-            ? "Cost estimate not configured"
+            ? "No estimated image cost yet"
             : `Estimated provider cost: $${Number(r.cost_estimate).toFixed(2)}`}{" "}
           · {r.support_minutes || 0} support minutes
         </small>
@@ -849,6 +872,49 @@ function AdminRestaurant({
         </Button>
       </div>
       <AdminOperationStatus feedback={takedown.feedback} />
+      <p>
+        Deleting the account removes the restaurant, everything in it and the
+        owner’s sign-in. It can’t be undone. A live Pro subscription must be
+        cancelled first.
+      </p>
+      <div className="admin-row-controls">
+        <label className="field" style={{ flex: "1 1 240px" }}>
+          Type the owner’s email to delete
+          <input
+            aria-label={`Type ${r.email} to delete ${r.name}’s account`}
+            disabled={!!busy}
+            autoComplete="off"
+            spellCheck={false}
+            value={confirmation}
+            placeholder={r.email}
+            onChange={(e) => {
+              setConfirmation(e.target.value);
+              removal.changed("");
+            }}
+          />
+        </label>
+        <Button
+          variant="destructive"
+          disabled={
+            !!busy ||
+            confirmation.trim().toLowerCase() !== String(r.email).toLowerCase()
+          }
+          aria-label={`Delete ${r.name}’s account permanently`}
+          onClick={() =>
+            removal.run("Deleting account", "Account deleted.", async () => {
+              await api("admin/delete-account", {
+                id: r.id,
+                confirm: confirmation,
+              });
+              onDeleted();
+              await refresh();
+            })
+          }
+        >
+          Delete account
+        </Button>
+      </div>
+      <AdminOperationStatus feedback={removal.feedback} />
     </div>
   );
 }
@@ -859,6 +925,7 @@ const readinessLabels: Record<string, string> = {
   worker: "Background worker",
   queue: "Job queue",
   aiBudget: "AI budget",
+  billing: "Billing",
 };
 const ago = (seconds: number) =>
   seconds < 120 ? `${seconds} s` : `${Math.round(seconds / 60)} min`;
@@ -878,18 +945,32 @@ function readinessDetail(name: string, check: Row) {
     }`;
   if (name === "aiBudget")
     return `${check.percent}% of today’s budget used${
-      check.status === "paused" ? "; AI work is paused" : ""
-    }`;
+      check.freeSharePercent < 100
+        ? `; guests and Free plans have used $${(check.freeSpentCents / 100).toFixed(2)} of their $${(check.freeBudgetCents / 100).toFixed(2)} share${check.freeShareUsedUp ? ", so their new AI work waits" : ""}`
+        : ""
+    }${check.status === "paused" ? "; AI work is paused" : ""}`;
+  if (name === "billing")
+    return check.renewalsOverdue
+      ? `${check.renewalsOverdue} paid ${check.renewalsOverdue === 1 ? "month" : "months"} ended over three hours ago with no renewal from Stripe on record; check the webhook and Stripe settings`
+      : check.missing?.length
+        ? `switched on, but ${check.missing.join(", ")} ${check.missing.length === 1 ? "is" : "are"} missing`
+        : check.enabled
+          ? "on"
+          : "off";
   return `${check.latencyMs} ms`;
 }
 function ReadinessStatus({ readiness }: { readiness: Row }) {
   const failed = readiness.failed?.length || 0;
+  const unset = (readiness.launch || []).filter((item: Row) => !item.ok)
+    .length;
   return (
-    <details className="admin-explanation" open={failed > 0}>
+    <details className="admin-explanation" open={failed > 0 || unset > 0}>
       <summary>
         {failed
           ? `Readiness: ${failed} ${failed === 1 ? "check needs" : "checks need"} attention.`
           : "Readiness: all checks passing."}
+        {unset > 0 &&
+          ` ${unset} launch ${unset === 1 ? "setting needs" : "settings need"} attention.`}
       </summary>
       {Object.entries(readiness.checks as Record<string, Row>).map(
         ([name, check]) => (
@@ -911,6 +992,19 @@ function ReadinessStatus({ readiness }: { readiness: Row }) {
           : "server logs only (set ERROR_WEBHOOK_URL)"}
         . Point an uptime monitor at /api/health/ready.
       </p>
+      {readiness.launch?.length > 0 && (
+        <>
+          <h3>Launch settings</h3>
+          <ul className="admin-launch-checks">
+            {(readiness.launch as Row[]).map((item) => (
+              <li key={item.key}>
+                <strong>{item.ok ? "OK" : "Needs attention"}:</strong>{" "}
+                {item.detail}
+              </li>
+            ))}
+          </ul>
+        </>
+      )}
     </details>
   );
 }
@@ -1010,7 +1104,10 @@ function AiOperations({
         <summary>How budgets and pausing work</summary>
         <p>
           Budgets reset at midnight UTC. Reservations include captions, image
-          guidance, menu reading and images; uncertain requests remain counted.
+          guidance, menu reading and images; finished requests count their
+          measured cost, and uncertain requests remain counted. Guests and Free
+          plans together can use only part of the site-wide budget (set by
+          AI_FREE_BUDGET_SHARE_PERCENT), so paid plans always have the rest.
         </p>
         <p>
           These limits use configured cost estimates, not invoice totals.

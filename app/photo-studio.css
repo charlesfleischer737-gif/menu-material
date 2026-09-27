@@ -240,6 +240,19 @@
   align-items: center;
   gap: 6px;
 }
+/* Before signup: where a photo goes, under the drop zone. */
+.st-stage-foot > .st-guest-privacy {
+  align-items: flex-start;
+}
+.st-guest-privacy > svg {
+  flex: none;
+  margin-top: 2px;
+}
+.st-guest-privacy a {
+  color: inherit;
+  text-decoration: underline;
+  text-underline-offset: 2px;
+}
 .st-note {
   display: flex;
   align-items: flex-start;
@@ -716,6 +729,9 @@ textarea.st-input {
 }
 .st-details {
   min-height: 84px;
+}
+.st-field + .st-details {
+  margin-top: 12px;
 }
 
 /* Create: sticky at the foot of the inspector on larger screens. */
