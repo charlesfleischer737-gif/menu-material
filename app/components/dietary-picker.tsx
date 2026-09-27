@@ -140,8 +140,9 @@ export default function DietaryPicker({
       </label>
       <small>
         Only add what you can confirm. Guests can filter by “Suitable for” and
-        hide dishes by allergen. Until a dish has its allergens, or No listed
-        allergens, guests see “{unlistedAllergensText}”.
+        hide dishes by allergen. No listed allergens means none of the{" "}
+        {allergenTags.length}, More allergens included. A dish with neither
+        shows guests “{unlistedAllergensText}”.
       </small>
     </div>
   );
