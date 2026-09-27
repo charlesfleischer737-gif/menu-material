@@ -503,8 +503,8 @@ export function MenuItemInspector({
         />
         {item.dishId && (
           <p className="md-help">
-            Guests always see the allergens in My Dishes, and a diet shows only
-            if My Dishes has it too.
+            Guests always see the allergens in My Dishes. A diet, or No listed
+            allergens, shows only if My Dishes has it too.
           </p>
         )}
       </details>

@@ -1,9 +1,10 @@
 import assert from "node:assert/strict";
 import { existsSync, mkdtempSync, readFileSync, rmSync } from "node:fs";
-import { registerHooks } from "node:module";
+import { createRequire, registerHooks } from "node:module";
 import { tmpdir } from "node:os";
 import { join } from "node:path";
 import sharp from "sharp";
+import ts from "typescript";
 
 const root = mkdtempSync(join(tmpdir(), "menu-material-site-metadata-"));
 process.env.MENU_MATERIAL_DATA_DIR = root;
@@ -175,6 +176,86 @@ try {
   assert.doesNotMatch(JSON.stringify(data), /9\.99|Pro\b/);
   checks += 4;
 
+  // The homepage's Menus & QR codes, Posts and FAQ sections, as the server
+  // renders them. What they say Free and Pro include stays in step with the
+  // plans, their screenshots are sized and lazy, and the training answer
+  // links where the privacy page does, without promising retention periods.
+  const requireCjs = createRequire(import.meta.url);
+  const React = requireCjs("react");
+  const { renderToStaticMarkup } = requireCjs("react-dom/server");
+  const render = (file, modules) => {
+    const { outputText } = ts.transpileModule(
+      readFileSync(`app/components/${file}`, "utf8"),
+      {
+        compilerOptions: {
+          jsx: ts.JsxEmit.ReactJSX,
+          module: ts.ModuleKind.CommonJS,
+          target: ts.ScriptTarget.ES2022,
+        },
+      },
+    );
+    const compiled = { exports: {} };
+    new Function("require", "module", "exports", outputText)(
+      (id) => {
+        assert(id in modules, `${file} imports ${id}`);
+        return modules[id];
+      },
+      compiled,
+      compiled.exports,
+    );
+    return renderToStaticMarkup(React.createElement(compiled.exports.default));
+  };
+  const jsx = { "react/jsx-runtime": requireCjs("react/jsx-runtime") };
+  const product = render("homepage-product.tsx", {
+    ...jsx,
+    "lucide-react": new Proxy({}, { get: () => () => null }),
+    "@/lib/homepage-product": await import("../lib/homepage-product.ts"),
+  });
+  const faq = render("homepage-faq.tsx", jsx);
+  const plans = await import("../lib/plans.ts");
+  const { menuDesignSpec } = await import("../lib/menu-design-system.ts");
+  assert.match(product, /<h2 id="menus-title">[^<]*QR code menu/);
+  assert.match(product, /<h2 id="posts-title">[^<]*Instagram posts/);
+  assert.equal(plans.FREE_LIVE_MENUS, 1);
+  assert.equal(plans.FREE_POST_TEMPLATES.length, 3);
+  for (const claim of [
+    `One live menu in ${menuDesignSpec(plans.FREE_MENU_DESIGN.design).name} design`,
+    plans.proFeatures.menus.title,
+    "Posts and Stories in three designs",
+  ])
+    assert(product.includes(claim), claim);
+  const shots = product.match(/<img [^>]*>/g);
+  assert.equal(shots.length, 2);
+  for (const tag of shots) {
+    for (const attribute of [
+      /alt="[^"]{40,}"/,
+      /width="\d+"/,
+      /height="\d+"/,
+      /loading="lazy"/,
+      /decoding="async"/,
+    ])
+      assert.match(tag, attribute);
+    for (const [path] of tag.match(/srcSet="([^"]+)"/)[1].matchAll(/\/\S+/g))
+      assert(existsSync("public" + path), path);
+  }
+  assert.deepEqual(
+    [...faq.matchAll(/<summary>([^<]+)<\/summary>/g)].map((m) => m[1]),
+    [
+      "Are the photos made with AI?",
+      "What happens to my original photo?",
+      "Do I approve every photo?",
+      "Who owns the images?",
+      "Are my photos used to train AI?",
+      "How do I cancel Pro?",
+    ],
+  );
+  const dataControls = readFileSync("app/privacy/page.tsx", "utf8").match(
+    /https:\/\/developers\.openai\.com[^"]*/,
+  )[0];
+  assert(faq.includes(`href="${dataControls}"`), dataControls);
+  assert.doesNotMatch(faq, /\d+\s*(hours?|days?|weeks?|months?|years?)\b/);
+  checks += 11;
+
   // /favicon.ico is a real icon file with the classic sizes.
   const icon = readFileSync("public/favicon.ico");
   assert.deepEqual(
@@ -200,5 +281,5 @@ try {
 }
 
 console.log(
-  `Site metadata: ${checks} checks passed (origin, robots.txt, contact and legal settings, sitemap, canonical and link-preview tags, share image, structured data, favicon.ico).`,
+  `Site metadata: ${checks} checks passed (origin, robots.txt, contact and legal settings, sitemap, canonical and link-preview tags, share image, structured data, the homepage's product sections and FAQ, favicon.ico).`,
 );

@@ -1200,6 +1200,12 @@
   font-size: var(--text-subhead);
   text-align: center;
 }
+.mm-menu-allergy {
+  padding-top: 32px;
+  color: #74746a;
+  font-size: 0.875rem;
+  text-align: center;
+}
 @media (max-width: 760px) {
   .mm-import-footer {
     flex-wrap: wrap;

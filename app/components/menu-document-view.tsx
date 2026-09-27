@@ -22,12 +22,20 @@ import {
 } from "@/lib/menu-design-system";
 import MenuPhoto from "./menu-photo";
 import {
+  allergenTags,
+  allergensListed,
   allergyNotice,
-  containsText,
   dietTags,
   dietaryParts,
+  guestAllergenText,
   suitsDiet,
+  unlistedAllergensText,
 } from "@/lib/dietary";
+import {
+  allergenFilterLabel,
+  filterGuestMenu,
+  hiddenDishesText,
+} from "@/lib/guest-menu-filters";
 import CustomerMenuSwitcher from "./customer-menu-switcher";
 import ReportMenu from "./report-menu";
 import {
@@ -50,28 +58,23 @@ import {
 } from "@/lib/restaurant-contact";
 import { isMenuPlacement } from "@/lib/menu-placements";
 
-/** "Vegetarian · Gluten-free · Contains: milk, egg", for search. */
-function guestDietary(values: string[]) {
-  const { diets, allergens, notes } = dietaryParts(values);
-  return [...diets.map((tag) => tag.label), containsText(allergens), ...notes]
-    .filter(Boolean)
-    .join(" · ");
-}
 /**
  * A dish's tags as guests read them: what it suits (with the owner's own
- * notes), then its allergens on a line of their own, "Contains: milk, egg".
+ * notes), then its allergens on a line of their own: "Contains: milk, egg",
+ * the owner's word that it has none, or "Allergens not listed — ask us".
  */
-function DishDietary({ values }: { values: string[] }) {
-  const { diets, allergens, notes } = dietaryParts(values);
+function DishDietary({ values, lang }: { values: string[]; lang?: string }) {
+  const { diets, notes } = dietaryParts(values);
   const suits = [...diets.map((tag) => tag.label), ...notes].join(" · ");
   return (
     <>
       {suits && <p className="md-guest-dietary">{suits}</p>}
-      {!!allergens.length && (
-        <p className="md-guest-dietary md-guest-contains">
-          {containsText(allergens)}
-        </p>
-      )}
+      <p
+        className={`md-guest-dietary ${allergensListed(values) ? "md-guest-contains" : "md-guest-unlisted"}`}
+        lang={lang}
+      >
+        {guestAllergenText(values)}
+      </p>
     </>
   );
 }
@@ -297,7 +300,8 @@ export default function MenuDocumentView({
     [sectionsOverflow, setSectionsOverflow] = useState(false),
     [sectionsAtEnd, setSectionsAtEnd] = useState(false),
     [unavailable, setUnavailable] = useState(false),
-    [diets, setDiets] = useState<string[]>([]);
+    [diets, setDiets] = useState<string[]>([]),
+    [allergens, setAllergens] = useState<string[]>([]);
   const root = useRef<HTMLElement>(null),
     sectionLinks = useRef<HTMLDivElement>(null),
     session = useRef(""),
@@ -496,25 +500,36 @@ export default function MenuDocumentView({
   const chosenDiets = diets.filter((id) =>
     offeredDiets.some((tag) => tag.id === id),
   );
-  const filtered = sections
-    .map((s) => ({
-      ...s,
-      items: s.items.filter(
-        (i) =>
-          chosenDiets.every((id) => suitsDiet(i.dietary, id)) &&
-          `${s.name} ${i.name} ${i.description} ${guestDietary(i.dietary)}`
-            .toLocaleLowerCase(menu.language)
-            .includes(query.toLocaleLowerCase(menu.language)),
-      ),
-    }))
-    .filter((s) => s.items.length);
-  const resultCount = filtered.reduce((n, s) => n + s.items.length, 0);
-  const narrowed = !!query || chosenDiets.length > 0;
-  // Wherever the menu shows diet or allergen details, remind guests to tell
-  // the restaurant, unless the owner's own footer already does.
-  const allergyNote =
-    sections.some((s) => s.items.some((i) => i.dietary.length)) &&
-    !/allerg/i.test(menu.footer);
+  // Hiding allergens needs dishes that list theirs; until one does, every
+  // dish would stay, so the choice isn't offered.
+  const allergenChoice = sections.some((s) =>
+      s.items.some((i) => allergensListed(i.dietary)),
+    ),
+    chosenAllergens = allergenChoice ? allergens : [];
+  const {
+    sections: filtered,
+    shown: resultCount,
+    unlisted,
+  } = filterGuestMenu(sections, {
+    query,
+    diets: chosenDiets,
+    allergens: chosenAllergens,
+    language: menu.language,
+  });
+  const narrowed =
+    !!query || chosenDiets.length > 0 || chosenAllergens.length > 0;
+  const status = narrowed
+    ? `${resultCount} ${resultCount === 1 ? "item matches" : "items match"}${query ? ` “${query}”` : " your choices"}.${
+        chosenAllergens.length && unlisted
+          ? ` ${unlisted} of them ${unlisted === 1 ? "doesn’t" : "don’t"} list allergens.`
+          : ""
+      }`
+    : `All ${resultCount} items shown.`;
+  // Interface text is English; a menu in another language says so.
+  const ui = /^en\b/i.test(menu.language) ? undefined : "en";
+  // Every guest menu reminds guests to tell the restaurant about allergies,
+  // unless the owner's own footer already does.
+  const allergyNote = !/allerg/i.test(menu.footer);
   const searchInput = (
     <input
       type="search"
@@ -542,6 +557,53 @@ export default function MenuDocumentView({
       ))}
     </select>
   );
+  // "Hide dishes with": every listed allergen, so a guest finds theirs even
+  // when no dish here lists it.
+  const allergenFilter = allergenChoice && (
+    <details className="md-guest-allergens" lang={ui}>
+      <summary>{allergenFilterLabel(chosenAllergens)}</summary>
+      <div className="md-guest-allergen-panel">
+        <fieldset>
+          <legend>Hide dishes that contain</legend>
+          <div className="md-guest-allergen-options">
+            {allergenTags.map((tag) => (
+              <label key={tag.id}>
+                <input
+                  type="checkbox"
+                  aria-controls={`${menuId}-items`}
+                  checked={chosenAllergens.includes(tag.id)}
+                  onChange={(e) =>
+                    setAllergens((before) =>
+                      e.target.checked
+                        ? [...before, tag.id]
+                        : before.filter((id) => id !== tag.id),
+                    )
+                  }
+                />
+                {tag.label}
+              </label>
+            ))}
+          </div>
+        </fieldset>
+        {sections.some((s) =>
+          s.items.some((i) => !allergensListed(i.dietary)),
+        ) && (
+          <p>
+            Dishes without their allergens listed stay on the menu, marked “
+            {unlistedAllergensText}”.
+          </p>
+        )}
+        {!!chosenAllergens.length && (
+          <button type="button" onClick={() => setAllergens([])}>
+            Show all dishes
+          </button>
+        )}
+      </div>
+    </details>
+  );
+  const showNav =
+    sections.length > 3 ||
+    sections.reduce((n, s) => n + s.items.length, 0) > 12;
   const contact = menu.contact,
     orderingUrl = contact ? contact.orderingUrl : menu.restaurant.orderingUrl;
   const actions = [
@@ -691,8 +753,7 @@ export default function MenuDocumentView({
           className="md-menu-switcher"
         />
       )}
-      {(sections.length > 3 ||
-        sections.reduce((n, s) => n + s.items.length, 0) > 12) && (
+      {showNav && (
         <nav className="md-guest-nav" aria-label="Find a menu item">
           {dietFilter ? (
             <div className="md-guest-search-row">
@@ -702,6 +763,7 @@ export default function MenuDocumentView({
           ) : (
             searchInput
           )}
+          {allergenFilter}
           <div className="md-section-navigation">
             <div
               className="md-section-links"
@@ -777,16 +839,23 @@ export default function MenuDocumentView({
             role="status"
             aria-atomic="true"
           >
-            {narrowed
-              ? `${resultCount} ${resultCount === 1 ? "item matches" : "items match"}${query ? ` “${query}”` : " your choices"}.`
-              : `All ${resultCount} items shown.`}
+            {status}
           </p>
         </nav>
       )}
-      {!(
-        sections.length > 3 ||
-        sections.reduce((n, s) => n + s.items.length, 0) > 12
-      ) && dietFilter}
+      {!showNav && (dietFilter || allergenFilter) && (
+        <div className="md-guest-filters">
+          {dietFilter}
+          {allergenFilter}
+          <p
+            className="md-guest-search-status"
+            role="status"
+            aria-atomic="true"
+          >
+            {status}
+          </p>
+        </div>
+      )}
       {!preview && !!menu.specials?.length && (
         <GuestSpecials menu={menu} specials={menu.specials} asset={asset} />
       )}
@@ -865,9 +934,7 @@ export default function MenuDocumentView({
                       ))}
                     </dl>
                   )}
-                  {!!item.dietary.length && (
-                    <DishDietary values={item.dietary} />
-                  )}
+                  <DishDietary values={item.dietary} lang={ui} />
                   {!item.available && (
                     <p className="md-guest-unavailable">
                       Currently unavailable
@@ -882,6 +949,11 @@ export default function MenuDocumentView({
                   )}
                 </div>
               ))}
+              {!!section.hidden && (
+                <p className="md-guest-hidden" lang={ui}>
+                  {hiddenDishesText(section.hidden, chosenAllergens)}
+                </p>
+              )}
             </div>
           </section>
         ))}
@@ -895,7 +967,11 @@ export default function MenuDocumentView({
               : "Your dishes will appear here."}
         </p>
       )}
-      {allergyNote && <p className="md-guest-allergy">{allergyNotice}</p>}
+      {allergyNote && (
+        <p className="md-guest-allergy" lang={ui}>
+          {allergyNotice}
+        </p>
+      )}
       {visit && (
         <section className="md-guest-visit" aria-labelledby={`${menuId}-visit`}>
           <h2 id={`${menuId}-visit`}>Hours & location</h2>

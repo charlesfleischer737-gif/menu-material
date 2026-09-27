@@ -1,10 +1,12 @@
 // Browser checks of a published guest menu on a phone: it hydrates without
-// mismatches, reports each dish view once, labels allergens, lets vegan
-// dishes meet the Vegetarian filter, switches menus only on "Open", skips
-// the owner's own visits and passes axe.
+// mismatches, reports each dish view once, labels allergens (or says they
+// aren't listed), lets vegan dishes meet the Vegetarian filter, hides
+// allergens by keyboard, switches menus only on "Open", skips the owner's
+// own visits and passes axe.
 //
-// Run only against an isolated local dev server with its own data directory:
-//   MENU_MATERIAL_DATA_DIR=<empty dir> node node_modules/vinext/dist/cli.js dev --port 5183
+// Run only against an isolated local dev server with its own data directory
+// (plan limits off: it publishes two menus):
+//   MENU_MATERIAL_DATA_DIR=<empty dir> PLAN_LIMITS_ENABLED=false node node_modules/vinext/dist/cli.js dev --port 5183
 //   MENU_MATERIAL_QA_ORIGIN=http://localhost:5183 node tests/menu-accessibility-guest.mjs
 // (set PLAYWRIGHT_MODULE to Playwright's index.mjs if it isn't installed here).
 import assert from "node:assert/strict";
@@ -177,6 +179,34 @@ try {
   await page.selectOption(".md-guest-diet", "");
   checks += 4;
 
+  // A dish nobody has checked says so, and hiding milk by keyboard keeps it.
+  assert.match(
+    await page
+      .locator(".md-guest-item", { hasText: "Steak frites" })
+      .innerText(),
+    /Allergens not listed — ask us/,
+  );
+  await page.focus(".md-guest-allergens > summary");
+  await page.keyboard.press("Enter");
+  await page.getByRole("checkbox", { name: "Milk" }).focus();
+  await page.keyboard.press("Space");
+  const withoutMilk = await page.$$eval(".md-guest-item h3", (h) =>
+    h.map((x) => x.textContent),
+  );
+  assert(!withoutMilk.includes("Burrata") && !withoutMilk.includes("Risotto"));
+  assert(withoutMilk.includes("Steak frites"), "unlisted dishes stay");
+  assert.match(
+    await page.locator(".md-guest-nav [role=status]").textContent(),
+    /don’t list allergens/,
+  );
+  assert.equal(
+    await page.locator(".md-guest-allergens > summary").textContent(),
+    "Hiding milk",
+  );
+  await page.getByRole("button", { name: "Show all dishes" }).click();
+  await page.locator(".md-guest-allergens > summary").click();
+  checks += 5;
+
   // Each dish view is reported once, whatever the scrolling and refreshes.
   for (let n = 0; n < 12; n++) {
     await page.mouse.wheel(0, 450);
@@ -244,7 +274,7 @@ try {
   assert.equal((await ownerVisit).counted, false, "owner");
   checks++;
   console.log(
-    `PASS: ${checks} guest menu browser checks (hydration, dish views, allergens, diet filter, axe, menu switcher, owner visits).`,
+    `PASS: ${checks} guest menu browser checks (hydration, dish views, allergens, diet filter, allergen filter by keyboard, axe, menu switcher, owner visits).`,
   );
 } finally {
   await browser.close();
