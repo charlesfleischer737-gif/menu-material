@@ -20,7 +20,7 @@ const realNow = Date.now;
 let offset = 0;
 Date.now = () => realNow() + offset;
 const { handle } = await import("../lib/server/api.ts");
-const { caller } = await import("../lib/server/safeguards.ts");
+const { caller, wideCaller } = await import("../lib/server/safeguards.ts");
 const { all, bucket, digest, one, run, signedInBefore } =
   await import("../lib/server/core.ts");
 const { validateImageDimensions } =
@@ -131,6 +131,19 @@ try {
   assert.equal(network("::ffff:192.0.2.1"), "192.0.2.1");
   assert.equal(network("192.0.2.1"), "192.0.2.1");
   assert.equal(network(""), "unidentified");
+  // Signups also count per IPv6 /48 (tests/plan-limits.mjs).
+  const wideNetwork = (ip) =>
+    wideCaller(
+      new Request("http://localhost/", {
+        headers: ip ? { "cf-connecting-ip": ip } : {},
+      }),
+    );
+  assert.equal(wideNetwork("2001:DB8:5:1::1"), "2001:db8:5::/48");
+  assert.equal(wideNetwork("2001:db8:5:ff00:1::"), "2001:db8:5::/48");
+  assert.equal(wideNetwork("2001:db8::1"), "2001:db8:0::/48");
+  assert.equal(wideNetwork("::ffff:192.0.2.1"), null);
+  assert.equal(wideNetwork("192.0.2.1"), null);
+  assert.equal(wideNetwork(""), null);
   checks++;
   await signup("owner@example.test", "Corner Kitchen", "192.0.2.5");
   const floods = {};
@@ -1601,7 +1614,7 @@ try {
   checks++;
 
   console.log(
-    `PASS: ${checks} account security checks: per-network limits on the IPv6 /64 with no site-wide lockout, a per-account sign-in slowdown that states no wait and that browsers which signed in before skip, versioned password hashes, sliding sessions, revocable reset and setup links, the Pro waitlist, once-only free images, ID validation, lenient saved looks, staff link scope and limits, WebP and AVIF uploads, transparent logos, cacheable public images, admin takedown, menu-address squatting, signup time zones, account deletion and administrator account deletion.`,
+    `PASS: ${checks} account security checks: per-network limits on the IPv6 /64 (and /48 for signups) with no site-wide lockout, a per-account sign-in slowdown that states no wait and that browsers which signed in before skip, versioned password hashes, sliding sessions, revocable reset and setup links, the Pro waitlist, once-only free images, ID validation, lenient saved looks, staff link scope and limits, WebP and AVIF uploads, transparent logos, cacheable public images, admin takedown, menu-address squatting, signup time zones, account deletion and administrator account deletion.`,
   );
 } finally {
   rmSync(root, { recursive: true, force: true });

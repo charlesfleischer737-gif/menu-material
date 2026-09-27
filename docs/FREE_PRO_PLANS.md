@@ -31,7 +31,7 @@ Free is meant to be the most generous free plan among AI food-photo tools, and P
 
 **A downgrade keeps everything.** Nothing is deleted or taken offline: live menus keep the look they were published with (quick price and sold-out updates keep it too) and can always be published again in the design and look they're live in, so a price or an allergen can be fixed without changing them (moving to another Pro design needs Pro), scheduled specials run until they end, saved looks and post drafts stay and can be opened and downloaded, started batches finish, and existing staff links work until they expire. Only new Pro work needs Pro again.
 
-**Signups are limited per network.** Each network can open `SIGNUPS_PER_NETWORK_PER_DAY` (default 5) public accounts a day, counted when an account is created; invitations don't count. This keeps free images from being collected by signing up repeatedly. Email verification remains deferred.
+**Signups are limited per network.** Each network can open `SIGNUPS_PER_NETWORK_PER_DAY` (default 5) public accounts a day, counted when an account is created; invitations don't count. An IPv6 network is its /64, and each /48 (65,536 /64s: homes often get a /56, and free tunnel brokers hand out a /48) can open `SIGNUPS_PER_WIDE_NETWORK_PER_DAY` (default 8) a day in all. This keeps free images from being collected by signing up repeatedly. Email verification and Turnstile remain deferred.
 
 `tests/plan-limits.mjs` covers each limit through the API, two tabs publishing at once, keeping work after a downgrade, the renewal grace, comps, the switch and the signup cap. Suites that exercise Pro features comp their test workspace.
 
