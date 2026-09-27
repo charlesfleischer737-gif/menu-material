@@ -33,6 +33,7 @@ import {
   withDishSafety,
 } from "../menu-checks";
 import { provider } from "./generation";
+import { publishVariants } from "./photo-variants";
 import { firstPublicationAddress } from "./menu-address";
 
 function documentRow(row: Row) {
@@ -123,6 +124,7 @@ async function validateReferences(
           },
         },
       );
+      await publishVariants(rid, asset.id);
     }
   }
 }

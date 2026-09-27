@@ -14,6 +14,13 @@ import {
 import { billingRoute, billingSummary, billingEnabled } from "./billing";
 import { effectiveStyle, requirePro } from "./entitlements";
 import { validateImageDimensions } from "./image-validation";
+import {
+  assetVariantKeys,
+  neededVariants,
+  publicVariantKey,
+  requestedVariant,
+  saveVariants,
+} from "./photo-variants";
 import { analyzeGuestPhoto } from "./photo-analysis";
 import { checkMenuSharing, menuLinkOrigin } from "./menu-sharing";
 import {
@@ -659,21 +666,36 @@ async function downloadAsset(
 ) {
   // Whichever copy a menu published, including JPEG copies made elsewhere.
   if (transparentLogo(a)) key = a.key;
-  const obj = await bucket().get(key);
+  // A guest menu asks for the smaller copy its screen needs (?w=480); the
+  // full photo stands in when a menu was published before copies existed.
+  const width = publicImage && !transparentLogo(a) && requestedVariant(req);
+  const variant = width
+    ? await bucket().get(publicVariantKey(a.restaurant_id, a.id, width))
+    : null;
+  const obj = variant || (await bucket().get(key));
   assert(obj, 404, "Image not found.");
   const type =
-    key === a.working_key
+    variant || key === a.working_key
       ? "image/jpeg"
       : obj.httpMetadata?.contentType || a.mime;
   const h = new Headers({
     "Content-Type": type,
     // An asset ID's image never changes, and each request is still checked
-    // against the published menu; guests need not download it every visit.
+    // against the published menu, so guests keep it for a week and then
+    // revalidate. A deleted photo stops being served at once.
     "Cache-Control": publicImage
-      ? "public, max-age=300, stale-while-revalidate=86400"
+      ? "public, max-age=604800, stale-while-revalidate=2592000"
       : "private, no-store",
     "X-Content-Type-Options": "nosniff",
   });
+  const etag = (obj as { httpEtag?: string }).httpEtag;
+  if (publicImage && etag) {
+    h.set("ETag", etag);
+    if (req.headers.get("if-none-match") === etag) {
+      await obj.body?.cancel().catch(() => {});
+      return new Response(null, { status: 304, headers: h });
+    }
+  }
   // Named after what is sent: the working copy of any upload is a JPEG.
   if (new URL(req.url).searchParams.has("download"))
     h.set(
@@ -1590,6 +1612,27 @@ async function route(req: Request) {
     }
     if (p[0] === "assets") {
       if (method === "POST" && !p[1]) return await upload(req, r);
+      // Smaller copies of menu photos, made by the owner's browser at publish.
+      if (method === "POST" && p[1] === "variants")
+        return response({
+          needed: await neededVariants(
+            r.id,
+            z.array(z.string().uuid()).max(200).parse((await body(req)).ids),
+          ),
+        });
+      if (method === "POST" && p[2] === "variants") {
+        assert(
+          Number(req.headers.get("content-length") || 0) <= 5000000,
+          413,
+          "These photo copies are too large.",
+        );
+        await saveVariants(
+          r.id,
+          z.string().uuid().parse(p[1]),
+          await req.formData(),
+        );
+        return response({ ok: true });
+      }
       const a = await one(
         "SELECT * FROM assets WHERE id=? AND restaurant_id=? AND (deleted_at IS NULL OR ?='DELETE')",
         z.string().uuid("Choose an image.").parse(p[1]),
@@ -1690,6 +1733,7 @@ async function route(req: Request) {
           a.key,
           ...(a.working_key ? [a.working_key] : []),
           `public/${r.id}/${a.id}`,
+          ...assetVariantKeys(r.id, a.id),
         ]);
         await releaseStorage(a.id);
         await event(r.id, "asset_deleted", a.id);

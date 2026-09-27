@@ -300,11 +300,17 @@ export async function deleteAccount(u: Row, r: Row) {
   );
   const rid = r.id,
     keys = new Set<string>();
+  const { assetVariantKeys } = await import("./photo-variants");
   for (const a of await all(
     "SELECT id,key,working_key FROM assets WHERE restaurant_id=?",
     rid,
   ))
-    for (const key of [a.key, a.working_key, `public/${rid}/${a.id}`])
+    for (const key of [
+      a.key,
+      a.working_key,
+      `public/${rid}/${a.id}`,
+      ...assetVariantKeys(rid, a.id),
+    ])
       if (key) keys.add(key);
   for (const m of await all(
     "SELECT key FROM menu_imports WHERE restaurant_id=? AND key IS NOT NULL",

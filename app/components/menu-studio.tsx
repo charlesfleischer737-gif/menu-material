@@ -55,6 +55,7 @@ import {
 import { addonLabel, inferMenuPurpose, isAddonName } from "@/lib/menu-paste";
 import { normalizeDietary } from "@/lib/dietary";
 import { isPlaceholderDishName } from "@/lib/restaurant-identity";
+import { menuPhotoIds, preparePhotoCopies } from "@/lib/menu-photo-copies";
 import type { MenuContact } from "@/lib/restaurant-contact";
 import type { MenuPdfResult } from "@/lib/menu-pdf-v2";
 import { useMenuDocument, type SavedMenu } from "./use-menu-document";
@@ -1412,6 +1413,8 @@ export default function MenuStudio({
             published={async (address) => {
               const first = !record.published;
               await documentAction("publish", address ? { address } : {});
+              // Smaller copies of the photos, for guests' phones.
+              void preparePhotoCopies(menuPhotoIds(draft)).catch(() => {});
               // Share opens by itself when a menu first goes live; later
               // updates keep the same link and QR code.
               setDialog(first ? "share" : "");

@@ -807,11 +807,11 @@ try {
   });
   assert.equal(logoFile.res.headers.get("content-type"), "image/png");
   assert((await bytesOf(logoFile)).equals(logoPng));
-  // 17. Guests' browsers may keep published images briefly; private
-  // workspace images are never cached.
+  // 17. Guests' browsers keep published images for a week, then revalidate;
+  // private workspace images are never cached.
   assert.equal(
     logoFile.res.headers.get("cache-control"),
-    "public, max-age=300, stale-while-revalidate=86400",
+    "public, max-age=604800, stale-while-revalidate=2592000",
   );
   assert.equal(
     (await expect(`assets/${logo}`, 200, freeOpts)).res.headers.get(
