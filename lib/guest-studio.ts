@@ -10,7 +10,14 @@ import {
 export type GuestPhoto = { file: File; normalized: Blob; url: string };
 // What's in a photo chosen before signup, to suggest styles. Only a small
 // copy is sent (the model reads photos at 512 px), and nothing is stored.
-export async function readGuestPhoto(normalized: Blob) {
+// The built-in sample is sent as its own file, which the server knows and
+// answers without reading.
+export async function readGuestPhoto(normalized: Blob, sample?: File) {
+  if (sample) {
+    const form = new FormData();
+    form.set("file", sample, "photo.jpg");
+    return api("guest-photo-analysis", form);
+  }
   const bitmap = await createImageBitmap(normalized);
   const scale = Math.min(1, 768 / Math.max(bitmap.width, bitmap.height));
   const canvas = document.createElement("canvas");

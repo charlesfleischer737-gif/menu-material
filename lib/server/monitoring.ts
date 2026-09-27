@@ -16,7 +16,12 @@ import {
   run,
   viewer,
 } from "./core";
-import { aiControls, limitedBytes, publicLimit } from "./safeguards";
+import {
+  aiControls,
+  freeBudgetShare,
+  limitedBytes,
+  publicLimit,
+} from "./safeguards";
 
 type Json = string | number | boolean | null;
 export type ErrorContext = {
@@ -476,14 +481,11 @@ async function queueStatus() {
 async function budgetStatus() {
   const { budgetWarnPercent } = monitoringSettings();
   const controls = await aiControls();
-  const spentCents = Number(
-    (
-      await one(
-        "SELECT COALESCE(SUM(reserved_cents),0) AS cents FROM ai_spend WHERE budget_day=? AND status!='rejected'",
-        budgetDay(),
-      )
-    )?.cents || 0,
+  const spent = await one(
+    "SELECT COALESCE(SUM(reserved_cents),0) AS cents,COALESCE(SUM(CASE WHEN paid=0 THEN reserved_cents END),0) AS free FROM ai_spend WHERE budget_day=? AND status!='rejected'",
+    budgetDay(),
   );
+  const spentCents = Number(spent?.cents || 0);
   const budgetCents = Math.max(0, Number(controls.dailyBudgetCents) || 0);
   const imageCents = Math.max(
     1,
@@ -499,6 +501,10 @@ async function budgetStatus() {
       : percent >= budgetWarnPercent
         ? "warning"
         : "ok";
+  // Guests and Free plans share part of the budget; paid plans keep the rest.
+  const freeSharePercent = freeBudgetShare();
+  const freeSpentCents = Number(spent?.free || 0);
+  const freeBudgetCents = (budgetCents * freeSharePercent) / 100;
   return {
     status,
     paused: !!controls.paused,
@@ -506,6 +512,11 @@ async function budgetStatus() {
     budgetCents,
     percent,
     warnAtPercent: budgetWarnPercent,
+    freeSharePercent,
+    freeSpentCents,
+    freeBudgetCents,
+    freeShareUsedUp:
+      freeSharePercent < 100 && freeSpentCents + imageCents > freeBudgetCents,
   };
 }
 async function probe(task: () => Promise<unknown>) {
@@ -662,6 +673,14 @@ export async function evaluateAlerts() {
     await raiseAlert(
       "ai-budget-warning",
       `Today's site-wide AI budget is ${budget.percent}% used (${dollars(budget.spentCents)} of ${dollars(budget.budgetCents)} reserved).`,
+      startOfDay(),
+    );
+  // Otherwise guests and Free plans would wait unnoticed while paid plans and
+  // the site-wide budget look fine.
+  if (budget.freeShareUsedUp && budget.status !== "exhausted")
+    await raiseAlert(
+      "ai-budget-free-share",
+      `Guests and Free plans have used their ${budget.freeSharePercent}% share of today's site-wide AI budget (${dollars(budget.freeSpentCents)} of ${dollars(budget.freeBudgetCents)} reserved). Their new AI work waits until midnight UTC; paid plans can still use the rest. Raise the site-wide budget to let them continue.`,
       startOfDay(),
     );
   return true;

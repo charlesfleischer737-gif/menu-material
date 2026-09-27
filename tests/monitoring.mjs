@@ -244,13 +244,16 @@ try {
   checks++;
 
   // Site-wide AI budget: a warning at 80% and an exhaustion alert, once a day.
-  const spend = async (cents) =>
+  // Paid plans' spend, unless marked otherwise, so guests' and Free plans'
+  // share (below) stays out of it.
+  const spend = async (cents, paid = 1) =>
     run(
-      "INSERT INTO ai_spend (id,restaurant_id,kind,budget_day,reserved_cents,created_at) VALUES (?,?,'image',?,?,?)",
+      "INSERT INTO ai_spend (id,restaurant_id,kind,budget_day,reserved_cents,paid,created_at) VALUES (?,?,'image',?,?,?,?)",
       id(),
       kitchen.rid,
       new Date(Date.now()).toISOString().slice(0, 10),
       cents,
+      paid,
       Date.now(),
     );
   await spend(8500);
@@ -271,6 +274,23 @@ try {
   assert.deepEqual(ready.failed, ["aiBudget"]);
   assert.equal(alerts().length, 7);
   assert.match(alerts()[6].text, /AI budget is used up/);
+  checks++;
+  await run("DELETE FROM ai_spend");
+  // Guests and Free plans share 70% of it. When that is used up while paid
+  // plans can still create, one alert a day says so.
+  await spend(6900, 0);
+  offset += minute;
+  await tickWorker();
+  ready = await expect("health/ready", 200, { headers: bearer });
+  assert.equal(ready.checks.aiBudget.freeShareUsedUp, true);
+  assert.equal(alerts().length, 8);
+  assert.match(
+    alerts()[7].text,
+    /Guests and Free plans have used their 70% share .*\$69\.00 of \$70\.00/,
+  );
+  offset += minute;
+  await tickWorker();
+  assert.equal(alerts().length, 8, "the share alert is sent once per day");
   checks++;
   await run("DELETE FROM ai_spend");
 
