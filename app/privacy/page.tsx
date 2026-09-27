@@ -154,8 +154,8 @@ export default function Privacy() {
           days and renews while you use it. Guest menu visit records are deleted
           after 90 days. A record of AI usage costs, without your photos or
           text, is kept for accounting. After an account is deleted, a one-way
-          hash of its email address is kept, only so the free images for new
-          accounts aren’t given to the same email twice. Stripe keeps its own
+          hash of its email address is kept for a year, only so the free images
+          for new accounts aren’t given to the same email twice. Stripe keeps its own
           records of invoices and payments.
         </p>
         <p>
@@ -164,7 +164,8 @@ export default function Privacy() {
           including dishes, photos, drafts, menus (published ones too), posts
           and captions, signs you out everywhere and deletes your customer
           record at Stripe, if you have one. Only a one-way hash of your email
-          stays, so a new account with that email starts without free images.
+          stays, for a year, so a new account with that email starts without
+          free images.
           With an active Pro subscription, cancel it first in Plans, under
           Manage billing; you can delete the account once Pro has ended. Copies
           you already downloaded or shared can’t be recalled.

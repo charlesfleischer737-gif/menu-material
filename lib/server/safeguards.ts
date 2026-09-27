@@ -529,6 +529,12 @@ export async function housekeeping() {
   await run("DELETE FROM rate_limits WHERE expires_at<?", now());
   await run("DELETE FROM sessions WHERE expires_at<?", now());
   await run("DELETE FROM trusted_devices WHERE expires_at<?", now());
+  // A deleted account's email hash stops its free images being granted again
+  // for a year (free-grants.ts); the privacy page says so.
+  await run(
+    "DELETE FROM free_grant_emails WHERE created_at<?",
+    now() - 365 * 86400000,
+  );
   await run(
     "DELETE FROM invites WHERE expires_at<? AND role='reset'",
     now() - 86400000,

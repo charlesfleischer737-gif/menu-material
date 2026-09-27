@@ -1022,8 +1022,24 @@ try {
   );
   delete env.FREE_SIGNUP_GRANTS_PER_DAY;
   checks += 11;
+  // The email hash is kept for a year, as the privacy page says.
+  const kept = digest("free-grant:free@example.test");
+  const { created_at } = await one(
+    "SELECT created_at FROM free_grant_emails WHERE hash=?",
+    kept,
+  );
+  offset += created_at + 364 * 86400000 - Date.now();
+  await housekeeping();
+  assert(await one("SELECT 1 FROM free_grant_emails WHERE hash=?", kept));
+  offset += 2 * 86400000;
+  await housekeeping();
+  assert.equal(
+    await one("SELECT 1 FROM free_grant_emails WHERE hash=?", kept),
+    null,
+  );
+  checks += 2;
   console.log(
-    `PASS: ${checks} plan checks: open signup, five free credits once per email and for a daily number of new accounts (later ones held, told when, then granted), atomic monthly quota, payment verification (coupons and credit count, $0 lines don't), signatures, duplicate/out-of-order webhooks, renewals, renewals and outages caught by the scheduled check without webhooks, billing readiness, cancellation, checkout reuse, checkout terms, account deletion around billing, tenant isolation and loss-safe guest photo handoff. Stripe and AI are fixtures; no payments were made.`,
+    `PASS: ${checks} plan checks: open signup, five free credits once per email (remembered for a year) and for a daily number of new accounts (later ones held, told when, then granted), atomic monthly quota, payment verification (coupons and credit count, $0 lines don't), signatures, duplicate/out-of-order webhooks, renewals, renewals and outages caught by the scheduled check without webhooks, billing readiness, cancellation, checkout reuse, checkout terms, account deletion around billing, tenant isolation and loss-safe guest photo handoff. Stripe and AI are fixtures; no payments were made.`,
   );
 } finally {
   Date.now = realNow;
