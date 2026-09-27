@@ -909,7 +909,8 @@
 .md-checks li.is-blocking::before {
   background: var(--workspace-error);
 }
-.md-checks li > .md-text-button {
+.md-checks li > .md-text-button,
+.md-checks > .md-text-button {
   justify-self: start;
   min-height: 32px;
   padding: 0;

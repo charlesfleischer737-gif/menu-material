@@ -1,8 +1,10 @@
 import {
   menuContentIssues,
+  menuPrice,
   menuPurposeDefaults,
   visibleMenuSections,
   type MenuDocument,
+  type MenuEntry,
   type MenuSection,
 } from "./menu-document";
 import { inferMenuPurpose, isAddonName } from "./menu-paste";
@@ -35,7 +37,8 @@ export type MenuCheck = {
     | "attach-addon"
     | "menu-type"
     | "dish-tags"
-    | "dish-name";
+    | "dish-name"
+    | "dish-facts";
   purpose?: MenuDocument["purpose"];
 };
 
@@ -77,14 +80,23 @@ export function menuPublishChecks(
     sampleDishIds?: Iterable<string>;
     /** Photos the owner reported as inaccurate. */
     correctionPhotoIds?: Iterable<string>;
-    /** My Dishes, for the allergens and diets linked menu dishes must show. */
-    dishes?: Iterable<{ id: string; dietary?: unknown }>;
+    /**
+     * My Dishes, for the allergens and diets linked menu dishes must show,
+     * and the prices and availability they're compared with.
+     */
+    dishes?: Iterable<{
+      id: string;
+      dietary?: unknown;
+      price?: unknown;
+      available?: unknown;
+    }>;
+    /** For prices in those comparisons. */
+    currency?: string;
   },
 ): MenuCheck[] {
   const checks: MenuCheck[] = [];
-  const dishTags = new Map(
-    [...(context.dishes || [])].map((dish) => [dish.id, dish.dietary]),
-  );
+  const library = [...(context.dishes || [])];
+  const dishTags = new Map(library.map((dish) => [dish.id, dish.dietary]));
   if (isPlaceholderRestaurantName(context.restaurantName))
     checks.push({
       id: "restaurant-name",
@@ -196,6 +208,25 @@ export function menuPublishChecks(
       if (!item.description.trim())
         undescribed.push({ id: item.id, name: label, sectionId: section.id });
       if (!item.available) soldOut.push(label);
+    }
+  // Linked dishes whose price or availability differ from My Dishes, sold
+  // out ones included. A menu may mean it (a lunch price), so these never
+  // block; "Use My Dishes" takes the library's values.
+  const libraryDishes = new Map(library.map((dish) => [dish.id, dish]));
+  for (const section of menu.sections)
+    for (const item of section.items) {
+      const dish =
+        item.visible && item.dishId && libraryDishes.get(item.dishId);
+      const differences = dish ? dishFactDifferences(item, dish) : {};
+      if (!Object.keys(differences).length) continue;
+      checks.push({
+        id: `dish-facts:${item.id}`,
+        level: "warn",
+        message: dishFactsMessage(item, differences, context.currency),
+        entryId: item.id,
+        sectionId: section.id,
+        fix: "dish-facts",
+      });
     }
   if (undescribed.length)
     checks.push({
@@ -387,6 +418,58 @@ function dishSafetyMessage(
   if (!missing.length)
     return `${label} is marked ${marked} here, but not in My Dishes.`;
   return `${label} doesn’t match My Dishes: it contains ${contains}, and it isn’t marked ${marked} there.`;
+}
+
+type DishPriceFacts = { price?: unknown; available?: unknown };
+/**
+ * The My Dishes price and availability a linked menu dish would take, where
+ * they differ from its own. A My Dishes price of 0 means it has no price
+ * there yet, and a menu dish priced by size or label has no single price to
+ * compare, so neither counts.
+ */
+export function dishFactDifferences(
+  item: Pick<MenuEntry, "priceMode" | "price" | "available">,
+  dish: DishPriceFacts,
+): { price?: number; available?: boolean } {
+  const differences: { price?: number; available?: boolean } = {};
+  if (
+    typeof dish.price === "number" &&
+    dish.price > 0 &&
+    (item.priceMode ?? "single") === "single" &&
+    item.price !== dish.price
+  )
+    differences.price = dish.price;
+  if (dish.available != null && !!dish.available !== item.available)
+    differences.available = !!dish.available;
+  return differences;
+}
+/** "Use My Dishes": a menu dish with its library price and availability. */
+export function withDishFacts<
+  T extends Pick<MenuEntry, "priceMode" | "price" | "available">,
+>(item: T, dish: DishPriceFacts): T {
+  return { ...item, ...dishFactDifferences(item, dish) };
+}
+/** "Pad Thai: $15.00 and available here, $16.00 and unavailable in My Dishes." */
+function dishFactsMessage(
+  item: Pick<MenuEntry, "name" | "price" | "available">,
+  differences: ReturnType<typeof dishFactDifferences>,
+  currency = "USD",
+) {
+  const here: string[] = [],
+    there: string[] = [];
+  const state = (available: boolean) =>
+    available ? "available" : "unavailable";
+  if (differences.price !== undefined) {
+    here.push(
+      item.price == null ? "no price" : menuPrice(item.price, currency),
+    );
+    there.push(menuPrice(differences.price, currency));
+  }
+  if (differences.available !== undefined) {
+    here.push(state(item.available));
+    there.push(state(differences.available));
+  }
+  return `${item.name.trim() || "This dish"}: ${here.join(" and ")} here, ${there.join(" and ")} in My Dishes.`;
 }
 
 /**

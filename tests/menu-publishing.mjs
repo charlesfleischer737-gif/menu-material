@@ -14,6 +14,7 @@ const {
   blockingChecks,
   applyDishUpdate,
   dishFacts,
+  withDishFacts,
   withDishSafety,
   withLibraryLinks,
   restaurantSettingsChanged,
@@ -1235,6 +1236,127 @@ try {
     /My Dishes says Jasmine rice contains sesame/,
   );
 
+  // The publish review lists linked dishes whose price or availability
+  // differ from My Dishes, each with "Use My Dishes". Menus may mean it (a
+  // lunch price), so these never block, here or on the server.
+  const libraryDish = (price, available = 1) => ({
+    id: crypto.randomUUID(),
+    dietary: [],
+    price,
+    available,
+  });
+  const library = {
+    padThai: libraryDish(1600),
+    satay: libraryDish(900, 0),
+    laksa: libraryDish(1400),
+    roti: libraryDish(0),
+    icedTea: libraryDish(500),
+    mango: libraryDish(800),
+  };
+  const linked = (dish, entry) =>
+    newMenuEntry({ dishId: dish.id, description: "House recipe", ...entry });
+  const factsMenu = newMenuDocument({
+    sections: [
+      section([
+        linked(library.padThai, { name: "Pad Thai", price: 1500 }),
+        linked(library.satay, { name: "Satay", price: 900 }),
+        linked(library.laksa, { name: "Laksa", price: null, available: false }),
+        // No price yet in My Dishes: the menu's own is the only one.
+        linked(library.roti, { name: "Roti", price: 600 }),
+        // Priced by size: no single price to compare.
+        linked(library.icedTea, {
+          name: "Iced tea",
+          priceMode: "variants",
+          variants: [{ id: "s", label: "Small", price: 400 }],
+        }),
+        // Hidden from this menu: guests never see it.
+        linked(library.mango, {
+          name: "Mango rice",
+          price: 700,
+          visible: false,
+        }),
+      ]),
+    ],
+  });
+  const factsChecks = (menu, currency) =>
+    menuPublishChecks(menu, {
+      restaurantName: "Corner House",
+      dishes: Object.values(library),
+      currency,
+    }).filter((c) => c.id.startsWith("dish-facts:"));
+  const differences = factsChecks(factsMenu);
+  assert.deepEqual(
+    differences.map((c) => [c.level, c.fix, c.message]),
+    [
+      ["warn", "dish-facts", "Pad Thai: $15.00 here, $16.00 in My Dishes."],
+      [
+        "warn",
+        "dish-facts",
+        "Satay: available here, unavailable in My Dishes.",
+      ],
+      [
+        "warn",
+        "dish-facts",
+        "Laksa: no price and unavailable here, $14.00 and available in My Dishes.",
+      ],
+    ],
+  );
+  assert.equal(
+    factsChecks(factsMenu, "EUR")[0].message,
+    "Pad Thai: €15.00 here, €16.00 in My Dishes.",
+  );
+  assert(
+    !blockingChecks(
+      menuPublishChecks(factsMenu, {
+        restaurantName: "Corner House",
+        dishes: Object.values(library),
+      }),
+    ).some((c) => c.id.startsWith("dish-facts:")),
+    "never blocking",
+  );
+  // "Use My Dishes" takes the library's price and availability, and only those.
+  const used = {
+    ...factsMenu,
+    sections: factsMenu.sections.map((s) => ({
+      ...s,
+      items: s.items.map((i) =>
+        withDishFacts(
+          i,
+          Object.values(library).find((d) => d.id === i.dishId),
+        ),
+      ),
+    })),
+  };
+  assert.deepEqual(
+    used.sections[0].items.map((i) => [i.name, i.price, i.available]),
+    [
+      ["Pad Thai", 1600, true],
+      ["Satay", 900, false],
+      ["Laksa", 1400, true],
+      ["Roti", 600, true],
+      ["Iced tea", null, true],
+      ["Mango rice", 800, true],
+    ],
+  );
+  assert.deepEqual(factsChecks(used), [], "nothing left to list");
+  // The server's own checks leave them to the owner.
+  const lunchPrice = await menuWith(
+    "Rice lunch",
+    [
+      newMenuEntry({
+        dishId: rice.id,
+        name: "Jasmine rice",
+        description: "Steamed",
+        price: 300,
+        dietary: ["vegan", "contains-sesame"],
+      }),
+    ],
+    "Sides",
+  );
+  await call(`menus/${lunchPrice.id}/publish`, {
+    revision: lunchPrice.revision,
+  });
+
   // A dish made from a photo has no price; linking a pasted menu to it gives
   // it the menu's price and description, so later edits reach that menu.
   const photographed = await call("dishes", {
@@ -1430,7 +1552,7 @@ try {
     false,
   );
   console.log(
-    `PASS: ${checks} menu publishing checks: placeholder names, sample dishes, zero prices, automatic checks without an I-checked box, first-publication menu address, address changes with redirects, dish edits reaching draft and live menus, and "No listed allergens" following My Dishes.`,
+    `PASS: ${checks} menu publishing checks: placeholder names, sample dishes, zero prices, automatic checks without an I-checked box, first-publication menu address, address changes with redirects, dish edits reaching draft and live menus, "No listed allergens" following My Dishes, and linked dishes whose price or availability differ from My Dishes listed without blocking.`,
   );
 } finally {
   rmSync(root, { recursive: true, force: true });
