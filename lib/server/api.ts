@@ -1006,7 +1006,7 @@ async function route(req: Request) {
       });
     }
     if (p[0] === "admin") {
-      await admin(req);
+      const administrator = await admin(req);
       if (method === "GET" && p[1] === "studio-report") {
         const mode = z
           .enum(["production", "internal"])
@@ -1254,6 +1254,33 @@ async function route(req: Request) {
           null,
           { minutes: z.number().int().min(1).max(600).parse(b.minutes) },
         );
+        return response({ ok: true });
+      }
+      if (p[1] === "delete-account") {
+        // For an owner who asks and can't sign in. The owner's own deletion
+        // rules apply; typing their email stands in for their password.
+        const input = z
+          .object({ id: z.string().uuid(), confirm: z.string().max(254) })
+          .parse(b);
+        const r = await one("SELECT * FROM restaurants WHERE id=?", input.id);
+        assert(r, 404, "Restaurant not found.");
+        const account = await one(
+          "SELECT id,email,role FROM users WHERE id=?",
+          r.user_id,
+        );
+        assert(account, 404, "Restaurant not found.");
+        assert(
+          input.confirm.trim().toLowerCase() === account.email,
+          400,
+          "Type the owner’s email address to confirm.",
+        );
+        assert(
+          account.id !== administrator.id,
+          400,
+          "Delete your own account in Settings, under Details.",
+        );
+        await deleteAccount(account, r);
+        await event(null, "account_deleted", null, { byAdministrator: true });
         return response({ ok: true });
       }
       throw new AppError(404, "Not found.");

@@ -1,5 +1,6 @@
 import { createHmac, timingSafeEqual } from "node:crypto";
 import {
+  AppError,
   assert,
   config,
   db,
@@ -14,7 +15,8 @@ import {
 } from "./core";
 import { limitedBytes } from "./safeguards";
 import { featureAccess, imageEntitlement } from "./entitlements";
-import { PRO_PLAN } from "../plans";
+import { PRO_PLAN, PRO_PRICE_LABEL } from "../plans";
+import { siteContact } from "../site-contact";
 
 export function billingEnabled() {
   return (
@@ -51,6 +53,9 @@ async function stripe(
   path: string,
   fields?: Record<string, string>,
   key?: string,
+  // `gone`: a customer Stripe can't find (deleted in the dashboard, or by an
+  // interrupted account deletion) reads as deleted rather than an outage.
+  { method = fields ? "POST" : "GET", gone = false } = {},
 ): Promise<Row> {
   assert(
     billingEnabled(),
@@ -58,7 +63,7 @@ async function stripe(
     "Pro subscriptions are coming soon. Your free account is ready to use.",
   );
   const res = await fetch("https://api.stripe.com/v1/" + path, {
-    method: fields ? "POST" : "GET",
+    method,
     headers: {
       Authorization: "Bearer " + config("STRIPE_SECRET_KEY"),
       "Stripe-Version": "2025-06-30.basil",
@@ -70,6 +75,7 @@ async function stripe(
     body: fields ? new URLSearchParams(fields) : undefined,
     signal: AbortSignal.timeout(15000),
   });
+  if (gone && res.status === 404) return { deleted: true };
   assert(
     res.ok,
     503,
@@ -77,6 +83,11 @@ async function stripe(
   );
   return res.json();
 }
+// A subscription that can still charge, or that is still paid for. Ended
+// ones allow a new checkout and account deletion.
+const liveSubscription = (account: Row) =>
+  !!account.subscription_id &&
+  !["canceled", "incomplete_expired", "free"].includes(account.status);
 const externalId = (value: string | Row | null | undefined) =>
   typeof value === "string" ? value : value?.id;
 function proPrice(price: Row) {
@@ -212,7 +223,89 @@ async function reconcile(account: Row, lease: string) {
         ),
     );
   await db().batch(statements);
-  return { ...account, subscription_id: sub.id, status: sub.status };
+  return {
+    ...account,
+    subscription_id: sub.id,
+    status: sub.status,
+    cancel_at_period_end: sub.cancel_at_period_end ? 1 : 0,
+  };
+}
+// Under Checkout's pay button, as beside Get Pro: how Pro renews and how to
+// cancel, with the owner's Terms and refund policy once they are set. Stripe
+// shows Markdown links. Requiring Terms consent (consent_collection) also
+// needs the Terms URL in Stripe's own settings, so that is the owner's step.
+function checkoutTerms() {
+  const { termsUrl, refundPolicyUrl } = siteContact(config);
+  const link = (label: string, url: string) =>
+    `[${label}](${url.replace(/\(/g, "%28").replace(/\)/g, "%29")})`;
+  return [
+    `Pro is ${PRO_PRICE_LABEL} a month and renews monthly until you cancel. Cancel anytime in Menu Material, in Plans under Manage billing; Pro stays until the end of the month you’ve paid for.`,
+    termsUrl && link("Terms", termsUrl),
+    refundPolicyUrl && link("Refund policy", refundPolicyUrl),
+  ]
+    .filter(Boolean)
+    .join(" ");
+}
+function stillSubscribed(account: Row) {
+  const { supportEmail } = siteContact(config);
+  return (
+    (account.cancel_at_period_end
+      ? "Your Pro plan is cancelled and ends at the end of the month you’ve paid for. You can delete your account after that."
+      : billingEnabled()
+        ? "Your Pro subscription is still active. Cancel it in Plans, under Manage billing; you can delete your account once Pro has ended."
+        : // Manage billing is off without the billing settings.
+          "Your Pro subscription is still active, so your account can’t be deleted yet.") +
+    (supportEmail ? ` Questions? Email ${supportEmail}.` : "")
+  );
+}
+/**
+ * Before an account is deleted. A live subscription must be cancelled first.
+ * Otherwise an open checkout is expired and the Stripe customer deleted, so
+ * Stripe keeps its invoices but no longer holds the owner's email. Nothing
+ * local changes here: the caller deletes the billing rows with the account.
+ * Without billing settings, the last known subscription state decides and
+ * Stripe isn't contacted.
+ */
+export async function closeBilling(restaurantId: string) {
+  const known = await one(
+    "SELECT * FROM billing_accounts WHERE restaurant_id=?",
+    restaurantId,
+  );
+  if (!known) return;
+  if (!known.customer_id || !billingEnabled()) {
+    assert(!liveSubscription(known), 409, stillSubscribed(known));
+    return;
+  }
+  try {
+    await withAccount(restaurantId, async (account, lease) => {
+      const customer = "customers/" + encodeURIComponent(account.customer_id);
+      const found = await stripe(customer, undefined, undefined, {
+        gone: true,
+      });
+      // Deleted already, and its subscriptions ended with it.
+      if (found.deleted) return;
+      account = await reconcile(account, lease);
+      assert(!liveSubscription(account), 409, stillSubscribed(account));
+      // An open checkout tab could otherwise still start a subscription.
+      if (account.checkout_id) {
+        const session =
+          "checkout/sessions/" + encodeURIComponent(account.checkout_id);
+        if ((await stripe(session)).status === "open")
+          await stripe(session + "/expire", {});
+      }
+      await stripe(customer, undefined, undefined, {
+        method: "DELETE",
+        gone: true,
+      });
+    });
+  } catch (e) {
+    if (e instanceof AppError && e.status === 503)
+      throw new AppError(
+        503,
+        "Billing is temporarily unavailable, so your account wasn’t deleted. Please try again.",
+      );
+    throw e;
+  }
 }
 async function webhook(req: Request) {
   assert(req.method === "POST", 405, "Method not allowed.");
@@ -324,8 +417,7 @@ export async function billingRoute(req: Request, path: string[]) {
     }
     account = await reconcile(account, lease);
     assert(
-      !account.subscription_id ||
-        ["canceled", "incomplete_expired", "free"].includes(account.status),
+      !liveSubscription(account),
       409,
       "You already have a subscription. Use Manage billing to review it.",
     );
@@ -368,6 +460,7 @@ export async function billingRoute(req: Request, path: string[]) {
         "metadata[restaurant_id]": r.id,
         success_url: origin() + "/?billing=success#studio",
         cancel_url: origin() + "/?billing=cancel#studio",
+        "custom_text[submit][message]": checkoutTerms(),
       },
       "menu-material-checkout-" + checkoutKey,
     );

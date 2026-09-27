@@ -1169,6 +1169,7 @@ try {
     "events",
     "studio_look_uses",
     "billing_accounts",
+    "billing_periods",
     "ai_spend",
   ])
     assert(before[table], `fixture has ${table} rows`);
@@ -1203,16 +1204,21 @@ try {
     deletion({ password: "not the password", confirm: "DELETE" }),
   );
   assert.equal(wrong.json.error, "That password is incorrect.");
+  // A live subscription is cancelled first. Billing isn't configured here,
+  // so the last known state decides and Stripe isn't contacted (nor is
+  // Manage billing offered, since it's off too).
   const billed = await expect(
     "account/delete",
     409,
     deletion({ password, confirm: "DELETE" }),
   );
-  assert.match(billed.json.error, /billing records/);
-  // The payment records above are test fixtures; support would handle them.
-  await run("DELETE FROM billing_periods WHERE restaurant_id=?", freeRid);
+  assert.equal(
+    billed.json.error,
+    "Your Pro subscription is still active, so your account can’t be deleted yet.",
+  );
+  // Once it has ended, its billing records go with the account.
   await run(
-    "UPDATE billing_accounts SET customer_id=NULL,subscription_id=NULL WHERE restaurant_id=?",
+    "UPDATE billing_accounts SET status='canceled' WHERE restaurant_id=?",
     freeRid,
   );
   const lastAdmin = await expect(
@@ -1269,8 +1275,90 @@ try {
   await expect("state", 200, { cookie: adminCookie });
   checks++;
 
+  // 13. An administrator can delete an owner's account, for an owner who
+  // asks and can't sign in, by typing the owner's email. The owner's own
+  // rules apply, and the administrator can't delete their own this way.
+  const joeUser = (
+    await one("SELECT id FROM users WHERE email='joe@example.test'")
+  ).id;
+  const byAdmin = (id, confirm, cookie = adminCookie) => ({
+    body: { id, confirm },
+    cookie,
+    ip: "192.0.2.62",
+  });
+  await expect(
+    "admin/delete-account",
+    403,
+    byAdmin(joeRid, "joe@example.test", joeOpts.cookie),
+  );
+  await expect(
+    "admin/delete-account",
+    400,
+    byAdmin(joeRid, "someone@example.test"),
+  );
+  await expect("admin/delete-account", 400, byAdmin("not-an-id", "x"));
+  await expect(
+    "admin/delete-account",
+    404,
+    byAdmin(crypto.randomUUID(), "joe@example.test"),
+  );
+  const adminRid = (await expect("state", 200, { cookie: adminCookie })).json
+    .restaurant.id;
+  assert.match(
+    (
+      await expect(
+        "admin/delete-account",
+        400,
+        byAdmin(adminRid, "ops1@example.test"),
+      )
+    ).json.error,
+    /in Settings/,
+  );
+  await run(
+    "INSERT INTO billing_accounts (restaurant_id,customer_id,subscription_id,status) VALUES (?,'cus_joe','sub_joe','past_due')",
+    joeRid,
+  );
+  assert.match(
+    (
+      await expect(
+        "admin/delete-account",
+        409,
+        byAdmin(joeRid, "joe@example.test"),
+      )
+    ).json.error,
+    /Pro subscription is still active/,
+  );
+  assert(await one("SELECT id FROM restaurants WHERE id=?", joeRid));
+  await run(
+    "UPDATE billing_accounts SET status='canceled' WHERE restaurant_id=?",
+    joeRid,
+  );
+  await expect(
+    "admin/delete-account",
+    200,
+    byAdmin(joeRid, " JOE@example.test "),
+  );
+  assert.equal(
+    await one("SELECT id FROM restaurants WHERE id=?", joeRid),
+    null,
+  );
+  assert.equal(await one("SELECT id FROM users WHERE id=?", joeUser), null);
+  assert.equal(
+    await one("SELECT * FROM billing_accounts WHERE restaurant_id=?", joeRid),
+    null,
+  );
+  assert.deepEqual(filesUnder(`private/${joeRid}`), []);
+  await expect(`assets/${joePhoto}`, 401, joeOpts);
+  assert.equal(
+    (await expect("admin", 200, { cookie: adminCookie })).json.restaurants.some(
+      (r) => r.id === joeRid,
+    ),
+    false,
+  );
+  checks++;
+
   console.log(
-    `PASS: ${checks} account security checks: per-network limits on the IPv6 /64 with no site-wide lockout, a per-account sign-in slowdown, versioned password hashes, sliding sessions, revocable reset and setup links, the Pro waitlist, once-only free images, ID validation, lenient saved looks, staff link scope and limits, WebP and AVIF uploads, transparent logos, cacheable public images, admin takedown, menu-address squatting, signup time zones and account deletion.`,
+    `PASS: ${checks} account security checks: per-network limits on the IPv6 /64 with no site-wide lockout, a per-account sign-in slowdown, versioned password hashes, sliding sessions, revocable reset and setup links, the Pro waitlist, once-only free images, ID validation, lenient saved looks, staff link scope and limits, WebP and AVIF uploads, transparent logos, cacheable public images, admin takedown, menu-address squatting, signup time zones, account deletion and administrator account deletion.`,
   );
 } finally {
   rmSync(root, { recursive: true, force: true });

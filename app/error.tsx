@@ -4,6 +4,7 @@ import { Button } from "@/components/ui/button";
 import { isChunkLoadError, reloadForNewVersion } from "@/lib/chunk-reload";
 import { SiteFooter, SiteHeader } from "./components/site-chrome";
 import { reportClientError } from "./components/error-reporter";
+import { useSiteContact } from "./components/site-contact";
 import Kitty from "./components/kitty";
 
 // Replaces a crashed page (for example the workspace) instead of a blank screen.
@@ -17,6 +18,7 @@ export default function ErrorPage({
   // A screen's file went missing after a deploy. Trying again would repeat
   // the failed load, so this reloads the page (once by itself).
   const stale = isChunkLoadError(error);
+  const { supportEmail } = useSiteContact();
   useEffect(() => {
     reportClientError(error, "boundary");
     if (stale) reloadForNewVersion();
@@ -34,6 +36,13 @@ export default function ErrorPage({
             {stale
               ? "Menu Material was updated while this page was open. Reload to continue. Your saved work is safe."
               : "This page ran into a problem. Your saved work is safe. Try again, or go back to the home page."}
+            {!stale && supportEmail && (
+              <>
+                {" "}
+                If it keeps happening, email{" "}
+                <a href={`mailto:${supportEmail}`}>{supportEmail}</a>.
+              </>
+            )}
           </p>
         </header>
         <div className="pw-status-actions">

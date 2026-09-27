@@ -1,6 +1,7 @@
 import type { ReactNode } from "react";
 import Brand from "./brand";
 import Kitty from "./kitty";
+import { ContactLinks } from "./site-contact";
 /* eslint-disable @next/next/no-html-link-for-pages --
    Plain links on purpose: next/link's client navigation throws in the vinext
    production build ("navigateClientSide is not a function"), so a <Link>
@@ -32,6 +33,7 @@ export function SiteFooter({ credits }: { credits?: ReactNode }) {
             <a href="/pricing">Plans & pricing</a>
             <a href="/privacy">Photo privacy</a>
             <a href="/guidelines">Usage guidelines</a>
+            <ContactLinks />
           </nav>
         </div>
         <div className="pw-footer-bottom">

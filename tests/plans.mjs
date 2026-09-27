@@ -72,7 +72,9 @@ let subscriptions = [],
   priceAmount = 900,
   checkoutStatus = "open",
   lostJobResponse = false,
-  lostFinalSaveResponse = false;
+  lostFinalSaveResponse = false,
+  customerDeleteFails = false;
+const deletedCustomers = new Set();
 const realNow = Date.now;
 let offset = 0;
 Date.now = () => realNow() + offset;
@@ -114,14 +116,28 @@ globalThis.fetch = async (url, init = {}) => {
   assert.equal(init.headers["Stripe-Version"], "2025-06-30.basil");
   const path = String(url).replace("https://api.stripe.com/v1/", "");
   const form = Object.fromEntries(new URLSearchParams(init.body));
-  calls.push({ path, form, headers: init.headers });
+  calls.push({ path, form, headers: init.headers, method: init.method });
   if (path === "prices/price_pro") return Response.json(price());
   if (path === "customers") {
     customerCreates++;
-    return Response.json({ id: "cus_1" });
+    return Response.json({ id: "cus_" + customerCreates });
+  }
+  if (path.startsWith("customers/")) {
+    const customer = path.slice("customers/".length);
+    if (init.method === "DELETE") {
+      if (customerDeleteFails)
+        return Response.json({ error: {} }, { status: 500 });
+      deletedCustomers.add(customer);
+    }
+    return Response.json({
+      id: customer,
+      ...(deletedCustomers.has(customer) ? { deleted: true } : {}),
+    });
   }
   if (path.startsWith("subscriptions?"))
     return Response.json({ data: subscriptions, has_more: false });
+  if (path.endsWith("/expire"))
+    return Response.json({ id: path.split("/")[2], status: "expired" });
   if (path.startsWith("checkout/sessions/cs_"))
     return Response.json({
       id: "cs_" + checkoutCreates,
@@ -278,6 +294,9 @@ try {
     STRIPE_SECRET_KEY: "sk_test_fixture",
     STRIPE_WEBHOOK_SECRET: "whsec_fixture",
     STRIPE_PRO_PRICE_ID: "price_pro",
+    // The owner's own details, which checkout and messages show once set.
+    TERMS_URL: "https://legal.example.test/terms",
+    SUPPORT_EMAIL: "help@menu-material.example.test",
   });
   priceAmount = 999;
   await call("billing/checkout", {}, 503);
@@ -300,7 +319,13 @@ try {
     rid,
   );
   assert.equal(checkout.form.customer, "cus_1");
-  checks += 4;
+  // Renewal and cancellation terms under the pay button, with the Terms.
+  const terms = checkout.form["custom_text[submit][message]"];
+  assert.match(terms, /renews monthly until you cancel/);
+  assert.match(terms, /in Plans under Manage billing/);
+  assert.match(terms, /\[Terms\]\(https:\/\/legal\.example\.test\/terms\)$/);
+  assert(terms.length <= 1200, "Stripe's custom text limit");
+  checks += 5;
   await notify("invoice.paid", {}, 400, false);
   await notify("invoice.paid", {}, 400, true, 301);
   let start = Math.floor(Date.now() / 1000) - 1,
@@ -344,6 +369,20 @@ try {
   );
   checks += 4;
   await call("billing/checkout", {}, 409);
+  // A live subscription blocks deleting the account until Pro has ended;
+  // nothing is deleted, here or at Stripe.
+  const deletion = {
+    password: "a sufficiently long password",
+    confirm: "DELETE",
+  };
+  const subscribed = await call("account/delete", deletion, 409);
+  assert.match(subscribed.error, /Cancel it in Plans, under Manage billing/);
+  assert.match(subscribed.error, /help@menu-material\.example\.test/);
+  assert(
+    !calls.some((c) => c.method === "DELETE" || c.path.endsWith("/expire")),
+  );
+  assert(await one("SELECT id FROM restaurants WHERE id=?", rid));
+  checks += 3;
   await call("billing/portal", {});
   assert.equal(calls.at(-1).form.customer, "cus_1");
   checks++;
@@ -373,6 +412,12 @@ try {
   assert.equal(state.billing.plan, "pro");
   assert.equal(state.billing.cancelAtPeriodEnd, true);
   checks += 2;
+  // Cancelled but still paid for: deletion waits for the month to end.
+  assert.match(
+    (await call("account/delete", deletion, 409)).error,
+    /cancelled and ends at the end of the month you’ve paid for/,
+  );
+  checks++;
   // A new billing period without a successful payment cannot mint credits.
   offset += 31 * 86400000;
   start = end;
@@ -633,8 +678,76 @@ try {
     2,
   );
   checks++;
+
+  // Starting checkout once no longer blocks deleting the account. The open
+  // checkout is expired and the Stripe customer deleted (Stripe keeps its
+  // invoices); if Stripe can't be reached, nothing is deleted.
+  cookie = "";
+  await call("auth/signup", {
+    email: "abandoned@example.test",
+    password: "a sufficiently long password",
+    restaurant: "Corner Checkout Diner",
+  });
+  const abandoned = (await call("state")).restaurant.id;
+  checkoutStatus = "open";
+  await call("billing/checkout", {});
+  const started = await one(
+    "SELECT customer_id,checkout_id FROM billing_accounts WHERE restaurant_id=?",
+    abandoned,
+  );
+  assert.equal(started.customer_id, "cus_2");
+  customerDeleteFails = true;
+  assert.match(
+    (await call("account/delete", deletion, 503)).error,
+    /wasn’t deleted\. Please try again/,
+  );
+  assert(await one("SELECT id FROM restaurants WHERE id=?", abandoned));
+  assert.deepEqual(
+    await one(
+      "SELECT customer_id,checkout_id FROM billing_accounts WHERE restaurant_id=?",
+      abandoned,
+    ),
+    started,
+  );
+  customerDeleteFails = false;
+  await call("account/delete", deletion);
+  assert(
+    calls.some(
+      (c) => c.path === `checkout/sessions/${started.checkout_id}/expire`,
+    ),
+  );
+  assert(deletedCustomers.has("cus_2"));
+  assert.equal(
+    await one("SELECT id FROM restaurants WHERE id=?", abandoned),
+    null,
+  );
+  assert.equal(
+    await one(
+      "SELECT * FROM billing_accounts WHERE restaurant_id=?",
+      abandoned,
+    ),
+    null,
+  );
+  checks += 7;
+  // Once a subscription has ended, its paid periods go with the account too.
+  cookie = freeCookie;
+  await call("account/delete", deletion);
+  assert(deletedCustomers.has("cus_1"));
+  for (const table of ["billing_periods", "billing_accounts"])
+    assert.equal(
+      (
+        await one(
+          `SELECT count(*) AS n FROM ${table} WHERE restaurant_id=?`,
+          rid,
+        )
+      ).n,
+      0,
+      table,
+    );
+  assert.equal(await one("SELECT id FROM restaurants WHERE id=?", rid), null);
+  checks += 4;
   console.log(
-    `PASS: ${checks} plan checks: open signup, five free credits, atomic monthly quota, payment verification, signatures, duplicate/out-of-order webhooks, renewals, cancellation, checkout reuse, tenant isolation and loss-safe guest photo handoff. Stripe and AI are fixtures; no payments were made.`,
+    `PASS: ${checks} plan checks: open signup, five free credits, atomic monthly quota, payment verification, signatures, duplicate/out-of-order webhooks, renewals, cancellation, checkout reuse, checkout terms, account deletion around billing, tenant isolation and loss-safe guest photo handoff. Stripe and AI are fixtures; no payments were made.`,
   );
 } finally {
   Date.now = realNow;
