@@ -35,9 +35,15 @@ globalThis.fetch = async (url) => {
     return new Response("ok");
   if (String(url).startsWith("https://api.openai.com/v1/images/")) {
     imageCalls++;
+    // true fails plainly; a string fails with that error code.
     return imagesFail
       ? Response.json(
-          { error: { message: "Fixture failure" } },
+          {
+            error: {
+              message: "Fixture failure",
+              ...(typeof imagesFail === "string" ? { code: imagesFail } : {}),
+            },
+          },
           { status: 400 },
         )
       : Response.json({
@@ -724,6 +730,91 @@ try {
   assert.equal(await remaining(), 10);
   assert.equal(imageCalls, 14);
   checks++;
+
+  // 21. A photo an unfinished image is made from can't be removed until the
+  // image is done. A correction gives an image back only when the service or
+  // the site fails it, not when the owner removed its original meanwhile,
+  // filled their workspace, or worded the report so the safety check
+  // declined it: those go to the team.
+  const newSource = async () => {
+    const form = new FormData();
+    form.set("file", new File([photo], "pasta.jpg", { type: "image/jpeg" }));
+    form.set(
+      "normalized",
+      new File([photo], "dish.jpg", { type: "image/jpeg" }),
+    );
+    form.set("dishId", pasta);
+    return (await expect("assets", 201, { body: form, ...freeOpts })).json.id;
+  };
+  const imageFrom = (sourceId) =>
+    expect("jobs", 202, {
+      body: {
+        dishId: pasta,
+        sourceId,
+        requestKey: crypto.randomUUID(),
+        candidateCount: 1,
+      },
+      ...freeOpts,
+    });
+  const remove = (assetId, status) =>
+    expect(`assets/${assetId}`, status, { method: "DELETE", ...freeOpts });
+  const queuedFor = await newSource();
+  const queuedImage = await imageFrom(queuedFor);
+  assert.equal(
+    (await remove(queuedFor, 409)).json.error,
+    "A queued image uses this photo. Cancel it in Photo Studio, or wait until it’s finished, then remove the photo.",
+  );
+  await expect(`jobs/${queuedImage.json.id}/cancel`, 200, {
+    body: {},
+    ...freeOpts,
+  });
+  await remove(queuedFor, 200);
+  const original = await newSource();
+  const originalAsset = await settled((await imageFrom(original)).json.id);
+  await expect(`photo-corrections/${originalAsset}`, 200, {
+    body: { reason: "ingredients", detail: "Wrong garnish" },
+    ...freeOpts,
+  });
+  const correcting = await expect(
+    `photo-corrections/${originalAsset}/create`,
+    200,
+    { body: {}, ...freeOpts },
+  );
+  assert.equal(
+    (await remove(original, 409)).json.error,
+    "An image being made uses this photo. You can remove the photo once it’s finished.",
+  );
+  // Removed anyway, say by a request already under way, the correction
+  // fails and waits for the team instead of giving an image back.
+  const left = await remaining();
+  await run("UPDATE assets SET deleted_at=? WHERE id=?", Date.now(), original);
+  await settled(correcting.json.jobId, "failed");
+  assert.equal(
+    (await expect(`photo-corrections/${originalAsset}`, 200, freeOpts)).json
+      .status,
+    "review",
+  );
+  assert.equal(await remaining(), left);
+  const declined = await reportedPhoto();
+  imagesFail = "moderation_blocked";
+  await settled(declined.correction, "failed");
+  imagesFail = false;
+  assert.equal(
+    (await expect(`photo-corrections/${declined.asset}`, 200, freeOpts)).json
+      .status,
+    "review",
+  );
+  const crowded = await reportedPhoto();
+  process.env.WORKSPACE_STORAGE_MB = "1";
+  await settled(crowded.correction, "failed");
+  delete process.env.WORKSPACE_STORAGE_MB;
+  assert.equal(
+    (await expect(`photo-corrections/${crowded.asset}`, 200, freeOpts)).json
+      .status,
+    "review",
+  );
+  assert.equal(await remaining(), left - 2, "only the two originals");
+  checks += 4;
 
   // 7. Malformed IDs are a 400, not a 500 that trips the error-burst alert.
   for (const [path, body] of [

@@ -1707,6 +1707,30 @@ async function route(req: Request) {
         );
       }
       if (method === "DELETE") {
+        // A photo an unfinished image is made from (its original, previous
+        // version or inspiration) stays until the image is done: removing it
+        // would fail the image, and a correction failed that way used to
+        // give an image back.
+        const use = a.deleted_at
+          ? null
+          : await one(
+              `SELECT count(*) AS n,max(o.status!='queued' OR o.response_id IS NOT NULL OR o.lease_until>=? OR j.credit_period LIKE 'complimentary:%') AS started
+               FROM jobs j JOIN outputs o ON o.job_id=j.id
+               WHERE j.restaurant_id=? AND o.status NOT IN ('completed','failed')
+                 AND (j.source_id=? OR j.parent_id=? OR EXISTS(SELECT 1 FROM json_each(j.details,'$.style.referenceIds') WHERE value=?))`,
+              now(),
+              r.id,
+              a.id,
+              a.id,
+              a.id,
+            );
+        assert(
+          !use?.n,
+          409,
+          use?.started
+            ? "An image being made uses this photo. You can remove the photo once it’s finished."
+            : "A queued image uses this photo. Cancel it in Photo Studio, or wait until it’s finished, then remove the photo.",
+        );
         const prune = (menu: Row) => ({
           ...menu,
           ...(menu.restaurant
