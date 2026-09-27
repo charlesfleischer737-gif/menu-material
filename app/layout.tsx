@@ -1,6 +1,7 @@
 import type { Metadata } from "next";
 import ErrorReporter from "./components/error-reporter";
 import ScrollMemory from "./components/scroll-memory";
+import VisitSource from "./components/visit-source";
 import { SiteContactProvider } from "./components/site-contact";
 import { shareImage, siteName, siteOrigin } from "./site-metadata";
 import { config } from "@/lib/server/core";
@@ -14,6 +15,7 @@ import "./creation.css";
 import "./studio-onboarding.css";
 import "./restaurant-look.css";
 import "./launch.css";
+import "./launch-funnel.css";
 import "./marketing.css";
 import "./photo-exports.css";
 import "./creative-workspace.css";
@@ -69,6 +71,7 @@ export default function RootLayout({
       <body>
         <ErrorReporter />
         <ScrollMemory />
+        <VisitSource />
         {/* The support address and Terms, for the footer, sign-in, plans
             and error pages. */}
         <SiteContactProvider value={siteContact(config)}>

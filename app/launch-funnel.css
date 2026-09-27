@@ -1,0 +1,22 @@
+/* Administration → Launch funnel. */
+.launch-funnel-controls {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 16px;
+  margin: 24px 0 16px;
+}
+.cx-app .launch-funnel h3 {
+  margin-top: 28px;
+  font-size: var(--text-base);
+  font-weight: 600;
+}
+.launch-funnel :is(td, th[scope="colgroup"]) {
+  font-variant-numeric: tabular-nums;
+}
+.launch-funnel th[scope="colgroup"] {
+  border-bottom: 0;
+  padding-bottom: 4px;
+}
+.launch-funnel-features {
+  min-width: 820px;
+}

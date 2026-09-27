@@ -9,6 +9,7 @@ import {
   DialogDescription,
 } from "@/components/ui/dialog";
 import { api } from "@/lib/client";
+import { forgetAttribution, savedAttribution } from "@/lib/attribution";
 import { isPlaceholderRestaurantName } from "@/lib/restaurant-identity";
 import Brand from "./brand";
 import { useSiteContact } from "./site-contact";
@@ -80,7 +81,10 @@ export default function Auth({
         website,
         // A new restaurant's hours ("open now") use the owner's time zone.
         timezone: Intl.DateTimeFormat().resolvedOptions().timeZone,
+        // Where the owner first came from, for the launch funnel.
+        ...(mode === "signup" ? { attribution: savedAttribution() } : {}),
       });
+      if (mode === "signup") forgetAttribution();
       await onDone();
       setOpen(false);
       history.replaceState({}, "", location.pathname + location.hash);

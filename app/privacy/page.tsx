@@ -49,6 +49,18 @@ export default function Privacy() {
           example “a burger”) is kept for a week, by a fingerprint of the
           photo, so the same photo isn’t sent again.
         </p>
+        <p>
+          To see how people find Menu Material and get started, it counts a few
+          steps: opening the homepage, and adding a photo and pressing Create in
+          Photo Studio. These are kept only as counts. A random identifier in
+          your browser lets each step count once; it is stored only as part of a
+          one-way hash and isn’t linked to your account. When you sign up, your
+          account notes the name of the site that sent you, such as google.com
+          (never the full address), and any campaign tags in the link you first
+          arrived by. Until then they stay in your browser, for up to 30 days.
+          None of these records includes your network address or email, and the
+          step counts are deleted after 90 days.
+        </p>
       </section>
       <section>
         <h2 id="publishing" tabIndex={-1}>

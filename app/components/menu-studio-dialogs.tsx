@@ -15,6 +15,7 @@ import {
   Upload,
 } from "lucide-react";
 import { api, dishCount, downloadBlob, type Row } from "@/lib/client";
+import { recordMenuExport } from "@/lib/funnel-client";
 import {
   menuDocumentSchema,
   menuPurposeDefaults,
@@ -1234,6 +1235,7 @@ export function MenuDeliveryDialog({
           result.blob,
           `${menu.restaurant.name}-${menu.title || menu.name}-${menu.paper}${menu.printProfile === "press" ? "-print-shop" : ""}.pdf`,
         );
+        recordMenuExport("pdf", record.id);
         setDownloaded(true);
       } else await published(choosingAddress ? address : undefined);
     } catch (e) {
@@ -1683,6 +1685,7 @@ export function MenuShareDialog({
                       await menuQrCard(publishedRestaurant, url, qr),
                       `${restaurant.slug}-menu-card-${placement}-4x6.pdf`,
                     );
+                    recordMenuExport("table_card", record.id);
                   })
                 }
               >
@@ -1693,12 +1696,13 @@ export function MenuShareDialog({
                 className="md-text-button"
                 disabled={!qr || busy}
                 onClick={() =>
-                  void run(async () =>
+                  void run(async () => {
                     downloadBlob(
                       await (await fetch(qr)).blob(),
                       `${restaurant.slug}-menu-qr-${placement}.png`,
-                    ),
-                  )
+                    );
+                    recordMenuExport("qr_image", record.id);
+                  })
                 }
               >
                 <Download size={15} /> Save QR image

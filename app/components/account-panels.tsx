@@ -4,6 +4,7 @@ import { Copy } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { StudioReleasePanel } from "./studio-release-panel";
 import { StudioProgressPanel } from "./studio-progress-panel";
+import { LaunchFunnelPanel } from "./launch-funnel-panel";
 import { api, type Row } from "@/lib/client";
 import CreativeHeader from "./creative-header";
 import { MenuReports } from "./menu-reports";
@@ -150,6 +151,7 @@ export function Admin({ act, refresh, busy }: AdminProps) {
         />
       )}
       {data && <StudioProgressPanel />}
+      {data && <LaunchFunnelPanel />}
       {data && (
         <section className="admin-access-panel">
           <h2>Account access</h2>
