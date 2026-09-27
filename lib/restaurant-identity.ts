@@ -50,10 +50,48 @@ export function slugify(value: string) {
 
 export const menuAddressPattern = /^[a-z0-9](?:[a-z0-9-]{1,58}[a-z0-9])$/;
 
+// Addresses guests could mistake for Menu Material's own pages or staff.
+const reservedAddresses = new Set([
+  "about",
+  "abuse",
+  "account",
+  "admin",
+  "administrator",
+  "api",
+  "app",
+  "billing",
+  "blog",
+  "contact",
+  "help",
+  "legal",
+  "login",
+  "menu",
+  "menus",
+  "official",
+  "press",
+  "pricing",
+  "privacy",
+  "report",
+  "security",
+  "sign-in",
+  "sign-up",
+  "signin",
+  "signup",
+  "staff",
+  "status",
+  "support",
+  "team",
+  "terms",
+  "guidelines",
+  "www",
+]);
+
 export function menuAddressProblem(address: string) {
   if (address.length < 3) return "Use at least 3 characters.";
   if (address.length > 60) return "Use 60 characters or fewer.";
   if (!menuAddressPattern.test(address) || address.includes("--"))
     return "Use lowercase letters, numbers, and single hyphens.";
+  if (reservedAddresses.has(address) || /menu-?material/.test(address))
+    return "That address is reserved. Try one with your restaurant’s name.";
   return "";
 }

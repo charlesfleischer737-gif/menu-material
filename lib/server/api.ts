@@ -87,6 +87,8 @@ import {
   withRenderEstimates,
 } from "./generation";
 import {
+  alertMenuReport,
+  background,
   checkAlertsInBackground,
   clientErrorRoute,
   readiness,
@@ -742,6 +744,30 @@ async function route(req: Request) {
         "This menu is not currently available.",
       );
       const snapshot = selected || JSON.parse(r.published);
+      if (p[2] === "report" && method === "POST") {
+        // A guest tells the team about a page that impersonates a business,
+        // misleads or abuses; an administrator reviews it and can take the
+        // restaurant's public pages down.
+        await publicLimit(req, "menu-report", 5, 3600);
+        const input = z
+          .object({
+            reason: z.enum([
+              "impersonation",
+              "misleading",
+              "offensive",
+              "copyright",
+              "other",
+            ]),
+            details: z.string().trim().max(1000).default(""),
+          })
+          .parse(await body(req));
+        await event(r.id, "menu_report", snapshot.documentId || null, {
+          ...input,
+          address: p[1],
+        });
+        background(alertMenuReport(r.slug, input.reason));
+        return response({ ok: true }, 202);
+      }
       const menu =
         p[2] === "assets" && p[3] && assetIsPublished(snapshot, p[3])
           ? snapshot
@@ -1065,6 +1091,11 @@ async function route(req: Request) {
           ),
           requests: await all(
             "SELECT id,kind,email,restaurant,status,created_at FROM launch_requests WHERE kind IN ('access','pro') ORDER BY status='new' DESC,created_at DESC LIMIT 200",
+          ),
+          // What guests reported from "Report this page" in the last 90 days.
+          menuReports: await all(
+            "SELECT e.id,e.restaurant_id,e.details,e.created_at,r.name,r.slug,r.public_suspended FROM events e JOIN restaurants r ON r.id=e.restaurant_id WHERE e.kind='menu_report' AND e.created_at>? ORDER BY e.created_at DESC LIMIT 100",
+            now() - 90 * 86400000,
           ),
           // Links that still work: invitations, setup invitations and resets.
           invites: await all(

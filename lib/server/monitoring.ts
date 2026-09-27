@@ -745,3 +745,15 @@ export async function clientErrorRoute(req: Request) {
   );
   return response({ ok: true }, 202);
 }
+
+/**
+ * Tell the team a guest reported a menu page, at most once a day per page.
+ * Only the address and a fixed reason reach the webhook, never guest text.
+ */
+export async function alertMenuReport(address: string, reason: string) {
+  await raiseAlert(
+    `menu-report:${address}`,
+    `A guest reported the menu at /m/${address} (${reason}). Review it in Administration → Guest reports.`,
+    now() - 86400000,
+  );
+}

@@ -69,6 +69,10 @@ try {
   assert.match(menuAddressProblem("Bad Address"), /lowercase/);
   assert.match(menuAddressProblem("double--hyphen"), /single hyphens/);
   assert.equal(menuAddressProblem("corner-house"), "");
+  // Addresses guests could take for Menu Material's own pages are reserved.
+  for (const address of ["support", "admin", "menu-material", "menumaterial-eats"])
+    assert.match(menuAddressProblem(address), /reserved/, address);
+  assert.equal(menuAddressProblem("joes-support"), "");
 
   // Automatic checks replace "I checked" boxes.
   const burger = newMenuEntry({
@@ -469,7 +473,27 @@ try {
     (await call("restaurant/address?check=corner-house")).available,
     false,
   );
+  await call("restaurant/address", { address: "support" }, 400);
+
+  // A guest can report a page; administrators see it under Guest reports.
+  cookie = "";
+  const reportedSlug = (await one("SELECT slug FROM restaurants WHERE id=?", rid))
+    .slug;
+  await call(
+    `public/${reportedSlug}/report`,
+    { reason: "impersonation", details: "Not the real Corner House" },
+    202,
+  );
+  await call(`public/${reportedSlug}/report`, { reason: "spam" }, 400);
   cookie = ownerCookie;
+  const [report] = (await call("admin")).menuReports;
+  assert.equal(report.restaurant_id, rid);
+  assert.equal(report.public_suspended, 0);
+  const reportDetails = JSON.parse(report.details);
+  assert.deepEqual(
+    [reportDetails.reason, reportDetails.details, reportDetails.address],
+    ["impersonation", "Not the real Corner House", reportedSlug],
+  );
 
   // A My Dishes price change reaches the draft and the live menu.
   const current = await call(`menus/${created.id}`);

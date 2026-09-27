@@ -6,6 +6,7 @@ import { StudioReleasePanel } from "./studio-release-panel";
 import { StudioProgressPanel } from "./studio-progress-panel";
 import { api, type Row } from "@/lib/client";
 import CreativeHeader from "./creative-header";
+import { MenuReports } from "./menu-reports";
 import WorkspacePlaceholder from "./workspace-placeholder";
 import {
   AdminOperationStatus,
@@ -114,6 +115,14 @@ export function Admin({ act, refresh, busy }: AdminProps) {
             />
           ))}
         </section>
+      )}
+      {data && data.menuReports?.length > 0 && (
+        <MenuReports
+          reports={data.menuReports}
+          busy={busy || (loading ? "Refreshing administration" : "")}
+          act={act}
+          done={load}
+        />
       )}
       {data && (
         <AiOperations
