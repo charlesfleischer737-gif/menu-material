@@ -727,7 +727,8 @@ Ramen 1,200`);
     404,
   );
   // A dining room scrolling on the restaurant's Wi-Fi (one address) still
-  // has its visits counted: dish views have their own allowance.
+  // has its visits counted: dish views have their own allowance, and 300
+  // guests are well within a network's guests for the day.
   const venue = "198.51.100.7";
   for (let n = 0; n < 301; n++)
     await guestCall(
@@ -740,12 +741,14 @@ Ramen 1,200`);
       200,
       venue,
     );
+  const visitsAtVenue = await guestVisits();
   await guestCall(
     `public/${slug}/events`,
     { kind: "menu_visit", session: crypto.randomUUID(), src: "table" },
     200,
     venue,
   );
+  assert.equal(await guestVisits(), visitsAtVenue + 1);
   // One address has a cap across every restaurant's menus.
   await run(
     "INSERT INTO rate_limits (key,count,expires_at) VALUES (?,?,?)",
@@ -765,6 +768,77 @@ Ramen 1,200`);
     200,
     "203.0.113.6",
   );
+  // Each dish in a view counts against a network's allowance, not each
+  // request: with 2 views left, 3 dishes are refused and 2 are recorded.
+  for (const ip of ["203.0.113.7", "203.0.113.8"])
+    await run(
+      "INSERT INTO rate_limits (key,count,expires_at) VALUES (?,?,?)",
+      digest(`public-event:views:${restaurantState.id}:${ip}`),
+      1198,
+      Date.now() + 3600000,
+    );
+  const viewsBeforeCap = await dishViews();
+  await guestCall(
+    `public/${slug}/events`,
+    {
+      kind: "dish_view",
+      session: crypto.randomUUID(),
+      entityIds: [toast.id, flaky.id, sized.id],
+    },
+    429,
+    "203.0.113.7",
+  );
+  await guestCall(
+    `public/${slug}/events`,
+    {
+      kind: "dish_view",
+      session: crypto.randomUUID(),
+      entityIds: [toast.id, flaky.id],
+    },
+    200,
+    "203.0.113.8",
+  );
+  assert.equal(await dishViews(), viewsBeforeCap + 2);
+  // Fresh session IDs cost nothing, so a network brings a restaurant at most
+  // 500 guests a day. Past that its events are dropped quietly (guests see
+  // no error), while guests it already brought keep counting.
+  const crowd = "198.51.100.9",
+    regular = crypto.randomUUID();
+  await guestCall(
+    `public/${slug}/events`,
+    { kind: "menu_visit", session: regular },
+    200,
+    crowd,
+  );
+  await run(
+    "UPDATE rate_limits SET count=500 WHERE key=?",
+    digest(`guest-sessions:${restaurantState.id}:${crowd}`),
+  );
+  const visitsAtCap = await guestVisits(),
+    viewsAtCap = await dishViews();
+  const dropped = await guestCall(
+    `public/${slug}/events`,
+    { kind: "menu_visit", session: crypto.randomUUID() },
+    200,
+    crowd,
+  );
+  assert.equal(dropped.counted, false);
+  assert.equal(await guestVisits(), visitsAtCap, "a 501st guest isn't kept");
+  await guestCall(
+    `public/${slug}/events`,
+    { kind: "dish_view", session: regular, entityIds: [toast.id] },
+    200,
+    crowd,
+  );
+  assert.equal(await dishViews(), viewsAtCap + 1, "an earlier guest still is");
+  // Other networks are unaffected.
+  await guestCall(
+    `public/${slug}/events`,
+    { kind: "menu_visit", session: crypto.randomUUID() },
+    200,
+    "198.51.100.10",
+  );
+  assert.equal(await guestVisits(), visitsAtCap + 1);
   // Housekeeping removes guest activity older than 90 days, and only that.
   const old = Date.now() - 91 * 24 * 60 * 60 * 1000;
   for (const [id, kind, at] of [
@@ -1024,7 +1098,7 @@ Ramen 1,200`);
   );
 
   console.log(
-    `PASS: ${checks} API checks and pasted-menu parsing, menu types, import checks, My Dishes linking, dietary tags, open-now status, live contact details, placement events, visit stats, quick updates and structured data.`,
+    `PASS: ${checks} API checks and pasted-menu parsing, menu types, import checks, My Dishes linking, dietary tags, open-now status, live contact details, placement events, guest events limited by rows and by guests per network, visit stats, quick updates and structured data.`,
   );
 } finally {
   rmSync(root, { recursive: true, force: true });

@@ -153,27 +153,33 @@ export default function Privacy() {
           in the browser for 24 hours after your last change. A sign-in lasts 7
           days and renews while you use it. Guest menu visit records are deleted
           after 90 days. A record of AI usage costs, without your photos or
-          text, is kept for accounting. Stripe keeps its own records of invoices
-          and payments.
+          text, is kept for accounting. After an account is deleted, a one-way
+          hash of its email address is kept, only so the free images for new
+          accounts aren’t given to the same email twice. Stripe keeps its own
+          records of invoices and payments.
         </p>
         <p>
           You can delete your account in Settings, under Details. Deletion is
           immediate: it permanently removes your restaurant’s workspace,
           including dishes, photos, drafts, menus (published ones too), posts
           and captions, signs you out everywhere and deletes your customer
-          record at Stripe, if you have one. With an active Pro subscription,
-          cancel it first in Plans, under Manage billing; you can delete the
-          account once Pro has ended. Copies you already downloaded or shared
-          can’t be recalled.
+          record at Stripe, if you have one. Only a one-way hash of your email
+          stays, so a new account with that email starts without free images.
+          With an active Pro subscription, cancel it first in Plans, under
+          Manage billing; you can delete the account once Pro has ended. Copies
+          you already downloaded or shared can’t be recalled.
         </p>
         <p>
           The browser uses a sign-in cookie, workspace preferences and a
-          menu-session identifier. It also keeps copies of unsaved work so it
-          can be recovered: menu drafts in this browser’s storage, where they
-          remain after the tab is closed, and Photo Studio, post and campaign
-          drafts for the current tab only. Recovery data is cleared after a
-          successful save. On a shared device, sign out and close your browser
-          tab when finished.
+          menu-session identifier. After you sign in, it also keeps a device
+          cookie for a year, so it can still sign in to your account while
+          someone else’s repeated attempts are slowing sign-ins to it; a
+          password reset or deleting your account revokes it. The browser also
+          keeps copies of unsaved work so it can be recovered: menu drafts in
+          this browser’s storage, where they remain after the tab is closed, and
+          Photo Studio, post and campaign drafts for the current tab only.
+          Recovery data is cleared after a successful save. On a shared device,
+          sign out and close your browser tab when finished.
         </p>
       </section>
       <section>

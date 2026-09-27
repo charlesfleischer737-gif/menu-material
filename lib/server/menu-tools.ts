@@ -786,6 +786,43 @@ export async function menuTools(req: Request, p: string[], r: Row) {
   }
   return null;
 }
+// Far more guests than a busy dining room on one Wi-Fi network brings a
+// restaurant in a day.
+const GUEST_SESSIONS_PER_NETWORK_PER_DAY = 500;
+// Whether a guest session's events count for the restaurant. A session seen
+// in the last day does; a new one takes one of its network's places for the
+// day. Both are kept only as hashed counters that expire.
+async function guestSessionCounts(
+  restaurantId: string,
+  network: string,
+  session: string,
+) {
+  const seen = digest(`guest-session:${restaurantId}:${network}:${session}`);
+  if (
+    await one(
+      "SELECT 1 AS found FROM rate_limits WHERE key=? AND expires_at>?",
+      seen,
+      now(),
+    )
+  )
+    return true;
+  try {
+    await limit(
+      `guest-sessions:${restaurantId}:${network}`,
+      GUEST_SESSIONS_PER_NETWORK_PER_DAY,
+      86400,
+    );
+  } catch (e) {
+    if ((e as { status?: number }).status === 429) return false;
+    throw e;
+  }
+  await run(
+    "INSERT INTO rate_limits (key,count,expires_at) VALUES (?,1,?) ON CONFLICT(key) DO UPDATE SET expires_at=excluded.expires_at",
+    seen,
+    now() + 86400000,
+  );
+  return true;
+}
 export async function publicEvent(
   req: Request,
   p: string[],
@@ -841,19 +878,27 @@ export async function publicEvent(
   // Dish views have their own allowance, so a dining room of guests
   // scrolling on the restaurant's Wi-Fi never crowds out visits and taps.
   // One network (an IPv6 /64 counts as one) also has a cap across all
-  // restaurants.
+  // restaurants. Each dish viewed is a row, so each one counts.
   const ip = caller(req),
-    group = b.kind === "dish_view" ? "views" : "guests";
+    group = b.kind === "dish_view" ? "views" : "guests",
+    rows = b.kind === "dish_view" ? viewed.length : 1;
   await limit(
     `public-event-ip:${group}:${ip}`,
     group === "views" ? 4800 : 1200,
     3600,
+    rows,
   );
   await limit(
     `public-event:${group}:${r.id}:${ip}`,
     group === "views" ? 1200 : 300,
     3600,
+    rows,
   );
+  // A new session ID costs nothing, so fresh ones could inflate a menu's
+  // stats: past its daily share of guests, a network's events are dropped
+  // without telling the guest.
+  if (!(await guestSessionCounts(r.id, ip, b.session)))
+    return response({ ok: true, counted: false });
   const menuId = menu.documentId || null,
     details = JSON.stringify({ menu: menuId, src: b.src || null }),
     t = now();

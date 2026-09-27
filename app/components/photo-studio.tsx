@@ -98,6 +98,7 @@ import {
 import { useInspirationAvailability } from "./use-inspiration-availability";
 import { PhotoComparison, StudioCreating } from "./studio-onboarding";
 import { cancelledError, heldImageMessage } from "@/lib/creation-progress";
+import { freeImagesNote } from "@/lib/free-images";
 import { StudioWorkbench } from "./studio-workbench";
 import { radioKeys, radioTab } from "./radio-keys";
 import {
@@ -1005,7 +1006,7 @@ export default function PhotoStudio({
   const failedRetry = !state.aiConnected
     ? "Photo creation is temporarily unavailable. Your work is saved."
     : state.remaining < 1
-      ? "You’ve used your available images."
+      ? freeImagesNote(state.freeImages) || "You’ve used your available images."
       : "";
   // Why the latest image stopped: cancelled by the owner while it waited, or
   // it couldn't be created.

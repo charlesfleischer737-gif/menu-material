@@ -73,6 +73,7 @@ import { useStudioLibrary } from "./use-studio-library";
 import { PhotoInspirationSheet } from "./photo-inspiration-sheet";
 import { ProBadge } from "./pro-badge";
 import { FREE_SIGNUP_IMAGES, proFeatures, type ProFeature } from "@/lib/plans";
+import { freeImagesNote } from "@/lib/free-images";
 import { hasProFeatures, requestUpgrade } from "@/lib/upgrade";
 import WorkspaceActionBar from "./workspace-action-bar";
 import { StudioStyleLibrary, type LibraryOrigin } from "./studio-style-library";
@@ -541,10 +542,16 @@ export function StudioWorkbench({
             : !signedOutGuest && !state.aiConnected
               ? "Photo creation is temporarily unavailable. Your work is saved."
               : state.remaining <= 0
-                ? "You’ve used your available images."
+                ? freeImagesNote(state.freeImages) ||
+                  "You’ve used your available images."
                 : signedOutGuest
                   ? `Create a free account to continue · ${FREE_SIGNUP_IMAGES} free images`
                   : `Uses 1 image · ${state.remaining} left`);
+  // Out of images, plans are offered; free images on their way need none.
+  const offerPlans =
+    !signedOutGuest &&
+    state.remaining <= 0 &&
+    state.freeImages?.status !== "held";
   const showImage =
     b.look === "keep" && source
       ? source
@@ -1502,7 +1509,7 @@ export function StudioWorkbench({
               {createButton}
               <p className="st-action-note">
                 {reason}
-                {!signedOutGuest && state.remaining <= 0 && (
+                {offerPlans && (
                   <button
                     className="st-text-button"
                     onClick={() =>
