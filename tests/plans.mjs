@@ -817,6 +817,30 @@ try {
   );
   assert.equal(emptyTransfer.dishId, undefined);
   assert.deepEqual(await guestRows(), rowsBefore, "nothing is saved");
+  // A new account's free images on their way are said to be coming, with
+  // no plan offered; an email that already had them is told so.
+  for (const [freeImages, message] of [
+    [
+      { status: "held", images: 5, days: 1 },
+      "Your 5 free images arrive within a day. Your photo stays here, so you can create it then.",
+    ],
+    [
+      { status: "used", images: 5 },
+      "This email already had its 5 free images. Free images don’t renew; see Plans for Pro.",
+    ],
+  ])
+    await assert.rejects(
+      transferGuestPhoto(
+        draft,
+        { file, normalized: file, url: "blob:local" },
+        null,
+        { ...guestState, freeImages },
+        { id: id(), revision: 0, requestKey: id() },
+      ),
+      (error) => error.code === "no_images" && error.message === message,
+    );
+  assert.deepEqual(await guestRows(), rowsBefore, "still nothing saved");
+  checks += 3;
   // Signing in without Create still hands the photo over.
   const handOver = { id: id(), revision: 0, requestKey: id() };
   await transferGuestPhoto(

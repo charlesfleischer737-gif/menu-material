@@ -427,15 +427,18 @@ export default function GuestStudio({
               {error}
               {state.user &&
                 // Out of images, a retry can't work; the photo stays here.
+                // Free images on their way need no plan.
                 (requested && state.remaining < 1 ? (
-                  <button
-                    className="cx-link"
-                    onClick={() =>
-                      window.dispatchEvent(new Event("menu-material:plans"))
-                    }
-                  >
-                    See plans
-                  </button>
+                  state.freeImages?.status === "held" ? null : (
+                    <button
+                      className="cx-link"
+                      onClick={() =>
+                        window.dispatchEvent(new Event("menu-material:plans"))
+                      }
+                    >
+                      See plans
+                    </button>
+                  )
                 ) : (
                   <button
                     className="cx-link"

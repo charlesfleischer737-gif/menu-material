@@ -4,6 +4,7 @@ import { photoLookContext } from "./photo-recipe";
 import { activeInspirationId } from "./studio-reference";
 import { hasProFeatures } from "./upgrade";
 import { imagesRenewal } from "./plans";
+import { freeImagesNote } from "./free-images";
 import {
   rememberPreference,
   workspacePreferenceKey,
@@ -107,7 +108,10 @@ export async function transferGuestPhoto(
   if (create && !transfer.dishId && state.remaining < 1)
     throw Object.assign(
       Error(
-        `You’ve used your available images. ${imagesRenewal(state.billing?.plan)}`,
+        state.freeImages?.status === "held"
+          ? // A new account's free images on their way (lib/free-images.ts).
+            `${freeImagesNote(state.freeImages)} Your photo stays here, so you can create it then.`
+          : `${freeImagesNote(state.freeImages) || "You’ve used your available images."} ${imagesRenewal(state.billing?.plan)}`,
       ),
       { code: "no_images" },
     );
