@@ -16,7 +16,7 @@ import {
   type Row,
 } from "./core";
 import { effectiveStyle, hasProFeatures, proRequired } from "./entitlements";
-import { FREE_LIVE_MENUS, freeMenuDesign } from "../plans";
+import { FREE_LIVE_MENUS, freeCanPublish } from "../plans";
 import {
   menuDocumentSchema,
   upgradeMenuDocument,
@@ -145,7 +145,13 @@ export async function assertMenuReady(r: Row, draft: MenuDocument) {
     blocking[0]?.message || "Check the menu before publishing.",
   );
 }
-async function publication(r: Row, documentId: string, draft: MenuDocument) {
+async function publication(
+  r: Row,
+  documentId: string,
+  draft: MenuDocument,
+  /** Without Pro, a live menu published again keeps the look it's live in. */
+  keptStyle?: Row | null,
+) {
   await assertMenuReady(r, draft);
   const publicDraft = {
     ...draft,
@@ -191,7 +197,7 @@ async function publication(r: Row, documentId: string, draft: MenuDocument) {
       currency: r.currency,
       logoId,
       orderingUrl: r.ordering_url,
-      style: publicBrandStyle(await effectiveStyle(r)),
+      style: keptStyle || publicBrandStyle(await effectiveStyle(r)),
     },
   };
 }
@@ -1027,9 +1033,11 @@ export async function menuDocumentsRoute(req: Request, p: string[], r: Row) {
   if (p[2] === "publish") {
     const draft = menuDocumentSchema.parse(JSON.parse(row.draft));
     // Free publishes one menu, in the basic design. A menu already live can
-    // always be republished, so prices can be fixed after a downgrade.
+    // always be republished in the design and look it's live in, so prices
+    // and allergens can be fixed after a downgrade without changing it.
     const unlocked = await hasProFeatures(r.id);
-    if (!unlocked && !freeMenuDesign(draft)) proRequired("menuDesigns");
+    const live = row.published ? JSON.parse(row.published) : null;
+    if (!unlocked && !freeCanPublish(draft, live)) proRequired("menuDesigns");
     const overLimit = async () =>
       !unlocked &&
       !row.published &&
@@ -1042,7 +1050,12 @@ export async function menuDocumentsRoute(req: Request, p: string[], r: Row) {
     const addressed = specialsOnly(r.published) ? { ...r, published: null } : r;
     await firstPublicationAddress(addressed, b.address || undefined);
     r.slug = addressed.slug;
-    const content = await publication(r, row.id, draft),
+    const content = await publication(
+        r,
+        row.id,
+        draft,
+        unlocked ? null : live?.restaurant?.style,
+      ),
       serialized = JSON.stringify(content),
       t = now(),
       hid = id();

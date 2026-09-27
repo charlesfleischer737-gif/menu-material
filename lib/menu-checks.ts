@@ -274,10 +274,13 @@ export const blockingChecks = (checks: MenuCheck[]) =>
  * A published menu keeps the restaurant's name, logo, colors, currency,
  * cuisine and ordering link from when it was published. True when the
  * owner's settings have changed since, so publishing again would show them.
+ * Without Pro (`look: false`) a live menu keeps its colors when published
+ * again, so only the other settings count.
  */
 export function restaurantSettingsChanged(
   published: Row | null | undefined,
   restaurant: Row,
+  { look: withLook = true }: { look?: boolean } = {},
 ) {
   const shown = published?.restaurant;
   if (!shown) return false;
@@ -290,9 +293,10 @@ export function restaurantSettingsChanged(
     (shown.orderingUrl || "") !== (restaurant.ordering_url || "") ||
     (shown.logoId || null) !==
       ((published.showLogo !== false && restaurant.logo_id) || null) ||
-    look.primary !== style.primary ||
-    look.accent !== style.accent ||
-    look.typography !== style.typography
+    (withLook &&
+      (look.primary !== style.primary ||
+        look.accent !== style.accent ||
+        look.typography !== style.typography))
   );
 }
 

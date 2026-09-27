@@ -16,6 +16,7 @@ const { newMenuDocument, newMenuEntry } =
   await import("../lib/menu-document.ts");
 const { defaultStyle } = await import("../lib/promotions.ts");
 const { FREE_SIGNUP_IMAGES, freeMenuDesign } = await import("../lib/plans.ts");
+const { restaurantSettingsChanged } = await import("../lib/menu-checks.ts");
 const { freePostDraft, getPostTemplate } =
   await import("../lib/post-templates.ts");
 const { recipeFromDraft, emptyStudioLibrary } =
@@ -518,6 +519,7 @@ try {
   assert.equal(state.billing.plan, "free");
   assert.equal(state.remaining, FREE_SIGNUP_IMAGES, "a comp adds no images");
   assert.equal(state.restaurant.style.primary, look.primary);
+  dinner = await edit(dinner, { design: "fine", appearance: "dark" });
   dinner = await publish(dinner);
   lunch = await publish(lunch);
   guest = await guestMenu();
@@ -555,10 +557,34 @@ try {
     "a live menu keeps its look until it's published again",
   );
   assert.equal((await guestMenu(`?menu=${dinner.id}`)).title, "Dinner");
-  // Published again on Free: allowed, in the neutral look.
+  // Published again on Free: allowed, and it keeps the look it's live in.
   lunch = await publish(lunch);
   guest = await guestMenu();
-  assert.equal(guest.restaurant.style.primary, defaultStyle.primary);
+  assert.equal(
+    guest.restaurant.style.primary,
+    look.primary,
+    "a live menu published again on Free keeps its look",
+  );
+  // So Menus doesn't ask to republish for a look Free can't apply.
+  state = await call("state");
+  const liveLunch = (await call(`menus/${lunch.id}`)).published;
+  assert.equal(restaurantSettingsChanged(liveLunch, state.restaurant), true);
+  assert.equal(
+    restaurantSettingsChanged(liveLunch, state.restaurant, { look: false }),
+    false,
+  );
+  // A menu live in a Pro design can be published again in it (to fix a
+  // price or an allergen), but not moved to another Pro design.
+  dinner = await publish(dinner);
+  assert.equal((await call(`menus/${dinner.id}`)).published.design, "fine");
+  dinner = await edit(dinner, { design: "cafe" });
+  await proOnly(
+    `menus/${dinner.id}/publish`,
+    { revision: dinner.revision },
+    "menuDesigns",
+  );
+  dinner = await edit(dinner, { design: "fine" });
+  checks += 3;
   // Saved looks stay and can be renamed; adding another is Pro.
   const library = await call("studio-library");
   assert.equal(library.looks.length, 1);
@@ -657,11 +683,23 @@ try {
     "sub_limits:1",
   );
   assert.equal((await featureAccess(rid)).source, "free");
-  // A paid period covering today.
+  // Renewing: Stripe has started the new period but not yet charged its
+  // invoice. Pro features stay on (the guest menu keeps no credit), and the
+  // plan says the renewal is on its way, not that a payment failed.
   await run(
     "UPDATE billing_accounts SET status='active' WHERE restaurant_id=?",
     rid,
   );
+  await run(
+    "UPDATE billing_periods SET ends_at=? WHERE id=?",
+    Date.now() - 60000,
+    "sub_limits:1",
+  );
+  access = await featureAccess(rid);
+  assert.equal(access.source, "renewing");
+  assert.equal(access.unlocked, true);
+  assert.equal((await guestMenu()).credit, false);
+  // A paid period covering today.
   await run(
     "UPDATE billing_periods SET starts_at=?,ends_at=? WHERE id=?",
     Date.now() - day,
@@ -676,7 +714,7 @@ try {
     rid,
   );
   assert.equal((await featureAccess(rid)).source, "free");
-  checks += 7;
+  checks += 10;
 
   // 12. One switch lifts every limit.
   env.PLAN_LIMITS_ENABLED = "false";

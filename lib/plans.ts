@@ -43,6 +43,28 @@ export function freeMenuDesign(menu: {
   );
 }
 
+/**
+ * What Free can publish: the basic design, or, for a menu that's already
+ * live, the design and colors it's live in, so a downgrade never forces a
+ * live menu to change its look to fix a price or an allergen.
+ */
+export function freeCanPublish(
+  menu: Parameters<typeof freeMenuDesign>[0] & { color?: string },
+  live?: (Parameters<typeof freeMenuDesign>[0] & { color?: string }) | null,
+) {
+  if (freeMenuDesign(menu)) return true;
+  if (!live) return false;
+  return (
+    (menu.design ?? FREE_MENU_DESIGN.design) ===
+      (live.design ?? FREE_MENU_DESIGN.design) &&
+    (menu.layout ?? "classic") === (live.layout ?? "classic") &&
+    (menu.appearance ?? FREE_MENU_DESIGN.appearance) ===
+      (live.appearance ?? FREE_MENU_DESIGN.appearance) &&
+    (menu.colorMode ?? "restaurant") === (live.colorMode ?? "restaurant") &&
+    (menu.colorMode !== "custom" || menu.color === live.color)
+  );
+}
+
 // Each Pro feature: what the upgrade sheet promises and what a blocked
 // request says. Titles also list Pro's features on the pricing page.
 export const proFeatures = {

@@ -607,6 +607,7 @@ export default function MenuStudio({
   const settingsChanged = restaurantSettingsChanged(
     record.published,
     state.restaurant,
+    { look: pro },
   );
   const draftLive =
     !!record.published &&
@@ -1154,6 +1155,7 @@ export default function MenuStudio({
                 {panel === "design" ? (
                   <MenuDesignInspector
                     menu={draft}
+                    live={record.published}
                     change={patch}
                     choose={() => setDialog("design")}
                     pro={pro}
@@ -1301,6 +1303,7 @@ export default function MenuStudio({
           <MenuDesignPicker
             menu={menu}
             pro={pro}
+            liveDesign={record.published?.design}
             close={() => setDialog("")}
             apply={(design) => {
               patch({ design });
@@ -1508,7 +1511,11 @@ export default function MenuStudio({
                       {m.draft.sections.reduce((n, s) => n + s.items.length, 0)}{" "}
                       dishes · {m.published ? "Published" : "Draft"}
                       {m.isPrimary ? " · Main menu" : ""}
-                      {restaurantSettingsChanged(m.published, state.restaurant)
+                      {restaurantSettingsChanged(
+                        m.published,
+                        state.restaurant,
+                        { look: pro },
+                      )
                         ? " · Republish to apply your restaurant settings"
                         : ""}
                     </small>

@@ -64,7 +64,7 @@ import {
 import MenuProof from "./menu-proof";
 import MenuDocumentView from "./menu-document-view";
 import { ProBadge, ProNote } from "./pro-badge";
-import { FREE_MENU_DESIGN, freeMenuDesign } from "@/lib/plans";
+import { FREE_MENU_DESIGN, freeCanPublish } from "@/lib/plans";
 import { requestUpgrade } from "@/lib/upgrade";
 import type { MenuContact } from "@/lib/restaurant-contact";
 
@@ -73,16 +73,21 @@ export function MenuDesignPicker({
   close,
   apply,
   pro = true,
+  liveDesign,
 }: {
   menu: DesignedMenu;
   close: () => void;
   apply: (design: MenuDocument["design"]) => void;
   /** Without Pro, other designs can be tried in the draft, not published. */
   pro?: boolean;
+  /** The design this menu is live in, which Free can keep. */
+  liveDesign?: string;
 }) {
   const [selected, setSelected] = useState(menu.design),
     [all, setAll] = useState(false),
     [detail, setDetail] = useState(false);
+  const proOnly = (design: string) =>
+    !pro && design !== FREE_MENU_DESIGN.design && design !== liveDesign;
   const recommended = recommendMenuDesigns(menu),
     designs = all ? menuDesignCollection : recommended,
     spec = menuDesignSpec(selected);
@@ -107,13 +112,13 @@ export function MenuDesignPicker({
           </div>
           <div className="md-dialog-actions md-sticky-actions">
             <span>
-              {!pro && selected !== FREE_MENU_DESIGN.design
+              {proOnly(selected)
                 ? "Try it in your draft. Publishing this design is part of Pro."
                 : "Your content, photos, and colors stay yours."}
             </span>
             <button className="md-button" onClick={() => apply(selected)}>
               Use {spec.name}
-              {!pro && selected !== FREE_MENU_DESIGN.design && <ProBadge />}
+              {proOnly(selected) && <ProBadge />}
             </button>
           </div>
         </>
@@ -154,7 +159,7 @@ export function MenuDesignPicker({
                 <div className="md-design-card-copy">
                   <span>
                     {d.category}{" "}
-                    {!pro && d.id !== FREE_MENU_DESIGN.design && <ProBadge />}
+                    {proOnly(d.id) && <ProBadge />}
                   </span>
                   <h3>{d.name}</h3>
                   <p>{d.description}</p>
@@ -863,6 +868,7 @@ function publicationChanges(
   before: Row | null,
   menu: DesignedMenu,
   restaurant: Row,
+  pro: boolean,
 ) {
   if (!before)
     return [
@@ -925,7 +931,7 @@ function publicationChanges(
     ].some((key) => before[key] !== menu[key as keyof DesignedMenu])
   )
     notes.push("Menu design or guest notes updated");
-  if (restaurantSettingsChanged(before, restaurant))
+  if (restaurantSettingsChanged(before, restaurant, { look: pro }))
     notes.push("Your restaurant’s name, logo, colors or currency updated");
   if (!notes.length)
     notes.push("Republish the current menu and restaurant details.");
@@ -1159,7 +1165,7 @@ export function MenuDeliveryDialog({
     >("");
   const isPrint = mode === "export",
     // Said before anyone publishes or prints, so no work is lost to a limit.
-    designLocked = !pro && !freeMenuDesign(menu),
+    designLocked = !pro && !freeCanPublish(menu, record.published),
     menuLocked = !pro && !isPrint && !record.published && liveElsewhere,
     blocking = checks.filter((c) => c.level === "block"),
     warnings = checks.filter((c) => c.level === "warn"),
@@ -1173,8 +1179,8 @@ export function MenuDeliveryDialog({
       !isPlaceholderRestaurantName(restaurant.name),
     addressProblem = choosingAddress ? menuAddressProblem(address) : "",
     changes = useMemo(
-      () => publicationChanges(record.published, menu, restaurant),
-      [record.published, menu, restaurant],
+      () => publicationChanges(record.published, menu, restaurant, pro),
+      [record.published, menu, restaurant, pro],
     );
   useEffect(() => {
     if (!choosingAddress) return;
