@@ -97,6 +97,7 @@ import {
   alertMenuReport,
   background,
   checkAlertsInBackground,
+  checkBillingInBackground,
   clientErrorRoute,
   readiness,
   readinessRoute,
@@ -829,6 +830,7 @@ async function route(req: Request) {
       await tick();
       await housekeeping();
       checkAlertsInBackground();
+      checkBillingInBackground();
       return response({ ok: true });
     }
     if (p[0] === "auth") {
@@ -1106,7 +1108,7 @@ async function route(req: Request) {
               )?.value || 0,
             ),
           },
-          readiness: await readiness(),
+          readiness: await readiness(req),
           spend: await all(
             "SELECT restaurant_id,kind,SUM(reserved_cents) AS cents FROM ai_spend WHERE budget_day=? AND status!='rejected' GROUP BY restaurant_id,kind",
             new Date(now()).toISOString().slice(0, 10),
@@ -1849,6 +1851,7 @@ async function route(req: Request) {
         // calls, so closing this page cannot cut one off.
         await tick(r.id, { startNew: !(await workerStatus()).healthy });
         checkAlertsInBackground();
+        checkBillingInBackground();
         return response({ ok: true });
       }
       if (p[1] && p[2] === "cancel") {

@@ -149,8 +149,11 @@ try {
     worker: "degraded",
     queue: "ok",
     aiBudget: "ok",
+    billing: "ok",
   });
-  assert(!/lastSeen|configured|Cents|latency/.test(JSON.stringify(ready)));
+  assert(
+    !/lastSeen|configured|Cents|latency|launch/.test(JSON.stringify(ready)),
+  );
   // Uptime monitors that probe with HEAD get the same status.
   const head = await handle(
     new Request("http://localhost/api/health/ready", { method: "HEAD" }),
@@ -171,6 +174,50 @@ try {
   assert.equal(typeof detail.checks.database.latencyMs, "number");
   assert.deepEqual(detail.monitoring, { alerting: true, errorReporting: true });
   assert(!JSON.stringify(detail).includes("fixture-runner-secret"));
+  checks++;
+  // Launch settings come with the detail, as advice that doesn't change the
+  // status. This site has no OpenAI key, Terms or support email.
+  const launch = Object.fromEntries(
+    detail.launch.map((item) => [item.key, item]),
+  );
+  assert.deepEqual(Object.keys(launch), [
+    "origin",
+    "network",
+    "ai",
+    "billing",
+    "contact",
+    "leftovers",
+  ]);
+  assert.equal(launch.origin.ok, true);
+  assert.match(launch.origin.detail, /https:\/\/menu\.example\.test/);
+  assert.equal(launch.ai.ok, false);
+  assert.match(launch.ai.detail, /OPENAI_API_KEY isn’t set/);
+  assert.match(launch.ai.detail, /\$100\.00 a day/);
+  assert.equal(launch.billing.ok, true);
+  assert.match(launch.billing.detail, /Billing is off/);
+  assert.equal(launch.contact.ok, false);
+  assert.match(launch.contact.detail, /SUPPORT_EMAIL, TERMS_URL, SITE_OPERATOR/);
+  // Local development on a public address is a leftover to remove.
+  assert.equal(launch.leftovers.ok, false);
+  assert.match(launch.leftovers.detail, /LOCAL_DEVELOPMENT/);
+  checks++;
+  // Outside local development, a request without cf-connecting-ip means
+  // every visitor would share one set of limits.
+  delete env.LOCAL_DEVELOPMENT;
+  try {
+    let network = (await expect("health/ready", 200, { headers: bearer }))
+      .launch.find((item) => item.key === "network");
+    assert.equal(network.ok, false);
+    assert.match(network.detail, /every visitor would share one set of limits/);
+    network = (
+      await expect("health/ready", 200, {
+        headers: { ...bearer, "cf-connecting-ip": "203.0.113.7" },
+      })
+    ).launch.find((item) => item.key === "network");
+    assert.equal(network.ok, true);
+  } finally {
+    env.LOCAL_DEVELOPMENT = "true";
+  }
   checks++;
   const wrongSecret = await expect("health/ready", 200, {
     headers: { authorization: "Bearer not-the-secret" },
@@ -507,7 +554,7 @@ try {
     true,
   );
   console.log(
-    `PASS: ${checks} monitoring checks: liveness/readiness, coarse vs authorized detail, stale worker and queue alerts with dedupe and recovery, daily AI budget alerts, error burst, reportError safety and redaction, API error reporting, and client error validation, same-origin reports, limits, dedupe, their own webhook share and inert chat text. Webhooks are fixtures.`,
+    `PASS: ${checks} monitoring checks: liveness/readiness, coarse vs authorized detail, launch settings (origin, visitors' networks, AI key and budget, billing, contact, leftover switches), stale worker and queue alerts with dedupe and recovery, daily AI budget alerts, error burst, reportError safety and redaction, API error reporting, and client error validation, same-origin reports, limits, dedupe, their own webhook share and inert chat text. Webhooks are fixtures.`,
   );
 } finally {
   console.error = originalError;

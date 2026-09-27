@@ -923,6 +923,7 @@ const readinessLabels: Record<string, string> = {
   worker: "Background worker",
   queue: "Job queue",
   aiBudget: "AI budget",
+  billing: "Billing",
 };
 const ago = (seconds: number) =>
   seconds < 120 ? `${seconds} s` : `${Math.round(seconds / 60)} min`;
@@ -946,16 +947,28 @@ function readinessDetail(name: string, check: Row) {
         ? `; guests and Free plans have used $${(check.freeSpentCents / 100).toFixed(2)} of their $${(check.freeBudgetCents / 100).toFixed(2)} share${check.freeShareUsedUp ? ", so their new AI work waits" : ""}`
         : ""
     }${check.status === "paused" ? "; AI work is paused" : ""}`;
+  if (name === "billing")
+    return check.renewalsOverdue
+      ? `${check.renewalsOverdue} paid ${check.renewalsOverdue === 1 ? "month" : "months"} ended over three hours ago with no renewal from Stripe on record; check the webhook and Stripe settings`
+      : check.missing?.length
+        ? `switched on, but ${check.missing.join(", ")} ${check.missing.length === 1 ? "is" : "are"} missing`
+        : check.enabled
+          ? "on"
+          : "off";
   return `${check.latencyMs} ms`;
 }
 function ReadinessStatus({ readiness }: { readiness: Row }) {
   const failed = readiness.failed?.length || 0;
+  const unset = (readiness.launch || []).filter((item: Row) => !item.ok)
+    .length;
   return (
-    <details className="admin-explanation" open={failed > 0}>
+    <details className="admin-explanation" open={failed > 0 || unset > 0}>
       <summary>
         {failed
           ? `Readiness: ${failed} ${failed === 1 ? "check needs" : "checks need"} attention.`
           : "Readiness: all checks passing."}
+        {unset > 0 &&
+          ` ${unset} launch ${unset === 1 ? "setting needs" : "settings need"} attention.`}
       </summary>
       {Object.entries(readiness.checks as Record<string, Row>).map(
         ([name, check]) => (
@@ -977,6 +990,19 @@ function ReadinessStatus({ readiness }: { readiness: Row }) {
           : "server logs only (set ERROR_WEBHOOK_URL)"}
         . Point an uptime monitor at /api/health/ready.
       </p>
+      {readiness.launch?.length > 0 && (
+        <>
+          <h3>Launch settings</h3>
+          <ul className="admin-launch-checks">
+            {(readiness.launch as Row[]).map((item) => (
+              <li key={item.key}>
+                <strong>{item.ok ? "OK" : "Needs attention"}:</strong>{" "}
+                {item.detail}
+              </li>
+            ))}
+          </ul>
+        </>
+      )}
     </details>
   );
 }

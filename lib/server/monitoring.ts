@@ -22,6 +22,8 @@ import {
   limitedBytes,
   publicLimit,
 } from "./safeguards";
+import { billingHousekeeping, billingReadiness } from "./billing";
+import { siteContact } from "../site-contact";
 
 type Json = string | number | boolean | null;
 export type ErrorContext = {
@@ -542,7 +544,8 @@ async function probe(task: () => Promise<unknown>) {
 }
 
 export type Readiness = Awaited<ReturnType<typeof readiness>>;
-export async function readiness() {
+// `req`, when there is one, shows whether visitors' networks are identified.
+export async function readiness(req?: Request) {
   const settings = monitoringSettings();
   const database = await probe(() => one("SELECT 1 AS ok"));
   // A missing key is a cheap round trip that proves the bucket answers.
@@ -580,17 +583,168 @@ export async function readiness() {
   } catch (error) {
     aiBudget = { ...unavailable, error: redact(text(error), 200) };
   }
-  const checks = { database, storage, worker, queue, aiBudget };
+  let billing;
+  try {
+    billing = await billingReadiness();
+  } catch (error) {
+    billing = { ...unavailable, error: redact(text(error), 200) };
+  }
+  const checks = { database, storage, worker, queue, aiBudget, billing };
   const failed = Object.entries(checks)
     .filter(([, check]) => !check.ok)
     .map(([name]) => name);
+  let launch: LaunchCheck[] = [];
+  try {
+    if (database.ok) launch = await launchChecks(req, billing);
+  } catch {
+    // Launch settings are advice; the checks above are the report.
+  }
   return {
     ok: failed.length === 0,
     failed,
     checkedAt: now(),
     checks,
     monitoring: monitoringConfigured(),
+    launch,
   };
+}
+type LaunchCheck = { key: string; ok: boolean; detail: string };
+const since = (seconds: number) =>
+  seconds < 2 * 86400
+    ? duration(seconds * 1000)
+    : `${Math.round(seconds / 86400)} days`;
+const localHosts = ["localhost", "127.0.0.1", "[::1]"];
+/**
+ * Settings to confirm before launch, shown in Administration. They don't
+ * change the readiness status: the site still serves guests without them.
+ */
+async function launchChecks(
+  req: Request | undefined,
+  billing: Partial<Awaited<ReturnType<typeof billingReadiness>>> & {
+    error?: string;
+  },
+): Promise<LaunchCheck[]> {
+  const local = config("LOCAL_DEVELOPMENT") === "true";
+  let origin: URL | null = null;
+  try {
+    origin = new URL(config("APP_ORIGIN"));
+  } catch {
+    // Reported below.
+  }
+  const publicOrigin =
+    !!origin &&
+    origin.protocol === "https:" &&
+    !localHosts.includes(origin.hostname);
+  const checks: LaunchCheck[] = [
+    {
+      key: "origin",
+      ok: publicOrigin || (local && !!origin),
+      detail: !origin
+        ? "APP_ORIGIN isn’t set. Links, printed QR codes and Stripe’s return pages need it."
+        : publicOrigin
+          ? `APP_ORIGIN is ${origin.origin}. Printed QR codes use it, so keep it permanent and redirect any old address.`
+          : `APP_ORIGIN is ${origin.origin}, which isn’t a public https address.`,
+    },
+  ];
+  if (req) {
+    const seen = !!req.headers.get("cf-connecting-ip");
+    checks.push({
+      key: "network",
+      ok: seen || local,
+      detail: seen
+        ? "Visitors’ networks are identified (cf-connecting-ip arrives), so limits apply per network."
+        : `cf-connecting-ip didn’t arrive with this request, so every visitor would share one set of limits, such as five new accounts a day for the whole site.${local ? " That’s expected in local development." : ""}`,
+    });
+  }
+  const controls = await aiControls();
+  const budgetCents = Math.max(0, Number(controls.dailyBudgetCents) || 0);
+  const estimate = Number(config("IMAGE_COST_ESTIMATE_USD"));
+  const measured = await one(
+    "SELECT AVG(reserved_cents) AS cents,COUNT(*) AS n FROM ai_spend WHERE kind='image' AND status='submitted' AND created_at>?",
+    now() - 7 * 86400000,
+  );
+  const imageCents =
+    config("IMAGE_COST_ESTIMATE_USD").trim() && estimate > 0
+      ? estimate * 100
+      : measured && Number(measured.n) > 0
+        ? Number(measured.cents)
+        : null;
+  const hasKey = !!config("OPENAI_API_KEY");
+  checks.push({
+    key: "ai",
+    ok: hasKey && budgetCents > 0,
+    detail: `${hasKey ? "The OpenAI key is set." : "OPENAI_API_KEY isn’t set, so no images or photo checks can be made."} The site-wide AI budget is ${dollars(budgetCents)} a day${
+      imageCents
+        ? `, about ${Math.floor(budgetCents / imageCents)} images at ${dollars(imageCents)} each (${
+            config("IMAGE_COST_ESTIMATE_USD").trim() && estimate > 0
+              ? "IMAGE_COST_ESTIMATE_USD"
+              : "their measured cost this week"
+          })`
+        : "; images count at their measured cost once the first is made"
+    }. Guests and Free plans may use ${freeBudgetShare()}% of it.${controls.paused ? " AI work is paused in Administration." : ""}`,
+  });
+  const customers = Number(
+    (
+      await one(
+        "SELECT count(*) AS n FROM billing_accounts WHERE customer_id IS NOT NULL",
+      )
+    )?.n || 0,
+  );
+  const webhook = origin ? `${origin.origin}/api/billing/webhook` : "";
+  checks.push(
+    billing.enabled
+      ? {
+          key: "billing",
+          ok:
+            billing.lastNotificationSeconds != null ||
+            // Nobody has started checkout, so Stripe has had nothing to say.
+            !customers,
+          detail:
+            billing.lastNotificationSeconds != null
+              ? `Billing is on. Stripe’s last notification arrived ${since(billing.lastNotificationSeconds)} ago.`
+              : `Billing is on${customers ? ", but no Stripe notification has arrived yet" : ""}. Stripe’s webhook must point to ${webhook || "<APP_ORIGIN>/api/billing/webhook"}.`,
+        }
+      : billing.switchedOn
+        ? {
+            key: "billing",
+            ok: false,
+            detail: `STRIPE_BILLING_ENABLED is true, but ${(billing.missing || []).join(", ")} ${billing.missing?.length === 1 ? "is" : "are"} missing, so Plans still says Pro is coming soon.`,
+          }
+        : {
+            key: "billing",
+            ok: true,
+            detail:
+              "Billing is off, so Plans says Pro is coming soon. Set STRIPE_BILLING_ENABLED=true with the Stripe settings to sell Pro.",
+          },
+  );
+  const contact = siteContact(config);
+  const contactMissing = [
+    !contact.supportEmail && "SUPPORT_EMAIL",
+    !contact.termsUrl && "TERMS_URL",
+    !contact.operator && "SITE_OPERATOR",
+    billing.enabled && !contact.refundPolicyUrl && "REFUND_POLICY_URL",
+  ].filter(Boolean);
+  checks.push({
+    key: "contact",
+    ok: !contactMissing.length,
+    detail: contactMissing.length
+      ? `Not set: ${contactMissing.join(", ")}. Signup, Plans and the privacy page show them once they are.`
+      : "The support email, Terms and operator are set.",
+  });
+  const admin = await one("SELECT id FROM users WHERE role='admin' LIMIT 1");
+  const leftovers = [
+    admin && config("ADMIN_SETUP_KEY") && "ADMIN_SETUP_KEY",
+    config("PLAN_LIMITS_ENABLED") === "false" && "PLAN_LIMITS_ENABLED=false",
+    local && publicOrigin && "LOCAL_DEVELOPMENT",
+  ].filter(Boolean);
+  checks.push({
+    key: "leftovers",
+    ok: !leftovers.length,
+    detail: leftovers.length
+      ? `Remove these setup or test settings: ${leftovers.join(", ")}.`
+      : "No setup or test settings are left on.",
+  });
+  return checks;
 }
 export function coarseReadiness(report: Readiness) {
   return {
@@ -688,6 +842,22 @@ export async function evaluateAlerts() {
 export function checkAlertsInBackground() {
   return background(evaluateAlerts);
 }
+// Renewals, failed payments and cancellations reach the site even when
+// Stripe's notifications don't (billing.ts).
+export function checkBillingInBackground() {
+  return background(async () => {
+    const result = await billingHousekeeping();
+    if (result?.error)
+      await reportError(result.error, {
+        kind: "job",
+        detail: {
+          task: "billing_check",
+          checked: result.checked,
+          failed: result.failed,
+        },
+      });
+  });
+}
 
 async function detailAllowed(req: Request) {
   const secret = config("JOB_RUNNER_SECRET");
@@ -708,8 +878,11 @@ export async function readinessRoute(req: Request) {
       // A database outage must still produce a readiness answer.
       if (error instanceof AppError && error.status === 429) throw error;
     }
-  const report = await readiness();
-  if (report.checks.database.ok) checkAlertsInBackground();
+  const report = await readiness(req);
+  if (report.checks.database.ok) {
+    checkAlertsInBackground();
+    checkBillingInBackground();
+  }
   return response(
     detailed ? report : coarseReadiness(report),
     report.ok ? 200 : 503,

@@ -1,5 +1,6 @@
 import { createHmac, timingSafeEqual } from "node:crypto";
 import {
+  all,
   AppError,
   assert,
   config,
@@ -177,15 +178,19 @@ async function reconcile(account: Row, lease: string) {
       l.period?.start === item.current_period_start &&
       l.period?.end === item.current_period_end,
   );
+  // A paid month is an invoice Stripe marks paid, for the Pro line at its full
+  // price. Not amount_paid: a coupon, or credit on the customer's balance,
+  // pays part of the invoice and would read as underpaid. Only the owner can
+  // grant those in Stripe. A $0 line, such as a trial, isn't a paid month.
   const paid =
     ["active", "past_due"].includes(sub.status) &&
     invoice?.status === "paid" &&
-    invoice.amount_paid >= PRO_PLAN.amountCents &&
     ["subscription_create", "subscription_cycle"].includes(
       invoice.billing_reason,
     ) &&
     externalId(invoice.customer) === account.customer_id &&
     line &&
+    line.amount >= PRO_PLAN.amountCents &&
     Number.isSafeInteger(item.current_period_start) &&
     Number.isSafeInteger(item.current_period_end) &&
     item.current_period_end > item.current_period_start;
@@ -307,6 +312,121 @@ export async function closeBilling(restaurantId: string) {
     throw e;
   }
 }
+// Stripe's notifications are the quick route; this is the net under them. A
+// subscription whose paid month has ended, or ends within minutes, is checked
+// with Stripe: every 10 minutes at first (Stripe charges a renewal about an
+// hour into the new month), then less often while a failed payment is
+// retried, for up to 60 days. A renewal, failed payment or cancellation then
+// lands even when no notification arrives, for example at a wrong address.
+const recheckSoonMs = 10 * 60000,
+  recheckLatestMs = 6 * 3600000,
+  recheckForMs = 60 * 86400000;
+export async function reconcileDueSubscriptions(batch = 5) {
+  if (!billingEnabled()) return { checked: 0, failed: 0, error: null };
+  const t = now();
+  // Without a paid month on record, a live subscription is checked every 6
+  // hours; Stripe ends an unpaid first invoice within a day.
+  const due = await all(
+    `SELECT restaurant_id FROM (
+      SELECT ba.restaurant_id,ba.synced_at,(SELECT MAX(bp.ends_at) FROM billing_periods bp
+        WHERE bp.restaurant_id=ba.restaurant_id AND bp.subscription_id=ba.subscription_id) AS ends_at
+      FROM billing_accounts ba
+      WHERE ba.customer_id IS NOT NULL AND ba.subscription_id IS NOT NULL
+        AND ba.status NOT IN ('free','canceled','incomplete_expired') AND ba.lease_until<?)
+    WHERE COALESCE(ends_at,0)<? AND COALESCE(ends_at,?)>?
+      AND synced_at<?-MIN(?,MAX(?,(?-COALESCE(ends_at,?))/4))
+    ORDER BY synced_at LIMIT ?`,
+    t,
+    t + recheckSoonMs,
+    t,
+    t - recheckForMs,
+    t,
+    recheckLatestMs,
+    recheckSoonMs,
+    t,
+    t - 4 * recheckLatestMs,
+    batch,
+  );
+  let failed = 0,
+    error: unknown = null;
+  for (const { restaurant_id } of due) {
+    try {
+      await withAccount(restaurant_id, reconcile);
+    } catch (e) {
+      failed++;
+      error ??= e;
+    }
+    // Checked, even if Stripe didn't answer: an account that keeps failing
+    // waits its turn rather than holding up the others.
+    await run(
+      "UPDATE billing_accounts SET synced_at=MAX(synced_at,?) WHERE restaurant_id=?",
+      t,
+      restaurant_id,
+    );
+  }
+  return { checked: due.length, failed, error };
+}
+/**
+ * The check above, at most every five minutes across all callers: the
+ * worker's tick, owners' job ticks and readiness probes.
+ */
+let billingCheckedAt = 0;
+export async function billingHousekeeping() {
+  const interval = 5 * 60000;
+  // Most callers stop here, without touching the database.
+  if (!billingEnabled() || now() - billingCheckedAt < interval) return null;
+  const claim = await run(
+    "INSERT INTO app_settings (key,value) VALUES ('billing-check-last-run',?) ON CONFLICT(key) DO UPDATE SET value=excluded.value WHERE CAST(app_settings.value AS INTEGER)<?",
+    String(now()),
+    now() - interval,
+  );
+  billingCheckedAt = now();
+  if (!claim.meta.changes) return null;
+  return reconcileDueSubscriptions();
+}
+const billingSettings = [
+  "STRIPE_SECRET_KEY",
+  "STRIPE_WEBHOOK_SECRET",
+  "STRIPE_PRO_PRICE_ID",
+  "APP_ORIGIN",
+];
+/**
+ * For the readiness report. Billing is off until STRIPE_BILLING_ENABLED is
+ * true and every setting is present; otherwise Plans quietly says Pro is
+ * coming soon, which is easy to miss. Paid months that ended over three hours
+ * ago without a renewal or a failed payment on record mean neither Stripe's
+ * notifications nor the scheduled check are getting through.
+ */
+export async function billingReadiness() {
+  const switchedOn = config("STRIPE_BILLING_ENABLED") === "true";
+  const missing = billingSettings.filter((key) => !config(key));
+  const last = Number(
+    (
+      await one(
+        "SELECT value FROM app_settings WHERE key='stripe-notification-last'",
+      )
+    )?.value || 0,
+  );
+  const overdue = await one(
+    `SELECT count(*) AS n FROM billing_accounts ba
+    WHERE ba.status='active' AND ba.subscription_id IS NOT NULL
+      AND EXISTS(SELECT 1 FROM billing_periods bp WHERE bp.restaurant_id=ba.restaurant_id AND bp.subscription_id=ba.subscription_id)
+      AND NOT EXISTS(SELECT 1 FROM billing_periods bp WHERE bp.restaurant_id=ba.restaurant_id AND bp.subscription_id=ba.subscription_id AND bp.ends_at>?)`,
+    now() - 3 * 3600000,
+  );
+  const renewalsOverdue = Number(overdue?.n || 0);
+  return {
+    ok: !(switchedOn && missing.length) && !renewalsOverdue,
+    enabled: billingEnabled(),
+    switchedOn,
+    // Named only while billing is switched on, where they matter.
+    missing: switchedOn ? missing : [],
+    lastNotificationSeconds: last
+      ? Math.max(0, Math.round((now() - last) / 1000))
+      : null,
+    renewalsOverdue,
+  };
+}
 async function webhook(req: Request) {
   assert(req.method === "POST", 405, "Method not allowed.");
   assert(billingEnabled(), 503, "Billing is not active.");
@@ -334,6 +454,11 @@ async function webhook(req: Request) {
     ),
     400,
     "Invalid billing signature.",
+  );
+  // For the readiness report: proof the webhook address is right.
+  await run(
+    "INSERT INTO app_settings (key,value) VALUES ('stripe-notification-last',?) ON CONFLICT(key) DO UPDATE SET value=excluded.value",
+    String(now()),
   );
   let event: Row;
   try {
