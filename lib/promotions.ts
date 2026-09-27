@@ -133,3 +133,24 @@ export function offerChanged(draft: Row, saved: Row, pro: boolean) {
     ? comparable(draft) !== comparable(saved)
     : !sameContent(draft, saved);
 }
+/** A photo a campaign may use: approved, and not reported as inaccurate. */
+export const offerPhotoUsable = (asset: Row | null | undefined) =>
+  !!asset?.approved_at && !asset.needs_correction;
+/**
+ * The photo a dish brings to a new offer: an original or AI photo it may
+ * use, or else its original upload, to approve first. Never one the owner
+ * reported as inaccurate.
+ */
+export function offerPhoto(assets: Row[], dishId: string) {
+  return (
+    assets.find(
+      (a) =>
+        a.dish_id === dishId &&
+        offerPhotoUsable(a) &&
+        ["source", "generated"].includes(a.kind),
+    ) ||
+    assets.find(
+      (a) => a.dish_id === dishId && a.kind === "source" && !a.needs_correction,
+    )
+  );
+}

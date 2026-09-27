@@ -42,12 +42,14 @@ export default function Privacy() {
           Photos chosen before signup are kept only in this browser, where they
           survive a reload or a closed tab, until you create an account or sign
           in. They are then saved to your account and removed from the browser.
-          Photos not saved to an account expire 24 hours after your last change
-          and are deleted the next time Photo Studio opens. To suggest styles
-          before signup, a small copy of the photo is sent to OpenAI to see what
-          it shows; Menu Material does not store the photo. What it shows (for
-          example “a burger”) is kept for a week, by a fingerprint of the
-          photo, so the same photo isn’t sent again.
+          If you asked for a photo that can’t be made yet, yours stays in this
+          browser until you try again. Photos not saved to an account expire 24
+          hours after your last change and are deleted the next time Photo
+          Studio opens. To suggest styles before signup, a small copy of the
+          photo is sent to OpenAI to see what it shows; Menu Material does not
+          store the photo. What it shows (for example “a burger”) is kept for a
+          week, by a fingerprint of the photo, so the same photo isn’t sent
+          again.
         </p>
       </section>
       <section>

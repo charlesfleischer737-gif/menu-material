@@ -27,6 +27,8 @@ const { grantHeldImages } = await import("../lib/server/free-grants.ts");
 const { validateImageDimensions } =
   await import("../lib/server/image-validation.ts");
 const { resolveMenuAddress } = await import("../lib/server/menu-address.ts");
+const { newMenuDocument, newMenuEntry } =
+  await import("../lib/menu-document.ts");
 
 const photo = readFileSync("public/pasta.jpg");
 let imageCalls = 0,
@@ -1021,8 +1023,8 @@ try {
   );
 
   // 16. A transparent PNG logo stays a PNG: in the workspace (and Post
-  // Maker), in what publishing copies, and on the guest menu, even when a
-  // menu published a JPEG copy of it.
+  // Maker), and on the guest menu, even when a menu published a JPEG copy
+  // of it.
   const logoPng = readFileSync("public/apple-touch-icon.png");
   const logo = (
     await expect("assets", 201, {
@@ -1034,19 +1036,34 @@ try {
   let logoFile = await expect(`assets/${logo}`, 200, freeOpts);
   assert.equal(logoFile.res.headers.get("content-type"), "image/png");
   assert((await bytesOf(logoFile)).equals(logoPng));
-  await expect("menu", 200, {
-    body: {
-      sections: [{ id: "mains", name: "Mains", items: [{ dishId: pasta }] }],
-    },
+  const freeMenu = (
+    await expect("menus", 200, {
+      body: {
+        id: crypto.randomUUID(),
+        draft: newMenuDocument({
+          sections: [
+            {
+              id: "mains",
+              name: "Mains",
+              items: [
+                newMenuEntry({ dishId: pasta, name: "Pasta", price: 1200 }),
+              ],
+            },
+          ],
+        }),
+      },
+      ...freeOpts,
+    })
+  ).json;
+  await expect(`menus/${freeMenu.id}/publish`, 200, {
+    body: { revision: freeMenu.revision },
     ...freeOpts,
   });
-  const menuPath = (
-    await expect("menu/publish", 200, { body: {}, ...freeOpts })
-  ).json.path;
-  const slug = menuPath.split("/").pop();
-  const published = await bucket().get(`public/${freeRid}/${logo}`);
-  assert.equal(published.httpMetadata.contentType, "image/png");
-  assert(Buffer.from(await published.arrayBuffer()).equals(logoPng));
+  const slug = (await expect("state", 200, freeOpts)).json.restaurant.slug;
+  assert(
+    await bucket().head(`public/${freeRid}/${logo}`),
+    "publishing copies the logo for guests",
+  );
   await bucket().put(`public/${freeRid}/${logo}`, photo, {
     httpMetadata: { contentType: "image/jpeg" },
   });
@@ -1100,7 +1117,10 @@ try {
     restaurant: null,
     redirectTo: null,
   });
-  const blocked = await expect("menu/publish", 403, { body: {}, ...freeOpts });
+  const blocked = await expect(`menus/${freeMenu.id}/publish`, 403, {
+    body: { revision: freeMenu.revision },
+    ...freeOpts,
+  });
   assert.match(blocked.json.error, /taken your public menu pages offline/);
   for (const path of ["menus", "promotions"])
     await expect(`${path}/${crypto.randomUUID()}/publish`, 403, {
@@ -1121,7 +1141,10 @@ try {
     cookie: adminCookie,
   });
   await expect(`public/${slug}`, 200, guest);
-  await expect("menu/publish", 200, { body: {}, ...freeOpts });
+  await expect(`menus/${freeMenu.id}/publish`, 200, {
+    body: { revision: freeMenu.revision },
+    ...freeOpts,
+  });
   await expect("admin/takedown", 404, {
     body: { id: crypto.randomUUID(), offline: true },
     cookie: adminCookie,
@@ -1199,13 +1222,33 @@ try {
       ...joeOpts,
     })
   ).json.id;
-  await expect("menu", 200, {
-    body: {
-      sections: [{ id: "pizza", name: "Pizza", items: [{ dishId: joeDish }] }],
-    },
+  const joeMenu = (
+    await expect("menus", 200, {
+      body: {
+        id: crypto.randomUUID(),
+        draft: newMenuDocument({
+          sections: [
+            {
+              id: "pizza",
+              name: "Pizza",
+              items: [
+                newMenuEntry({
+                  dishId: joeDish,
+                  name: "Margherita",
+                  price: 1100,
+                }),
+              ],
+            },
+          ],
+        }),
+      },
+      ...joeOpts,
+    })
+  ).json;
+  await expect(`menus/${joeMenu.id}/publish`, 200, {
+    body: { revision: joeMenu.revision },
     ...joeOpts,
   });
-  await expect("menu/publish", 200, { body: {}, ...joeOpts });
   for (let n = 1; n <= 4; n++)
     await expect("restaurant/address", 200, {
       body: { address: `joes-pizza-${n}` },
@@ -1251,7 +1294,10 @@ try {
     body: { address: "joes-pizza-3" },
     cookie: adminCookie,
   });
-  await expect("menu/unpublish", 200, { body: {}, ...joeOpts });
+  await expect(`menus/${joeMenu.id}/unpublish`, 200, {
+    body: { revision: joeMenu.revision, confirmed: true },
+    ...joeOpts,
+  });
   offset += 3600000; // past the hourly limit on address changes
   await expect("restaurant/address", 200, {
     body: { address: "joes-pizza-7" },

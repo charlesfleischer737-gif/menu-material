@@ -8,7 +8,7 @@ import {
   DialogDescription,
 } from "@/components/ui/dialog";
 import { api, type Row } from "@/lib/client";
-import PlanCards from "./plan-cards";
+import PlanCards, { PlanTerms } from "./plan-cards";
 import { freeImagesNote } from "@/lib/free-images";
 import { useSiteContact } from "./site-contact";
 import {
@@ -56,7 +56,8 @@ export default function PlanDialog({
     // "noted" when this server has no waitlist to record it in.
     [waitlist, setWaitlist] = useState<"" | "sending" | "joined" | "noted">("");
   const waitlistStatus = useRef<HTMLParagraphElement>(null),
-    waitlistButton = useRef<HTMLButtonElement>(null);
+    waitlistButton = useRef<HTMLButtonElement>(null),
+    footer = useRef<HTMLDivElement>(null);
   const { termsUrl, refundPolicyUrl } = useSiteContact();
   const allowance = billing.allowance ?? FREE_SIGNUP_IMAGES,
     left = billing.remaining ?? state.remaining,
@@ -178,6 +179,15 @@ export default function PlanDialog({
             ),
           ].find((element) => element.getClientRects().length) || null
         }
+        onOpenAutoFocus={(event) => {
+          // Start on the buttons in view, not a link below the plans.
+          const first = footer.current?.querySelector<HTMLElement>(
+            "button:not(:disabled)",
+          );
+          if (!first) return;
+          event.preventDefault();
+          first.focus();
+        }}
       >
         <DialogHeader>
           <DialogTitle>
@@ -201,11 +211,6 @@ export default function PlanDialog({
           </DialogDescription>
         </DialogHeader>
         <div className="pw-plans-body">
-          {error && (
-            <p className="error" role="alert">
-              {error}
-            </p>
-          )}
           {notice && <p role="status">{notice}</p>}
           {billing.plan !== "pro" && features.source === "comp" && (
             <p className="pw-plan-note">
@@ -247,49 +252,12 @@ export default function PlanDialog({
                 {!billing.cancelAtPeriodEnd &&
                   " Cancel anytime in Manage billing; Pro stays until then."}
               </p>
-              <button
-                className="cx-btn"
-                disabled={busy || !billing.canManage}
-                onClick={() => void visit("portal")}
-              >
-                Manage billing
-              </button>
             </section>
           ) : (
             <PlanCards
               proFirst={!!offered}
               enabled={billing.enabled}
-              onUpgrade={() => void visit("checkout")}
-              onFree={close}
-              busy={busy}
-              comingSoon={
-                <>
-                  <p
-                    className="pw-plan-soon"
-                    role="status"
-                    ref={waitlistStatus}
-                    tabIndex={-1}
-                  >
-                    {waitlist === "joined"
-                      ? "You’re on the list. We’ll let you know when Pro opens."
-                      : waitlist === "noted"
-                        ? "Thanks. Pro isn’t open yet; we’ll let you know here in Plans when it is."
-                        : "Pro is coming soon."}
-                  </p>
-                  {(waitlist === "" || waitlist === "sending") && (
-                    <button
-                      ref={waitlistButton}
-                      className="cx-btn"
-                      disabled={busy || waitlist === "sending"}
-                      onClick={() => void joinWaitlist()}
-                    >
-                      {waitlist === "sending"
-                        ? "Adding you…"
-                        : "Tell me when Pro opens"}
-                    </button>
-                  )}
-                </>
-              }
+              actions={false}
             />
           )}
           {billing.canManage && billing.plan !== "pro" && (
@@ -315,7 +283,7 @@ export default function PlanDialog({
               Prices in USD. Pro renews monthly until cancelled. Unused monthly
               images don’t roll over. Images that fail to create are returned.
               Your saved work remains available when you cancel.
-              {/* The plan cards link these beside Get Pro. */}
+              {/* Beside Get Pro, the footer links these. */}
               {billing.plan === "pro" && termsUrl && (
                 <>
                   {" "}
@@ -335,6 +303,78 @@ export default function PlanDialog({
             </p>
           ) : (
             <p className="fine">Images that fail to create are returned.</p>
+          )}
+        </div>
+        {/* The buttons stay in view below the plans, which scroll on a
+            laptop screen, with any error beside them. */}
+        <div className="pw-plans-footer" ref={footer}>
+          {error && (
+            <p className="error" role="alert">
+              {error}
+            </p>
+          )}
+          {billing.plan === "pro" ? (
+            <div className="pw-plans-actions">
+              <button
+                className="cx-btn"
+                disabled={busy || !billing.canManage}
+                onClick={() => void visit("portal")}
+              >
+                Manage billing
+              </button>
+            </div>
+          ) : (
+            <>
+              {billing.enabled ? (
+                <PlanTerms />
+              ) : (
+                <p
+                  className="pw-plans-status"
+                  role="status"
+                  ref={waitlistStatus}
+                  tabIndex={-1}
+                >
+                  {waitlist === "joined"
+                    ? "You’re on the list. We’ll let you know when Pro opens."
+                    : waitlist === "noted"
+                      ? "Thanks. Pro isn’t open yet; we’ll let you know here in Plans when it is."
+                      : "Pro is coming soon."}
+                </p>
+              )}
+              <div className="pw-plans-actions">
+                <button
+                  className="cx-btn cx-secondary"
+                  disabled={busy}
+                  onClick={close}
+                >
+                  Continue free
+                </button>
+                {billing.enabled ? (
+                  <button
+                    className="cx-btn"
+                    disabled={busy}
+                    onClick={() => void visit("checkout")}
+                  >
+                    {busy
+                      ? "Opening secure checkout…"
+                      : `Get Pro — ${PRO_PRICE_LABEL}/month`}
+                  </button>
+                ) : (
+                  (waitlist === "" || waitlist === "sending") && (
+                    <button
+                      ref={waitlistButton}
+                      className="cx-btn"
+                      disabled={busy || waitlist === "sending"}
+                      onClick={() => void joinWaitlist()}
+                    >
+                      {waitlist === "sending"
+                        ? "Adding you…"
+                        : "Tell me when Pro opens"}
+                    </button>
+                  )
+                )}
+              </div>
+            </>
           )}
         </div>
       </DialogContent>

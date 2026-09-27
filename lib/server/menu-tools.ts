@@ -1,7 +1,13 @@
-import { effectiveStyle, entitlementSql, requirePro } from "./entitlements";
+import {
+  effectiveStyle,
+  entitlementSql,
+  imageEntitlement,
+  requirePro,
+} from "./entitlements";
 import { z } from "zod";
 import { checkStudioGeneration } from "./studio-release";
 import { validateImageDimensions } from "./image-validation";
+import { imagesRenewal } from "../plans";
 import {
   limitedForm,
   reserveStorage,
@@ -168,11 +174,13 @@ export async function retryFailed(r: Row, jobId: string) {
     r.id,
     job.id,
   );
-  assert(
-    retried.meta.changes,
-    402,
-    "Not enough images left. Check your plan or wait until your images renew.",
-  );
+  // Free images are a one-time grant, so never "wait until they renew".
+  if (!retried.meta.changes)
+    assert(
+      false,
+      402,
+      `Not enough images left. ${imagesRenewal((await imageEntitlement(r.id)).plan)}`,
+    );
   await run("UPDATE jobs SET status='queued' WHERE id=?", job.id);
   await event(r.id, "generation_retried", job.id, { slots: failed.length });
 }

@@ -229,7 +229,10 @@ export default function GuestStudio({
         if (create) void api("jobs/tick", {}).catch(() => {});
         await onFinish();
       } catch (e) {
-        setError((e as Error).message);
+        // Nothing was saved, and the Create bar already says images can't
+        // be made now: no alert and no Retry.
+        if ((e as { code?: string }).code !== "images_unavailable")
+          setError((e as Error).message);
       } finally {
         lock.current = false;
         transferring.current = false;
@@ -422,17 +425,28 @@ export default function GuestStudio({
           {error && (
             <div className="cx-feedback error" role="alert">
               {error}
-              {state.user && (
-                <button
-                  className="cx-link"
-                  disabled={!!busy}
-                  onClick={() => void transferWork(requested)}
-                >
-                  {requested
-                    ? "Retry creating my image"
-                    : "Retry saving my photo"}
-                </button>
-              )}
+              {state.user &&
+                // Out of images, a retry can't work; the photo stays here.
+                (requested && state.remaining < 1 ? (
+                  <button
+                    className="cx-link"
+                    onClick={() =>
+                      window.dispatchEvent(new Event("menu-material:plans"))
+                    }
+                  >
+                    See plans
+                  </button>
+                ) : (
+                  <button
+                    className="cx-link"
+                    disabled={!!busy}
+                    onClick={() => void transferWork(requested)}
+                  >
+                    {requested
+                      ? "Retry creating my image"
+                      : "Retry saving my photo"}
+                  </button>
+                ))}
               {state.user && savedSome && (
                 <button
                   className="cx-link"
@@ -479,7 +493,6 @@ export default function GuestStudio({
               ...state,
               guest: true,
               remaining: state.user ? state.remaining : 5,
-              aiConnected: state.user ? state.aiConnected : true,
             }}
             selected={selected}
             source={photo?.url || ""}
