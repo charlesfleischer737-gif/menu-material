@@ -51,34 +51,14 @@ const {
 } = await import("../lib/restaurant-contact.ts");
 const { menuStructuredData, menuPreviewImage, jsonLd } =
   await import("../lib/menu-structured-data.ts");
-// The real guest menu component, rendered as the server renders it. Its
-// photo, menu-switcher and report components (none shown in a preview) and
-// icons are stand-ins.
+// The real guest menu components, rendered as the server renders them. Their
+// photo, menu-switcher and report components and icons are stand-ins.
 const requireCjs = createRequire(import.meta.url);
 const React = requireCjs("react");
 const { renderToStaticMarkup } = requireCjs("react-dom/server");
-const MenuDocumentView = await (async () => {
-  const stub = { __esModule: true, default: () => null };
-  const modules = {
-    react: React,
-    "react/jsx-runtime": requireCjs("react/jsx-runtime"),
-    "lucide-react": new Proxy({}, { get: () => () => null }),
-    "./menu-photo": stub,
-    "./customer-menu-switcher": stub,
-    "./report-menu": stub,
-    "@/lib/promotions": await import("../lib/promotions.ts"),
-    "@/lib/menu-document": await import("../lib/menu-document.ts"),
-    "@/lib/menu-design-system": await import("../lib/menu-design-system.ts"),
-    "@/lib/dietary": await import("../lib/dietary.ts"),
-    "@/lib/guest-menu-filters": await import("../lib/guest-menu-filters.ts"),
-    "@/lib/restaurant-contact": await import("../lib/restaurant-contact.ts"),
-    "@/lib/menu-placements": await import("../lib/menu-placements.ts"),
-  };
+function loadComponent(file, modules) {
   const { outputText } = ts.transpileModule(
-    readFileSync(
-      new URL("../app/components/menu-document-view.tsx", import.meta.url),
-      "utf8",
-    ),
+    readFileSync(new URL(`../app/components/${file}`, import.meta.url), "utf8"),
     {
       compilerOptions: {
         jsx: ts.JsxEmit.ReactJSX,
@@ -90,14 +70,40 @@ const MenuDocumentView = await (async () => {
   const compiled = { exports: {} };
   new Function("require", "module", "exports", outputText)(
     (id) => {
-      assert(id in modules, `menu-document-view.tsx imports ${id}`);
+      assert(id in modules, `${file} imports ${id}`);
       return modules[id];
     },
     compiled,
     compiled.exports,
   );
-  return compiled.exports.default;
-})();
+  return compiled.exports;
+}
+const stub = { __esModule: true, default: () => null };
+const viewModules = {
+  react: React,
+  "react/jsx-runtime": requireCjs("react/jsx-runtime"),
+  "lucide-react": new Proxy({}, { get: () => () => null }),
+  "./menu-photo": stub,
+  "./customer-menu-switcher": stub,
+  "./report-menu": stub,
+  "@/lib/promotions": await import("../lib/promotions.ts"),
+  "@/lib/menu-document": await import("../lib/menu-document.ts"),
+  "@/lib/menu-design-system": await import("../lib/menu-design-system.ts"),
+  "@/lib/menu-design": await import("../lib/menu-design.ts"),
+  "@/lib/client": await import("../lib/client.ts"),
+  "@/lib/restaurant-look": await import("../lib/restaurant-look.ts"),
+  "@/lib/dietary": await import("../lib/dietary.ts"),
+  "@/lib/guest-menu-filters": await import("../lib/guest-menu-filters.ts"),
+  "@/lib/restaurant-contact": await import("../lib/restaurant-contact.ts"),
+  "@/lib/menu-placements": await import("../lib/menu-placements.ts"),
+};
+viewModules["./menu-document-view"] = loadComponent(
+  "menu-document-view.tsx",
+  viewModules,
+);
+const MenuDocumentView = viewModules["./menu-document-view"].default;
+// Guest menus from before Menu Studio's documents (menu.version isn't 2).
+const MenuView = loadComponent("menu-view.tsx", viewModules).default;
 let cookie = "",
   checks = 0;
 async function call(path, data, expected = 200, method) {
@@ -747,14 +753,19 @@ Ramen 1,200`);
     ],
   });
   assert.equal(
-    unchecked.match(/Allergens not listed — ask us/g)?.length,
+    unchecked.match(/md-guest-unlisted"[^>]*>Allergens not listed — ask us</g)
+      ?.length,
     2,
     "each dish nobody has checked says so",
   );
   assert.match(
-    unchecked,
+    guestHtml({
+      sections: [
+        section([newMenuEntry({ name: "Steak frites", price: 2400 })]),
+      ],
+    }),
     /class="md-guest-allergy"[^>]*>Please tell us about any allergies before you order\.</,
-    "the allergy note shows though no dish lists allergens",
+    "the allergy note shows though no dish has any tags",
   );
   assert.doesNotMatch(
     unchecked,
@@ -808,6 +819,39 @@ Ramen 1,200`);
     }),
     /<p class="md-guest-dietary md-guest-unlisted" lang="en">/,
     "English interface text on a Spanish menu says it's English",
+  );
+  // A menu from before tags existed lists no allergens, and says so once.
+  const legacyHtml = (preview) =>
+    renderToStaticMarkup(
+      React.createElement(MenuView, {
+        slug: "juniper",
+        preview,
+        menu: {
+          restaurant: { name: "Juniper Café", currency: "USD" },
+          layout: "classic",
+          sections: [
+            {
+              id: "mains",
+              name: "Mains",
+              items: [
+                { id: "a", name: "Toast", price: 900, available: true },
+                { id: "b", name: "Soup", price: 700, available: true },
+              ],
+            },
+          ],
+        },
+      }),
+    );
+  assert.equal(
+    legacyHtml(false).match(
+      /Allergens aren’t listed on this menu\. Please tell us about any allergies before you order\./g,
+    )?.length,
+    1,
+  );
+  assert.doesNotMatch(
+    legacyHtml(true),
+    /Allergens aren’t listed/,
+    "the restaurant look preview's sample dishes aren't a menu",
   );
 
   // Open now, from the restaurant's hours in its own timezone.
