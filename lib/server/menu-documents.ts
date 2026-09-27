@@ -351,7 +351,7 @@ async function linkEntriesToLibrary(r: Row, row: Row, input: unknown) {
     .parse(input);
   await limit("menu-library:" + r.id, 60, 3600);
   const dishes = await all(
-    "SELECT id,name,category,preferred_photo_id,dietary FROM dishes WHERE restaurant_id=? AND archived_at IS NULL AND sample=0 ORDER BY created_at",
+    "SELECT id,name,category,preferred_photo_id,dietary,price,description,revision FROM dishes WHERE restaurant_id=? AND archived_at IS NULL AND sample=0 ORDER BY created_at",
     r.id,
   );
   // Photos the owner reported as inaccurate never join a menu on their own.
@@ -374,6 +374,7 @@ async function linkEntriesToLibrary(r: Row, row: Row, input: unknown) {
     created: boolean;
   }[] = [];
   const inserts = [],
+    fills = [],
     created = new Map<string, { id: string; dietary: string[] }>(),
     t = now();
   for (const entry of b.entries) {
@@ -390,6 +391,24 @@ async function linkEntriesToLibrary(r: Row, row: Row, input: unknown) {
         dietary: normalizeDietary(match.dietary),
         created: false,
       });
+      // A dish made from a photo has no price or description yet; the menu's
+      // become its own, so later My Dishes edits reach this menu.
+      const price = !match.price && entry.price ? entry.price : null,
+        description =
+          !String(match.description || "").trim() && entry.description.trim()
+            ? entry.description.trim()
+            : null;
+      if (price !== null || description !== null) {
+        fills.push(
+          db()
+            .prepare(
+              "UPDATE dishes SET price=COALESCE(?,price),description=COALESCE(?,description),updated_at=?,revision=revision+1 WHERE id=? AND restaurant_id=? AND revision=?",
+            )
+            .bind(price, description, t, match.id, r.id, match.revision),
+        );
+        match.price = price ?? match.price;
+        match.description = description ?? match.description;
+      }
       continue;
     }
     if (created.has(key)) {
@@ -448,7 +467,7 @@ async function linkEntriesToLibrary(r: Row, row: Row, input: unknown) {
       created: true,
     });
   }
-  const statements = [...inserts];
+  const statements = [...inserts, ...fills];
   if (row.published) {
     const live = JSON.parse(row.published),
       linked = new Map(links.map((l) => [l.entryId, l]));
