@@ -110,7 +110,6 @@ import {
 import { creationRoute } from "./creation";
 import {
   funnelReport,
-  launchChecklistFacts,
   menuExportDetails,
   recordSignupSource,
   recordWaitlistJoin,
@@ -1884,8 +1883,6 @@ async function route(req: Request) {
       );
       return response({ id: cid });
     }
-    if (p[0] === "launch-checklist" && method === "GET")
-      return response(await launchChecklistFacts(r.id));
     if (p[0] === "events" && method === "POST") {
       const b = await body(req);
       const kind = z

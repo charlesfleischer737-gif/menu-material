@@ -7,7 +7,7 @@ import {
   signupSource,
   type Attribution,
 } from "../attribution";
-import { menuExportFormats, tableCardFormats, visitorSteps } from "../funnel";
+import { menuExportFormats, visitorSteps } from "../funnel";
 import { isProFeature, type ProFeature } from "../plans";
 
 const day = 86400000;
@@ -73,18 +73,6 @@ export async function recordWaitlistJoin(restaurantId: string, input: unknown) {
 export const menuExportDetails = (input: Row) => ({
   format: z.enum(menuExportFormats).parse(input.format),
 });
-
-/** For "Get your menu live": has a table card or menu QR code been saved? */
-export async function launchChecklistFacts(restaurantId: string) {
-  const formats = tableCardFormats.map(() => "?").join(",");
-  return {
-    tableCard: !!(await one(
-      `SELECT 1 FROM events WHERE restaurant_id=? AND kind='menu_exported' AND json_extract(details,'$.format') IN (${formats}) LIMIT 1`,
-      restaurantId,
-      ...tableCardFormats,
-    )),
-  };
-}
 
 // A restaurant's first export: a photo downloaded or shared, a post, a
 // campaign, or a menu's PDF, table card or QR code.
