@@ -12,6 +12,8 @@ import {
 } from "lucide-react";
 import { api, downloadBlob, type Row } from "@/lib/client";
 import {
+  dishNameMessage,
+  isPlaceholderDishName,
   isPlaceholderRestaurantName,
   restaurantNameMessage,
 } from "@/lib/restaurant-identity";
@@ -148,6 +150,7 @@ export default function PostMaker({
     [issues, setIssues] = useState<string[]>([]),
     [proofIssues, setProofIssues] = useState<string[]>([]),
     [restaurantName, setRestaurantName] = useState(""),
+    [dishName, setDishName] = useState(""),
     [mobileControls, setMobileControls] = useState(false);
   const handled = useRef("");
   const controlsTrigger = useRef<HTMLButtonElement>(null);
@@ -155,8 +158,14 @@ export default function PostMaker({
   // Automatic checks before sharing; they replace an "I checked" box.
   const namePlaceholder = isPlaceholderRestaurantName(state.restaurant.name);
   const captionName = captionPlaceholder(b.caption || "");
+  // A dish still called "Untitled dish" never goes out on a post.
+  const untitled = items.find((i) => isPlaceholderDishName(i.name));
   const postChecks = [
     ...(namePlaceholder ? [restaurantNameMessage] : []),
+    ...(untitled || isPlaceholderDishName(b.title) ? [dishNameMessage] : []),
+    ...(!untitled && /\buntitled dish\b/i.test(b.caption || "")
+      ? ["Your caption still says “Untitled dish”. Change it to your dish’s name."]
+      : []),
     ...(captionName && !namePlaceholder
       ? [
           `Your caption still says “${captionName}”. Change it to your restaurant’s name.`,
@@ -1359,6 +1368,65 @@ export default function PostMaker({
                       maxLength={100}
                       placeholder="Corner House Kitchen"
                       onChange={(e) => setRestaurantName(e.target.value)}
+                    />
+                    <button className="cx-btn cx-secondary" disabled={!!busy}>
+                      Save name
+                    </button>
+                  </form>
+                )}
+                {untitled && (
+                  <form
+                    className="mm-inline"
+                    onSubmit={(e) => {
+                      e.preventDefault();
+                      void act("Naming your dish", async () => {
+                        const name = dishName.trim();
+                        if (!name || isPlaceholderDishName(name))
+                          throw Error("Enter the dish’s real name.");
+                        const dish = state.dishes.find(
+                          (d: Row) => d.id === untitled.dishId,
+                        );
+                        // My Dishes takes the name, and menus showing the
+                        // dish follow, as they do for any rename there.
+                        if (dish)
+                          await api(`dishes/${dish.id}`, {
+                            name,
+                            description: dish.description || "",
+                            category: dish.category || "Dishes",
+                            preserve: dish.preserve || "",
+                            portion: dish.portion || "",
+                            plating: dish.plating || "",
+                            setting: dish.setting || "Natural daylight",
+                            price: (Number(dish.price) || 0) / 100,
+                            available: !!dish.available,
+                            confirmed: true,
+                            revision: dish.revision,
+                          });
+                        // Words the owner hasn't changed follow the new name.
+                        update({
+                          items: items.map((i) =>
+                            i.dishId === untitled.dishId
+                              ? {
+                                  ...i,
+                                  name,
+                                  ...(dish
+                                    ? { facts: dishSnapshot({ ...dish, name }) }
+                                    : {}),
+                                }
+                              : i,
+                          ),
+                        });
+                        setDishName("");
+                        await refresh?.();
+                      });
+                    }}
+                  >
+                    <input
+                      aria-label="Dish name"
+                      value={dishName}
+                      maxLength={100}
+                      placeholder="Margherita pizza"
+                      onChange={(e) => setDishName(e.target.value)}
                     />
                     <button className="cx-btn cx-secondary" disabled={!!busy}>
                       Save name

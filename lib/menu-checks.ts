@@ -14,6 +14,8 @@ import {
   suitsDiet,
 } from "./dietary";
 import {
+  dishNameMessage,
+  isPlaceholderDishName,
   isPlaceholderRestaurantName,
   restaurantNameMessage,
 } from "./restaurant-identity";
@@ -32,7 +34,8 @@ export type MenuCheck = {
     | "remove"
     | "attach-addon"
     | "menu-type"
-    | "dish-tags";
+    | "dish-tags"
+    | "dish-name";
   purpose?: MenuDocument["purpose"];
 };
 
@@ -127,6 +130,15 @@ export function menuPublishChecks(
           entryId: item.id,
           sectionId: section.id,
           fix: above ? "attach-addon" : "edit",
+        });
+      if (isPlaceholderDishName(item.name))
+        checks.push({
+          id: `dish-name:${item.id}`,
+          level: "block",
+          message: dishNameMessage,
+          entryId: item.id,
+          sectionId: section.id,
+          fix: "dish-name",
         });
       if (item.dishId && dishTags.has(item.dishId)) {
         const gaps = dishSafetyGaps(item.dietary, dishTags.get(item.dishId));

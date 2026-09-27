@@ -47,6 +47,7 @@ import {
 import { preferredPhoto } from "@/lib/dish-library";
 import { restaurantSettingsChanged, type MenuCheck } from "@/lib/menu-checks";
 import {
+  isPlaceholderDishName,
   isPlaceholderRestaurantName,
   menuAddressProblem,
   slugify,
@@ -936,6 +937,56 @@ function isAutomaticAddress(restaurant: Row) {
     String(restaurant.slug).endsWith("-" + String(restaurant.id).slice(0, 8))
   );
 }
+/** Name a dish still called "Untitled dish", on this menu and in My Dishes. */
+function DishNameFix({
+  entryId,
+  nameDish,
+}: {
+  entryId: string;
+  nameDish: (id: string, name: string) => Promise<void>;
+}) {
+  const [name, setName] = useState(""),
+    [saving, setSaving] = useState(false),
+    [error, setError] = useState("");
+  return (
+    <form
+      className="md-check-fix"
+      onSubmit={async (e) => {
+        e.preventDefault();
+        if (!name.trim() || isPlaceholderDishName(name)) {
+          setError("Enter the dish’s real name.");
+          return;
+        }
+        setSaving(true);
+        setError("");
+        try {
+          await nameDish(entryId, name.trim());
+        } catch (err) {
+          setError((err as Error).message);
+        } finally {
+          setSaving(false);
+        }
+      }}
+    >
+      <input
+        aria-label="Dish name"
+        value={name}
+        maxLength={100}
+        disabled={saving}
+        placeholder="Margherita pizza"
+        onChange={(e) => setName(e.target.value)}
+      />
+      <button className="md-button md-secondary" disabled={saving}>
+        {saving ? "Saving…" : "Save name"}
+      </button>
+      {error && (
+        <small className="md-inline-error" role="alert">
+          {error}
+        </small>
+      )}
+    </form>
+  );
+}
 function CheckFix({
   check,
   restaurant,
@@ -943,6 +994,7 @@ function CheckFix({
   removeItem,
   attachAddon,
   applyDishTags,
+  nameDish,
   applyPurpose,
   saveRestaurantName,
 }: {
@@ -952,6 +1004,7 @@ function CheckFix({
   removeItem: (id: string) => void;
   attachAddon: (id: string) => void;
   applyDishTags: (id: string) => void;
+  nameDish: (id: string, name: string) => Promise<void>;
   applyPurpose: (purpose: MenuDocument["purpose"]) => void;
   saveRestaurantName: (name: string) => Promise<void>;
 }) {
@@ -1017,6 +1070,8 @@ function CheckFix({
         Make it an add-on
       </button>
     );
+  if (check.fix === "dish-name" && check.entryId)
+    return <DishNameFix entryId={check.entryId} nameDish={nameDish} />;
   if (check.fix === "dish-tags" && check.entryId)
     return (
       <button
@@ -1058,6 +1113,7 @@ export function MenuDeliveryDialog({
   removeItem,
   attachAddon,
   applyDishTags,
+  nameDish,
   applyPurpose,
   saveRestaurantName,
   published,
@@ -1079,6 +1135,8 @@ export function MenuDeliveryDialog({
   attachAddon: (id: string) => void;
   /** Give a menu dish the allergens and diets My Dishes has for it. */
   applyDishTags: (id: string) => void;
+  /** Name a dish still called "Untitled dish". */
+  nameDish: (id: string, name: string) => Promise<void>;
   applyPurpose: (purpose: MenuDocument["purpose"]) => void;
   saveRestaurantName: (name: string) => Promise<void>;
   published: (address?: string) => Promise<void>;
@@ -1254,6 +1312,7 @@ export function MenuDeliveryDialog({
                       removeItem={removeItem}
                       attachAddon={attachAddon}
                       applyDishTags={applyDishTags}
+                      nameDish={nameDish}
                       applyPurpose={applyPurpose}
                       saveRestaurantName={saveRestaurantName}
                     />

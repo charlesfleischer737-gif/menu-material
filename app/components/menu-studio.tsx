@@ -54,6 +54,7 @@ import {
 } from "@/lib/menu-checks";
 import { addonLabel, inferMenuPurpose, isAddonName } from "@/lib/menu-paste";
 import { normalizeDietary } from "@/lib/dietary";
+import { isPlaceholderDishName } from "@/lib/restaurant-identity";
 import type { MenuContact } from "@/lib/restaurant-contact";
 import type { MenuPdfResult } from "@/lib/menu-pdf-v2";
 import { useMenuDocument, type SavedMenu } from "./use-menu-document";
@@ -1371,6 +1372,35 @@ export default function MenuStudio({
                 })),
               }))
             }
+            nameDish={async (id, name) => {
+              const dishId = items.find((i) => i.id === id)?.dishId;
+              change((before) => ({
+                ...before,
+                sections: before.sections.map((s) => ({
+                  ...s,
+                  items: s.items.map((i) => (i.id === id ? { ...i, name } : i)),
+                })),
+              }));
+              // A dish My Dishes still calls "Untitled dish" takes the name
+              // there too, and other menus showing it follow.
+              const dish = (state.dishes as Row[]).find((d) => d.id === dishId);
+              if (!dish || !isPlaceholderDishName(dish.name)) return;
+              await store.saveNow();
+              await api(`dishes/${dish.id}`, {
+                name,
+                description: dish.description || "",
+                category: dish.category || "Dishes",
+                preserve: dish.preserve || "",
+                portion: dish.portion || "",
+                plating: dish.plating || "",
+                setting: dish.setting || "Natural daylight",
+                price: (Number(dish.price) || 0) / 100,
+                available: !!dish.available,
+                confirmed: true,
+                revision: dish.revision,
+              });
+              await refresh();
+            }}
             applyPurpose={applyPurpose}
             saveRestaurantName={async (name) => {
               await api("restaurant/name", { name });

@@ -18,8 +18,13 @@ const {
   withLibraryLinks,
   restaurantSettingsChanged,
 } = await import("../lib/menu-checks.ts");
-const { isPlaceholderRestaurantName, slugify, menuAddressProblem } =
-  await import("../lib/restaurant-identity.ts");
+const {
+  isPlaceholderRestaurantName,
+  isPlaceholderDishName,
+  dishNameMessage,
+  slugify,
+  menuAddressProblem,
+} = await import("../lib/restaurant-identity.ts");
 const { courseIndex, parsePastedMenu } = await import("../lib/menu-paste.ts");
 const { printedMenuAddress } = await import("../lib/qr-card.ts");
 let cookie = "",
@@ -52,6 +57,11 @@ try {
     assert(isPlaceholderRestaurantName(name), name);
   for (const name of ["Corner House", "Bo", "Café Olé"])
     assert(!isPlaceholderRestaurantName(name), name);
+  // A photo added without a name makes an "Untitled dish"; guests never see it.
+  for (const name of ["Untitled dish", " untitled  dish ", "Untitled", "New dish"])
+    assert(isPlaceholderDishName(name), name);
+  for (const name of ["Margherita", "Untitled No. 5 (house special)", ""])
+    assert(!isPlaceholderDishName(name), name);
   assert.equal(slugify("Café Olé & Grill"), "cafe-ole-and-grill");
   assert.equal(slugify("Joe's Pizza"), "joes-pizza");
   assert.equal(slugify("Joe’s Diner"), "joes-diner");
@@ -334,6 +344,34 @@ try {
     400,
   );
   assert.match(sampleBlocked.error, /sample dish/);
+  // A dish still called "Untitled dish" can't go live either.
+  const untitledEntry = newMenuEntry({
+    name: "Untitled dish",
+    description: "Burger",
+    price: 1200,
+  });
+  const untitledChecks = menuPublishChecks(
+    newMenuDocument({ sections: [section([untitledEntry])] }),
+    { restaurantName: "Corner House" },
+  ).filter((c) => c.fix === "dish-name");
+  assert.deepEqual(
+    untitledChecks.map((c) => [c.id, c.level, c.message, c.entryId]),
+    [[`dish-name:${untitledEntry.id}`, "block", dishNameMessage, untitledEntry.id]],
+  );
+  const untitledMenu = await call("menus", {
+    id: crypto.randomUUID(),
+    draft: newMenuDocument({ sections: [section([untitledEntry])] }),
+  });
+  assert.equal(
+    (
+      await call(
+        `menus/${untitledMenu.id}/publish`,
+        { revision: untitledMenu.revision },
+        400,
+      )
+    ).error,
+    dishNameMessage,
+  );
   assert.equal(
     (await one("SELECT slug FROM restaurants WHERE id=?", rid)).slug,
     "local-pilot",

@@ -717,6 +717,9 @@ textarea.st-input {
 .st-details {
   min-height: 84px;
 }
+.st-field + .st-details {
+  margin-top: 12px;
+}
 
 /* Create: sticky at the foot of the inspector on larger screens. */
 .st-inspector .st-action {
