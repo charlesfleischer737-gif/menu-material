@@ -855,8 +855,9 @@ export function StudioWorkbench({
       </span>
     </p>
   );
-  // Under the canvas: what becomes of the photo. A signed-out guest gets no
-  // note; after signup, it waits until the photo can be created.
+  // Under the canvas: what becomes of the photo. A signed-out guest gets the
+  // privacy line instead; after signup, the note waits until the photo can
+  // be created.
   const stageNote = guestOnly
     ? ""
     : state.guest
@@ -1048,7 +1049,7 @@ export function StudioWorkbench({
                 <button
                   className="st-dropzone"
                   disabled={!!busy}
-                  aria-describedby="st-dropzone-hint"
+                  aria-describedby={`st-dropzone-hint${guestOnly ? " st-guest-privacy" : ""}`}
                   onClick={() => upload.current?.click()}
                 >
                   <span className="st-dropzone-icon" aria-hidden="true">
@@ -1085,6 +1086,25 @@ export function StudioWorkbench({
                 <span>
                   <ShieldCheck size={14} aria-hidden="true" />
                   {stageNote}
+                </span>
+              )}
+              {/* Before signup a photo is read for style suggestions as soon
+                  as it's added, so this is said first. Matches the privacy
+                  page's "Information we store". */}
+              {guestOnly && b.mode === "photo" && (
+                <span className="st-guest-privacy">
+                  <ShieldCheck size={14} aria-hidden="true" />
+                  <span id="st-guest-privacy">
+                    To suggest styles, a small copy goes to OpenAI. Your photo
+                    isn’t saved until you create an account.{" "}
+                    <a
+                      href="/privacy#information"
+                      target="_blank"
+                      rel="noreferrer"
+                    >
+                      Privacy
+                    </a>
+                  </span>
                 </span>
               )}
               {source && !state.guest && b.mode === "photo" && (
