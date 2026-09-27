@@ -19,6 +19,8 @@ import {
   aiControls,
   reserveStorage,
   releaseStorage,
+  settledCents,
+  TEXT_TIMEOUT_MS,
 } from "./safeguards";
 import {
   all,
@@ -581,12 +583,24 @@ export async function enqueue(
   if (parent) await event(r.id, "revision_requested", jobId).catch(() => {});
   return job;
 }
-export async function provider(
+// A call runs on to its settlement even if the page that asked for it closes.
+// On Workers a closed connection cancels the request, and an unsettled
+// reservation would count in full until midnight UTC.
+export function provider(
   path: string,
   method = "GET",
   body?: unknown,
   charge?: AiCharge,
-  timeoutMs = 25000,
+  timeoutMs = TEXT_TIMEOUT_MS,
+) {
+  return keepAlive(send(path, method, body, charge, timeoutMs));
+}
+async function send(
+  path: string,
+  method: string,
+  body: unknown,
+  charge: AiCharge | undefined,
+  timeoutMs: number,
 ) {
   assert(
     method !== "POST" || charge,
@@ -837,6 +851,9 @@ async function saveImage(o: Row, result: string, usage: unknown) {
   const job = await one("SELECT * FROM jobs WHERE id=?", o.job_id);
   assert(job, 404, "Generation not found.");
   const { model, quality, size } = JSON.parse(job.details).rendering ?? {};
+  // The dashboard's estimated provider cost: IMAGE_COST_ESTIMATE_USD, or the
+  // measured cost of the reported usage.
+  const cents = settledCents("image", usage);
   await db().batch([
     db()
       .prepare(
@@ -859,9 +876,7 @@ async function saveImage(o: Row, result: string, usage: unknown) {
       .bind(
         aId,
         JSON.stringify(usage ?? {}),
-        config("IMAGE_COST_ESTIMATE_USD")
-          ? Number(config("IMAGE_COST_ESTIMATE_USD"))
-          : null,
+        cents === null ? null : cents / 100,
         o.id,
       ),
   ]);

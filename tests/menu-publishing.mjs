@@ -14,11 +14,17 @@ const {
   blockingChecks,
   applyDishUpdate,
   dishFacts,
+  withDishSafety,
   withLibraryLinks,
   restaurantSettingsChanged,
 } = await import("../lib/menu-checks.ts");
-const { isPlaceholderRestaurantName, slugify, menuAddressProblem } =
-  await import("../lib/restaurant-identity.ts");
+const {
+  isPlaceholderRestaurantName,
+  isPlaceholderDishName,
+  dishNameMessage,
+  slugify,
+  menuAddressProblem,
+} = await import("../lib/restaurant-identity.ts");
 const { courseIndex, parsePastedMenu } = await import("../lib/menu-paste.ts");
 const { printedMenuAddress } = await import("../lib/qr-card.ts");
 let cookie = "",
@@ -51,6 +57,11 @@ try {
     assert(isPlaceholderRestaurantName(name), name);
   for (const name of ["Corner House", "Bo", "Café Olé"])
     assert(!isPlaceholderRestaurantName(name), name);
+  // A photo added without a name makes an "Untitled dish"; guests never see it.
+  for (const name of ["Untitled dish", " untitled  dish ", "Untitled", "New dish"])
+    assert(isPlaceholderDishName(name), name);
+  for (const name of ["Margherita", "Untitled No. 5 (house special)", ""])
+    assert(!isPlaceholderDishName(name), name);
   assert.equal(slugify("Café Olé & Grill"), "cafe-ole-and-grill");
   assert.equal(slugify("Joe's Pizza"), "joes-pizza");
   assert.equal(slugify("Joe’s Diner"), "joes-diner");
@@ -58,6 +69,10 @@ try {
   assert.match(menuAddressProblem("Bad Address"), /lowercase/);
   assert.match(menuAddressProblem("double--hyphen"), /single hyphens/);
   assert.equal(menuAddressProblem("corner-house"), "");
+  // Addresses guests could take for Menu Material's own pages are reserved.
+  for (const address of ["support", "admin", "menu-material", "menumaterial-eats"])
+    assert.match(menuAddressProblem(address), /reserved/, address);
+  assert.equal(menuAddressProblem("joes-support"), "");
 
   // Automatic checks replace "I checked" boxes.
   const burger = newMenuEntry({
@@ -177,6 +192,31 @@ try {
     "price on the next line",
   );
   assert.equal(findDish(capitals, "CAKE").description, "V");
+  // A name, then its description and price on the next line.
+  const described = pasted(
+    "Mains\nRoast Chicken\npotato purée, charred leeks, jus 26\nHanger Steak\nchimichurri, fries 32\nSoup of the Day\nwith bread MP\nFish tacos 14",
+  );
+  assert.deepEqual(shape(described), [
+    ["Mains", ["Roast Chicken", "Hanger Steak", "Soup of the Day", "Fish tacos"]],
+  ]);
+  const chicken = findDish(described, "Roast Chicken");
+  assert.deepEqual(
+    [chicken.description, chicken.price, chicken.sourceUncertain],
+    ["potato purée, charred leeks, jus", 2600, ["price"]],
+    "the description and price join the dish, and the price is checked",
+  );
+  assert.equal(findDish(described, "Hanger Steak").price, 3200);
+  const soup = findDish(described, "Soup of the Day");
+  assert.deepEqual(
+    [soup.description, soup.priceMode, soup.priceLabel],
+    ["with bread", "label", "Market price"],
+  );
+  assert.deepEqual(findDish(described, "Fish tacos").sourceUncertain, []);
+  // A dish name starting in lowercase is checked, never taken as certain.
+  assert.deepEqual(
+    findDish(pasted("Mains\nBurger 14\nfries 5"), "fries").sourceUncertain,
+    ["name"],
+  );
   const wines = pasted(
     "RED WINE\nChateau Margaux 2015\nBordeaux, France 450\nOpus One 2018 520\nEst. 1998",
   );
@@ -333,6 +373,34 @@ try {
     400,
   );
   assert.match(sampleBlocked.error, /sample dish/);
+  // A dish still called "Untitled dish" can't go live either.
+  const untitledEntry = newMenuEntry({
+    name: "Untitled dish",
+    description: "Burger",
+    price: 1200,
+  });
+  const untitledChecks = menuPublishChecks(
+    newMenuDocument({ sections: [section([untitledEntry])] }),
+    { restaurantName: "Corner House" },
+  ).filter((c) => c.fix === "dish-name");
+  assert.deepEqual(
+    untitledChecks.map((c) => [c.id, c.level, c.message, c.entryId]),
+    [[`dish-name:${untitledEntry.id}`, "block", dishNameMessage, untitledEntry.id]],
+  );
+  const untitledMenu = await call("menus", {
+    id: crypto.randomUUID(),
+    draft: newMenuDocument({ sections: [section([untitledEntry])] }),
+  });
+  assert.equal(
+    (
+      await call(
+        `menus/${untitledMenu.id}/publish`,
+        { revision: untitledMenu.revision },
+        400,
+      )
+    ).error,
+    dishNameMessage,
+  );
   assert.equal(
     (await one("SELECT slug FROM restaurants WHERE id=?", rid)).slug,
     "local-pilot",
@@ -405,7 +473,27 @@ try {
     (await call("restaurant/address?check=corner-house")).available,
     false,
   );
+  await call("restaurant/address", { address: "support" }, 400);
+
+  // A guest can report a page; administrators see it under Guest reports.
+  cookie = "";
+  const reportedSlug = (await one("SELECT slug FROM restaurants WHERE id=?", rid))
+    .slug;
+  await call(
+    `public/${reportedSlug}/report`,
+    { reason: "impersonation", details: "Not the real Corner House" },
+    202,
+  );
+  await call(`public/${reportedSlug}/report`, { reason: "spam" }, 400);
   cookie = ownerCookie;
+  const [report] = (await call("admin")).menuReports;
+  assert.equal(report.restaurant_id, rid);
+  assert.equal(report.public_suspended, 0);
+  const reportDetails = JSON.parse(report.details);
+  assert.deepEqual(
+    [reportDetails.reason, reportDetails.details, reportDetails.address],
+    ["impersonation", "Not the real Corner House", reportedSlug],
+  );
 
   // A My Dishes price change reaches the draft and the live menu.
   const current = await call(`menus/${created.id}`);
@@ -686,8 +774,8 @@ try {
       },
       satayLinks,
     ).sections[0].items[0].dietary,
-    ["Spicy"],
-    "tags set on the menu stay",
+    ["contains-peanuts", "Spicy"],
+    "tags set on the menu stay, and the dish's allergens join them",
   );
   const pastedSaved = await call(
     `menus/${pastedMenu.id}`,
@@ -722,9 +810,13 @@ try {
       ],
     }),
   });
-  await call(`menus/${olderMenu.id}/publish`, {
-    revision: olderMenu.revision,
-  });
+  // Published before linked dishes had to show their dish's allergens, which
+  // publishing now requires.
+  await run(
+    "UPDATE menu_documents SET published=draft,published_revision=revision,published_at=? WHERE id=?",
+    Date.now(),
+    olderMenu.id,
+  );
   const sesame = await call(`dishes/${satayDish.id}`, {
     name: "Satay Skewers",
     description: "Peanut sauce",
@@ -770,6 +862,301 @@ try {
     ).menu.sections[0].items[0].dietary,
     ["contains-peanuts", "contains-sesame"],
     "an empty tag list counts as not set",
+  );
+
+  // Allergens and diets are safety facts. A menu dish with tags of its own
+  // still gains the allergens its dish gains and loses diets its dish drops,
+  // live menus included, even when the edit comes from one menu's builder.
+  const menuWith = (name, entries, category) =>
+    call("menus", {
+      id: crypto.randomUUID(),
+      draft: newMenuDocument({
+        name,
+        title: name,
+        sections: [section(entries, category)],
+      }),
+    });
+  const brownie = await call("dishes", {
+    name: "Brownie",
+    description: "Dark chocolate",
+    category: "Desserts",
+    price: 8,
+    confirmed: true,
+    dietary: ["gluten-free", "vegetarian"],
+  });
+  const dessert = await menuWith(
+    "Desserts",
+    [
+      newMenuEntry({
+        dishId: brownie.id,
+        name: "Brownie",
+        description: "Dark chocolate",
+        price: 800,
+        dietary: ["gluten-free", "vegetarian", "Served warm"],
+      }),
+    ],
+    "Desserts",
+  );
+  const dessertLive = await call(`menus/${dessert.id}/publish`, {
+    revision: dessert.revision,
+  });
+  const recipe = await call(`dishes/${brownie.id}`, {
+    name: "Brownie",
+    description: "Dark chocolate",
+    category: "Desserts",
+    price: 8,
+    confirmed: true,
+    dietary: ["vegetarian", "contains-gluten", "contains-egg"],
+  });
+  assert.deepEqual(
+    recipe.menus.map((m) => [m.id, m.live]),
+    [[dessert.id, true]],
+  );
+  const dessertAfter = await call(`menus/${dessert.id}`);
+  for (const copy of [dessertAfter.draft, dessertAfter.published])
+    assert.deepEqual(
+      copy.sections[0].items[0].dietary,
+      ["vegetarian", "contains-gluten", "contains-egg", "Served warm"],
+      "gluten-free is gone and the new allergens show",
+    );
+  const brownieSlug = (await one("SELECT slug FROM restaurants WHERE id=?", rid))
+    .slug;
+  assert.deepEqual(
+    (await call(`public/${brownieSlug}?menu=${dessert.id}`)).menu.sections[0]
+      .items[0].dietary,
+    ["vegetarian", "contains-gluten", "contains-egg", "Served warm"],
+  );
+  // Restoring the older version keeps its wording, not its stale tags.
+  const dessertHistory = (await call(`menus/${dessert.id}/history`)).history;
+  const restoredDessert = await call(`menus/${dessert.id}/restore`, {
+    revision: dessertAfter.revision,
+    historyId: dessertHistory[dessertHistory.length - 1].id,
+  });
+  assert.equal(dessertLive.published.sections[0].items[0].price, 800);
+  assert.deepEqual(restoredDessert.draft.sections[0].items[0].dietary, [
+    "vegetarian",
+    "contains-gluten",
+    "contains-egg",
+    "Served warm",
+  ]);
+
+  // From the menu builder: other menus keep their price, but gain allergens.
+  const padThai = await call("dishes", {
+    name: "Pad Thai",
+    description: "Rice noodles",
+    category: "Noodles",
+    price: 15,
+    confirmed: true,
+    dietary: ["vegetarian"],
+  });
+  const padEntry = (price, dietary) =>
+    newMenuEntry({
+      dishId: padThai.id,
+      name: "Pad Thai",
+      description: "Rice noodles",
+      price,
+      dietary,
+    });
+  const padLunch = await menuWith(
+    "Pad lunch",
+    [padEntry(1500, ["vegetarian", "Spicy"])],
+    "Noodles",
+  );
+  await call(`menus/${padLunch.id}/publish`, { revision: padLunch.revision });
+  const fromBuilder = await call(`dishes/${padThai.id}`, {
+    name: "Pad Thai",
+    description: "Rice noodles",
+    category: "Noodles",
+    price: 16,
+    confirmed: true,
+    dietary: ["vegetarian", "contains-peanuts", "contains-egg"],
+    syncMenus: false,
+  });
+  assert.deepEqual(
+    fromBuilder.menus.map((m) => [m.id, m.live]),
+    [[padLunch.id, true]],
+  );
+  const padLunchAfter = await call(`menus/${padLunch.id}`);
+  for (const copy of [padLunchAfter.draft, padLunchAfter.published]) {
+    assert.deepEqual(copy.sections[0].items[0].dietary, [
+      "vegetarian",
+      "contains-egg",
+      "contains-peanuts",
+      "Spicy",
+    ]);
+    assert.equal(copy.sections[0].items[0].price, 1500, "its own price stays");
+  }
+
+  // A linked dish can't go live without its allergens, or with a diet My
+  // Dishes doesn't give it. "Match My Dishes" fixes both.
+  const padFacts = ["vegetarian", "contains-peanuts", "contains-egg"];
+  const stale = padEntry(1600, ["vegan"]);
+  const staleMenu = await menuWith("Pad dinner", [stale], "Noodles");
+  const staleChecks = menuPublishChecks(staleMenu.draft, {
+    restaurantName: "Corner House",
+    dishes: [{ id: padThai.id, dietary: padFacts }],
+  }).filter((c) => c.id.startsWith("dish-tags:"));
+  assert.equal(staleChecks.length, 1);
+  assert.equal(staleChecks[0].level, "block");
+  assert.equal(staleChecks[0].fix, "dish-tags");
+  assert.equal(
+    staleChecks[0].message,
+    "Pad Thai doesn’t match My Dishes: it contains egg and peanuts, and it isn’t marked Vegan there.",
+  );
+  const refused = await call(
+    `menus/${staleMenu.id}/publish`,
+    { revision: staleMenu.revision },
+    400,
+  );
+  assert.equal(refused.error, staleChecks[0].message);
+  assert.deepEqual(withDishSafety(stale.dietary, padFacts), [
+    "contains-egg",
+    "contains-peanuts",
+  ]);
+  assert.deepEqual(
+    withDishSafety(["vegetarian"], ["vegan"]),
+    ["vegetarian"],
+    "a vegan dish suits vegetarians",
+  );
+  const matched = await call(
+    `menus/${staleMenu.id}`,
+    {
+      revision: staleMenu.revision,
+      draft: {
+        ...staleMenu.draft,
+        sections: [
+          {
+            ...staleMenu.draft.sections[0],
+            items: [
+              {
+                ...staleMenu.draft.sections[0].items[0],
+                dietary: withDishSafety(stale.dietary, padFacts),
+              },
+            ],
+          },
+        ],
+      },
+    },
+    200,
+    "PUT",
+  );
+  await call(`menus/${staleMenu.id}/publish`, { revision: matched.revision });
+  // The notice names menus that kept their own details.
+  const priced = await call(`dishes/${padThai.id}`, {
+    name: "Pad Thai",
+    description: "Rice noodles",
+    category: "Noodles",
+    price: 17,
+    confirmed: true,
+    dietary: padFacts,
+  });
+  assert.deepEqual(
+    priced.menus.map((m) => m.id),
+    [staleMenu.id],
+    "the menu showing the old price follows",
+  );
+  assert.deepEqual(priced.kept, [
+    { id: padLunch.id, name: "Pad lunch", fields: ["price"] },
+  ]);
+
+  // Linking a live menu dish to My Dishes shows its allergens to guests at once.
+  const sesameDish = await call("dishes", {
+    name: "Sesame noodles",
+    description: "Cold",
+    category: "Noodles",
+    price: 11,
+    confirmed: true,
+    dietary: ["contains-sesame"],
+  });
+  const looseEntry = newMenuEntry({
+    name: "Sesame noodles",
+    description: "Cold",
+    price: 1100,
+    dietary: ["Spicy"],
+  });
+  const looseMenu = await menuWith("Noodle bar", [looseEntry], "Noodles");
+  await call(`menus/${looseMenu.id}/publish`, { revision: looseMenu.revision });
+  const { links: sesameLinks } = await call(`menus/${looseMenu.id}/library`, {
+    entries: [
+      {
+        id: looseEntry.id,
+        name: "Sesame noodles",
+        description: "Cold",
+        category: "Noodles",
+        price: 1100,
+        available: true,
+        dietary: ["Spicy"],
+      },
+    ],
+  });
+  assert.equal(sesameLinks[0].dishId, sesameDish.id);
+  const looseLive = (await call(`menus/${looseMenu.id}`)).published;
+  assert.equal(looseLive.sections[0].items[0].dishId, sesameDish.id);
+  assert.deepEqual(looseLive.sections[0].items[0].dietary, [
+    "contains-sesame",
+    "Spicy",
+  ]);
+
+  // A dish made from a photo has no price; linking a pasted menu to it gives
+  // it the menu's price and description, so later edits reach that menu.
+  const photographed = await call("dishes", {
+    name: "Margherita",
+    confirmed: true,
+  });
+  const pastedPizza = newMenuEntry({
+    name: "Margherita",
+    description: "Tomato, mozzarella",
+    price: 1400,
+  });
+  const pizzaMenu = await menuWith("Pizza", [pastedPizza], "Pizza");
+  const { links: pizzaLinks } = await call(`menus/${pizzaMenu.id}/library`, {
+    entries: [
+      {
+        id: pastedPizza.id,
+        name: "Margherita",
+        description: "Tomato, mozzarella",
+        category: "Pizza",
+        price: 1400,
+        available: true,
+        dietary: [],
+      },
+    ],
+  });
+  assert.equal(pizzaLinks[0].dishId, photographed.id);
+  const pizzaDish = await one(
+    "SELECT price,description FROM dishes WHERE id=?",
+    photographed.id,
+  );
+  assert.deepEqual(
+    [pizzaDish.price, pizzaDish.description],
+    [1400, "Tomato, mozzarella"],
+  );
+  const pizzaLinked = await call(
+    `menus/${pizzaMenu.id}`,
+    {
+      revision: pizzaMenu.revision,
+      draft: withLibraryLinks(pizzaMenu.draft, pizzaLinks),
+    },
+    200,
+    "PUT",
+  );
+  await call(`menus/${pizzaMenu.id}/publish`, {
+    revision: pizzaLinked.revision,
+  });
+  const repriced = await call(`dishes/${photographed.id}`, {
+    name: "Margherita",
+    description: "Tomato, mozzarella",
+    category: "Pizza",
+    price: 15,
+    confirmed: true,
+  });
+  assert.deepEqual(
+    repriced.menus.map((m) => [m.id, m.live]),
+    [[pizzaMenu.id, true]],
+  );
+  assert.equal(
+    (await call(`menus/${pizzaMenu.id}`)).published.sections[0].items[0].price,
+    1500,
   );
 
   // A photo the owner reported as inaccurate never joins a menu on its own,

@@ -70,4 +70,5 @@ export function validateImageDimensions(
     413,
     "This image is too large to process safely. Please choose a smaller version.",
   );
+  return { width, height };
 }

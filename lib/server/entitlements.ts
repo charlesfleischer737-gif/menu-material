@@ -47,7 +47,9 @@ export const RENEWAL_GRACE_MS = 14 * 86400000;
 
 /**
  * Pro features, which are separate from images: a paid period covering now,
- * a failed renewal within its grace, or an administrator's comp.
+ * a renewal on its way (Stripe starts the new period about an hour before it
+ * charges the invoice, and a failed charge is retried), or an administrator's
+ * comp.
  */
 export async function featureAccess(restaurantId: string) {
   const t = now();
@@ -57,10 +59,10 @@ export async function featureAccess(restaurantId: string) {
       ON ba.restaurant_id=bp.restaurant_id AND ba.subscription_id=bp.subscription_id
       WHERE bp.restaurant_id=r.id AND ba.status IN ('active','past_due')
         AND bp.starts_at<=? AND bp.ends_at>?) AS paid,
-    EXISTS(SELECT 1 FROM billing_periods bp JOIN billing_accounts ba
+    (SELECT ba.status FROM billing_periods bp JOIN billing_accounts ba
       ON ba.restaurant_id=bp.restaurant_id AND ba.subscription_id=bp.subscription_id
-      WHERE bp.restaurant_id=r.id AND ba.status='past_due'
-        AND bp.ends_at<=? AND bp.ends_at>?) AS grace
+      WHERE bp.restaurant_id=r.id AND ba.status IN ('active','past_due')
+        AND bp.ends_at<=? AND bp.ends_at>? LIMIT 1) AS renewal
     FROM restaurants r WHERE r.id=?`,
     t,
     t,
@@ -69,13 +71,15 @@ export async function featureAccess(restaurantId: string) {
     restaurantId,
   );
   const proUntil = row?.pro_until == null ? null : Number(row.pro_until);
-  const source: "paid" | "grace" | "comp" | "free" = row?.paid
+  const source: "paid" | "renewing" | "grace" | "comp" | "free" = row?.paid
     ? "paid"
-    : row?.grace
+    : row?.renewal === "past_due"
       ? "grace"
-      : proUntil && proUntil > t
-        ? "comp"
-        : "free";
+      : row?.renewal === "active"
+        ? "renewing"
+        : proUntil && proUntil > t
+          ? "comp"
+          : "free";
   const limitsEnabled = planLimitsEnabled();
   return {
     pro: source !== "free",

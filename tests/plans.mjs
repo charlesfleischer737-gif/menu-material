@@ -15,6 +15,8 @@ const { enqueue } = await import("../lib/server/generation.ts");
 const { env } = await import("../lib/local-runtime.ts");
 const { transferGuestPhoto } = await import("../lib/guest-studio.ts");
 const { photoBrief } = await import("../lib/studio.ts");
+const { reconcileDueSubscriptions, billingHousekeeping, billingReadiness } =
+  await import("../lib/server/billing.ts");
 
 // Upgrade a populated database, keeping existing grants and constraints intact.
 const migrationDb = new DatabaseSync(":memory:");
@@ -72,7 +74,10 @@ let subscriptions = [],
   priceAmount = 900,
   checkoutStatus = "open",
   lostJobResponse = false,
-  lostFinalSaveResponse = false;
+  lostFinalSaveResponse = false,
+  customerDeleteFails = false,
+  stripeDown = false;
+const deletedCustomers = new Set();
 const realNow = Date.now;
 let offset = 0;
 Date.now = () => realNow() + offset;
@@ -114,14 +119,30 @@ globalThis.fetch = async (url, init = {}) => {
   assert.equal(init.headers["Stripe-Version"], "2025-06-30.basil");
   const path = String(url).replace("https://api.stripe.com/v1/", "");
   const form = Object.fromEntries(new URLSearchParams(init.body));
-  calls.push({ path, form, headers: init.headers });
+  calls.push({ path, form, headers: init.headers, method: init.method });
   if (path === "prices/price_pro") return Response.json(price());
   if (path === "customers") {
     customerCreates++;
-    return Response.json({ id: "cus_1" });
+    return Response.json({ id: "cus_" + customerCreates });
+  }
+  if (path.startsWith("customers/")) {
+    const customer = path.slice("customers/".length);
+    if (init.method === "DELETE") {
+      if (customerDeleteFails)
+        return Response.json({ error: {} }, { status: 500 });
+      deletedCustomers.add(customer);
+    }
+    return Response.json({
+      id: customer,
+      ...(deletedCustomers.has(customer) ? { deleted: true } : {}),
+    });
   }
   if (path.startsWith("subscriptions?"))
-    return Response.json({ data: subscriptions, has_more: false });
+    return stripeDown
+      ? Response.json({ error: {} }, { status: 500 })
+      : Response.json({ data: subscriptions, has_more: false });
+  if (path.endsWith("/expire"))
+    return Response.json({ id: path.split("/")[2], status: "expired" });
   if (path.startsWith("checkout/sessions/cs_"))
     return Response.json({
       id: "cs_" + checkoutCreates,
@@ -212,6 +233,7 @@ function subscription(rid, start, end, number = 1) {
           {
             pricing: { price_details: { price: "price_pro" } },
             period: { start, end },
+            amount: 900,
           },
         ],
       },
@@ -278,6 +300,9 @@ try {
     STRIPE_SECRET_KEY: "sk_test_fixture",
     STRIPE_WEBHOOK_SECRET: "whsec_fixture",
     STRIPE_PRO_PRICE_ID: "price_pro",
+    // The owner's own details, which checkout and messages show once set.
+    TERMS_URL: "https://legal.example.test/terms",
+    SUPPORT_EMAIL: "help@menu-material.example.test",
   });
   priceAmount = 999;
   await call("billing/checkout", {}, 503);
@@ -300,7 +325,13 @@ try {
     rid,
   );
   assert.equal(checkout.form.customer, "cus_1");
-  checks += 4;
+  // Renewal and cancellation terms under the pay button, with the Terms.
+  const terms = checkout.form["custom_text[submit][message]"];
+  assert.match(terms, /renews monthly until you cancel/);
+  assert.match(terms, /in Plans under Manage billing/);
+  assert.match(terms, /\[Terms\]\(https:\/\/legal\.example\.test\/terms\)$/);
+  assert(terms.length <= 1200, "Stripe's custom text limit");
+  checks += 5;
   await notify("invoice.paid", {}, 400, false);
   await notify("invoice.paid", {}, 400, true, 301);
   let start = Math.floor(Date.now() / 1000) - 1,
@@ -310,14 +341,14 @@ try {
   await notify("checkout.session.completed");
   assert.equal((await call("state")).billing.plan, "free");
   subscriptions[0].latest_invoice.status = "paid";
-  subscriptions[0].latest_invoice.amount_paid = 899;
+  subscriptions[0].latest_invoice.lines.data[0].amount = 0;
   await notify();
   assert.equal(
     (await call("state")).billing.plan,
     "free",
-    "Underpayment cannot grant Pro images",
+    "A $0 Pro line, such as a trial, is not a paid month",
   );
-  subscriptions[0].latest_invoice.amount_paid = 900;
+  subscriptions[0].latest_invoice.lines.data[0].amount = 900;
   subscriptions[0].items.data[0].price.unit_amount = 999;
   await notify();
   assert.equal(
@@ -328,6 +359,8 @@ try {
   subscriptions[0].items.data[0].price.unit_amount = 900;
   checks += 2;
   checkoutStatus = "complete";
+  // $3 of the $9 came from the customer's credit balance: still a paid month.
+  subscriptions[0].latest_invoice.amount_paid = 600;
   await notify();
   state = await call("state");
   assert.equal(state.billing.plan, "pro");
@@ -344,6 +377,20 @@ try {
   );
   checks += 4;
   await call("billing/checkout", {}, 409);
+  // A live subscription blocks deleting the account until Pro has ended;
+  // nothing is deleted, here or at Stripe.
+  const deletion = {
+    password: "a sufficiently long password",
+    confirm: "DELETE",
+  };
+  const subscribed = await call("account/delete", deletion, 409);
+  assert.match(subscribed.error, /Cancel it in Plans, under Manage billing/);
+  assert.match(subscribed.error, /help@menu-material\.example\.test/);
+  assert(
+    !calls.some((c) => c.method === "DELETE" || c.path.endsWith("/expire")),
+  );
+  assert(await one("SELECT id FROM restaurants WHERE id=?", rid));
+  checks += 3;
   await call("billing/portal", {});
   assert.equal(calls.at(-1).form.customer, "cus_1");
   checks++;
@@ -373,6 +420,12 @@ try {
   assert.equal(state.billing.plan, "pro");
   assert.equal(state.billing.cancelAtPeriodEnd, true);
   checks += 2;
+  // Cancelled but still paid for: deletion waits for the month to end.
+  assert.match(
+    (await call("account/delete", deletion, 409)).error,
+    /cancelled and ends at the end of the month you’ve paid for/,
+  );
+  checks++;
   // A new billing period without a successful payment cannot mint credits.
   offset += 31 * 86400000;
   start = end;
@@ -417,6 +470,86 @@ try {
       .credit_period,
     "sub_1:" + start,
   );
+  checks++;
+
+  // Without Stripe's notifications, the scheduled check records a renewal
+  // soon after the month ends, then waits before asking Stripe again.
+  const login = async () => {
+    await call("auth/login", {
+      email: "free@example.test",
+      password: "a sufficiently long password",
+    });
+    freeCookie = cookie;
+  };
+  let report = await billingReadiness();
+  assert.equal(typeof report.lastNotificationSeconds, "number");
+  assert.equal(report.ok, true);
+  let before = stripeCalls;
+  assert.equal((await reconcileDueSubscriptions()).checked, 0);
+  assert.equal(stripeCalls, before, "Nothing is due mid-month");
+  checks += 3;
+  offset += 29 * 86400000 + 10 * 60000;
+  const renewedStart = end,
+    renewedEnd = end + 30 * 86400;
+  // Stripe starts the new month, and charges its invoice about an hour later.
+  subscriptions = [subscription(rid, renewedStart, renewedEnd, 3)];
+  subscriptions[0].latest_invoice.status = "draft";
+  let swept = await reconcileDueSubscriptions();
+  assert.deepEqual([swept.checked, swept.failed], [1, 0]);
+  assert.equal(stripeCalls, before + 1);
+  await login();
+  state = await call("state");
+  assert.equal(state.billing.plan, "free", "No images before the charge");
+  assert.equal(state.billing.features.source, "renewing");
+  before = stripeCalls;
+  assert.equal((await reconcileDueSubscriptions()).checked, 0);
+  assert.equal(stripeCalls, before, "Checked moments ago");
+  checks += 5;
+  offset += 11 * 60000;
+  subscriptions[0].latest_invoice.status = "paid";
+  swept = await reconcileDueSubscriptions();
+  assert.deepEqual([swept.checked, swept.failed], [1, 0]);
+  state = await call("state");
+  assert.equal(state.billing.plan, "pro");
+  assert.equal(state.remaining, 50);
+  checks += 3;
+  // When neither notifications nor the check get through, readiness says so.
+  offset += 30 * 86400000 + 4 * 3600000;
+  stripeDown = true;
+  swept = await reconcileDueSubscriptions();
+  assert.deepEqual([swept.checked, swept.failed], [1, 1]);
+  assert(swept.error, "The failure is returned for the error report");
+  report = await billingReadiness();
+  assert.equal(report.renewalsOverdue, 1);
+  assert.equal(report.ok, false);
+  checks += 4;
+  // Stripe recovers. Four hours after the month ended, the next check comes
+  // a little over an hour later, and the renewal is on record.
+  stripeDown = false;
+  subscriptions = [subscription(rid, renewedEnd, renewedEnd + 30 * 86400, 4)];
+  assert.equal((await reconcileDueSubscriptions()).checked, 0, "Waits a while");
+  offset += 90 * 60000;
+  swept = await reconcileDueSubscriptions();
+  assert.deepEqual([swept.checked, swept.failed], [1, 0]);
+  report = await billingReadiness();
+  assert.equal(report.renewalsOverdue, 0);
+  assert.equal(report.ok, true);
+  // The worker's tick runs the check at most every five minutes.
+  assert.notEqual(await billingHousekeeping(), null);
+  assert.equal(await billingHousekeeping(), null);
+  await login();
+  assert.equal((await call("state")).billing.plan, "pro");
+  checks += 6;
+  // Switched on without every setting, billing stays off and readiness names
+  // what's missing.
+  const secret = env.STRIPE_WEBHOOK_SECRET;
+  delete env.STRIPE_WEBHOOK_SECRET;
+  report = await billingReadiness();
+  assert.deepEqual(
+    [report.ok, report.enabled, report.missing],
+    [false, false, ["STRIPE_WEBHOOK_SECRET"]],
+  );
+  env.STRIPE_WEBHOOK_SECRET = secret;
   checks++;
 
   await notify("customer.subscription.deleted", {
@@ -627,14 +760,83 @@ try {
   checks += 9;
   cookie = freeCookie;
   assert.equal((await call("state")).remaining, 1);
+  // Two months recorded from notifications, two by the scheduled check.
   assert.equal(
     (await all("SELECT * FROM billing_periods WHERE restaurant_id=?", rid))
       .length,
-    2,
+    4,
   );
   checks++;
+
+  // Starting checkout once no longer blocks deleting the account. The open
+  // checkout is expired and the Stripe customer deleted (Stripe keeps its
+  // invoices); if Stripe can't be reached, nothing is deleted.
+  cookie = "";
+  await call("auth/signup", {
+    email: "abandoned@example.test",
+    password: "a sufficiently long password",
+    restaurant: "Corner Checkout Diner",
+  });
+  const abandoned = (await call("state")).restaurant.id;
+  checkoutStatus = "open";
+  await call("billing/checkout", {});
+  const started = await one(
+    "SELECT customer_id,checkout_id FROM billing_accounts WHERE restaurant_id=?",
+    abandoned,
+  );
+  assert.equal(started.customer_id, "cus_2");
+  customerDeleteFails = true;
+  assert.match(
+    (await call("account/delete", deletion, 503)).error,
+    /wasn’t deleted\. Please try again/,
+  );
+  assert(await one("SELECT id FROM restaurants WHERE id=?", abandoned));
+  assert.deepEqual(
+    await one(
+      "SELECT customer_id,checkout_id FROM billing_accounts WHERE restaurant_id=?",
+      abandoned,
+    ),
+    started,
+  );
+  customerDeleteFails = false;
+  await call("account/delete", deletion);
+  assert(
+    calls.some(
+      (c) => c.path === `checkout/sessions/${started.checkout_id}/expire`,
+    ),
+  );
+  assert(deletedCustomers.has("cus_2"));
+  assert.equal(
+    await one("SELECT id FROM restaurants WHERE id=?", abandoned),
+    null,
+  );
+  assert.equal(
+    await one(
+      "SELECT * FROM billing_accounts WHERE restaurant_id=?",
+      abandoned,
+    ),
+    null,
+  );
+  checks += 7;
+  // Once a subscription has ended, its paid periods go with the account too.
+  cookie = freeCookie;
+  await call("account/delete", deletion);
+  assert(deletedCustomers.has("cus_1"));
+  for (const table of ["billing_periods", "billing_accounts"])
+    assert.equal(
+      (
+        await one(
+          `SELECT count(*) AS n FROM ${table} WHERE restaurant_id=?`,
+          rid,
+        )
+      ).n,
+      0,
+      table,
+    );
+  assert.equal(await one("SELECT id FROM restaurants WHERE id=?", rid), null);
+  checks += 4;
   console.log(
-    `PASS: ${checks} plan checks: open signup, five free credits, atomic monthly quota, payment verification, signatures, duplicate/out-of-order webhooks, renewals, cancellation, checkout reuse, tenant isolation and loss-safe guest photo handoff. Stripe and AI are fixtures; no payments were made.`,
+    `PASS: ${checks} plan checks: open signup, five free credits, atomic monthly quota, payment verification (coupons and credit count, $0 lines don't), signatures, duplicate/out-of-order webhooks, renewals, renewals and outages caught by the scheduled check without webhooks, billing readiness, cancellation, checkout reuse, checkout terms, account deletion around billing, tenant isolation and loss-safe guest photo handoff. Stripe and AI are fixtures; no payments were made.`,
   );
 } finally {
   Date.now = realNow;

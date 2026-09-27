@@ -35,6 +35,7 @@ import {
   DropdownMenuTrigger,
 } from "@/components/ui/dropdown-menu";
 import { api, normalizePhoto, type Row } from "@/lib/client";
+import { isPlaceholderDishName } from "@/lib/restaurant-identity";
 import { hasProFeatures, requestUpgrade } from "@/lib/upgrade";
 import { ProBadge } from "./pro-badge";
 import {
@@ -242,8 +243,8 @@ export default function PhotoStudio({
   // My Dishes owns a saved dish's name; the studio only shows it.
   const dish = state.dishes.find((d: Row) => d.id === b.dishId),
     dishName: string = dish
-      ? dish.name === "Untitled dish"
-        ? ""
+      ? isPlaceholderDishName(dish.name)
+        ? b.name || ""
         : dish.name
       : b.name || "";
   // The shown photo's own history, never the editable draft, decides its size
@@ -667,7 +668,26 @@ export default function PhotoStudio({
   // An existing dish is only read: its name and description are My Dishes’.
   async function ensureDish(fresh?: { name: string; sample?: boolean }) {
     const request = studioDishRequest(b, state.restaurant, fresh);
-    if (!request) return b.dishId as string;
+    if (!request) {
+      // A dish still called "Untitled dish" takes the name typed in Details;
+      // a name the owner gave it in My Dishes is never replaced.
+      const name = String(b.name || "").trim();
+      if (dish && isPlaceholderDishName(dish.name) && name)
+        await api(`dishes/${dish.id}`, {
+          name,
+          description: dish.description || "",
+          category: dish.category || "Dishes",
+          preserve: dish.preserve || "",
+          portion: dish.portion || "",
+          plating: dish.plating || "",
+          setting: dish.setting || "Natural daylight",
+          price: (Number(dish.price) || 0) / 100,
+          available: !!dish.available,
+          confirmed: true,
+          revision: dish.revision,
+        });
+      return b.dishId as string;
+    }
     const data = await api("dishes", request);
     change({ dishId: data.id });
     return data.id;
@@ -881,8 +901,21 @@ export default function PhotoStudio({
       throw Error(
         "The saved photo settings are still loading. Try again in a moment.",
       );
+    // Free reuses the look itself; matching this photo as an inspiration, or
+    // a saved look, is Pro.
+    const reused =
+      reuse && !pro
+        ? {
+            ...resultRecipe,
+            photoReferenceIds: [],
+            referenceId: "",
+            savedLookId: "",
+            savedLookName: "",
+            savedLookVersion: null,
+          }
+        : resultRecipe;
     const recipe = reuse
-      ? recipeFromDraft({ ...b, ...resultRecipe }, state.restaurant)
+      ? recipeFromDraft({ ...b, ...reused }, state.restaurant)
       : {};
     setFinishOpen(false);
     await start({
@@ -892,9 +925,9 @@ export default function PhotoStudio({
       ...(reuse
         ? {
             format: resultFormat,
-            referenceId: resultRecipe?.referenceId,
-            savedLookId: resultRecipe?.savedLookId,
-            savedLookName: resultRecipe?.savedLookName,
+            referenceId: reused?.referenceId,
+            savedLookId: reused?.savedLookId,
+            savedLookName: reused?.savedLookName,
             styleIntent: true,
             studioDefaultResolved: true,
           }

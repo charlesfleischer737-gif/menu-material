@@ -14,7 +14,7 @@ export default function PublicInformation({
   children,
 }: {
   title: string;
-  intro: string;
+  intro: ReactNode;
   sections?: { id: string; label: string }[];
   /** Decorative illustration above the title. */
   art?: ReactNode;

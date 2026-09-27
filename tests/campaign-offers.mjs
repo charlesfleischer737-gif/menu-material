@@ -15,7 +15,10 @@ import {
 const root = mkdtempSync(join(tmpdir(), "menu-material-campaigns-"));
 process.env.MENU_MATERIAL_DATA_DIR = root;
 const { handle } = await import("../lib/server/api.ts");
-const { localTime, defaultStyle } = await import("../lib/promotions.ts");
+const { localTime, defaultStyle, offerChanged } =
+  await import("../lib/promotions.ts");
+// The page's own plan check, from the state it loads.
+const { hasProFeatures } = await import("../lib/upgrade.ts");
 const { renderOffer } = await import("../lib/offer-export.ts");
 const { postFonts } = await import("../lib/post-fonts.ts");
 for (const f of postFonts)
@@ -126,6 +129,38 @@ try {
   ).promotion;
   await approve(200);
   checks += 2;
+
+  // After Pro ends, the campaign still downloads and copies its caption. The
+  // page doesn't save the time spent on it, which Free would refuse, and
+  // real changes stay Pro.
+  const own = (await call("state")).restaurant;
+  await call("admin/restaurant", {
+    id: own.id,
+    allowance: own.allowance,
+    paused: false,
+    proUntil: null,
+  });
+  const pro = hasProFeatures(await call("state"));
+  assert.equal(pro, false);
+  promo = (await call("promotions/" + promo.id)).promotion;
+  assert(promo.approved_hash);
+  const viewed = { ...promo.draft, activeMs: promo.draft.activeMs + 60000 };
+  assert.equal(offerChanged(viewed, promo.draft, pro), false);
+  assert.equal(offerChanged(viewed, promo.draft, true), true);
+  const refusedSave = (draft) =>
+    call("promotions/" + promo.id, { ...draft, revision: promo.revision }, 402);
+  assert.equal((await refusedSave(viewed)).feature, "campaigns");
+  await call("promotions/" + promo.id + "/export", {
+    revision: promo.revision,
+    format: "feed",
+  });
+  await call("promotions/" + promo.id + "/copy-caption", {
+    revision: promo.revision,
+  });
+  const edited = { ...promo.draft, caption: "Two plates tonight." };
+  assert.equal(offerChanged(edited, promo.draft, pro), true);
+  assert.equal((await refusedSave(edited)).feature, "campaigns");
+  checks += 7;
 } finally {
   rmSync(root, { recursive: true, force: true });
 }
@@ -179,5 +214,5 @@ for (const format of ["story", "feed"])
     checks += 2;
   }
 console.log(
-  `PASS: ${checks} Campaigns checks: a real price before approval, post fonts, no $0.00, and Story text clear of Instagram's bars.`,
+  `PASS: ${checks} Campaigns checks: a real price before approval, downloads after Pro ends, post fonts, no $0.00, and Story text clear of Instagram's bars.`,
 );

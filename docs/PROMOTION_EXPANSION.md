@@ -19,7 +19,7 @@ The established Menu Material branding, React/Vinext application, invitation/pas
 - Every public menu and public special-image request checks start, end, sold-out state, selected-dish availability and photo approval/deletion. End time is exclusive. Expiry does **not** require a scheduler, browser session or database cleanup. Open customer pages hide expired specials using a server-synchronized clock and refresh every 20 seconds for availability/publication changes.
 - Publishing a special without a published menu creates a menu shell with only that special. It does not publish unrelated menu drafts. Sold out, republish and unpublish preserve the restaurant slug and QR destination. Unpublishing the entire menu hides its specials too.
 - Staff tokens are random, hashed in the database, expire after seven days and reveal only that restaurant’s dish names and IDs. They cannot read private photos, approve, publish, or submit to another restaurant’s dishes. Submitted `kind` values cannot turn staff uploads into logos or approved images.
-- Imports retain their source privately. Reviewed imports are idempotent and append drafts in a database transaction. Interrupted extraction can be retried after two minutes; it is never automatically resubmitted to the provider. Database migrations are additive (`0001`, `0002`).
+- Imports retain their source privately. Reviewed imports are idempotent and append drafts in a database transaction. Reading a menu may take up to two minutes, and interrupted extraction can be retried after three; it is never automatically resubmitted to the provider. Database migrations are additive (`0001`, `0002`).
 
 ## Exports and current provider guidance
 

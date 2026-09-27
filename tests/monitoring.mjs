@@ -149,8 +149,11 @@ try {
     worker: "degraded",
     queue: "ok",
     aiBudget: "ok",
+    billing: "ok",
   });
-  assert(!/lastSeen|configured|Cents|latency/.test(JSON.stringify(ready)));
+  assert(
+    !/lastSeen|configured|Cents|latency|launch/.test(JSON.stringify(ready)),
+  );
   // Uptime monitors that probe with HEAD get the same status.
   const head = await handle(
     new Request("http://localhost/api/health/ready", { method: "HEAD" }),
@@ -171,6 +174,50 @@ try {
   assert.equal(typeof detail.checks.database.latencyMs, "number");
   assert.deepEqual(detail.monitoring, { alerting: true, errorReporting: true });
   assert(!JSON.stringify(detail).includes("fixture-runner-secret"));
+  checks++;
+  // Launch settings come with the detail, as advice that doesn't change the
+  // status. This site has no OpenAI key, Terms or support email.
+  const launch = Object.fromEntries(
+    detail.launch.map((item) => [item.key, item]),
+  );
+  assert.deepEqual(Object.keys(launch), [
+    "origin",
+    "network",
+    "ai",
+    "billing",
+    "contact",
+    "leftovers",
+  ]);
+  assert.equal(launch.origin.ok, true);
+  assert.match(launch.origin.detail, /https:\/\/menu\.example\.test/);
+  assert.equal(launch.ai.ok, false);
+  assert.match(launch.ai.detail, /OPENAI_API_KEY isn’t set/);
+  assert.match(launch.ai.detail, /\$100\.00 a day/);
+  assert.equal(launch.billing.ok, true);
+  assert.match(launch.billing.detail, /Billing is off/);
+  assert.equal(launch.contact.ok, false);
+  assert.match(launch.contact.detail, /SUPPORT_EMAIL, TERMS_URL, SITE_OPERATOR/);
+  // Local development on a public address is a leftover to remove.
+  assert.equal(launch.leftovers.ok, false);
+  assert.match(launch.leftovers.detail, /LOCAL_DEVELOPMENT/);
+  checks++;
+  // Outside local development, a request without cf-connecting-ip means
+  // every visitor would share one set of limits.
+  delete env.LOCAL_DEVELOPMENT;
+  try {
+    let network = (await expect("health/ready", 200, { headers: bearer }))
+      .launch.find((item) => item.key === "network");
+    assert.equal(network.ok, false);
+    assert.match(network.detail, /every visitor would share one set of limits/);
+    network = (
+      await expect("health/ready", 200, {
+        headers: { ...bearer, "cf-connecting-ip": "203.0.113.7" },
+      })
+    ).launch.find((item) => item.key === "network");
+    assert.equal(network.ok, true);
+  } finally {
+    env.LOCAL_DEVELOPMENT = "true";
+  }
   checks++;
   const wrongSecret = await expect("health/ready", 200, {
     headers: { authorization: "Bearer not-the-secret" },
@@ -244,13 +291,16 @@ try {
   checks++;
 
   // Site-wide AI budget: a warning at 80% and an exhaustion alert, once a day.
-  const spend = async (cents) =>
+  // Paid plans' spend, unless marked otherwise, so guests' and Free plans'
+  // share (below) stays out of it.
+  const spend = async (cents, paid = 1) =>
     run(
-      "INSERT INTO ai_spend (id,restaurant_id,kind,budget_day,reserved_cents,created_at) VALUES (?,?,'image',?,?,?)",
+      "INSERT INTO ai_spend (id,restaurant_id,kind,budget_day,reserved_cents,paid,created_at) VALUES (?,?,'image',?,?,?,?)",
       id(),
       kitchen.rid,
       new Date(Date.now()).toISOString().slice(0, 10),
       cents,
+      paid,
       Date.now(),
     );
   await spend(8500);
@@ -271,6 +321,23 @@ try {
   assert.deepEqual(ready.failed, ["aiBudget"]);
   assert.equal(alerts().length, 7);
   assert.match(alerts()[6].text, /AI budget is used up/);
+  checks++;
+  await run("DELETE FROM ai_spend");
+  // Guests and Free plans share 70% of it. When that is used up while paid
+  // plans can still create, one alert a day says so.
+  await spend(6900, 0);
+  offset += minute;
+  await tickWorker();
+  ready = await expect("health/ready", 200, { headers: bearer });
+  assert.equal(ready.checks.aiBudget.freeShareUsedUp, true);
+  assert.equal(alerts().length, 8);
+  assert.match(
+    alerts()[7].text,
+    /Guests and Free plans have used their 70% share .*\$69\.00 of \$70\.00/,
+  );
+  offset += minute;
+  await tickWorker();
+  assert.equal(alerts().length, 8, "the share alert is sent once per day");
   checks++;
   await run("DELETE FROM ai_spend");
 
@@ -487,7 +554,7 @@ try {
     true,
   );
   console.log(
-    `PASS: ${checks} monitoring checks: liveness/readiness, coarse vs authorized detail, stale worker and queue alerts with dedupe and recovery, daily AI budget alerts, error burst, reportError safety and redaction, API error reporting, and client error validation, same-origin reports, limits, dedupe, their own webhook share and inert chat text. Webhooks are fixtures.`,
+    `PASS: ${checks} monitoring checks: liveness/readiness, coarse vs authorized detail, launch settings (origin, visitors' networks, AI key and budget, billing, contact, leftover switches), stale worker and queue alerts with dedupe and recovery, daily AI budget alerts, error burst, reportError safety and redaction, API error reporting, and client error validation, same-origin reports, limits, dedupe, their own webhook share and inert chat text. Webhooks are fixtures.`,
   );
 } finally {
   console.error = originalError;

@@ -2,6 +2,7 @@
 import type { ReactNode } from "react";
 import { Check } from "lucide-react";
 import { FREE_SIGNUP_IMAGES, PRO_PLAN, PRO_PRICE_LABEL } from "@/lib/plans";
+import { useSiteContact } from "./site-contact";
 /* eslint-disable @next/next/no-html-link-for-pages --
    Plain links on purpose: next/link's client navigation throws in the vinext
    production build ("navigateClientSide is not a function"), so a <Link>
@@ -37,6 +38,7 @@ export default function PlanCards({
   /** Lead with Pro when the cards stack, for an offer of a Pro feature. */
   proFirst?: boolean;
 }) {
+  const { termsUrl, refundPolicyUrl } = useSiteContact();
   return (
     <div className={`pw-plan-grid ${proFirst ? "is-pro-first" : ""}`}>
       <article className="pw-plan-card">
@@ -96,17 +98,43 @@ export default function PlanCards({
         />
         <div className="pw-plan-action">
           {enabled ? (
-            onUpgrade ? (
-              <button className="cx-btn" disabled={busy} onClick={onUpgrade}>
-                {busy
-                  ? "Opening secure checkout…"
-                  : `Get Pro — ${PRO_PRICE_LABEL}/month`}
-              </button>
-            ) : (
-              <a className="cx-btn" href="/?upgrade=1">
-                Get Pro — {PRO_PRICE_LABEL}/month
-              </a>
-            )
+            <>
+              {onUpgrade ? (
+                <button className="cx-btn" disabled={busy} onClick={onUpgrade}>
+                  {busy
+                    ? "Opening secure checkout…"
+                    : `Get Pro — ${PRO_PRICE_LABEL}/month`}
+                </button>
+              ) : (
+                <a className="cx-btn" href="/?upgrade=1">
+                  Get Pro — {PRO_PRICE_LABEL}/month
+                </a>
+              )}
+              {/* Renewal and cancellation, shown before anyone pays. The
+                  billing portal is set to cancel at the end of the paid
+                  period (docs/FREE_PRO_PLANS.md). */}
+              <p className="pw-plan-terms">
+                Renews monthly until you cancel. Cancel anytime in Plans, under
+                Manage billing, and Pro stays until the end of the month you’ve
+                paid for.
+                {termsUrl && (
+                  <>
+                    {" "}
+                    <a href="/terms" target="_blank" rel="noreferrer">
+                      Terms
+                    </a>
+                  </>
+                )}
+                {refundPolicyUrl && (
+                  <>
+                    {termsUrl ? " · " : " "}
+                    <a href={refundPolicyUrl} target="_blank" rel="noreferrer">
+                      Refund policy
+                    </a>
+                  </>
+                )}
+              </p>
+            </>
           ) : (
             (comingSoon ?? (
               <p className="pw-plan-soon">

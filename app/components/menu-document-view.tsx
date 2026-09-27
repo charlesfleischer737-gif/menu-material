@@ -29,6 +29,7 @@ import {
   suitsDiet,
 } from "@/lib/dietary";
 import CustomerMenuSwitcher from "./customer-menu-switcher";
+import ReportMenu from "./report-menu";
 import {
   CalendarDays,
   ChevronLeft,
@@ -665,7 +666,11 @@ export default function MenuDocumentView({
                       href={href}
                       {...(kind === "call_click"
                         ? {}
-                        : { target: "_blank", rel: "noreferrer" })}
+                        : {
+                            target: "_blank",
+                            // Links the restaurant chose: no search credit.
+                            rel: "nofollow ugc noopener noreferrer",
+                          })}
                       onClick={() => track(kind)}
                     >
                       <Icon size={16} aria-hidden="true" />
@@ -952,8 +957,14 @@ export default function MenuDocumentView({
         <footer className="md-guest-footer">{menu.footer}</footer>
       )}
       {!preview && menu.credit !== false && (
-        <div className="md-guest-credit">Made with Menu Material</div>
+        <div className="md-guest-credit">
+          {/* Every Free menu is a way for other restaurants to find us. */}
+          <a href="/?ref=menu" target="_blank" rel="noopener">
+            Made with Menu Material
+          </a>
+        </div>
       )}
+      {!preview && slug && <ReportMenu slug={slug} />}
     </Surface>
   );
 }

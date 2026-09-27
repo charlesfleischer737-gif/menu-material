@@ -67,6 +67,7 @@ import {
 } from "@/lib/style-relevance";
 import { styleThumbnail, type PhotoStyle } from "@/lib/photo-styles";
 import type { Row } from "@/lib/client";
+import { isPlaceholderDishName } from "@/lib/restaurant-identity";
 import { track } from "./creation-shared";
 import { useStudioLibrary } from "./use-studio-library";
 import { PhotoInspirationSheet } from "./photo-inspiration-sheet";
@@ -1463,6 +1464,22 @@ export function StudioWorkbench({
                 </h2>
                 <span className="st-optional">Optional</span>
               </div>
+              {b.mode !== "description" &&
+                !b.sample &&
+                (!dish || isPlaceholderDishName(dish.name)) && (
+                // A new photo becomes a dish in My Dishes; its name is what
+                // menus and posts show, so ask for it while it has none.
+                <label className="st-field">
+                  <span>Dish name</span>
+                  <input
+                    className="st-input"
+                    value={b.name || ""}
+                    maxLength={100}
+                    placeholder="What’s this dish called?"
+                    onChange={(event) => update({ name: event.target.value })}
+                  />
+                </label>
+              )}
               <textarea
                 className="st-input st-details"
                 aria-labelledby="st-details-title"

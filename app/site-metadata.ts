@@ -50,7 +50,8 @@ export async function siteOrigin() {
 }
 
 // schema.org data for the homepage. The only offer is the free allowance
-// every account starts with; Pro is not for sale yet.
+// every account starts with. Pro, sold only while Stripe billing is on
+// (billingEnabled()), isn't listed.
 export function homeStructuredData(origin: string) {
   const home = new URL("/", origin).href;
   const organization = {

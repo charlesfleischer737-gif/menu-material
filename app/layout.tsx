@@ -1,7 +1,10 @@
 import type { Metadata } from "next";
 import ErrorReporter from "./components/error-reporter";
 import ScrollMemory from "./components/scroll-memory";
+import { SiteContactProvider } from "./components/site-contact";
 import { shareImage, siteName, siteOrigin } from "./site-metadata";
+import { config } from "@/lib/server/core";
+import { siteContact } from "@/lib/site-contact";
 // Imported here rather than from CSS so the build bundles the font files.
 import "@fontsource-variable/inter/opsz.css";
 import "./globals.css";
@@ -66,7 +69,11 @@ export default function RootLayout({
       <body>
         <ErrorReporter />
         <ScrollMemory />
-        {children}
+        {/* The support address and Terms, for the footer, sign-in, plans
+            and error pages. */}
+        <SiteContactProvider value={siteContact(config)}>
+          {children}
+        </SiteContactProvider>
       </body>
     </html>
   );

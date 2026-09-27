@@ -1,4 +1,6 @@
 import assert from "node:assert/strict";
+import { readFileSync } from "node:fs";
+import ts from "typescript";
 import "./photo-destinations.mjs";
 import {
   postPage,
@@ -10,7 +12,13 @@ import {
   currentCaption,
   postDishNote,
 } from "../lib/post-flow.ts";
-import { applyPostTemplate } from "../lib/post-templates.ts";
+import {
+  applyPostTemplate,
+  freePostDraft,
+  newPostDraft,
+} from "../lib/post-templates.ts";
+import * as workspaceStatus from "../lib/workspace-status.ts";
+import * as navigation from "../lib/workspace-navigation.ts";
 
 const restaurant = { name: "The Orchard Kitchen", currency: "USD" };
 const item = {
@@ -425,3 +433,234 @@ assert.equal(
   "A saved draft’s own text choice counts as the owner’s",
 );
 console.log("Post flow: 18 assertions passed");
+
+// Post Maker's drafts on Free. A post with Pro options opens and downloads,
+// but it's never sent, never comes back from the tab's recovery copy, and
+// never keeps the owner from a new post or another saved one.
+const storage = () => {
+  const values = new Map();
+  return {
+    getItem: (key) => values.get(key) ?? null,
+    setItem: (key, value) => values.set(key, String(value)),
+    removeItem: (key) => values.delete(key),
+  };
+};
+globalThis.sessionStorage = storage();
+globalThis.localStorage = storage();
+globalThis.window = {
+  addEventListener() {},
+  removeEventListener() {},
+  dispatchEvent() {},
+};
+/** The drafts API, refusing what Free can't save as the server does. */
+function draftServer() {
+  const rows = new Map(),
+    sent = [];
+  async function api(path, body) {
+    if (path.startsWith("creation-drafts?"))
+      return { drafts: [...rows.values()] };
+    if (path.startsWith("creation-drafts/")) {
+      const row = rows.get(path.split("/")[1]);
+      if (!row) throw Object.assign(Error("Not found."), { status: 404 });
+      return { draft: row };
+    }
+    assert.equal(path, "creation-drafts");
+    sent.push(body.draft);
+    if (!freePostDraft(body.draft))
+      throw Object.assign(Error("This post design is part of Pro."), {
+        status: 402,
+        code: "pro_required",
+      });
+    const revision = (rows.get(body.id)?.revision || 0) + 1;
+    rows.set(body.id, { ...body, revision });
+    return { id: body.id, revision };
+  }
+  return { rows, sent, api };
+}
+/**
+ * The real useCreationDraft from creation-shared.tsx, run in a minimal hooks
+ * runtime. Autosave timers never fire here: each check saves when it means to.
+ */
+function postDrafts(api, initial, savable) {
+  const { outputText } = ts.transpileModule(
+    readFileSync(
+      new URL("../app/components/creation-shared.tsx", import.meta.url),
+      "utf8",
+    ),
+    {
+      compilerOptions: {
+        jsx: ts.JsxEmit.ReactJSX,
+        module: ts.ModuleKind.CommonJS,
+        target: ts.ScriptTarget.ES2022,
+      },
+    },
+  );
+  let slots = [],
+    cursor = 0,
+    effects = [],
+    dirty = false,
+    store;
+  function effect(run, deps) {
+    const index = cursor++,
+      previous = slots[index];
+    if (!deps || !previous || deps.some((d, i) => d !== previous.deps[i]))
+      effects.push(() => {
+        previous?.cleanup?.();
+        slots[index] = { deps, cleanup: run() };
+      });
+  }
+  const hooks = {
+    useState(init) {
+      const slot = (slots[cursor++] ||= { value: init, queue: [] });
+      for (const next of slot.queue.splice(0))
+        slot.value = typeof next === "function" ? next(slot.value) : next;
+      return [
+        slot.value,
+        (next) => {
+          slot.queue.push(next);
+          dirty = true;
+        },
+      ];
+    },
+    useRef: (init) => (slots[cursor++] ||= { current: init }),
+    useEffect: effect,
+    useLayoutEffect: effect,
+    useCallback(callback, deps) {
+      const index = cursor++;
+      if (!slots[index] || deps.some((d, i) => d !== slots[index].deps[i]))
+        slots[index] = { deps, callback };
+      return slots[index].callback;
+    },
+  };
+  const modules = {
+    react: hooks,
+    "@/lib/client": { api },
+    "@/lib/workspace-status": workspaceStatus,
+    "@/lib/workspace-navigation": navigation,
+  };
+  const shared = { exports: {} };
+  new Function(
+    "require",
+    "module",
+    "exports",
+    "setTimeout",
+    "clearTimeout",
+    outputText,
+  )(
+    (id) => modules[id] || {},
+    shared,
+    shared.exports,
+    () => 0,
+    () => {},
+  );
+  function render() {
+    do {
+      dirty = false;
+      cursor = 0;
+      store = shared.exports.useCreationDraft(
+        "post",
+        initial,
+        "owner",
+        savable,
+      );
+      const pending = effects;
+      effects = [];
+      for (const run of pending) run();
+    } while (dirty);
+    return store;
+  }
+  render();
+  return {
+    render,
+    async settle() {
+      for (let n = 0; n < 5; n++) {
+        await new Promise((resolve) => setImmediate(resolve));
+        render();
+      }
+      return store;
+    },
+  };
+}
+const kitchen = {
+  ...restaurant,
+  style: { primary: "#123456", accent: "#abcdef", tone: "Warm" },
+};
+const recoveryKey = "owner:draft:post:unsaved";
+const madeOnPro = {
+  ...newPostDraft(kitchen, 2, true),
+  items: [item],
+  title: "Tomato pasta",
+};
+{
+  const server = draftServer();
+  server.rows.set("pro", {
+    id: "pro",
+    kind: "post",
+    draft: madeOnPro,
+    revision: 1,
+  });
+  server.rows.set("free", {
+    id: "free",
+    kind: "post",
+    draft: { ...newPostDraft(kitchen, 2, false), items: [item] },
+    revision: 1,
+  });
+  localStorage.setItem("owner:draft:post", "pro");
+  // What New left in this tab before the fix: a refused post in Pro colors.
+  sessionStorage.setItem(
+    recoveryKey,
+    JSON.stringify({
+      id: "refused",
+      revision: 0,
+      draft: newPostDraft(kitchen, 2, true),
+      saved: "",
+    }),
+  );
+  const page = postDrafts(server.api, newPostDraft(kitchen, 1, false), (d) =>
+    freePostDraft(d),
+  );
+  let store = await page.settle();
+  assert.equal(store.id, "pro", "A reload opens saved work, not the refusal");
+  store.change({ title: "Pasta night" });
+  store = page.render();
+  assert.equal(store.status, "Changes not saved");
+  assert.equal(sessionStorage.getItem(recoveryKey), null);
+  await store.save();
+  await store.start(newPostDraft(kitchen, 2, false));
+  store = page.render();
+  assert.equal(store.status, "Draft saved", "New works from a Pro post");
+  assert.deepEqual(server.sent.map(freePostDraft), [true]);
+  await store.resume("pro");
+  page.render().change({ title: "Pasta night" });
+  await page.render().resume("free");
+  store = page.render();
+  assert.equal(store.id, "free", "Another saved post opens from a Pro post");
+  assert.equal(server.sent.length, 1, "Nothing Free can't save is sent");
+}
+{
+  // A page that still thinks it's Pro: the server's refusal doesn't keep the
+  // owner in the post either.
+  const server = draftServer();
+  server.rows.set("pro", {
+    id: "pro",
+    kind: "post",
+    draft: madeOnPro,
+    revision: 1,
+  });
+  localStorage.setItem("owner:draft:post", "pro");
+  const page = postDrafts(
+    server.api,
+    newPostDraft(kitchen, 1, true),
+    () => true,
+  );
+  let store = await page.settle();
+  store.change({ title: "Pasta night" });
+  await assert.rejects(page.render().save(), /part of Pro/);
+  await page.render().start(newPostDraft(kitchen, 2, false));
+  store = page.render();
+  assert.equal(store.status, "Draft saved");
+  assert.equal(server.rows.size, 2);
+}
+console.log(
+  "PASS: 10 Post Maker draft checks on Free: no refused post after a reload, nothing Pro sent, and New and other saved posts always open.",
+);

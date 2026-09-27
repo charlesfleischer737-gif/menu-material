@@ -7,7 +7,14 @@ import sharp from "sharp";
 
 const root = mkdtempSync(join(tmpdir(), "menu-material-site-metadata-"));
 process.env.MENU_MATERIAL_DATA_DIR = root;
-delete process.env.APP_ORIGIN;
+for (const key of [
+  "APP_ORIGIN",
+  "SUPPORT_EMAIL",
+  "SITE_OPERATOR",
+  "TERMS_URL",
+  "REFUND_POLICY_URL",
+])
+  delete process.env[key];
 // Stand in for the incoming request that next/headers reads.
 let request = new Headers();
 globalThis.__siteMetadataRequest = () => request;
@@ -25,6 +32,7 @@ const { siteOrigin, pageMetadata, homeStructuredData, shareImage } =
   await import("../app/site-metadata.ts");
 const { default: robots } = await import("../app/robots.ts");
 const { default: sitemap } = await import("../app/sitemap.ts");
+const { siteContact } = await import("../lib/site-contact.ts");
 let checks = 0;
 
 try {
@@ -63,14 +71,62 @@ try {
   assert.equal(rules.sitemap, "https://menus.example.com/sitemap.xml");
   checks += 2;
 
-  // The sitemap lists the public marketing pages with absolute URLs.
-  const pages = (await sitemap()).map((entry) => new URL(entry.url));
+  // The owner's contact and legal details: trimmed, and ignored unless they
+  // are a plain email address or a web link.
+  const settings = (values) => (key) => values[key] ?? "";
+  const unset = siteContact(settings({}));
+  assert.deepEqual(unset, {
+    supportEmail: "",
+    operator: "",
+    termsUrl: "",
+    refundPolicyUrl: "",
+  });
   assert.deepEqual(
-    pages.map((url) => url.href),
+    siteContact(
+      settings({
+        SUPPORT_EMAIL: " help@menus.example.com ",
+        SITE_OPERATOR: " Menu Material LLC,\n 1 Main Street, Springfield ",
+        TERMS_URL: "https://legal.example.com/terms",
+        REFUND_POLICY_URL: "https://legal.example.com/refunds",
+      }),
+    ),
+    {
+      supportEmail: "help@menus.example.com",
+      operator: "Menu Material LLC, 1 Main Street, Springfield",
+      termsUrl: "https://legal.example.com/terms",
+      refundPolicyUrl: "https://legal.example.com/refunds",
+    },
+  );
+  for (const [key, value] of [
+    ["SUPPORT_EMAIL", "help"],
+    ["SUPPORT_EMAIL", "help@menus.example.com?subject=Hi"],
+    ["TERMS_URL", "/terms"],
+    ["TERMS_URL", "javascript:alert(1)"],
+    ["REFUND_POLICY_URL", "ftp://legal.example.com/refunds"],
+  ])
+    assert.deepEqual(siteContact(settings({ [key]: value })), unset, value);
+  checks += 7;
+
+  // The sitemap lists the public marketing pages with absolute URLs, and
+  // the contact page once a support address is set. /terms only redirects
+  // to the owner's Terms, so it is never listed.
+  const unlisted = (await sitemap()).map((entry) => entry.url);
+  assert.deepEqual(
+    unlisted,
     ["/", "/pricing", "/privacy", "/guidelines"].map(
       (path) => "https://menus.example.com" + path,
     ),
   );
+  process.env.SUPPORT_EMAIL = "help@menus.example.com";
+  process.env.TERMS_URL = "https://legal.example.com/terms";
+  const pages = (await sitemap()).map((entry) => new URL(entry.url));
+  assert.deepEqual(
+    pages.map((url) => url.href),
+    [...unlisted, "https://menus.example.com/contact"],
+  );
+  delete process.env.SUPPORT_EMAIL;
+  delete process.env.TERMS_URL;
+  checks += 2;
   for (const { pathname } of pages) {
     const page = pathname === "/" ? "app/page.tsx" : `app${pathname}/page.tsx`;
     const source = readFileSync(page, "utf8");
@@ -108,7 +164,7 @@ try {
   checks += 2;
 
   // Homepage structured data: the organization and the web app, whose only
-  // offer is the free allowance (Pro is not for sale yet).
+  // offer is the free allowance (Pro isn't listed).
   const data = homeStructuredData("https://menus.example.com");
   const types = data["@graph"].map((node) => node["@type"]);
   assert.deepEqual(types, ["Organization", "SoftwareApplication"]);
@@ -144,5 +200,5 @@ try {
 }
 
 console.log(
-  `Site metadata: ${checks} checks passed (origin, robots.txt, sitemap, canonical and link-preview tags, share image, structured data, favicon.ico).`,
+  `Site metadata: ${checks} checks passed (origin, robots.txt, contact and legal settings, sitemap, canonical and link-preview tags, share image, structured data, favicon.ico).`,
 );

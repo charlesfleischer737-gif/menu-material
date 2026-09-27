@@ -956,8 +956,19 @@ try {
   const runtime = (await import("../lib/local-runtime.ts")).env;
   runtime.AI_GUEST_DAILY_CALLS = "1";
   assert.match(
-    (await guestAnalysis(jpeg, "203.0.113.8", 429)).error,
+    (
+      await guestAnalysis(
+        Buffer.concat([jpeg, Buffer.from([1])]),
+        "203.0.113.8",
+        429,
+      )
+    ).error,
     /Tell us what’s in your photo/,
+  );
+  // A photo read before is answered from that reading, without a call.
+  assert.equal(
+    (await guestAnalysis(jpeg, "203.0.113.8")).subject,
+    "A pint of stout",
   );
   delete runtime.AI_GUEST_DAILY_CALLS;
   assert.equal(calls - guestStart.calls, 1, "Guests share a daily cap");

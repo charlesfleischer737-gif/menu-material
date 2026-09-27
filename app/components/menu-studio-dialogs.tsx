@@ -47,6 +47,7 @@ import {
 import { preferredPhoto } from "@/lib/dish-library";
 import { restaurantSettingsChanged, type MenuCheck } from "@/lib/menu-checks";
 import {
+  isPlaceholderDishName,
   isPlaceholderRestaurantName,
   menuAddressProblem,
   slugify,
@@ -63,7 +64,7 @@ import {
 import MenuProof from "./menu-proof";
 import MenuDocumentView from "./menu-document-view";
 import { ProBadge, ProNote } from "./pro-badge";
-import { FREE_MENU_DESIGN, freeMenuDesign } from "@/lib/plans";
+import { FREE_MENU_DESIGN, freeCanPublish } from "@/lib/plans";
 import { requestUpgrade } from "@/lib/upgrade";
 import type { MenuContact } from "@/lib/restaurant-contact";
 
@@ -72,16 +73,21 @@ export function MenuDesignPicker({
   close,
   apply,
   pro = true,
+  liveDesign,
 }: {
   menu: DesignedMenu;
   close: () => void;
   apply: (design: MenuDocument["design"]) => void;
   /** Without Pro, other designs can be tried in the draft, not published. */
   pro?: boolean;
+  /** The design this menu is live in, which Free can keep. */
+  liveDesign?: string;
 }) {
   const [selected, setSelected] = useState(menu.design),
     [all, setAll] = useState(false),
     [detail, setDetail] = useState(false);
+  const proOnly = (design: string) =>
+    !pro && design !== FREE_MENU_DESIGN.design && design !== liveDesign;
   const recommended = recommendMenuDesigns(menu),
     designs = all ? menuDesignCollection : recommended,
     spec = menuDesignSpec(selected);
@@ -106,13 +112,13 @@ export function MenuDesignPicker({
           </div>
           <div className="md-dialog-actions md-sticky-actions">
             <span>
-              {!pro && selected !== FREE_MENU_DESIGN.design
+              {proOnly(selected)
                 ? "Try it in your draft. Publishing this design is part of Pro."
                 : "Your content, photos, and colors stay yours."}
             </span>
             <button className="md-button" onClick={() => apply(selected)}>
               Use {spec.name}
-              {!pro && selected !== FREE_MENU_DESIGN.design && <ProBadge />}
+              {proOnly(selected) && <ProBadge />}
             </button>
           </div>
         </>
@@ -153,7 +159,7 @@ export function MenuDesignPicker({
                 <div className="md-design-card-copy">
                   <span>
                     {d.category}{" "}
-                    {!pro && d.id !== FREE_MENU_DESIGN.design && <ProBadge />}
+                    {proOnly(d.id) && <ProBadge />}
                   </span>
                   <h3>{d.name}</h3>
                   <p>{d.description}</p>
@@ -862,6 +868,7 @@ function publicationChanges(
   before: Row | null,
   menu: DesignedMenu,
   restaurant: Row,
+  pro: boolean,
 ) {
   if (!before)
     return [
@@ -924,7 +931,7 @@ function publicationChanges(
     ].some((key) => before[key] !== menu[key as keyof DesignedMenu])
   )
     notes.push("Menu design or guest notes updated");
-  if (restaurantSettingsChanged(before, restaurant))
+  if (restaurantSettingsChanged(before, restaurant, { look: pro }))
     notes.push("Your restaurant’s name, logo, colors or currency updated");
   if (!notes.length)
     notes.push("Republish the current menu and restaurant details.");
@@ -936,12 +943,64 @@ function isAutomaticAddress(restaurant: Row) {
     String(restaurant.slug).endsWith("-" + String(restaurant.id).slice(0, 8))
   );
 }
+/** Name a dish still called "Untitled dish", on this menu and in My Dishes. */
+function DishNameFix({
+  entryId,
+  nameDish,
+}: {
+  entryId: string;
+  nameDish: (id: string, name: string) => Promise<void>;
+}) {
+  const [name, setName] = useState(""),
+    [saving, setSaving] = useState(false),
+    [error, setError] = useState("");
+  return (
+    <form
+      className="md-check-fix"
+      onSubmit={async (e) => {
+        e.preventDefault();
+        if (!name.trim() || isPlaceholderDishName(name)) {
+          setError("Enter the dish’s real name.");
+          return;
+        }
+        setSaving(true);
+        setError("");
+        try {
+          await nameDish(entryId, name.trim());
+        } catch (err) {
+          setError((err as Error).message);
+        } finally {
+          setSaving(false);
+        }
+      }}
+    >
+      <input
+        aria-label="Dish name"
+        value={name}
+        maxLength={100}
+        disabled={saving}
+        placeholder="Margherita pizza"
+        onChange={(e) => setName(e.target.value)}
+      />
+      <button className="md-button md-secondary" disabled={saving}>
+        {saving ? "Saving…" : "Save name"}
+      </button>
+      {error && (
+        <small className="md-inline-error" role="alert">
+          {error}
+        </small>
+      )}
+    </form>
+  );
+}
 function CheckFix({
   check,
   restaurant,
   select,
   removeItem,
   attachAddon,
+  applyDishTags,
+  nameDish,
   applyPurpose,
   saveRestaurantName,
 }: {
@@ -950,6 +1009,8 @@ function CheckFix({
   select: (id: string) => void;
   removeItem: (id: string) => void;
   attachAddon: (id: string) => void;
+  applyDishTags: (id: string) => void;
+  nameDish: (id: string, name: string) => Promise<void>;
   applyPurpose: (purpose: MenuDocument["purpose"]) => void;
   saveRestaurantName: (name: string) => Promise<void>;
 }) {
@@ -1015,6 +1076,17 @@ function CheckFix({
         Make it an add-on
       </button>
     );
+  if (check.fix === "dish-name" && check.entryId)
+    return <DishNameFix entryId={check.entryId} nameDish={nameDish} />;
+  if (check.fix === "dish-tags" && check.entryId)
+    return (
+      <button
+        className="md-text-button"
+        onClick={() => applyDishTags(check.entryId!)}
+      >
+        Match My Dishes
+      </button>
+    );
   if (check.fix === "menu-type" && check.purpose)
     return (
       <button
@@ -1046,6 +1118,8 @@ export function MenuDeliveryDialog({
   select,
   removeItem,
   attachAddon,
+  applyDishTags,
+  nameDish,
   applyPurpose,
   saveRestaurantName,
   published,
@@ -1065,6 +1139,10 @@ export function MenuDeliveryDialog({
   select: (id: string) => void;
   removeItem: (id: string) => void;
   attachAddon: (id: string) => void;
+  /** Give a menu dish the allergens and diets My Dishes has for it. */
+  applyDishTags: (id: string) => void;
+  /** Name a dish still called "Untitled dish". */
+  nameDish: (id: string, name: string) => Promise<void>;
   applyPurpose: (purpose: MenuDocument["purpose"]) => void;
   saveRestaurantName: (name: string) => Promise<void>;
   published: (address?: string) => Promise<void>;
@@ -1087,7 +1165,7 @@ export function MenuDeliveryDialog({
     >("");
   const isPrint = mode === "export",
     // Said before anyone publishes or prints, so no work is lost to a limit.
-    designLocked = !pro && !freeMenuDesign(menu),
+    designLocked = !pro && !freeCanPublish(menu, record.published),
     menuLocked = !pro && !isPrint && !record.published && liveElsewhere,
     blocking = checks.filter((c) => c.level === "block"),
     warnings = checks.filter((c) => c.level === "warn"),
@@ -1101,8 +1179,8 @@ export function MenuDeliveryDialog({
       !isPlaceholderRestaurantName(restaurant.name),
     addressProblem = choosingAddress ? menuAddressProblem(address) : "",
     changes = useMemo(
-      () => publicationChanges(record.published, menu, restaurant),
-      [record.published, menu, restaurant],
+      () => publicationChanges(record.published, menu, restaurant, pro),
+      [record.published, menu, restaurant, pro],
     );
   useEffect(() => {
     if (!choosingAddress) return;
@@ -1239,6 +1317,8 @@ export function MenuDeliveryDialog({
                       select={select}
                       removeItem={removeItem}
                       attachAddon={attachAddon}
+                      applyDishTags={applyDishTags}
+                      nameDish={nameDish}
                       applyPurpose={applyPurpose}
                       saveRestaurantName={saveRestaurantName}
                     />
