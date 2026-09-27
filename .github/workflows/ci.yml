@@ -1,0 +1,50 @@
+# Runs the checks CLAUDE.md asks for before merging, on every pull request and
+# on main. Require the "checks" job in the branch protection for main so a
+# change can't merge while it's red.
+name: CI
+
+on:
+  pull_request:
+  push:
+    branches: [main]
+
+permissions:
+  contents: read
+
+concurrency:
+  group: ci-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  checks:
+    name: Typecheck, tests and build
+    runs-on: ubuntu-latest
+    timeout-minutes: 20
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 24
+          cache: npm
+      - run: npm ci
+      - run: npm run typecheck
+      - run: npm test
+      - run: npm run build
+
+  more-suites:
+    name: Menu, template and export suites
+    runs-on: ubuntu-latest
+    timeout-minutes: 20
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 24
+          cache: npm
+      - run: npm ci
+      - run: npm run test:menus
+      - run: npm run test:templates
+      - run: npm run test:exports
+      - run: npm run test:workspace-exports
+      - run: npm run test:web-assets
+      - run: npm run test:photo-preview
