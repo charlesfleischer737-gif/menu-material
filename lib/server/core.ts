@@ -187,12 +187,14 @@ export function sameOrigin(req: Request) {
     "Please submit from this site.",
   );
 }
-export async function limit(key: string, max = 20, seconds = 900) {
+// `cost` counts a request as that many, such as the rows it writes.
+export async function limit(key: string, max = 20, seconds = 900, cost = 1) {
   const k = digest(key),
     t = now();
   const r = await one(
-    "INSERT INTO rate_limits (key,count,expires_at) VALUES (?,1,?) ON CONFLICT(key) DO UPDATE SET count=CASE WHEN expires_at<? THEN 1 ELSE count+1 END,expires_at=CASE WHEN expires_at<? THEN excluded.expires_at ELSE expires_at END RETURNING count",
+    "INSERT INTO rate_limits (key,count,expires_at) VALUES (?,?,?) ON CONFLICT(key) DO UPDATE SET count=CASE WHEN expires_at<? THEN excluded.count ELSE count+excluded.count END,expires_at=CASE WHEN expires_at<? THEN excluded.expires_at ELSE expires_at END RETURNING count",
     k,
+    cost,
     t + seconds * 1000,
     t,
     t,
