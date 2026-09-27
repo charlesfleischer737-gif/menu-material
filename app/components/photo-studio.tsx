@@ -901,8 +901,21 @@ export default function PhotoStudio({
       throw Error(
         "The saved photo settings are still loading. Try again in a moment.",
       );
+    // Free reuses the look itself; matching this photo as an inspiration, or
+    // a saved look, is Pro.
+    const reused =
+      reuse && !pro
+        ? {
+            ...resultRecipe,
+            photoReferenceIds: [],
+            referenceId: "",
+            savedLookId: "",
+            savedLookName: "",
+            savedLookVersion: null,
+          }
+        : resultRecipe;
     const recipe = reuse
-      ? recipeFromDraft({ ...b, ...resultRecipe }, state.restaurant)
+      ? recipeFromDraft({ ...b, ...reused }, state.restaurant)
       : {};
     setFinishOpen(false);
     await start({
@@ -912,9 +925,9 @@ export default function PhotoStudio({
       ...(reuse
         ? {
             format: resultFormat,
-            referenceId: resultRecipe?.referenceId,
-            savedLookId: resultRecipe?.savedLookId,
-            savedLookName: resultRecipe?.savedLookName,
+            referenceId: reused?.referenceId,
+            savedLookId: reused?.savedLookId,
+            savedLookName: reused?.savedLookName,
             styleIntent: true,
             studioDefaultResolved: true,
           }
