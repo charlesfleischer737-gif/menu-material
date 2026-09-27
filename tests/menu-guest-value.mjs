@@ -1,7 +1,9 @@
 import assert from "node:assert/strict";
-import { mkdtempSync, rmSync } from "node:fs";
+import { mkdtempSync, readFileSync, rmSync } from "node:fs";
+import { createRequire } from "node:module";
 import { tmpdir } from "node:os";
 import { join } from "node:path";
+import ts from "typescript";
 const root = mkdtempSync(join(tmpdir(), "menu-guest-value-"));
 process.env.MENU_MATERIAL_DATA_DIR = root;
 process.env.APP_ORIGIN = "http://localhost";
@@ -31,7 +33,12 @@ const {
   dietaryParts,
   containsText,
   suitsDiet,
+  allergensListed,
+  guestAllergenText,
+  hiddenByAllergens,
 } = await import("../lib/dietary.ts");
+const { filterGuestMenu, allergenFilterLabel, hiddenDishesText } =
+  await import("../lib/guest-menu-filters.ts");
 const { composeMenu } = await import("../lib/menu-layout.ts");
 const {
   openingStatus,
@@ -44,6 +51,53 @@ const {
 } = await import("../lib/restaurant-contact.ts");
 const { menuStructuredData, menuPreviewImage, jsonLd } =
   await import("../lib/menu-structured-data.ts");
+// The real guest menu component, rendered as the server renders it. Its
+// photo, menu-switcher and report components (none shown in a preview) and
+// icons are stand-ins.
+const requireCjs = createRequire(import.meta.url);
+const React = requireCjs("react");
+const { renderToStaticMarkup } = requireCjs("react-dom/server");
+const MenuDocumentView = await (async () => {
+  const stub = { __esModule: true, default: () => null };
+  const modules = {
+    react: React,
+    "react/jsx-runtime": requireCjs("react/jsx-runtime"),
+    "lucide-react": new Proxy({}, { get: () => () => null }),
+    "./menu-photo": stub,
+    "./customer-menu-switcher": stub,
+    "./report-menu": stub,
+    "@/lib/promotions": await import("../lib/promotions.ts"),
+    "@/lib/menu-document": await import("../lib/menu-document.ts"),
+    "@/lib/menu-design-system": await import("../lib/menu-design-system.ts"),
+    "@/lib/dietary": await import("../lib/dietary.ts"),
+    "@/lib/guest-menu-filters": await import("../lib/guest-menu-filters.ts"),
+    "@/lib/restaurant-contact": await import("../lib/restaurant-contact.ts"),
+    "@/lib/menu-placements": await import("../lib/menu-placements.ts"),
+  };
+  const { outputText } = ts.transpileModule(
+    readFileSync(
+      new URL("../app/components/menu-document-view.tsx", import.meta.url),
+      "utf8",
+    ),
+    {
+      compilerOptions: {
+        jsx: ts.JsxEmit.ReactJSX,
+        module: ts.ModuleKind.CommonJS,
+        target: ts.ScriptTarget.ES2022,
+      },
+    },
+  );
+  const compiled = { exports: {} };
+  new Function("require", "module", "exports", outputText)(
+    (id) => {
+      assert(id in modules, `menu-document-view.tsx imports ${id}`);
+      return modules[id];
+    },
+    compiled,
+    compiled.exports,
+  );
+  return compiled.exports.default;
+})();
 let cookie = "",
   checks = 0;
 async function call(path, data, expected = 200, method) {
@@ -518,6 +572,242 @@ Ramen 1,200`);
   assert.deepEqual(
     (await call(`menus/${tagMenuSaved.id}`)).draft.sections[0].items[0].dietary,
     ["vegetarian", "contains-milk", "contains-sesame"],
+  );
+
+  // "No listed allergens" is the owner's word that a dish was checked and has
+  // none of them; a listed allergen always outranks it.
+  assert.deepEqual(
+    normalizeDietary(["Spicy", "no-listed-allergens", "vegan"]),
+    ["vegan", "no-listed-allergens", "Spicy"],
+  );
+  assert.deepEqual(normalizeDietary(["no-listed-allergens", "contains-milk"]), [
+    "contains-milk",
+  ]);
+  assert.equal(dietaryParts(["no-listed-allergens"]).noneListed, true);
+  assert.equal(dietaryParts(["vegan"]).noneListed, false);
+  // Guests read every dish's allergens, and silence never reads as "none".
+  assert.equal(
+    guestAllergenText(["vegetarian", "contains-milk"]),
+    "Contains: milk",
+  );
+  assert.equal(
+    guestAllergenText(["vegan", "no-listed-allergens"]),
+    "Contains none of the 14 major allergens",
+  );
+  for (const unchecked of [[], ["vegan"], ["Spicy"], '["gluten-free"]'])
+    assert.equal(
+      guestAllergenText(unchecked),
+      "Allergens not listed — ask us",
+      JSON.stringify(unchecked),
+    );
+  assert(
+    allergensListed(["contains-egg"]) &&
+      allergensListed('["no-listed-allergens"]'),
+  );
+  assert(!allergensListed(["vegan", "Spicy"]));
+  // Printing, the diet key and structured data leave the choice out.
+  assert.equal(printedDietary(["vegan", "no-listed-allergens"]), "VG");
+  assert.equal(
+    dietaryKey([{ dietary: ["no-listed-allergens"] }]),
+    "",
+    "no allergens, so no allergen line in the printed key",
+  );
+  assert.deepEqual(
+    menuStructuredData(
+      {
+        restaurant: { name: "Juniper Café", currency: "USD" },
+        sections: [
+          {
+            name: "Mains",
+            items: [
+              {
+                name: "Harvest bowl",
+                price: 1350,
+                dietary: ["vegan", "no-listed-allergens"],
+              },
+            ],
+          },
+        ],
+      },
+      "https://example.test/m/juniper",
+    ).hasMenu.hasMenuSection[0].hasMenuItem[0].suitableForDiet,
+    ["https://schema.org/VeganDiet"],
+  );
+
+  // "Hide dishes with" hides dishes that list a chosen allergen. A dish whose
+  // allergens aren't listed stays, and so does one checked as having none.
+  assert(
+    hiddenByAllergens(["vegan", "contains-peanuts"], ["contains-peanuts"]),
+  );
+  assert(!hiddenByAllergens(["vegan"], ["contains-peanuts"]), "unlisted stays");
+  assert(!hiddenByAllergens(["no-listed-allergens"], ["contains-peanuts"]));
+  assert(!hiddenByAllergens(["contains-peanuts"], []), "nothing chosen");
+  const guestSections = [
+    {
+      id: "starters",
+      name: "Starters",
+      items: [
+        {
+          name: "Satay",
+          description: "Peanut sauce",
+          dietary: ["contains-peanuts"],
+        },
+        {
+          name: "Soup",
+          description: "",
+          dietary: ["vegan", "no-listed-allergens"],
+        },
+        { name: "Bread", description: "Sourdough", dietary: [] },
+      ],
+    },
+    {
+      id: "desserts",
+      name: "Desserts",
+      items: [
+        {
+          name: "Brownie",
+          description: "",
+          dietary: ["contains-peanuts", "contains-milk"],
+        },
+      ],
+    },
+  ];
+  const noPeanuts = filterGuestMenu(guestSections, {
+    allergens: ["contains-peanuts"],
+  });
+  assert.deepEqual(
+    noPeanuts.sections.map((s) => [
+      s.name,
+      s.items.map((i) => i.name),
+      s.hidden,
+    ]),
+    [
+      ["Starters", ["Soup", "Bread"], 1],
+      ["Desserts", [], 1],
+    ],
+    "a section whose dishes are all hidden stays, to say so",
+  );
+  assert.equal(noPeanuts.shown, 2);
+  assert.equal(noPeanuts.unlisted, 1, "Bread stays, marked ask us");
+  assert.deepEqual(
+    filterGuestMenu(guestSections, {
+      query: "brownie",
+      allergens: ["contains-peanuts"],
+    }).sections.map((s) => [s.name, s.items.length, s.hidden]),
+    [["Desserts", 0, 1]],
+  );
+  assert.deepEqual(
+    filterGuestMenu(guestSections, { query: "peanut", diets: ["vegan"] })
+      .sections,
+    [],
+    "search and diets still narrow the menu as before",
+  );
+  assert.deepEqual(
+    filterGuestMenu(guestSections, { query: "contains: milk" }).sections.map(
+      (s) => s.items.map((i) => i.name),
+    ),
+    [["Brownie"]],
+    "allergens are searchable",
+  );
+  assert.equal(allergenFilterLabel([]), "Hide allergens");
+  assert.equal(
+    allergenFilterLabel(["contains-peanuts", "contains-tree-nuts"]),
+    "Hiding peanuts and tree nuts",
+  );
+  assert.equal(
+    allergenFilterLabel(["contains-milk", "contains-egg", "contains-soy"]),
+    "Hiding 3 allergens",
+  );
+  assert.equal(
+    hiddenDishesText(2, ["contains-gluten", "contains-milk", "contains-egg"]),
+    "Hidden here: 2 dishes with gluten, milk or egg.",
+  );
+  assert.equal(
+    hiddenDishesText(1, ["contains-peanuts"]),
+    "Hidden here: 1 dish with peanuts.",
+  );
+
+  // The guest menu itself, as the server renders it.
+  const guestHtml = (menu) =>
+    renderToStaticMarkup(
+      React.createElement(MenuDocumentView, {
+        menu: {
+          ...newMenuDocument(menu),
+          restaurant: { name: "Juniper Café", currency: "USD" },
+        },
+        preview: true,
+      }),
+    );
+  const unchecked = guestHtml({
+    sections: [
+      section([
+        newMenuEntry({ name: "Steak frites", price: 2400 }),
+        newMenuEntry({ name: "Sorbet", price: 800, dietary: ["vegan"] }),
+      ]),
+    ],
+  });
+  assert.equal(
+    unchecked.match(/Allergens not listed — ask us/g)?.length,
+    2,
+    "each dish nobody has checked says so",
+  );
+  assert.match(
+    unchecked,
+    /class="md-guest-allergy"[^>]*>Please tell us about any allergies before you order\.</,
+    "the allergy note shows though no dish lists allergens",
+  );
+  assert.doesNotMatch(
+    unchecked,
+    /md-guest-allergens/,
+    "no allergen filter until a dish lists its allergens",
+  );
+  const mixed = guestHtml({
+    sections: [
+      section([
+        newMenuEntry({
+          name: "Pad Thai",
+          price: 1600,
+          dietary: ["contains-peanuts", "contains-egg"],
+        }),
+        newMenuEntry({
+          name: "Green salad",
+          price: 900,
+          dietary: ["vegan", "no-listed-allergens"],
+        }),
+        newMenuEntry({ name: "Soup of the day", price: 700 }),
+      ]),
+    ],
+  });
+  for (const line of [
+    "Contains: egg, peanuts",
+    "Contains none of the 14 major allergens",
+    "Allergens not listed — ask us",
+    "<summary>Hide allergens</summary>",
+    "<legend>Hide dishes that contain</legend>",
+    "Dishes without their allergens listed stay on the menu, marked “Allergens not listed — ask us”.",
+  ])
+    assert(mixed.includes(line), line);
+  assert.equal(
+    mixed.match(/type="checkbox"/g)?.length,
+    14,
+    "guests can hide any listed allergen",
+  );
+  assert.match(mixed, /role="status"[^>]*>All 3 items shown\.</);
+  assert.doesNotMatch(
+    guestHtml({
+      footer: "Ask your server about allergens.",
+      sections: [section([newMenuEntry({ name: "Soup", price: 700 })])],
+    }),
+    /md-guest-allergy/,
+    "the owner's own allergy note isn't repeated",
+  );
+  assert.match(
+    guestHtml({
+      language: "es",
+      sections: [section([newMenuEntry({ name: "Sopa", price: 700 })])],
+    }),
+    /<p class="md-guest-dietary md-guest-unlisted" lang="en">/,
+    "English interface text on a Spanish menu says it's English",
   );
 
   // Open now, from the restaurant's hours in its own timezone.
@@ -1024,7 +1314,7 @@ Ramen 1,200`);
   );
 
   console.log(
-    `PASS: ${checks} API checks and pasted-menu parsing, menu types, import checks, My Dishes linking, dietary tags, open-now status, live contact details, placement events, visit stats, quick updates and structured data.`,
+    `PASS: ${checks} API checks and pasted-menu parsing, menu types, import checks, My Dishes linking, dietary tags, allergens on every guest dish ("Contains", none of the 14, or "not listed — ask us"), the always-shown allergy note, the guest allergen filter, open-now status, live contact details, placement events, visit stats, quick updates and structured data.`,
   );
 } finally {
   rmSync(root, { recursive: true, force: true });

@@ -262,6 +262,27 @@ for (const [typed, expected] of [
   picker.type(", hot");
   same(picker.value, ["gluten-free", "Spicy", "hot"]);
 }
+// "No listed allergens" says the dish was checked. It and the allergens
+// exclude each other; diets and notes stay either way.
+{
+  const picker = renderPicker([
+    "vegan",
+    "contains-milk",
+    "contains-soy",
+    "Spicy",
+  ]);
+  picker.click("No listed allergens");
+  same(picker.value, ["vegan", "no-listed-allergens", "Spicy"]);
+  same(picker.pressed(), ["Vegan", "No listed allergens"]);
+  picker.click("Sesame");
+  same(
+    picker.value,
+    ["vegan", "contains-sesame", "Spicy"],
+    "an allergen clears it",
+  );
+  picker.click("Sesame");
+  same(picker.value, ["vegan", "Spicy"], "unchecked again, not none");
+}
 
 // Photo types come from the file's bytes, whatever its name or type says.
 const { api, normalizePhoto, photoAccept, photoFileError, photoFormat } =
@@ -941,5 +962,5 @@ for (const name of ["explore-gallery.tsx", "studio-style-library.tsx"]) {
 }
 
 console.log(
-  `PASS: ${checks} dish and upload checks: dietary notes typed one character at a time, photo types refused before anything is created, upload errors, and looks described as intent.`,
+  `PASS: ${checks} dish and upload checks: dietary notes typed one character at a time, "No listed allergens" and allergens excluding each other, photo types refused before anything is created, upload errors, and looks described as intent.`,
 );

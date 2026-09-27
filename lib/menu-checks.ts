@@ -8,8 +8,8 @@ import {
 import { inferMenuPurpose, isAddonName } from "./menu-paste";
 import {
   allergenTags,
-  dietTags,
   dietaryTag,
+  dietaryTags,
   normalizeDietary,
   suitsDiet,
 } from "./dietary";
@@ -323,18 +323,28 @@ const sameTags = (a: unknown, b: unknown) =>
   JSON.stringify(normalizeDietary(a)) === JSON.stringify(normalizeDietary(b));
 
 /**
+ * A claim a menu dish may make only when My Dishes makes it too: a diet the
+ * dish suits, or "no listed allergens".
+ */
+function backedClaim(value: string, facts: string[]) {
+  const kind = dietaryTag(value)?.kind;
+  return kind === "diet"
+    ? suitsDiet(facts, value)
+    : kind === "none"
+      ? facts.includes(value)
+      : true;
+}
+/**
  * Allergens and diet claims are safety facts, so My Dishes has the last word
  * on a menu dish linked to it: the menu shows every allergen the dish has and
- * no diet the dish doesn't suit. A menu can still add allergens of its own or
- * leave a claim out, never the reverse. Notes are kept as written.
+ * no diet the dish doesn't suit, and says "no listed allergens" only when My
+ * Dishes does. A menu can still add allergens of its own or leave a claim
+ * out, never the reverse. Notes are kept as written.
  */
 export function withDishSafety(item: unknown, dish: unknown): string[] {
   const facts = normalizeDietary(dish);
   return normalizeDietary([
-    ...normalizeDietary(item).filter(
-      (value) =>
-        dietaryTag(value)?.kind !== "diet" || suitsDiet(facts, value),
-    ),
+    ...normalizeDietary(item).filter((value) => backedClaim(value, facts)),
     ...facts.filter((value) => dietaryTag(value)?.kind === "allergen"),
   ]);
 }
@@ -346,8 +356,11 @@ export function dishSafetyGaps(item: unknown, dish: unknown) {
     missing: allergenTags.filter(
       (tag) => facts.includes(tag.id) && !own.includes(tag.id),
     ),
-    unsupported: dietTags.filter(
-      (tag) => own.includes(tag.id) && !suitsDiet(facts, tag.id),
+    unsupported: dietaryTags.filter(
+      (tag) =>
+        tag.kind !== "allergen" &&
+        own.includes(tag.id) &&
+        !backedClaim(tag.id, facts),
     ),
   };
 }
@@ -357,10 +370,18 @@ const listed = (labels: string[]) =>
     : `${labels.slice(0, -1).join(", ")} and ${labels[labels.length - 1]}`;
 function dishSafetyMessage(
   label: string,
-  { missing, unsupported }: ReturnType<typeof dishSafetyGaps>,
+  { missing, unsupported: claimed }: ReturnType<typeof dishSafetyGaps>,
 ) {
+  // A missing allergen already says the dish has one.
+  const unsupported = missing.length
+    ? claimed.filter((tag) => tag.kind === "diet")
+    : claimed;
   const contains = listed(missing.map((tag) => tag.label.toLowerCase())),
-    marked = listed(unsupported.map((tag) => tag.label));
+    marked = listed(
+      unsupported.map((tag) =>
+        tag.kind === "diet" ? tag.label : `“${tag.label}”`,
+      ),
+    );
   if (!unsupported.length)
     return `My Dishes says ${label} contains ${contains}. Show it on this menu too.`;
   if (!missing.length)

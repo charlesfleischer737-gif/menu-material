@@ -1097,6 +1097,144 @@ try {
     "Spicy",
   ]);
 
+  // "No listed allergens" (the dish was checked and has none) follows My
+  // Dishes like a diet claim: menus showing the dish's tags take it, a menu
+  // may leave it out, and none may claim it unless My Dishes does. A listed
+  // allergen always outranks it.
+  assert.deepEqual(
+    withDishSafety(["vegan", "no-listed-allergens"], ["vegan"]),
+    ["vegan"],
+    "My Dishes no longer says none, so the menu stops saying it",
+  );
+  assert.deepEqual(
+    withDishSafety(["Spicy"], ["vegan", "no-listed-allergens"]),
+    ["Spicy"],
+    "a menu may leave the claim out",
+  );
+  assert.deepEqual(
+    withDishSafety(
+      ["no-listed-allergens", "Spicy"],
+      ["no-listed-allergens", "contains-sesame"],
+    ),
+    ["contains-sesame", "Spicy"],
+  );
+  const riceFacts = (dietary) =>
+    dishFacts({
+      id: "4f0e7b1e-8a5d-4c52-9d1e-7a7c1f6a2b10",
+      name: "Jasmine rice",
+      description: "Steamed",
+      price: 400,
+      available: 1,
+      dietary,
+    });
+  const riceMenu = (dietary) =>
+    newMenuDocument({
+      sections: [
+        section([
+          newMenuEntry({
+            dishId: riceFacts([]).id,
+            name: "Jasmine rice",
+            description: "Steamed",
+            price: 400,
+            dietary,
+          }),
+        ]),
+      ],
+    });
+  const riceTags = (result) => result.menu.sections[0].items[0].dietary;
+  assert.deepEqual(
+    riceTags(
+      applyDishUpdate(
+        riceMenu([]),
+        riceFacts([]),
+        riceFacts(["no-listed-allergens"]),
+      ),
+    ),
+    ["no-listed-allergens"],
+    "a menu dish showing the dish's tags takes it",
+  );
+  for (const safetyOnly of [false, true])
+    assert.deepEqual(
+      riceTags(
+        applyDishUpdate(
+          riceMenu(["no-listed-allergens", "Spicy"]),
+          riceFacts(["no-listed-allergens"]),
+          riceFacts([]),
+          { safetyOnly },
+        ),
+      ),
+      ["Spicy"],
+      `dropped in My Dishes, it goes from every menu (safetyOnly: ${safetyOnly})`,
+    );
+  const unbacked = menuPublishChecks(riceMenu(["no-listed-allergens"]), {
+    restaurantName: "Corner House",
+    dishes: [{ id: riceFacts([]).id, dietary: ["vegan"] }],
+  }).find((c) => c.id.startsWith("dish-tags:"));
+  assert.equal(unbacked?.level, "block");
+  assert.equal(
+    unbacked.message,
+    "Jasmine rice is marked “No listed allergens” here, but not in My Dishes.",
+  );
+  const rice = await call("dishes", {
+    name: "Jasmine rice",
+    description: "Steamed",
+    category: "Sides",
+    price: 4,
+    confirmed: true,
+    dietary: ["vegan", "no-listed-allergens"],
+  });
+  const sides = await menuWith(
+    "Sides",
+    [
+      newMenuEntry({
+        dishId: rice.id,
+        name: "Jasmine rice",
+        description: "Steamed",
+        price: 400,
+        dietary: ["vegan", "no-listed-allergens"],
+      }),
+    ],
+    "Sides",
+  );
+  await call(`menus/${sides.id}/publish`, { revision: sides.revision });
+  // Sesame oil goes in: guests see sesame, and no longer "none".
+  await call(`dishes/${rice.id}`, {
+    name: "Jasmine rice",
+    description: "Steamed",
+    category: "Sides",
+    price: 4,
+    confirmed: true,
+    dietary: ["vegan", "no-listed-allergens", "contains-sesame"],
+  });
+  const sidesAfter = await call(`menus/${sides.id}`);
+  for (const copy of [sidesAfter.draft, sidesAfter.published])
+    assert.deepEqual(copy.sections[0].items[0].dietary, [
+      "vegan",
+      "contains-sesame",
+    ]);
+  const claimed = await menuWith(
+    "Sides again",
+    [
+      newMenuEntry({
+        dishId: rice.id,
+        name: "Jasmine rice",
+        description: "Steamed",
+        price: 400,
+        dietary: ["vegan", "no-listed-allergens"],
+      }),
+    ],
+    "Sides",
+  );
+  const refusedClaim = await call(
+    `menus/${claimed.id}/publish`,
+    { revision: claimed.revision },
+    400,
+  );
+  assert.match(
+    refusedClaim.error,
+    /My Dishes says Jasmine rice contains sesame/,
+  );
+
   // A dish made from a photo has no price; linking a pasted menu to it gives
   // it the menu's price and description, so later edits reach that menu.
   const photographed = await call("dishes", {
@@ -1292,7 +1430,7 @@ try {
     false,
   );
   console.log(
-    `PASS: ${checks} menu publishing checks: placeholder names, sample dishes, zero prices, automatic checks without an I-checked box, first-publication menu address, address changes with redirects, and dish edits reaching draft and live menus.`,
+    `PASS: ${checks} menu publishing checks: placeholder names, sample dishes, zero prices, automatic checks without an I-checked box, first-publication menu address, address changes with redirects, dish edits reaching draft and live menus, and "No listed allergens" following My Dishes.`,
   );
 } finally {
   rmSync(root, { recursive: true, force: true });

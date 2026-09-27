@@ -4,7 +4,9 @@ import {
   allergenTags,
   dietTags,
   dietaryTag,
+  noListedAllergens,
   normalizeDietary,
+  unlistedAllergensText,
 } from "@/lib/dietary";
 
 // The major allergens most menus list; the rest sit under "More allergens".
@@ -50,10 +52,19 @@ export default function DietaryPicker({
   useEffect(() => {
     if (!editing.current) setNoteText(noteValue);
   }, [noteValue]);
+  // "No listed allergens" and the allergens themselves exclude each other:
+  // choosing it clears them, and choosing an allergen clears it.
   const toggle = (id: string) =>
     onChange(
       normalizeDietary([
-        ...(tags.includes(id) ? tags.filter((v) => v !== id) : [...tags, id]),
+        ...(tags.includes(id)
+          ? tags.filter((v) => v !== id)
+          : [
+              ...(id === noListedAllergens
+                ? tags.filter((v) => dietaryTag(v)?.kind !== "allergen")
+                : tags),
+              id,
+            ]),
         ...notes,
       ]),
     );
@@ -91,6 +102,7 @@ export default function DietaryPicker({
             {allergenTags.filter((t) => !common.has(t.id)).map(chip)}
           </div>
         </details>
+        <div className="ui-chips">{chip(dietaryTag(noListedAllergens)!)}</div>
       </fieldset>
       <label className={fieldClass} htmlFor={noteId}>
         <span>Other notes</span>
@@ -127,7 +139,9 @@ export default function DietaryPicker({
         />
       </label>
       <small>
-        Only add what you can confirm. Guests can filter by “Suitable for”.
+        Only add what you can confirm. Guests can filter by “Suitable for” and
+        hide dishes by allergen. Until a dish has its allergens, or No listed
+        allergens, guests see “{unlistedAllergensText}”.
       </small>
     </div>
   );
