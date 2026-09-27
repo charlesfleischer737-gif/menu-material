@@ -176,9 +176,10 @@ try {
   assert.doesNotMatch(JSON.stringify(data), /9\.99|Pro\b/);
   checks += 4;
 
-  // The homepage's Menus & QR codes and Posts sections, as the server
+  // The homepage's Menus & QR codes, Posts and FAQ sections, as the server
   // renders them. What they say Free and Pro include stays in step with the
-  // plans, and their screenshots are sized and lazy.
+  // plans, their screenshots are sized and lazy, and the training answer
+  // links where the privacy page does, without promising retention periods.
   const requireCjs = createRequire(import.meta.url);
   const React = requireCjs("react");
   const { renderToStaticMarkup } = requireCjs("react-dom/server");
@@ -210,6 +211,7 @@ try {
     "lucide-react": new Proxy({}, { get: () => () => null }),
     "@/lib/homepage-product": await import("../lib/homepage-product.ts"),
   });
+  const faq = render("homepage-faq.tsx", jsx);
   const plans = await import("../lib/plans.ts");
   const { menuDesignSpec } = await import("../lib/menu-design-system.ts");
   assert.match(product, /<h2 id="menus-title">[^<]*QR code menu/);
@@ -236,7 +238,23 @@ try {
     for (const [path] of tag.match(/srcSet="([^"]+)"/)[1].matchAll(/\/\S+/g))
       assert(existsSync("public" + path), path);
   }
-  checks += 8;
+  assert.deepEqual(
+    [...faq.matchAll(/<summary>([^<]+)<\/summary>/g)].map((m) => m[1]),
+    [
+      "Are the photos made with AI?",
+      "What happens to my original photo?",
+      "Do I approve every photo?",
+      "Who owns the images?",
+      "Are my photos used to train AI?",
+      "How do I cancel Pro?",
+    ],
+  );
+  const dataControls = readFileSync("app/privacy/page.tsx", "utf8").match(
+    /https:\/\/developers\.openai\.com[^"]*/,
+  )[0];
+  assert(faq.includes(`href="${dataControls}"`), dataControls);
+  assert.doesNotMatch(faq, /\d+\s*(hours?|days?|weeks?|months?|years?)\b/);
+  checks += 11;
 
   // /favicon.ico is a real icon file with the classic sizes.
   const icon = readFileSync("public/favicon.ico");
@@ -263,5 +281,5 @@ try {
 }
 
 console.log(
-  `Site metadata: ${checks} checks passed (origin, robots.txt, contact and legal settings, sitemap, canonical and link-preview tags, share image, structured data, the homepage's product sections, favicon.ico).`,
+  `Site metadata: ${checks} checks passed (origin, robots.txt, contact and legal settings, sitemap, canonical and link-preview tags, share image, structured data, the homepage's product sections and FAQ, favicon.ico).`,
 );

@@ -1,6 +1,6 @@
 # Homepage use cases and feature examples
 
-The homepage includes a before/after hero comparison, a showcase wall of style-library examples, three food-led use cases, a style gallery, and Menus & QR codes and Posts sections with screenshots of the product. Demo prices, colors, the original/result toggle, and menu availability are local illustrative state; they do not alter a restaurant record, generate a photo, publish a menu, or emit product-usage metrics. Start buttons use the existing invitation/studio flow.
+The homepage includes a before/after hero comparison, a showcase wall of style-library examples, three food-led use cases, a style gallery, Menus & QR codes and Posts sections with screenshots of the product, and a short FAQ. Demo prices, colors, the original/result toggle, and menu availability are local illustrative state; they do not alter a restaurant record, generate a photo, publish a menu, or emit product-usage metrics. Start buttons use the existing invitation/studio flow.
 
 ## Images on the current homepage
 

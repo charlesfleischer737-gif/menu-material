@@ -1197,6 +1197,33 @@
   }
 }
 
+/* Questions about the photos and the plan, below the product sections. */
+.pw-home-faq {
+  padding: var(--pw-band) var(--pw-gutter);
+  background: var(--gray-100);
+}
+.pw-home-faq > .pw-faq,
+.pw-home-faq-more {
+  max-width: 760px;
+  margin-inline: auto;
+}
+.pw-home-faq .pw-faq details p {
+  margin: -2px 0 22px;
+  color: var(--pw-muted);
+  font-size: var(--text-callout);
+  line-height: 1.55;
+}
+.pw-home-faq a {
+  color: inherit;
+  text-decoration: underline;
+  text-underline-offset: 3px;
+}
+.pw-home-faq-more {
+  margin-top: 24px;
+  color: var(--pw-muted);
+  font-size: var(--text-subhead);
+}
+
 /* Closing call to action: an evergreen band lit from the top edge. */
 .pw-start {
   display: flex;
