@@ -797,6 +797,8 @@ Ramen 1,200`);
       dishId: tagged1.id,
       name: "Harvest bowl",
       price: 1350,
+      // A linked dish goes live with the allergens My Dishes has for it.
+      dietary: ["vegetarian", "contains-milk", "contains-sesame"],
       ...extra,
     });
   const lunchBowl = bowlEntry(),

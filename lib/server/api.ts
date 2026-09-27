@@ -1485,7 +1485,8 @@ async function route(req: Request) {
       const input = await body(req);
       const b = dishSchema.parse(input);
       // The menu builder saves one menu's edit to My Dishes without
-      // touching other menus or anything guests see.
+      // touching other menus or anything guests see, apart from allergens
+      // and diets, which every menu showing the dish must get right.
       const { syncMenus } = z
         .object({ syncMenus: z.boolean().default(true) })
         .parse(input);
@@ -1547,10 +1548,14 @@ async function route(req: Request) {
         r.id,
       );
       assert(saved, 404, "Dish not found.");
-      // Menus showing the dish's previous details follow the edit.
-      const menus =
-        before && syncMenus ? await syncDishToMenus(r.id, before, saved) : [];
-      return response({ id: did, revision: saved.revision, menus });
+      // Menus showing the dish's previous details follow the edit. From the
+      // menu builder, only allergens and dropped diets reach other menus.
+      const { updated: menus, kept } = before
+        ? await syncDishToMenus(r.id, before, saved, {
+            safetyOnly: !syncMenus,
+          })
+        : { updated: [], kept: [] };
+      return response({ id: did, revision: saved.revision, menus, kept });
     }
     if (p[0] === "assets") {
       if (method === "POST" && !p[1]) return await upload(req, r);

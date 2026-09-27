@@ -942,6 +942,7 @@ function CheckFix({
   select,
   removeItem,
   attachAddon,
+  applyDishTags,
   applyPurpose,
   saveRestaurantName,
 }: {
@@ -950,6 +951,7 @@ function CheckFix({
   select: (id: string) => void;
   removeItem: (id: string) => void;
   attachAddon: (id: string) => void;
+  applyDishTags: (id: string) => void;
   applyPurpose: (purpose: MenuDocument["purpose"]) => void;
   saveRestaurantName: (name: string) => Promise<void>;
 }) {
@@ -1015,6 +1017,15 @@ function CheckFix({
         Make it an add-on
       </button>
     );
+  if (check.fix === "dish-tags" && check.entryId)
+    return (
+      <button
+        className="md-text-button"
+        onClick={() => applyDishTags(check.entryId!)}
+      >
+        Match My Dishes
+      </button>
+    );
   if (check.fix === "menu-type" && check.purpose)
     return (
       <button
@@ -1046,6 +1057,7 @@ export function MenuDeliveryDialog({
   select,
   removeItem,
   attachAddon,
+  applyDishTags,
   applyPurpose,
   saveRestaurantName,
   published,
@@ -1065,6 +1077,8 @@ export function MenuDeliveryDialog({
   select: (id: string) => void;
   removeItem: (id: string) => void;
   attachAddon: (id: string) => void;
+  /** Give a menu dish the allergens and diets My Dishes has for it. */
+  applyDishTags: (id: string) => void;
   applyPurpose: (purpose: MenuDocument["purpose"]) => void;
   saveRestaurantName: (name: string) => Promise<void>;
   published: (address?: string) => Promise<void>;
@@ -1239,6 +1253,7 @@ export function MenuDeliveryDialog({
                       select={select}
                       removeItem={removeItem}
                       attachAddon={attachAddon}
+                      applyDishTags={applyDishTags}
                       applyPurpose={applyPurpose}
                       saveRestaurantName={saveRestaurantName}
                     />

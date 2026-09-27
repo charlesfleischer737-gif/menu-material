@@ -49,6 +49,7 @@ import {
   blockingChecks,
   menuPublishChecks,
   restaurantSettingsChanged,
+  withDishSafety,
   withLibraryLinks,
 } from "@/lib/menu-checks";
 import { addonLabel, inferMenuPurpose, isAddonName } from "@/lib/menu-paste";
@@ -157,6 +158,7 @@ export default function MenuStudio({
       correctionPhotoIds: (state.assets as Row[])
         .filter((a) => a.needs_correction)
         .map((a) => a.id as string),
+      dishes: state.dishes as { id: string; dietary?: unknown }[],
     }),
     issues = blockingChecks(checks),
     spec = menuDesignSpec(draft.design);
@@ -1353,6 +1355,22 @@ export default function MenuStudio({
               }))
             }
             attachAddon={attachAddon}
+            applyDishTags={(id) =>
+              change((before) => ({
+                ...before,
+                sections: before.sections.map((s) => ({
+                  ...s,
+                  items: s.items.map((i) => {
+                    const dish =
+                      i.id === id &&
+                      (state.dishes as Row[]).find((d) => d.id === i.dishId);
+                    return dish
+                      ? { ...i, dietary: withDishSafety(i.dietary, dish.dietary) }
+                      : i;
+                  }),
+                })),
+              }))
+            }
             applyPurpose={applyPurpose}
             saveRestaurantName={async (name) => {
               await api("restaurant/name", { name });
@@ -1569,7 +1587,7 @@ export default function MenuStudio({
         {dialog === "dish-library" && item && section && (
           <MenuDialog
             title={item.dishId ? "Update My Dishes" : "Save to My Dishes"}
-            description="Keep these details in your dish library for new menus. Your other menus and your live menu don’t change; guests see this edit when you publish this menu."
+            description="Keep these details in your dish library for new menus. Your other menus and your live menu keep their own details, except that new allergens and removed diets reach every menu straight away. Guests see the rest of this edit when you publish this menu."
             close={() => setDialog("")}
           >
             <h3>{item.name || "Untitled dish"}</h3>
@@ -1629,10 +1647,15 @@ export default function MenuStudio({
                   await store.saveNow();
                   await refresh();
                   setDialog("");
+                  const synced = (result.menus || []) as Row[];
                   tell(
-                    item.dishId
-                      ? "My Dishes updated. Your other menus and live menus are unchanged."
-                      : "Saved to My Dishes. You can now use its photos on this menu.",
+                    !item.dishId
+                      ? "Saved to My Dishes. You can now use its photos on this menu."
+                      : synced.length
+                        ? `My Dishes updated. Allergens and diets also changed on ${synced
+                            .map((m) => `${m.name}${m.live ? " (live)" : ""}`)
+                            .join(", ")}.`
+                        : "My Dishes updated. Your other menus and live menus are unchanged.",
                   );
                 })
               }

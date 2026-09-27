@@ -501,6 +501,12 @@ export function MenuItemInspector({
           fieldClass="md-field"
           onChange={(dietary) => change({ dietary })}
         />
+        {item.dishId && (
+          <p className="md-help">
+            Guests always see the allergens in My Dishes, and a diet shows only
+            if My Dishes has it too.
+          </p>
+        )}
       </details>
       <Field label="Section">
         <select value={section.id} onChange={(e) => move(e.target.value)}>
