@@ -1,6 +1,6 @@
 # Homepage use cases and feature examples
 
-The homepage includes a before/after hero comparison, a showcase wall of style-library examples, three food-led use cases and a style gallery. Demo prices, colors, the original/result toggle, and menu availability are local illustrative state; they do not alter a restaurant record, generate a photo, publish a menu, or emit product-usage metrics. Start buttons use the existing invitation/studio flow.
+The homepage includes a before/after hero comparison, a showcase wall of style-library examples, three food-led use cases, a style gallery, and Menus & QR codes and Posts sections with screenshots of the product. Demo prices, colors, the original/result toggle, and menu availability are local illustrative state; they do not alter a restaurant record, generate a photo, publish a menu, or emit product-usage metrics. Start buttons use the existing invitation/studio flow.
 
 ## Images on the current homepage
 
@@ -15,10 +15,14 @@ All paths are relative to the project root. Every served file is a lossy WebP co
 | Use case: Social media       | `public/homepage/optimized/social-post-example-{320,480}.webp`, `public/homepage/social-post-example.webp` | `public/homepage/social-post-example.webp` (640 × 800 Post Maker capture)            |
 | Use case: Your existing menu | `public/homepage/optimized/menus-{320,480,640,800}.webp`, `public/homepage/menus.webp`                     | `public/homepage/menus.webp` (960 px rigatoni photograph)                            |
 | Style gallery                | `public/homepage/styles/cheesecake-<style>-{160,…,1254}.webp`, `cheesecake-original-{320,…,1280}.webp`     | Lossless masters and the original JPEG; see `HOMEPAGE_STYLE_GALLERY_IMAGES.json`     |
+| Menus & QR codes             | `public/homepage/product/menu-phone-{320,640,960}.webp`                                                    | Screenshot of a sample guest menu (see below); not kept                              |
+| Posts                        | `public/homepage/product/post-maker-{400,800,1200}.webp`                                                   | Screenshot of Post Maker with a sample post (see below); not kept                    |
 
 The marketing page is rendered on the server for signed-out visitors, so the two hero photos are in the initial HTML (`fetchpriority="high"`). Showcase, use-case and gallery photos are `loading="lazy"`. The style gallery mounts only the photo on screen; another style's photo starts loading when its option is hovered, focused or chosen, and photos already shown stay mounted for the cross-fade.
 
 The showcase wall is two rows of up to 300 CSS px tiles that drift in opposite directions. The wall clips its rows, so only photos in or near its visible width download; the rest arrive as the rows bring them into view. Its `srcset` reuses the style library's 400 px previews (1x screens and 2x phones, and already cached for anyone who opens Photo Studio) and adds 640 px copies for 2x desktops and 3x phones. The 22 examples are illustrative AI images from the style library, and their `alt` text says so. `lib/homepage-showcase.ts` keeps its own copy of their names, so the catalog's prompts stay out of the homepage bundle.
+
+The Menus & QR codes and Posts sections show real screenshots of the product, taken September 27, 2026 with Playwright's Chromium on the local dev server. A sample restaurant, "Juniper & Stone", was set up with the local sign-in and a data directory of its own: dishes with prices, diet and allergen tags (one left unchecked, to show "Allergens not listed — ask us"), and photos from the style library (`menu-stone`, `fine-terrace`, `studio-sunbeam` and others in `public/studio/styles/`), so no third-party images appear. Its dinner menu, in The Brasserie design with featured photos, was published and captured on a 430 × 932 phone at 3×; Post Maker was captured at 2× with a post for the cheesecake in The daily special design, one of Free's three. Both captions call them samples and the dish photos illustrative AI images. The full-size captures aren't kept: each copy was resized from them (lanczos3, WebP quality 82, `smartSubsample`, effort 6, as the script does), and `lib/homepage-product.ts` lists the widths, which `npm run test:web-assets` checks along with shape and weight (at most 110 KB each). To replace one, capture the same view, save copies at the same widths and update the listed size.
 
 ### Encoding
 
