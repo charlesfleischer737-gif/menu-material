@@ -79,6 +79,8 @@ export async function withdrawReportedPhoto(rid: string, assetId: string) {
     }
     if (!conflicted) break;
   }
+  // No error if a menu kept changing: the report is saved, and the public
+  // image route already refuses a reported photo.
   await bucket().delete([
     `public/${rid}/${assetId}`,
     ...variantWidths.map((w) => publicVariantKey(rid, assetId, w)),
