@@ -210,6 +210,13 @@ export default function PlanDialog({
               . New images use your free allowance.
             </p>
           )}
+          {billing.plan !== "pro" && features.source === "renewing" && (
+            <p className="pw-plan-note">
+              Your Pro renewal is being processed. Pro features stay on, and
+              this month’s images arrive when Stripe confirms the payment,
+              usually within an hour.
+            </p>
+          )}
           {billing.plan !== "pro" && features.source === "grace" && (
             <p className="pw-plan-note">
               Your last Pro payment didn’t go through. Pro features stay on
