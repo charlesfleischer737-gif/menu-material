@@ -37,7 +37,6 @@ import Brand from "./brand";
 import CreativeHeader from "./creative-header";
 import WorkspacePlaceholder from "./workspace-placeholder";
 import PhotoStudio from "./photo-studio";
-import LaunchChecklist from "./launch-checklist";
 import { deferredWorkspace } from "./deferred-workspace";
 import { ProBadge } from "./pro-badge";
 import { hasProFeatures } from "@/lib/upgrade";
@@ -354,21 +353,6 @@ export default function CoreWorkspace({
                 seed={photoSeed}
                 onSeedUsed={() => setPhotoSeed(null)}
                 onDestination={destination}
-                banner={
-                  <LaunchChecklist
-                    state={state}
-                    active={view === "studio"}
-                    onOpen={(step) => {
-                      // The table card is in Share, on the live menu.
-                      if (step === "tableCard")
-                        setMenuSeed({
-                          token: crypto.randomUUID(),
-                          share: true,
-                        });
-                      navigate(step === "dish" ? "library" : "menu");
-                    }}
-                  />
-                }
               />
             </div>
           )}

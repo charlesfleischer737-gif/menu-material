@@ -1,9 +1,5 @@
 import { api } from "./client";
-import {
-  MENU_EXPORTED,
-  type MenuExportFormat,
-  type VisitorStep,
-} from "./funnel";
+import { type MenuExportFormat, type VisitorStep } from "./funnel";
 
 const visitorKey = "menu-material:visitor",
   sentKey = "menu-material:visitor-steps";
@@ -68,18 +64,12 @@ export function recordVisitorStep(step: VisitorStep) {
 
 /**
  * Records a menu's PDF, table card or QR image download, for the launch
- * funnel's first export and the "Get your menu live" checklist.
+ * funnel's first export.
  */
 export function recordMenuExport(format: MenuExportFormat, menuId?: string) {
   void api("events", {
     kind: "menu_exported",
     entityId: menuId || undefined,
     format,
-  })
-    .then(() =>
-      window.dispatchEvent(
-        new CustomEvent(MENU_EXPORTED, { detail: { format } }),
-      ),
-    )
-    .catch(() => {});
+  }).catch(() => {});
 }

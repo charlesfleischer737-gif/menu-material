@@ -4,7 +4,7 @@ Review date: September 26, 2026. Source: `2930393` (main after #28, "Fit the hom
 
 ## Fix status — September 27
 
-Fixes landed in #30 and #31. The homepage demo's AI label (L7) was left out at the owner's request. Items marked **Yours** need the owner; they're collected under [Your follow-ups](#your-follow-ups).
+Fixes landed in #30 and #31. At the owner's request, the homepage demo's AI label (L7) was left out, and #32 took back out the homepage sections, the FAQ, the first-run checklist and the line under the guest drop zone. Items marked **Yours** need the owner; they're collected under [Your follow-ups](#your-follow-ups).
 
 | Item | Status | What changed / what's left |
 |---|---|---|
@@ -39,7 +39,7 @@ Fixes landed in #30 and #31. The homepage demo's AI label (L7) was left out at t
 | M4 Full-size guest photos | Fixed (#30) | 480, 960 and 1440 px copies through `srcset`, cached for a week |
 | §5 Low: old publish route | Fixed (#31) | The old single-menu write routes return 410 |
 | P1 Plans buttons below the fold | Fixed (#31) | The buttons sit in a footer that stays in view |
-| T1 Photos to OpenAI before notice | Fixed (#30, #31) | A line under the drop zone says a small copy goes to OpenAI and links the privacy page, which is corrected |
+| T1 Photos to OpenAI before notice | Partly (#30) | The privacy page is corrected and says a small copy goes to OpenAI. The line under the drop zone was removed at the owner's request (#32) |
 | T2–T5 | Not changed | T2 would touch the homepage comparison (L7) |
 | E1 No CI | Fixed (#30); **yours** | GitHub Actions runs typecheck, tests, build and the extra suites. **Yours:** require it before merging. The production-build smoke test is still to do |
 | E2–E4 | Not changed | |
@@ -48,10 +48,10 @@ Fixes landed in #30 and #31. The homepage demo's AI label (L7) was left out at t
 
 | Enhancement | Status | Notes |
 |---|---|---|
-| 1 "Get your menu live" checklist | Built (#31) | In Photo Studio for accounts under 30 days: name and price a dish, publish your menu, print your table card. It hides once done and can be dismissed |
+| 1 "Get your menu live" checklist | Removed (#32) | Built in #31, then removed at the owner's request |
 | 2 "Made with Menu Material" as a link | Built (#30) | Links to the site with `?ref=menu` |
-| 3 Real proof and a trust FAQ | FAQ built (#31); photos **yours** | Six answers on the homepage: AI edits, originals kept, approval, ownership, training, cancelling. Partner restaurants' real results need their photos and permission |
-| 4 Menus & QR codes and Posts sections | Built (#31) | Below the existing sections, with screenshots of a sample restaurant; the comparison is untouched |
+| 3 Real proof and a trust FAQ | Not done | The homepage FAQ built in #31 was removed at the owner's request (#32). Partner restaurants' real results would need their photos and permission |
+| 4 Menus & QR codes and Posts sections | Removed (#32) | Built in #31, then removed at the owner's request; the homepage is as it was before #31 |
 | 5 Funnel measurement | Built (#31) | Administration → Launch funnel: homepage → photo → Create → signup → first export → first publish, signups by source and campaign tags, and Plans, See Pro, Get Pro and the waitlist by feature |
 | 6 A better first post on Free | Not changed | |
 | 7 An allergy-safe guest menu | Built (#31) | "Allergens not listed — ask us", a "No listed allergens" choice, the allergy note always shown, a "Hide allergens" filter that keeps unlisted dishes visible, and price or availability differences listed at publish with "Use My Dishes" |
@@ -63,7 +63,7 @@ Fixes landed in #30 and #31. The homepage demo's AI label (L7) was left out at t
 
 ### Your follow-ups
 
-1. **Terms, refund policy and contact.** Write the Terms and refund policy (with a lawyer), then set `TERMS_URL`, `REFUND_POLICY_URL`, `SUPPORT_EMAIL` and `SITE_OPERATOR`. Signup, Plans, Checkout, `/contact`, `/terms` and the privacy page pick them up. Add the Terms URL in Stripe's settings if Checkout should ask for consent. Have the privacy page and the homepage FAQ reviewed; update the FAQ's ownership answer once the Terms grant rights.
+1. **Terms, refund policy and contact.** Write the Terms and refund policy (with a lawyer), then set `TERMS_URL`, `REFUND_POLICY_URL`, `SUPPORT_EMAIL` and `SITE_OPERATOR`. Signup, Plans, Checkout, `/contact`, `/terms` and the privacy page pick them up. Add the Terms URL in Stripe's settings if Checkout should ask for consent. Have the privacy page reviewed.
 2. **Domain.** Choose the permanent domain, set `APP_ORIGIN` to it before restaurants print table cards, and redirect any old host.
 3. **Stripe.** Point the webhook at `<APP_ORIGIN>/api/billing/webhook` with the events in `docs/FREE_PRO_PLANS.md`. Run checkout, a renewal, a failed payment and a cancellation in test mode, then set the live keys and `STRIPE_BILLING_ENABLED=true`.
 4. **AI budget.** Confirm the site-wide daily budget (Administration), `AI_FREE_BUDGET_SHARE_PERCENT` (default 70) and the model prices (`AI_IMAGE_*_USD_PER_MILLION_TOKENS`), or set `IMAGE_COST_ESTIMATE_USD`. The launch settings show roughly how many images a day the budget allows.
@@ -74,7 +74,7 @@ Fixes landed in #30 and #31. The homepage demo's AI label (L7) was left out at t
 9. **Caps.** Tune `FREE_SIGNUP_GRANTS_PER_DAY` (default 300) and `SIGNUPS_PER_WIDE_NETWORK_PER_DAY` (default 8) if launch traffic needs it.
 10. **GitHub.** Require the CI checks before merging to `main` (branch protection).
 11. **Backups.** Back up D1 and R2 together, and restore them once.
-12. **Growth.** Collect partner restaurants' real results for the homepage, and tag launch links with `utm_*` so Launch funnel can attribute signups.
+12. **Growth.** Tag launch links with `utm_*` so Launch funnel can attribute signups.
 13. **A browser pass on Free.** Post Maker's New, "Make a Free copy", and downloading a post and a campaign made on Pro after a downgrade.
 14. **L7.** The homepage demo's AI label stays open, as you chose.
 

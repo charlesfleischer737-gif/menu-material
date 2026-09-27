@@ -8,8 +8,6 @@ import {
   DropdownMenuItem,
   DropdownMenuTrigger,
 } from "@/components/ui/dropdown-menu";
-import HomepageFaq from "./homepage-faq";
-import HomepageProduct from "./homepage-product";
 import HomepageSections from "./homepage-sections";
 import HomepageShowcase from "./homepage-showcase";
 import PhotoComparison from "./photo-comparison";
@@ -150,8 +148,6 @@ export default function Landing({
         </section>
         <HomepageShowcase />
         <HomepageSections />
-        <HomepageProduct />
-        <HomepageFaq />
         <section className="pw-start" aria-labelledby="start-title">
           <h2 id="start-title">Start with one dish. See the difference.</h2>
           <p>

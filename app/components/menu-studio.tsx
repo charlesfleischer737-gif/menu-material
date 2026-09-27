@@ -465,16 +465,6 @@ export default function MenuStudio({
     else if (seed.openImport) {
       setSource("file");
       setDialog("source");
-    } else if (seed.share) {
-      // "Print your table card": Share, on the live menu, has the card.
-      const live =
-        store.menus.find((m) => m.published && m.isPrimary) ||
-        store.menus.find((m) => m.published);
-      if (live)
-        void act("Opening Share", async () => {
-          if (live.id !== record.id) await store.select(live.id);
-          setDialog("share");
-        });
     } else if (seed.dishId) {
       const dish = (state.dishes as Row[]).find((d) => d.id === seed.dishId);
       if (dish) {

@@ -22,8 +22,6 @@ const {
   savedAttribution,
   forgetAttribution,
 } = await import("../lib/attribution.ts");
-const { launchChecklist, readyDish, showLaunchChecklist, launchSteps } =
-  await import("../lib/launch-checklist.ts");
 
 let checks = 0;
 function ok(value, message) {
@@ -99,74 +97,7 @@ const steps = () =>
   );
 
 try {
-  // 1. "Get your menu live" reads its steps from saved work.
-  same(
-    launchSteps.map((step) => step.id),
-    ["dish", "menu", "tableCard"],
-  );
-  ok(readyDish({ name: "Smash burger", price: 1250 }));
-  for (const [dish, why] of [
-    [{ name: "Untitled dish", price: 1250 }, "a placeholder name"],
-    [{ name: " untitled  DISH ", price: 1250 }, "a placeholder in any case"],
-    [{ name: "New dish", price: 900 }, "another placeholder"],
-    [{ name: "  ", price: 900 }, "a blank name"],
-    [{ name: "Smash burger", price: 0 }, "no price"],
-    [{ name: "Smash burger" }, "a missing price"],
-    [{ name: "Smash burger", price: 1250, sample: 1 }, "the sample dish"],
-    [{ name: "Smash burger", price: 1250, archived_at: 5 }, "an archived dish"],
-  ])
-    ok(!readyDish(dish), `a dish with ${why} isn't named and priced`);
-  const empty = launchChecklist({});
-  same(
-    [empty.done, empty.complete, empty.steps.map((step) => step.done)],
-    [0, false, [false, false, false]],
-  );
-  const partway = launchChecklist({
-    dishes: [
-      { name: "Untitled dish", price: 900 },
-      { name: "Smash burger", price: 1250 },
-    ],
-    // A special published on its own leaves a page with no sections.
-    published: { sections: [] },
-  });
-  same(
-    partway.steps.map((step) => step.done),
-    [true, false, false],
-  );
-  const live = launchChecklist({
-    dishes: [{ name: "Smash burger", price: 1250 }],
-    published: { sections: [{ items: [] }] },
-    tableCard: true,
-  });
-  same([live.done, live.complete], [3, true]);
-  const now = Date.now();
-  ok(
-    showLaunchChecklist({
-      preference: "",
-      complete: false,
-      createdAt: now - day,
-      now,
-    }),
-  );
-  for (const [input, why] of [
-    [{ preference: "dismissed" }, "once dismissed"],
-    [{ preference: "done" }, "once finished before"],
-    [{ complete: true }, "with every step done"],
-    [{ createdAt: now - 31 * day }, "for an account from before"],
-    [{ createdAt: undefined }, "without a signup date"],
-  ])
-    ok(
-      !showLaunchChecklist({
-        preference: "",
-        complete: false,
-        createdAt: now - day,
-        now,
-        ...input,
-      }),
-      `the checklist is hidden ${why}`,
-    );
-
-  // 2. Where visitors come from: a referring site's name and short, plain
+  // 1. Where visitors come from: a referring site's name and short, plain
   // campaign tags, never a full address, a network address or an email.
   same(cleanTag("  Instagram \n"), "instagram");
   same(cleanTag("Spring\u0000 Menu"), "spring menu");
@@ -229,7 +160,7 @@ try {
   same(signupSource({ referrer: "google.com" }).name, "google.com");
   same(signupSource({}).via, "direct");
 
-  // 3. In the browser: the first page with a source is kept until signup,
+  // 2. In the browser: the first page with a source is kept until signup,
   // for up to 30 days; guest menus and staff links are never a source.
   const stored = new Map();
   let storageBlocked = false;
@@ -286,7 +217,7 @@ try {
   storageBlocked = false;
   stored.clear();
 
-  // 4. Funnel steps before signup: counted once per browser through a hash
+  // 3. Funnel steps before signup: counted once per browser through a hash
   // of a random ID, with no account, network address or email.
   let pending = [],
     sent = [],
@@ -377,7 +308,7 @@ try {
     1,
   );
 
-  // 5. The route itself: a known step and a random ID, same-site only, and
+  // 4. The route itself: a known step and a random ID, same-site only, and
   // a per-network allowance.
   const fresh = () => crypto.randomUUID();
   const step = (body, status, options = {}) =>
@@ -408,7 +339,7 @@ try {
   await step({ step: "home", visitor: fresh() }, 429, { ip: "192.0.2.77" });
   await step({ step: "home", visitor: fresh() }, 202, { ip: "192.0.2.78" });
 
-  // 6. At signup: the browser's source, checked again and capped.
+  // 5. At signup: the browser's source, checked again and capped.
   const tagged = await signup(
     "tagged@example.test",
     "Tagged Diner",
@@ -469,7 +400,7 @@ try {
   });
   same((await eventsOf(tagged.rid, "signup_source")).length, 1);
 
-  // 7. The Pro waitlist remembers the feature that opened Plans, once.
+  // 6. The Pro waitlist remembers the feature that opened Plans, once.
   // Older pages send no body at all.
   const join = (cookie, body) =>
     expect("plan-waitlist", 200, {
@@ -498,16 +429,12 @@ try {
   }
   await expect("plan-waitlist", 401, { body: { feature: "menus" } });
 
-  // 8. Menu exports, "See Pro" clicks and the checklist's table card.
+  // 7. Menu exports and "See Pro" clicks.
   const owner = { cookie: tagged.cookie, ip: "192.0.2.10" };
-  same((await expect("launch-checklist", 200, owner)).json, {
-    tableCard: false,
-  });
   await expect("events", 200, {
     ...owner,
     body: { kind: "menu_exported", format: "pdf" },
   });
-  same((await expect("launch-checklist", 200, owner)).json.tableCard, false);
   for (const body of [
     { kind: "menu_exported" },
     { kind: "menu_exported", format: "poster" },
@@ -522,17 +449,10 @@ try {
   same((await eventsOf(tagged.rid, "upgrade_requested")).map(detailsOf), [
     { feature: "menus" },
   ]);
-  await expect("launch-checklist", 401);
-  // From Share in the browser: the event, and a signal open screens hear.
+  // From Share in the browser.
   browserCookie = tagged.cookie;
-  const heard = [];
-  window.addEventListener("menu-material:menu-exported", (e) =>
-    heard.push(e.detail.format),
-  );
   client.recordMenuExport("table_card");
   await settle();
-  same(heard, ["table_card"]);
-  same((await expect("launch-checklist", 200, owner)).json.tableCard, true);
   same(
     (await eventsOf(tagged.rid, "menu_exported")).map(
       (row) => detailsOf(row).format,
@@ -545,22 +465,14 @@ try {
     body: { kind: "menu_exported", format: "qr_image" },
   });
   same(
-    (await expect("launch-checklist", 200, { cookie: other.cookie })).json
-      .tableCard,
-    true,
-    "a saved QR image counts too",
-  );
-  same(
-    (
-      await expect("launch-checklist", 200, {
-        cookie: waitlisters[0].cookie,
-      })
-    ).json.tableCard,
-    false,
+    (await eventsOf(other.rid, "menu_exported")).map(
+      (row) => detailsOf(row).format,
+    ),
+    ["qr_image"],
     "each restaurant has its own",
   );
 
-  // 9. Administration's launch funnel, for the last 7 and 30 days. Earlier
+  // 8. Administration's launch funnel, for the last 7 and 30 days. Earlier
   // activity above is months older by now.
   const setup = await expect("auth/bootstrap", 200, {
     body: {
@@ -709,7 +621,7 @@ try {
     ["campaign", "direct"],
   );
 
-  // 10. Steps from before signup are kept 90 days; sources stay with the
+  // 9. Steps from before signup are kept 90 days; sources stay with the
   // account.
   await housekeeping();
   same((await steps()).map((row) => detailsOf(row).step).sort(), [
@@ -723,7 +635,7 @@ try {
   same((await eventsOf(tagged.rid, "signup_source")).length, 1);
 
   console.log(
-    `PASS: ${checks} launch funnel checks: the "Get your menu live" steps and when the checklist shows, referrer and campaign tags cleaned in the browser and again at signup, steps counted once per browser through a hashed ID (not for crawlers), the route's limits, waitlist features, menu exports and See Pro clicks, the 7- and 30-day admin report (first exports and publications, sources, Pro features, deleted accounts) and 90-day pruning.`,
+    `PASS: ${checks} launch funnel checks: referrer and campaign tags cleaned in the browser and again at signup, steps counted once per browser through a hashed ID (not for crawlers), the route's limits, waitlist features, menu exports and See Pro clicks, the 7- and 30-day admin report (first exports and publications, sources, Pro features, deleted accounts) and 90-day pruning.`,
   );
 } finally {
   rmSync(root, { recursive: true, force: true });
