@@ -23,6 +23,7 @@ const { handle } = await import("../lib/server/api.ts");
 const { caller, wideCaller } = await import("../lib/server/safeguards.ts");
 const { all, bucket, digest, one, run, signedInBefore } =
   await import("../lib/server/core.ts");
+const { grantHeldImages } = await import("../lib/server/free-grants.ts");
 const { validateImageDimensions } =
   await import("../lib/server/image-validation.ts");
 const { resolveMenuAddress } = await import("../lib/server/menu-address.ts");
@@ -1503,6 +1504,14 @@ try {
       0,
       table,
     );
+  // Only a one-way hash of the email stays, so its free images aren't
+  // granted again (tests/plans.mjs).
+  const freeGrantKept = (email) =>
+    one(
+      "SELECT 1 AS kept FROM free_grant_emails WHERE hash=?",
+      digest(`free-grant:${email}`),
+    );
+  assert(await freeGrantKept("free@example.test"));
   await expect("dishes", 401, {
     body: { name: "Soup", description: "Tomato soup" },
     ...freeOpts,
@@ -1599,6 +1608,7 @@ try {
     await one("SELECT 1 FROM trusted_devices WHERE user_id=?", joeUser),
     null,
   );
+  assert(await freeGrantKept("joe@example.test"));
   assert.equal(
     await one("SELECT * FROM billing_accounts WHERE restaurant_id=?", joeRid),
     null,
@@ -1613,8 +1623,42 @@ try {
   );
   checks++;
 
+  // 22. An administrator changing an account's images decides them: free
+  // images it was waiting for (lib/server/free-grants.ts) aren't added later,
+  // and the note about them goes. Saving other controls keeps the wait.
+  process.env.FREE_SIGNUP_GRANTS_PER_DAY = "0";
+  const waiter = await signup(
+    "waiter@example.test",
+    "Wait Kitchen",
+    "192.0.2.150",
+  );
+  const waiterOpts = { cookie: waiter.cookie, ip: "192.0.2.150" };
+  const waiterState = (await expect("state", 200, waiterOpts)).json;
+  assert.deepEqual(waiterState.freeImages, {
+    status: "held",
+    images: 5,
+    days: null,
+  });
+  const controls = (allowance) => ({
+    body: { id: waiterState.restaurant.id, allowance, paused: false },
+    cookie: adminCookie,
+  });
+  await expect("admin/restaurant", 200, controls(0));
+  assert.equal(
+    (await expect("state", 200, waiterOpts)).json.freeImages.status,
+    "held",
+  );
+  await expect("admin/restaurant", 200, controls(3));
+  delete process.env.FREE_SIGNUP_GRANTS_PER_DAY;
+  offset += 2 * 60000;
+  await grantHeldImages();
+  const decided = (await expect("state", 200, waiterOpts)).json;
+  assert.equal(decided.remaining, 3);
+  assert.equal(decided.freeImages, null);
+  checks += 2;
+
   console.log(
-    `PASS: ${checks} account security checks: per-network limits on the IPv6 /64 (and /48 for signups) with no site-wide lockout, a per-account sign-in slowdown that states no wait and that browsers which signed in before skip, versioned password hashes, sliding sessions, revocable reset and setup links, the Pro waitlist, once-only free images, ID validation, lenient saved looks, staff link scope and limits, WebP and AVIF uploads, transparent logos, cacheable public images, admin takedown, menu-address squatting, signup time zones, account deletion and administrator account deletion.`,
+    `PASS: ${checks} account security checks: per-network limits on the IPv6 /64 (and /48 for signups) with no site-wide lockout, a per-account sign-in slowdown that states no wait and that browsers which signed in before skip, versioned password hashes, sliding sessions, revocable reset and setup links, the Pro waitlist, once-only free images (and photos kept while an image uses them), ID validation, lenient saved looks, staff link scope and limits, WebP and AVIF uploads, transparent logos, cacheable public images, admin takedown, menu-address squatting, signup time zones, account deletion (keeping only a hash of the email, against a second free grant), administrator account deletion and administrators deciding held free images.`,
   );
 } finally {
   rmSync(root, { recursive: true, force: true });

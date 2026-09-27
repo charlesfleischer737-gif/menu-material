@@ -322,8 +322,9 @@ export async function admin(req: Request) {
  * Delete an owner's account: every row that belongs to their restaurant, its
  * stored files (private and public copies), their sessions, signed-in
  * devices and the user. AI spend rows stay for budget and invoice
- * reconciliation; they hold no personal details. The owner and
- * administrators share these rules.
+ * reconciliation; they hold no personal details. A one-way hash of the email
+ * also stays, only so the free images aren't granted to it twice. The owner
+ * and administrators share these rules.
  */
 export async function deleteAccount(u: Row, r: Row) {
   assert(
@@ -374,6 +375,7 @@ export async function deleteAccount(u: Row, r: Row) {
     db().prepare(`DELETE FROM ${table} WHERE restaurant_id=?`).bind(rid);
   const assetsOf = "SELECT id FROM assets WHERE restaurant_id=?",
     jobsOf = "SELECT id FROM jobs WHERE restaurant_id=?";
+  const { rememberFreeGrant } = await import("./free-grants");
   // Children before parents, in one transaction.
   await db().batch([
     db()
@@ -414,6 +416,7 @@ export async function deleteAccount(u: Row, r: Row) {
     db().prepare("DELETE FROM restaurants WHERE id=?").bind(rid),
     db().prepare("DELETE FROM sessions WHERE user_id=?").bind(u.id),
     db().prepare("DELETE FROM trusted_devices WHERE user_id=?").bind(u.id),
+    rememberFreeGrant(u.email, r),
     db().prepare("DELETE FROM invites WHERE email=?").bind(u.email),
     db().prepare("DELETE FROM launch_requests WHERE email=?").bind(u.email),
     db().prepare("DELETE FROM users WHERE id=?").bind(u.id),

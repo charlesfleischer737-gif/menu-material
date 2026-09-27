@@ -949,3 +949,15 @@ export async function alertMenuReport(address: string, reason: string) {
     now() - 86400000,
   );
 }
+
+/**
+ * Tell the team, once a UTC day, that new accounts' free images are being
+ * held because the day's grants are used up (lib/server/free-grants.ts).
+ */
+export async function alertFreeGrantsUsedUp(cap: number) {
+  await raiseAlert(
+    "free-signup-grants",
+    `Today's ${cap} free-image grants for new accounts are used up. New accounts still open; their free images wait and are granted oldest first as later days allow. If these signups look genuine, raise FREE_SIGNUP_GRANTS_PER_DAY.`,
+    startOfDay(),
+  );
+}

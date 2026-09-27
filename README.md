@@ -73,7 +73,7 @@ Administrator controls are at the bottom of the workspace. Administrators can cr
 
 **Sign-in limits.** Each network gets 10 sign-in attempts per email every 15 minutes. After 20 attempts for one email from anywhere, further ones wait longer and longer, and the message doesn't say how long. A browser that has signed in to the account before carries a device cookie (a year, sent only to `/api/auth`, replaced at each sign-in) and skips that slowdown, so someone who knows an owner's email can't keep them out; its network's 10 attempts still apply. A new device still waits.
 
-**Signup limits.** Each network can open `SIGNUPS_PER_NETWORK_PER_DAY` (default 5) public accounts a day, and each IPv6 /48 `SIGNUPS_PER_WIDE_NETWORK_PER_DAY` (default 8) in all, since one /48 holds 65,536 /64s. Invitations don't count. See [Free and Pro plans](docs/FREE_PRO_PLANS.md).
+**Signup limits.** Each network can open `SIGNUPS_PER_NETWORK_PER_DAY` (default 5) public accounts a day, and each IPv6 /48 `SIGNUPS_PER_WIDE_NETWORK_PER_DAY` (default 8) in all, since one /48 holds 65,536 /64s. Invitations don't count. Site-wide, the first `FREE_SIGNUP_GRANTS_PER_DAY` (default 300) new accounts of a UTC day get their free images at once; later accounts still open, and their images arrive oldest first as later days allow (the owner is told when), with an alert naming the setting. A deleted account leaves a one-way hash of its email, so its free images aren't granted twice. See [Free and Pro plans](docs/FREE_PRO_PLANS.md).
 
 ## One restaurant look
 

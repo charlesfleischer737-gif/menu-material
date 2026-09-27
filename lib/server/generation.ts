@@ -530,6 +530,13 @@ export async function enqueue(
       );
       return raced;
     }
+    // Free images on their way, or already had by this email, are explained
+    // rather than an upgrade offered.
+    if (r.free_grant) {
+      const { freeImagesRefusal } = await import("./free-grants");
+      const refusal = await freeImagesRefusal(r.id);
+      assert(!refusal, 402, refusal);
+    }
   }
   assert(
     job,

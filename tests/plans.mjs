@@ -9,7 +9,10 @@ process.env.MENU_MATERIAL_DATA_DIR = root;
 process.env.OPENAI_API_KEY = "fixture-only";
 process.env.APP_ORIGIN = "https://menu-material.example.test";
 const { handle } = await import("../lib/server/api.ts");
-const { one, run, all, id } = await import("../lib/server/core.ts");
+const { one, run, all, id, digest } = await import("../lib/server/core.ts");
+const { housekeeping } = await import("../lib/server/safeguards.ts");
+const { flushMonitoring } = await import("../lib/server/monitoring.ts");
+const { freeImagesNote, imagesLeft } = await import("../lib/free-images.ts");
 const { retryFailed } = await import("../lib/server/menu-tools.ts");
 const { enqueue } = await import("../lib/server/generation.ts");
 const { env } = await import("../lib/local-runtime.ts");
@@ -835,8 +838,192 @@ try {
     );
   assert.equal(await one("SELECT id FROM restaurants WHERE id=?", rid), null);
   checks += 4;
+
+  // Free images are once per email: a new account with the email of a
+  // deleted one that had them starts without, and is told so. Only a hash
+  // of the email was kept. An invitation still brings its own images.
+  offset += 2 * 86400000; // a new UTC day, for the grants counted below
+  const signupFrom = async (email, ip, extra = {}) => {
+    cookie = "";
+    await call(
+      "auth/signup",
+      { email, password: deletion.password, restaurant: "Grants", ...extra },
+      200,
+      { "cf-connecting-ip": ip },
+    );
+    return call("state");
+  };
+  const returning = await signupFrom("free@example.test", "192.0.2.110");
+  assert.equal(returning.remaining, 0);
+  assert.deepEqual(returning.freeImages, { status: "used", images: 5 });
+  assert(
+    await one(
+      "SELECT 1 FROM free_grant_emails WHERE hash=?",
+      digest("free-grant:free@example.test"),
+    ),
+  );
+  assert.equal(
+    await one(
+      "SELECT 1 FROM free_grant_emails WHERE hash LIKE '%free@example.test%'",
+    ),
+    null,
+  );
+  const returningDish = await call("dishes", {
+    name: "Soup",
+    description: "Tomato soup",
+    confirmed: true,
+  });
+  const noImages = (restaurantId, dishId, message) =>
+    one("SELECT * FROM restaurants WHERE id=?", restaurantId).then((row) =>
+      assert.rejects(
+        enqueue(row, { dishId, requestKey: id(), revision: "grants" }),
+        (e) => e.status === 402 && e.message === message,
+      ),
+    );
+  await noImages(
+    returning.restaurant.id,
+    returningDish.id,
+    "This email already had its 5 free images. Your work is saved; see Plans for more images.",
+  );
+  const invitation = "invitation-for-a-returning-owner-0123456789";
+  await run(
+    "INSERT INTO invites (hash,email,role,allowance,expires_at,created_at) VALUES (?,?,'owner',3,?,?)",
+    digest(invitation),
+    "abandoned@example.test",
+    Date.now() + 86400000,
+    Date.now(),
+  );
+  const invited = await signupFrom("abandoned@example.test", "192.0.2.111", {
+    invite: invitation,
+  });
+  assert.equal(invited.remaining, 3);
+  assert.equal(invited.freeImages, null);
+  checks += 7;
+
+  // At most FREE_SIGNUP_GRANTS_PER_DAY new accounts a day get their free
+  // images at once. Later ones open anyway; their images are held and the
+  // owner is told when they arrive, by their place in line, rather than "0
+  // left". The team hears once a day which setting to raise.
+  env.FREE_SIGNUP_GRANTS_PER_DAY = "2";
+  const granted = [],
+    held = [],
+    warnings = [],
+    warn = console.warn;
+  for (let n = 0; n < 2; n++)
+    granted.push(
+      await signupFrom(`granted${n}@example.test`, `192.0.2.12${n}`),
+    );
+  console.warn = (line) => warnings.push(String(line));
+  for (let n = 0; n < 3; n++)
+    held.push(await signupFrom(`held${n}@example.test`, `192.0.2.13${n}`));
+  await flushMonitoring();
+  console.warn = warn;
+  const grantAlerts = warnings
+    .map((line) => {
+      try {
+        return JSON.parse(line);
+      } catch {
+        return {};
+      }
+    })
+    .filter((l) => l.type === "alert" && l.condition === "free-signup-grants");
+  assert.equal(grantAlerts.length, 1, "one alert a day");
+  assert.match(grantAlerts[0].message, /raise FREE_SIGNUP_GRANTS_PER_DAY\.$/);
+  assert.deepEqual(
+    [...granted, ...held].map((s) => [s.remaining, s.freeImages]),
+    [
+      [5, null],
+      [5, null],
+      [0, { status: "held", images: 5, days: 1 }],
+      [0, { status: "held", images: 5, days: 1 }],
+      [0, { status: "held", images: 5, days: 2 }],
+    ],
+  );
+  // What the balance shows instead of "0 left" (lib/free-images.ts).
+  assert.deepEqual(
+    [held[0], held[2], returning].map((s) => freeImagesNote(s.freeImages)),
+    [
+      "Your 5 free images arrive within a day.",
+      "Your 5 free images arrive within 2 days.",
+      "This email already had its 5 free images.",
+    ],
+  );
+  assert.deepEqual(
+    [imagesLeft(0, held[0].freeImages), imagesLeft(0, returning.freeImages)],
+    ["5 images on the way", "0 images left"],
+  );
+  const lastInLine = held[2].restaurant.id,
+    heldDish = await call("dishes", {
+      name: "Stew",
+      description: "Beef stew",
+      confirmed: true,
+    });
+  await noImages(
+    lastInLine,
+    heldDish.id,
+    "Your 5 free images arrive within 2 days. Your work is saved, so you can create this image then.",
+  );
+  // The next day's grants go to them oldest first, from the hourly
+  // housekeeping or when a waiting owner opens the workspace. A newcomer
+  // waits behind them even while the day has grants left.
+  offset += 86400000;
+  await housekeeping();
+  const heldNow = async () =>
+    (
+      await all(
+        `SELECT allowance,free_grant FROM restaurants WHERE id IN (${held.map(() => "?").join(",")}) ORDER BY created_at`,
+        ...held.map((s) => s.restaurant.id),
+      )
+    ).map((row) => [row.allowance, row.free_grant]);
+  assert.deepEqual(await heldNow(), [
+    [5, null],
+    [5, null],
+    [0, "held"],
+  ]);
+  env.FREE_SIGNUP_GRANTS_PER_DAY = "3";
+  const latecomer = await signupFrom("latecomer@example.test", "192.0.2.135");
+  assert.deepEqual(latecomer.freeImages, {
+    status: "held",
+    images: 5,
+    days: 1,
+  });
+  // A minute on, the latecomer's workspace grants the day's third to the
+  // last of the three; theirs arrives the next day.
+  offset += 61000;
+  const stillWaiting = await call("state");
+  assert.deepEqual(await heldNow(), [
+    [5, null],
+    [5, null],
+    [5, null],
+  ]);
+  assert.equal(stillWaiting.remaining, 0);
+  assert.deepEqual(stillWaiting.freeImages, latecomer.freeImages);
+  offset += 86400000;
+  const arrived = await call("state");
+  assert.equal(arrived.restaurant.id, latecomer.restaurant.id);
+  assert.equal(arrived.remaining, 5);
+  assert.equal(arrived.freeImages, null);
+  // An account deleted while its images were still held never had them, so
+  // it leaves no hash. At 0, every new account's images wait.
+  env.FREE_SIGNUP_GRANTS_PER_DAY = "0";
+  const waiting = await signupFrom("waiting@example.test", "192.0.2.140");
+  assert.deepEqual(waiting.freeImages, {
+    status: "held",
+    images: 5,
+    days: null,
+  });
+  await call("account/delete", deletion);
+  assert.equal(
+    await one(
+      "SELECT 1 FROM free_grant_emails WHERE hash=?",
+      digest("free-grant:waiting@example.test"),
+    ),
+    null,
+  );
+  delete env.FREE_SIGNUP_GRANTS_PER_DAY;
+  checks += 11;
   console.log(
-    `PASS: ${checks} plan checks: open signup, five free credits, atomic monthly quota, payment verification (coupons and credit count, $0 lines don't), signatures, duplicate/out-of-order webhooks, renewals, renewals and outages caught by the scheduled check without webhooks, billing readiness, cancellation, checkout reuse, checkout terms, account deletion around billing, tenant isolation and loss-safe guest photo handoff. Stripe and AI are fixtures; no payments were made.`,
+    `PASS: ${checks} plan checks: open signup, five free credits once per email and for a daily number of new accounts (later ones held, told when, then granted), atomic monthly quota, payment verification (coupons and credit count, $0 lines don't), signatures, duplicate/out-of-order webhooks, renewals, renewals and outages caught by the scheduled check without webhooks, billing readiness, cancellation, checkout reuse, checkout terms, account deletion around billing, tenant isolation and loss-safe guest photo handoff. Stripe and AI are fixtures; no payments were made.`,
   );
 } finally {
   Date.now = realNow;

@@ -22,6 +22,7 @@ import {
   saveVariants,
 } from "./photo-variants";
 import { analyzeGuestPhoto } from "./photo-analysis";
+import { freeImagesStatus, signupFreeImages } from "./free-grants";
 import { checkMenuSharing, menuLinkOrigin } from "./menu-sharing";
 import {
   changeMenuAddress,
@@ -308,6 +309,11 @@ async function signup(req: Request, b: Row) {
     "An administrator already exists. Ask them for an invitation.",
   );
   if (!invited) await newAccountLimit(req);
+  // Invitations keep their allowance. Otherwise there are no free images for
+  // an email that already had them, and they're held past today's grants.
+  const free = invited
+    ? { allowance: invite.allowance, freeGrant: null }
+    : await signupFreeImages(email);
   const userId = id(),
     rid = id(),
     restaurant = z
@@ -336,14 +342,15 @@ async function signup(req: Request, b: Row) {
       ),
     db()
       .prepare(
-        "INSERT INTO restaurants (id,user_id,name,slug,allowance,created_at) SELECT ?,?,?,?,?,? WHERE EXISTS (SELECT 1 FROM users WHERE id=?)",
+        "INSERT INTO restaurants (id,user_id,name,slug,allowance,free_grant,created_at) SELECT ?,?,?,?,?,?,? WHERE EXISTS (SELECT 1 FROM users WHERE id=?)",
       )
       .bind(
         rid,
         userId,
         restaurant,
         slugify(restaurant) + "-" + rid.slice(0, 8),
-        invite.allowance,
+        free.allowance,
+        free.freeGrant,
         t,
         userId,
       ),
@@ -984,6 +991,8 @@ async function route(req: Request) {
           r.id,
         ),
       );
+      // First, as held free images may be granted now.
+      const freeImages = r.free_grant ? await freeImagesStatus(r.id) : null;
       const billing = await billingSummary(r.id),
         saved = storedStyle(r.style);
       return response({
@@ -1000,6 +1009,8 @@ async function route(req: Request) {
           published: r.published ? JSON.parse(r.published) : null,
         },
         remaining: await remaining(r.id),
+        // Free images held back or already had, for the note by the balance.
+        freeImages,
         billing,
         aiConnected: !!config("OPENAI_API_KEY"),
         local: config("LOCAL_DEVELOPMENT") === "true",
@@ -1257,9 +1268,18 @@ async function route(req: Request) {
           b.proUntil === undefined || b.proUntil === null
             ? b.proUntil
             : z.number().int().min(0).max(8.64e15).parse(b.proUntil);
+        const allowance = z
+          .number()
+          .int()
+          .min(0)
+          .max(100000)
+          .parse(b.allowance);
+        // Changing the images decides them: free images still held or
+        // already had (free-grants.ts) are no longer added or mentioned.
         await run(
-          "UPDATE restaurants SET allowance=?,paused=?,daily_budget_cents=COALESCE(?,daily_budget_cents),pro_until=CASE WHEN ?=1 THEN ? ELSE pro_until END WHERE id=?",
-          z.number().int().min(0).max(100000).parse(b.allowance),
+          "UPDATE restaurants SET free_grant=CASE WHEN allowance=? THEN free_grant END,allowance=?,paused=?,daily_budget_cents=COALESCE(?,daily_budget_cents),pro_until=CASE WHEN ?=1 THEN ? ELSE pro_until END WHERE id=?",
+          allowance,
+          allowance,
           b.paused ? 1 : 0,
           b.dailyBudgetCents === undefined
             ? null

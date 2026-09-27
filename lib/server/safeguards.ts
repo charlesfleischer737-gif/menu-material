@@ -560,4 +560,7 @@ export async function housekeeping() {
     ]);
     await releaseStorage(row.id);
   }
+  // Free images new accounts wait for, as today's grants allow.
+  const { grantHeldImages } = await import("./free-grants");
+  await grantHeldImages();
 }

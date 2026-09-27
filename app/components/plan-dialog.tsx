@@ -9,6 +9,7 @@ import {
 } from "@/components/ui/dialog";
 import { api, type Row } from "@/lib/client";
 import PlanCards from "./plan-cards";
+import { freeImagesNote } from "@/lib/free-images";
 import { useSiteContact } from "./site-contact";
 import {
   FREE_SIGNUP_IMAGES,
@@ -59,6 +60,8 @@ export default function PlanDialog({
   const { termsUrl, refundPolicyUrl } = useSiteContact();
   const allowance = billing.allowance ?? FREE_SIGNUP_IMAGES,
     left = billing.remaining ?? state.remaining,
+    // Free images on their way, or already had by this email, not "0 left".
+    freeNote = left > 0 ? "" : freeImagesNote(state.freeImages),
     features: Row = billing.features || {},
     offered = feature && features.unlocked === false ? feature : null;
   useEffect(() => {
@@ -190,10 +193,11 @@ export default function PlanDialog({
             {offered
               ? `${proFeatures[offered].detail} Part of Pro${billing.enabled ? ` for ${PRO_PRICE_LABEL}/month` : ", coming soon"}.`
               : billing.plan === "pro" || billing.enabled
-                ? `${left} of ${allowance} images left${billing.plan === "pro" ? " this billing period" : " on the free plan"}.`
+                ? freeNote ||
+                  `${left} of ${allowance} images left${billing.plan === "pro" ? " this billing period" : " on the free plan"}.`
                 : left > 0
                   ? `${left} of ${allowance} free images left. Pro is coming soon.`
-                  : `You’ve used your ${allowance} free images. Pro is coming soon.`}
+                  : `${freeNote || `You’ve used your ${allowance} free images.`} Pro is coming soon.`}
           </DialogDescription>
         </DialogHeader>
         <div className="pw-plans-body">
