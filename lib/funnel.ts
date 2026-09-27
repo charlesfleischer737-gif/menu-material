@@ -12,5 +12,13 @@ export type VisitorStep = (typeof visitorSteps)[number];
 export const menuExportFormats = ["pdf", "table_card", "qr_image"] as const;
 export type MenuExportFormat = (typeof menuExportFormats)[number];
 
+/** The exports that put a menu's QR code on a table. */
+export const tableCardFormats: readonly MenuExportFormat[] = [
+  "table_card",
+  "qr_image",
+];
+export const isTableCard = (format: unknown) =>
+  tableCardFormats.includes(format as MenuExportFormat);
+
 /** Sent on the window when a menu export starts, so open screens can follow. */
 export const MENU_EXPORTED = "menu-material:menu-exported";

@@ -10,6 +10,7 @@ import {
   useState,
   type CSSProperties,
   type DragEvent,
+  type ReactNode,
 } from "react";
 import {
   Camera,
@@ -121,6 +122,7 @@ export default function PhotoStudio({
   seed,
   onSeedUsed,
   onDestination,
+  banner,
 }: {
   active?: boolean;
   state: Row;
@@ -133,6 +135,8 @@ export default function PhotoStudio({
     photoId: string,
     extra?: Row,
   ) => void;
+  /** A row under the page title, such as a new owner's checklist. */
+  banner?: ReactNode;
 }) {
   const draftStore = useCreationDraft(
       "studio",
@@ -1126,6 +1130,7 @@ export default function PhotoStudio({
             New photo
           </button>
         </div>
+        {banner}
       </header>
       <DraftRecovery store={draftStore} />
       {/* Filled when the photo being made is ready or stops. */}

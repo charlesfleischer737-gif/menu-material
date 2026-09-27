@@ -1,3 +1,146 @@
+/* "Get your menu live": a new owner's checklist, a row of Photo Studio's
+   header in place of the greeting. One slim line on a laptop, so the
+   studio's controls keep their place; the steps get their own line on
+   narrower screens and stack on a phone. */
+.st-header:has(> .lc) .st-header-copy p {
+  display: none;
+}
+.lc {
+  display: grid;
+  flex: 1 1 100%;
+  grid-template-columns: minmax(0, 1fr) auto;
+  grid-template-areas:
+    "heading dismiss"
+    "steps steps";
+  align-items: center;
+  gap: 2px 16px;
+  padding: 4px 4px 4px 16px;
+  border: 1px solid var(--workspace-line);
+  border-radius: var(--radius-card);
+  background: var(--workspace-surface);
+  color: var(--workspace-ink);
+}
+@media (min-width: 1280px) {
+  .lc {
+    grid-template-columns: auto minmax(0, 1fr) auto;
+    grid-template-areas: "heading steps dismiss";
+  }
+}
+.lc-heading {
+  grid-area: heading;
+  line-height: 1.25;
+}
+.cx-app .lc-heading h2 {
+  font-size: var(--text-callout);
+  line-height: 1.25;
+  font-weight: 600;
+  letter-spacing: 0;
+}
+.lc-heading p {
+  color: var(--workspace-muted);
+  font-size: var(--text-caption);
+  line-height: 1.25;
+}
+.lc-steps {
+  display: flex;
+  grid-area: steps;
+  flex-wrap: wrap;
+  gap: 0 4px;
+  min-width: 0;
+}
+.lc-steps li {
+  min-width: 0;
+}
+.lc-step {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  width: 100%;
+  min-height: 36px;
+  padding: 4px 8px;
+  border-radius: var(--radius-pill);
+  font-size: var(--text-subhead);
+  font-weight: 500;
+  line-height: 1.3;
+  text-align: left;
+  transition: background-color var(--duration-fast) var(--ease);
+}
+.lc-step:hover {
+  background: var(--fill);
+}
+.lc-mark {
+  display: grid;
+  flex: 0 0 auto;
+  place-items: center;
+  width: 22px;
+  height: 22px;
+  border: 1.5px solid var(--workspace-line);
+  border-radius: 50%;
+  color: var(--workspace-muted);
+  font-size: var(--text-caption);
+  font-weight: 600;
+}
+.lc-label {
+  min-width: 0;
+}
+.lc-go {
+  flex: 0 0 auto;
+  margin-left: auto;
+  color: var(--workspace-control);
+}
+.lc [data-state="next"] .lc-mark {
+  border-color: var(--workspace-action);
+  background: var(--workspace-action);
+  color: var(--on-dark);
+}
+.lc [data-state="done"] .lc-mark {
+  border-color: var(--workspace-success);
+  background: var(--workspace-success);
+  color: var(--on-dark);
+}
+.lc [data-state="done"] .lc-label {
+  color: var(--workspace-muted);
+  font-weight: 400;
+}
+.lc-dismiss {
+  display: grid;
+  grid-area: dismiss;
+  place-items: center;
+  width: 36px;
+  height: 36px;
+  border-radius: 50%;
+  color: var(--workspace-muted);
+  transition: background-color var(--duration-fast) var(--ease);
+}
+.lc-dismiss:hover {
+  background: var(--fill);
+  color: var(--workspace-ink);
+}
+@media (max-width: 760px) {
+  .lc {
+    padding: 6px 6px 8px 16px;
+  }
+  .cx-app .lc-heading h2 {
+    font-size: var(--text-body);
+  }
+  .lc-heading p {
+    font-size: var(--text-footnote);
+  }
+  .lc-steps {
+    flex-direction: column;
+  }
+  .lc-step {
+    min-height: 44px;
+    padding-inline: 0 8px;
+    border-radius: var(--radius-control);
+  }
+  .lc-dismiss {
+    align-self: start;
+    width: 44px;
+    height: 44px;
+  }
+}
+
 /* Administration → Launch funnel. */
 .launch-funnel-controls {
   display: flex;
