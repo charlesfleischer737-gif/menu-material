@@ -188,6 +188,31 @@ try {
     "price on the next line",
   );
   assert.equal(findDish(capitals, "CAKE").description, "V");
+  // A name, then its description and price on the next line.
+  const described = pasted(
+    "Mains\nRoast Chicken\npotato purée, charred leeks, jus 26\nHanger Steak\nchimichurri, fries 32\nSoup of the Day\nwith bread MP\nFish tacos 14",
+  );
+  assert.deepEqual(shape(described), [
+    ["Mains", ["Roast Chicken", "Hanger Steak", "Soup of the Day", "Fish tacos"]],
+  ]);
+  const chicken = findDish(described, "Roast Chicken");
+  assert.deepEqual(
+    [chicken.description, chicken.price, chicken.sourceUncertain],
+    ["potato purée, charred leeks, jus", 2600, ["price"]],
+    "the description and price join the dish, and the price is checked",
+  );
+  assert.equal(findDish(described, "Hanger Steak").price, 3200);
+  const soup = findDish(described, "Soup of the Day");
+  assert.deepEqual(
+    [soup.description, soup.priceMode, soup.priceLabel],
+    ["with bread", "label", "Market price"],
+  );
+  assert.deepEqual(findDish(described, "Fish tacos").sourceUncertain, []);
+  // A dish name starting in lowercase is checked, never taken as certain.
+  assert.deepEqual(
+    findDish(pasted("Mains\nBurger 14\nfries 5"), "fries").sourceUncertain,
+    ["name"],
+  );
   const wines = pasted(
     "RED WINE\nChateau Margaux 2015\nBordeaux, France 450\nOpus One 2018 520\nEst. 1998",
   );
@@ -1047,6 +1072,68 @@ try {
     "contains-sesame",
     "Spicy",
   ]);
+
+  // A dish made from a photo has no price; linking a pasted menu to it gives
+  // it the menu's price and description, so later edits reach that menu.
+  const photographed = await call("dishes", {
+    name: "Margherita",
+    confirmed: true,
+  });
+  const pastedPizza = newMenuEntry({
+    name: "Margherita",
+    description: "Tomato, mozzarella",
+    price: 1400,
+  });
+  const pizzaMenu = await menuWith("Pizza", [pastedPizza], "Pizza");
+  const { links: pizzaLinks } = await call(`menus/${pizzaMenu.id}/library`, {
+    entries: [
+      {
+        id: pastedPizza.id,
+        name: "Margherita",
+        description: "Tomato, mozzarella",
+        category: "Pizza",
+        price: 1400,
+        available: true,
+        dietary: [],
+      },
+    ],
+  });
+  assert.equal(pizzaLinks[0].dishId, photographed.id);
+  const pizzaDish = await one(
+    "SELECT price,description FROM dishes WHERE id=?",
+    photographed.id,
+  );
+  assert.deepEqual(
+    [pizzaDish.price, pizzaDish.description],
+    [1400, "Tomato, mozzarella"],
+  );
+  const pizzaLinked = await call(
+    `menus/${pizzaMenu.id}`,
+    {
+      revision: pizzaMenu.revision,
+      draft: withLibraryLinks(pizzaMenu.draft, pizzaLinks),
+    },
+    200,
+    "PUT",
+  );
+  await call(`menus/${pizzaMenu.id}/publish`, {
+    revision: pizzaLinked.revision,
+  });
+  const repriced = await call(`dishes/${photographed.id}`, {
+    name: "Margherita",
+    description: "Tomato, mozzarella",
+    category: "Pizza",
+    price: 15,
+    confirmed: true,
+  });
+  assert.deepEqual(
+    repriced.menus.map((m) => [m.id, m.live]),
+    [[pizzaMenu.id, true]],
+  );
+  assert.equal(
+    (await call(`menus/${pizzaMenu.id}`)).published.sections[0].items[0].price,
+    1500,
+  );
 
   // A photo the owner reported as inaccurate never joins a menu on its own,
   // and a menu showing one gets a warning before publishing.
