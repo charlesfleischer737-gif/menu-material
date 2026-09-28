@@ -155,6 +155,6 @@ export async function checkStudioGeneration(
   assert(
     !blocked,
     423,
-    "This look is temporarily unavailable. Choose another look; your original photo is safe.",
+    "This look is temporarily unavailable. Choose another look.",
   );
 }

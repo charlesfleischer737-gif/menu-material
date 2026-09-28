@@ -752,7 +752,7 @@ export default function PhotoStudio({
   function requireCreation() {
     if (!state.aiConnected)
       throw Error(
-        "Image creation is not connected yet. Your photo and choices are saved. You can use your original photo while the connection is set up.",
+        "Image creation is not connected yet. Try again once the connection is set up.",
       );
   }
   async function generate(parentId?: string) {
@@ -896,7 +896,7 @@ export default function PhotoStudio({
       updates.some((update) => update.status === "rejected")
         ? "Your new version is saved. Some page details couldn’t refresh; reopen this dish to see its saved versions."
         : stillOpen
-          ? "Saved as a new version. Your original and earlier photos are still here."
+          ? "Saved as a new version."
           : "Your new version is saved in this dish’s history.",
     );
   }
@@ -1281,9 +1281,9 @@ export default function PhotoStudio({
                   </h2>
                   <p className="st-result-copy">
                     {cancelled
-                      ? "No images were used. Your photo and choices are saved."
+                      ? "No images were used."
                       : failureText ||
-                        "You don’t need to do anything else. Your original and choices are saved."}
+                        "Try again, or change your photo settings."}
                   </p>
                 </div>
                 <div className="st-action st-action-inline">

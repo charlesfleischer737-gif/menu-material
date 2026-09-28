@@ -16,7 +16,6 @@ import {
   Images,
   Lightbulb,
   LoaderCircle,
-  ShieldCheck,
   SlidersHorizontal,
   Sparkles,
   Undo2,
@@ -837,8 +836,7 @@ export function StudioWorkbench({
       {busy || "Create photo"}
     </button>
   );
-  // The one offer for owners without a photo: under the canvas on phones,
-  // under Choose a photo on wider screens. The two choices wrap together.
+  // Secondary ways to start sit below the photo source choices on every screen.
   const noPhoto = (
     <p className="st-no-photo">
       No photo handy?{" "}
@@ -861,18 +859,6 @@ export function StudioWorkbench({
       </span>
     </p>
   );
-  // Under the canvas: what becomes of the photo. A signed-out guest gets no
-  // note; after signup, it waits until the photo can be created.
-  const stageNote = guestOnly
-    ? ""
-    : state.guest
-      ? guestUnavailable || state.remaining <= 0
-        ? ""
-        : "Your photo is saved to your account when you create it."
-      : b.mode === "description"
-        ? "Illustrations are labeled as illustrations."
-        : "Your original photo is always kept.";
-
   const tile = (style: PhotoStyle, index: number) => {
     const reason = suggestionReason(style, context);
     const polish = style.id === "keep";
@@ -1051,33 +1037,49 @@ export function StudioWorkbench({
                   </p>
                 </div>
               ) : (
-                <button
-                  className="st-dropzone"
-                  disabled={!!busy}
-                  aria-describedby="st-dropzone-hint"
-                  onClick={() => upload.current?.click()}
-                >
-                  <span className="st-dropzone-icon" aria-hidden="true">
-                    <ImagePlus size={30} strokeWidth={1.4} />
-                  </span>
-                  <b>
-                    {dragging
-                      ? "Drop to add your photo"
-                      : "Add a photo of your dish"}
-                  </b>
-                  <span id="st-dropzone-hint">
-                    <span className="st-when-pointer">
-                      Drop or paste it here, or click to choose a file.
+                <div className="st-photo-source">
+                  <button
+                    className="st-dropzone"
+                    disabled={!!busy}
+                    aria-describedby="st-dropzone-hint"
+                    onClick={() => upload.current?.click()}
+                  >
+                    <span className="st-dropzone-icon" aria-hidden="true">
+                      <ImagePlus size={30} strokeWidth={1.4} />
                     </span>
-                    <span className="st-when-touch">
-                      Tap to take a photo or choose one.
+                    <b>
+                      {dragging
+                        ? "Drop to add your photo"
+                        : "Add a photo of your dish"}
+                    </b>
+                    <span id="st-dropzone-hint">
+                      <span className="st-when-pointer">
+                        Drop or paste it here, or click to choose a file.
+                      </span>
+                      <span className="st-when-touch">
+                        Tap to take a photo or choose one.
+                      </span>
                     </span>
-                  </span>
-                  <small>
-                    Shoot from above or at a slight angle, with the whole plate
-                    in frame.
-                  </small>
-                </button>
+                    <small>
+                      Shoot from above or at a slight angle, with the whole
+                      plate in frame.
+                    </small>
+                  </button>
+                  {!state.guest && originals.length > 0 && (
+                    <div className="st-source-library">
+                      <span>or</span>
+                      <button
+                        ref={dishesTrigger}
+                        className="st-pill st-pill-wide"
+                        disabled={!!busy}
+                        onClick={() => setDishesOpen(true)}
+                      >
+                        <Images size={18} aria-hidden="true" />
+                        From My Dishes
+                      </button>
+                    </div>
+                  )}
+                </div>
               )}
               {busy && (
                 <div className="st-canvas-busy" role="status">
@@ -1086,32 +1088,20 @@ export function StudioWorkbench({
                 </div>
               )}
             </div>
-            <div className="st-stage-foot">
-              {stageNote && (
-                <span>
-                  <ShieldCheck size={14} aria-hidden="true" />
-                  {stageNote}
-                </span>
-              )}
-              {source && !state.guest && b.mode === "photo" && (
-                <button
-                  className="st-text-button"
-                  disabled={!!busy}
-                  onClick={quickEdit}
-                >
-                  Just crop or brighten
-                </button>
-              )}
-              {!source && b.mode === "photo" && noPhoto}
-              {b.mode === "description" && (
-                <button
-                  className="st-text-button"
-                  onClick={() => update({ mode: "photo" })}
-                >
-                  Use a real photo instead
-                </button>
-              )}
-            </div>
+            {(!source || b.mode === "description") && (
+              <div className="st-stage-foot">
+                {b.mode === "photo" ? (
+                  noPhoto
+                ) : (
+                  <button
+                    className="st-text-button"
+                    onClick={() => update({ mode: "photo" })}
+                  >
+                    Use a real photo instead
+                  </button>
+                )}
+              </div>
+            )}
             {(advice || b.analysisAdvice) && (
               <p className="st-note" role="status">
                 <Lightbulb size={15} aria-hidden="true" />
@@ -1132,37 +1122,6 @@ export function StudioWorkbench({
             )}
           </section>
           <aside className="st-inspector" aria-label="Photo settings">
-            {!source && b.mode === "photo" && (
-              <section
-                className="st-section st-photo-section"
-                aria-labelledby="st-photo-title"
-              >
-                <h2 id="st-photo-title" className="st-section-title">
-                  Photo
-                </h2>
-                <button
-                  className="st-pill st-pill-wide st-photo-pill"
-                  disabled={!!busy}
-                  onClick={() => upload.current?.click()}
-                >
-                  Choose a photo
-                </button>
-                {!state.guest && originals.length > 0 && (
-                  <p className="st-photo-links">
-                    <button
-                      ref={dishesTrigger}
-                      className="st-text-button"
-                      disabled={!!busy}
-                      onClick={() => setDishesOpen(true)}
-                    >
-                      From My Dishes
-                    </button>
-                  </p>
-                )}
-                {noPhoto}
-              </section>
-            )}
-
             <section className="st-section" aria-labelledby="st-style-title">
               <div className="st-section-head">
                 <h2 id="st-style-title" className="st-section-title">
@@ -1483,19 +1442,19 @@ export function StudioWorkbench({
               {b.mode !== "description" &&
                 !b.sample &&
                 (!dish || isPlaceholderDishName(dish.name)) && (
-                // A new photo becomes a dish in My Dishes; its name is what
-                // menus and posts show, so ask for it while it has none.
-                <label className="st-field">
-                  <span>Dish name</span>
-                  <input
-                    className="st-input"
-                    value={b.name || ""}
-                    maxLength={100}
-                    placeholder="What’s this dish called?"
-                    onChange={(event) => update({ name: event.target.value })}
-                  />
-                </label>
-              )}
+                  // A new photo becomes a dish in My Dishes; its name is what
+                  // menus and posts show, so ask for it while it has none.
+                  <label className="st-field">
+                    <span>Dish name</span>
+                    <input
+                      className="st-input"
+                      value={b.name || ""}
+                      maxLength={100}
+                      placeholder="What’s this dish called?"
+                      onChange={(event) => update({ name: event.target.value })}
+                    />
+                  </label>
+                )}
               <textarea
                 className="st-input st-details"
                 aria-labelledby="st-details-title"
