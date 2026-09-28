@@ -24,7 +24,7 @@ export function studioCreationBlock(draft: Draft, availability?: Draft) {
   if (!resolvePhotoLook(draft))
     return "This saved look is unavailable. Choose another look to continue; your photo and custom choices are kept.";
   if (availability?.disabledStyleIds?.includes(draft.look))
-    return "This look is temporarily unavailable. Choose another look; your original photo is safe.";
+    return "This look is temporarily unavailable. Choose another look.";
   return "";
 }
 export const lookControls = [

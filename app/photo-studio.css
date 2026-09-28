@@ -344,19 +344,23 @@
   background: var(--st-fill-hover);
 }
 
-/* Photo */
-.st-studio .st-photo-links {
+/* Photo source choices stay together inside the canvas. */
+.st-photo-source {
+  display: grid;
+  grid-template-rows: minmax(min-content, 1fr) auto;
+  gap: 16px;
+  width: 100%;
+  height: 100%;
+}
+.st-source-library {
   display: flex;
-  flex-wrap: wrap;
   align-items: center;
-  justify-content: center;
-  gap: 2px 8px;
-  margin: 8px 0 0;
+  gap: 16px;
   color: var(--st-muted);
   font-size: var(--text-footnote);
 }
-.st-photo-links .st-text-button {
-  font-size: var(--text-subhead);
+.st-source-library .st-pill {
+  flex: 1;
 }
 /* Without a photo: one sentence offers a description or the sample. Its
    choices are links in the sentence, as tall as its lines, and wrap
@@ -373,21 +377,6 @@
 .st-studio .st-no-photo .st-text-button {
   position: relative;
   min-height: 0;
-}
-.st-inspector .st-no-photo {
-  margin-top: 12px;
-  font-size: var(--text-subhead);
-  text-align: center;
-  text-wrap: balance;
-}
-/* Phones only; wider screens show it under Choose a photo. */
-.st-stage-foot .st-no-photo {
-  display: none;
-}
-/* With nothing to show (a signed-out guest's photo has no note), the space
-   under the canvas closes up. */
-.st-stage-foot:not(:has(> :not(.st-no-photo))) {
-  display: none;
 }
 /* Style */
 :is(.st-studio, .st-sheet, .st-paused, .st-header) .st-subject {
@@ -2285,26 +2274,11 @@ textarea.st-input {
   .st-canvas.has-photo .st-photo {
     max-height: min(56vh, 460px);
   }
-  /* The canvas is the way to add a photo, and the no-photo offer sits right
-     under it; the Photo section keeps only My Dishes, if there is one. */
-  .st-inspector :is(.st-photo-pill, .st-no-photo) {
-    display: none;
+  .st-canvas:has(.st-photo-source) {
+    aspect-ratio: auto;
   }
-  .st-photo-section:not(:has(.st-photo-links)) {
-    display: none;
-  }
-  .st-inspector .st-photo-links {
-    margin-top: 0;
-  }
-  .st-stage-foot:has(> .st-no-photo) {
-    display: flex;
-  }
-  .st-stage-foot .st-no-photo {
-    display: block;
-    flex-basis: 100%;
-  }
-  .st-stage-foot > span + .st-no-photo {
-    margin-top: 6px;
+  .st-photo-source .st-dropzone {
+    min-height: 280px;
   }
   .st-canvas .st-dropzone {
     padding: 20px;
