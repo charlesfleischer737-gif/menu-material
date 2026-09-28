@@ -297,15 +297,6 @@ export default function Auth({
             .
           </p>
         )}
-        <p className="fine">
-          <a href="/privacy" target="_blank" rel="noreferrer">
-            Photo & account privacy
-          </a>{" "}
-          ·{" "}
-          <a href="/guidelines" target="_blank" rel="noreferrer">
-            Usage guidelines
-          </a>
-        </p>
         {mode === "login" && (
           <p className="fine">
             {supportEmail ? (

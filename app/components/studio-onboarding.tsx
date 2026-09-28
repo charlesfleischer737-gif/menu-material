@@ -8,7 +8,7 @@ import {
   type CSSProperties,
   type ReactNode,
 } from "react";
-import { Check, ChevronsLeftRight, Sparkles } from "lucide-react";
+import { ChevronsLeftRight, Sparkles } from "lucide-react";
 import { styleThumbnail, type PhotoStyle } from "@/lib/photo-styles";
 import { creationProgress, typicalWait } from "@/lib/creation-progress";
 import { serverNow } from "@/lib/server-clock";
@@ -174,7 +174,7 @@ export function StudioCreating({
             src={source || style.image}
             alt={
               source
-                ? "Your original photo, saved while your image is created"
+                ? "Your original dish photo"
                 : "Your selected style example"
             }
           />
@@ -209,12 +209,6 @@ export function StudioCreating({
             </div>
           </div>
         </div>
-        <div className="st-stage-foot">
-          <span>
-            <Check size={14} aria-hidden="true" />
-            Your original stays saved. Your result appears here.
-          </span>
-        </div>
       </section>
       <aside className="st-inspector" aria-label="Creating your photo">
         <div className="st-section">
@@ -234,8 +228,8 @@ export function StudioCreating({
               ? held
               : queued
                 ? takingLonger
-                  ? "Still waiting for the studio. Your photo and choices are safely saved."
-                  : "Your photo is saved. The studio starts in a moment."
+                  ? "Still waiting for the studio."
+                  : "The studio starts in a moment."
                 : takingLonger
                   ? "Still creating. Some images take a little longer."
                   : `Most photos are ready in ${typicalWait(typicalMs)}.`}
