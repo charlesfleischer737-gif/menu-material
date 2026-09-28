@@ -6,7 +6,7 @@
 
 // Every style in the library (lib/photo-styles.ts), for the style gallery's
 // copy on the homepage.
-export const libraryStyleCount = 56;
+export const libraryStyleCount = 60;
 
 export type ShowcaseStyle = { id: string; name: string; alt: string };
 
@@ -14,6 +14,11 @@ export type ShowcaseStyle = { id: string; name: string; alt: string };
 // dark, warm and cool, so the wall reads as a range rather than a theme.
 export const showcaseRows: ShowcaseStyle[][] = [
   [
+    {
+      id: "bold-crimson",
+      name: "Crimson close-up",
+      alt: "A single cheeseburger in a paper-lined tray against saturated crimson with a strong side shadow",
+    },
     {
       id: "studio-color",
       name: "Color-pop campaign",
@@ -71,6 +76,11 @@ export const showcaseRows: ShowcaseStyle[][] = [
     },
   ],
   [
+    {
+      id: "bold-electric",
+      name: "Electric blue",
+      alt: "Three fish tacos on a white plate against electric cobalt and a diagonal yellow spotlight",
+    },
     {
       id: "fine-presented",
       name: "Presented by the chef",

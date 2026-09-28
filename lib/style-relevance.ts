@@ -244,7 +244,7 @@ const drinkPriors: Record<string, Record<string, number>> = {
 };
 const destinationPriors: Record<string, Record<string, number>> = {
   delivery: { delivery: 8, studio: 2 },
-  social: { studio: 6, fine: 2, menu: 2, bakery: 2, bar: 2 },
+  social: { studio: 6, bold: 6, fine: 2, menu: 2, bakery: 2, bar: 2 },
   print: { fine: 4, menu: 4 },
   menu: { menu: 4, fine: 2, delivery: 2 },
 };

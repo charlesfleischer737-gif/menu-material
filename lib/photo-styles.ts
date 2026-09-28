@@ -109,6 +109,15 @@ export const styleCategories = [
     tip: "Let real crumb, frosting and pastry texture stay visible, with no invented decoration.",
     color: "#edcdb7",
   },
+  {
+    id: "bold",
+    name: "Bold & Dramatic",
+    description:
+      "Big color, theatrical light and close food portraits that stop the scroll.",
+    use: "Social launches, signature dishes and standout website photos",
+    tip: "Turn up the setting, keep the serving real. Your ingredients, portions and natural textures stay true to the original.",
+    color: "#ed3850",
+  },
 ] as const;
 export const photoStyles: PhotoStyle[] = [
   {
@@ -1114,6 +1123,74 @@ export const photoStyles: PhotoStyle[] = [
     prompt:
       "Off-white ceramic on subtly patinated copper counter, cocoa-toned plaster background and low warm sidelight revealing real pastry texture. Refined indulgent editorial. Preserve shape, layers, glaze, toppings and portion. No added shine, crumbs or ingredients.",
     image: "/studio/styles/bakery-copper.webp",
+    angle: "keep",
+  },
+  {
+    id: "bold-crimson",
+    backdrop: "colorful",
+    category: "bold",
+    group: "Bold & Dramatic",
+    name: "Crimson close-up",
+    cue: "Saturated red · hard sidelight",
+    description:
+      "A wall of crimson and a strong shadow make your real dish the star of a bold, close portrait.",
+    bestFor: "Burgers, sandwiches, fried chicken and signature snacks",
+    traits: ["Crimson color", "Hard sidelight", "Real food texture"],
+    prompt:
+      "Saturated crimson seamless table and backdrop, hard raking sidelight and a deep grounded shadow. Close hero framing with the whole serving visible. Neutral food color; retain original food, portion, texture and serving ware. No added food, floating elements, smoke, gloss or text.",
+    image: "/studio/styles/bold-crimson.webp",
+    angle: "keep",
+  },
+  {
+    id: "bold-electric",
+    backdrop: "colorful",
+    category: "bold",
+    group: "Bold & Dramatic",
+    name: "Electric blue",
+    cue: "Cobalt blue · yellow spotlight",
+    description:
+      "Electric cobalt and a diagonal yellow spotlight bring campaign energy while the food keeps its natural color.",
+    bestFor: "Tacos, bao, colorful bowls and fresh lunch specials",
+    traits: ["Cobalt color", "Diagonal yellow light", "Neutral light on food"],
+    prompt:
+      "Electric cobalt seamless table and backdrop with a diagonal lemon-yellow spotlight on the backdrop only. Neutral keylight on food; grounded shadows. Close full-serving portrait. Keep original food, portion, texture and serving ware. No added food, floating elements, artificial gloss or text.",
+    image: "/studio/styles/bold-electric.webp",
+    angle: "keep",
+  },
+  {
+    id: "bold-spotlight",
+    backdrop: "dark",
+    category: "bold",
+    group: "Bold & Dramatic",
+    name: "The main event",
+    cue: "Cherry velvet · a pool of light",
+    description:
+      "A theatrical spotlight against dark cherry velvet gives an everyday signature dish a dramatic entrance.",
+    bestFor: "Pasta, steak, rich plated mains and dinner specials",
+    traits: [
+      "Dark cherry velvet",
+      "Warm overhead spotlight",
+      "Natural highlights",
+    ],
+    prompt:
+      "Black tabletop, dark cherry velvet curtain backdrop, narrow warm overhead spotlight pooling around the dish. Close full-serving portrait; grounded shadows, neutral food color. Keep original food, portion, texture and serving ware. No added food, floating elements, smoke, artificial gloss or text.",
+    image: "/studio/styles/bold-spotlight.webp",
+    angle: "keep",
+  },
+  {
+    id: "bold-golden",
+    backdrop: "colorful",
+    category: "bold",
+    group: "Bold & Dramatic",
+    name: "Golden hour, amplified",
+    cue: "Amber color · oversized shadows",
+    description:
+      "Saturated amber and a sweeping architectural shadow put honest crumb and creamy texture in a bigger, bolder setting.",
+    bestFor: "Cheesecake, pastries, desserts and golden baked treats",
+    traits: ["Golden amber color", "Hard sunlight", "Architectural shadow"],
+    prompt:
+      "Saturated amber seamless table and backdrop, hard sunlight with a huge diagonal architectural shadow behind the lit dish. Neutral food color, close full-serving portrait. Keep original food, portion, texture and serving ware. No added garnish, drips, floating elements, artificial gloss or text.",
+    image: "/studio/styles/bold-golden.webp",
     angle: "keep",
   },
 ];
