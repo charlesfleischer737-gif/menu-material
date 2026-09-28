@@ -10,6 +10,7 @@ import {
   now,
   one,
   run,
+  signedInBefore,
   type Row,
 } from "./core";
 import { imageEntitlement } from "./entitlements";
@@ -42,14 +43,27 @@ const DEFAULT_RESTAURANT_BUDGET_CENTS = 2000;
 // checks are recorded under this ID, against the site-wide budget and a daily
 // cap of their own.
 export const GUEST_AI = "guest";
+// How long a text call (a caption, photo check or rewrite) waits for its
+// answer. Reading a whole menu, up to 60 dishes, can take much longer.
+export const TEXT_TIMEOUT_MS = 25000,
+  MENU_READING_TIMEOUT_MS = 120000;
+// The percent of the site-wide daily budget that guests and restaurants
+// without an active paid plan may use between them. Paid plans can use all
+// of it, so they always have the rest.
+export function freeBudgetShare() {
+  return Math.min(100, setting("AI_FREE_BUDGET_SHARE_PERCENT", 70));
+}
 // What a new reservation must satisfy, checked atomically when it is inserted
 // and ahead of time before an image is claimed. Daily budgets count finished
-// calls at their settled cost. Free plans also have a daily cap on calls other
-// than images. On an active paid plan the default restaurant budget never
-// holds images below what the plan's allowance could use in a day; an
+// calls at their settled cost. Guests and Free plans share part of the
+// site-wide budget. Free plans also have a daily cap on calls other than
+// images. On an active paid plan the default restaurant budget never holds
+// images below what the plan's allowance could use in a day; an
 // administrator's own restaurant budget and the site-wide budget still apply.
 async function reservationTerms(charge: AiCharge, restaurant: Row | null) {
   const rid = charge.restaurantId;
+  // Text reservations allow a few times a typical call's cost at gpt-4.1-mini
+  // prices; an image's stays wide until its usage settles it.
   const cents = Math.max(
     1,
     Math.round(
@@ -59,29 +73,40 @@ async function reservationTerms(charge: AiCharge, restaurant: Row | null) {
           charge.kind === "image"
             ? "2"
             : charge.kind === "import"
-              ? "0.50"
-              : "0.10",
+              ? "0.05"
+              : "0.01",
         ),
       ) * 100,
     ),
   );
   const day = budgetDay();
+  const guest = rid === GUEST_AI;
+  const plan = guest ? null : await imageEntitlement(rid);
+  const paid = plan?.plan === "pro";
+  const share = paid ? 100 : freeBudgetShare();
+  const siteBudget = `COALESCE((SELECT json_extract(value,'$.dailyBudgetCents') FROM app_settings WHERE key='ai-controls'),10000)`;
   const siteSql = `COALESCE((SELECT json_extract(value,'$.paused') FROM app_settings WHERE key='ai-controls'),0)=0
-     AND COALESCE((SELECT SUM(reserved_cents) FROM ai_spend WHERE budget_day=? AND status!='rejected'),0)+?<=COALESCE((SELECT json_extract(value,'$.dailyBudgetCents') FROM app_settings WHERE key='ai-controls'),10000)`;
-  if (rid === GUEST_AI) {
+     AND COALESCE((SELECT SUM(reserved_cents) FROM ai_spend WHERE budget_day=? AND status!='rejected'),0)+?<=${siteBudget}${
+       share < 100
+         ? `
+     AND COALESCE((SELECT SUM(reserved_cents) FROM ai_spend WHERE budget_day=? AND paid=0 AND status!='rejected'),0)+?<=${siteBudget}*?/100.0`
+         : ""
+     }`;
+  const siteArgs = share < 100 ? [day, cents, day, cents, share] : [day, cents];
+  if (guest) {
     const cap = Math.floor(setting("AI_GUEST_DAILY_CALLS", 500));
     return {
       cents,
       cap,
       day,
+      paid,
       sql: `${siteSql}
      AND (SELECT COUNT(*) FROM ai_spend WHERE budget_day=? AND restaurant_id=? AND status!='rejected')<?`,
-      args: [day, cents, day, rid, cap],
+      args: [...siteArgs, day, rid, cap],
     };
   }
-  const plan = await imageEntitlement(rid);
-  const paid = plan.plan !== "free";
   const floor =
+    plan &&
     paid &&
     charge.kind === "image" &&
     Number(restaurant?.daily_budget_cents) === DEFAULT_RESTAURANT_BUDGET_CENTS
@@ -95,11 +120,12 @@ async function reservationTerms(charge: AiCharge, restaurant: Row | null) {
     cents,
     cap,
     day,
+    paid,
     sql: `EXISTS(SELECT 1 FROM restaurants WHERE id=? AND paused=0)
      AND ${siteSql}
      AND COALESCE((SELECT SUM(reserved_cents) FROM ai_spend WHERE budget_day=? AND restaurant_id=? AND status!='rejected'),0)+?<=MAX((SELECT daily_budget_cents FROM restaurants WHERE id=?),?)
      AND (? IS NULL OR (SELECT COUNT(*) FROM ai_spend WHERE budget_day=? AND restaurant_id=? AND kind!='image' AND status!='rejected')<?)`,
-    args: [rid, day, cents, day, rid, cents, rid, floor, cap, day, rid, cap],
+    args: [rid, ...siteArgs, day, rid, cents, rid, floor, cap, day, rid, cap],
   };
 }
 export async function reserveAi(charge: AiCharge) {
@@ -130,13 +156,14 @@ export async function reserveAi(charge: AiCharge) {
   );
   const key = charge.key || id();
   const inserted = await run(
-    `INSERT OR IGNORE INTO ai_spend (id,restaurant_id,kind,budget_day,reserved_cents,created_at)
-     SELECT ?,?,?,?,?,? WHERE ${terms.sql}`,
+    `INSERT OR IGNORE INTO ai_spend (id,restaurant_id,kind,budget_day,reserved_cents,paid,created_at)
+     SELECT ?,?,?,?,?,?,? WHERE ${terms.sql}`,
     key,
     rid,
     charge.kind,
     terms.day,
     terms.cents,
+    terms.paid ? 1 : 0,
     now(),
     ...terms.args,
   );
@@ -179,15 +206,37 @@ export async function aiBudgetRoom(
   if (!Number.isSafeInteger(terms.cents)) return false;
   return !!(await one(`SELECT 1 AS ok WHERE ${terms.sql}`, ...terms.args));
 }
+// gpt-image models report input tokens split into text (the prompt) and image
+// (the photos sent), and output tokens for the image made. Input not reported
+// as text is priced as image input, the dearer rate.
+function imageTokenUsd(tokens: Row) {
+  const input = Number(tokens.input_tokens ?? NaN),
+    output = Number(tokens.output_tokens ?? NaN);
+  if (!(input >= 0 && output >= 0)) return NaN;
+  const text = Math.min(
+    input,
+    Math.max(0, Number(tokens.input_tokens_details?.text_tokens) || 0),
+  );
+  return (
+    (text * setting("AI_IMAGE_TEXT_INPUT_USD_PER_MILLION_TOKENS", 5) +
+      (input - text) *
+        setting("AI_IMAGE_IMAGE_INPUT_USD_PER_MILLION_TOKENS", 10) +
+      output * setting("AI_IMAGE_OUTPUT_USD_PER_MILLION_TOKENS", 40)) /
+    1e6
+  );
+}
 // What a finished call counts against the daily budgets, in cents to a
-// hundredth of a cent, rounded up: text calls at their measured token cost,
-// images at IMAGE_COST_ESTIMATE_USD when that is set. null keeps the
-// reservation, for example when usage was not reported.
+// hundredth of a cent, rounded up: text calls at their measured token cost;
+// images at IMAGE_COST_ESTIMATE_USD when that is set, otherwise at the token
+// cost the Images API reports. null keeps the reservation, for example when
+// usage was not reported.
 export function settledCents(kind: string, usage: unknown) {
   let usd: number;
   if (kind === "image") {
-    const estimate = config("IMAGE_COST_ESTIMATE_USD").trim();
-    usd = estimate ? Number(estimate) : NaN;
+    const estimate = setting("IMAGE_COST_ESTIMATE_USD", NaN);
+    usd = Number.isFinite(estimate)
+      ? estimate
+      : imageTokenUsd((usage || {}) as Row);
   } else {
     const tokens = (usage || {}) as Row;
     const input = Number(tokens.input_tokens ?? tokens.prompt_tokens);
@@ -221,8 +270,9 @@ export async function finishAi(
   );
 }
 // An IPv6 subscriber is usually given a whole /64, so its addresses count as
-// one caller. IPv4 addresses are used as they are.
-function network(address: string) {
+// one caller. IPv4 addresses are used as they are. `kept` is how many groups
+// of an IPv6 address to keep: 3 for the /48 around it.
+function network(address: string, kept = 4) {
   const ip = address.split("%")[0].toLowerCase();
   if (!ip.includes(":")) return ip;
   const mapped = /^::ffff:(\d{1,3}(?:\.\d{1,3}){3})$/.exec(ip);
@@ -244,13 +294,38 @@ function network(address: string) {
   if (groups.length !== 8 || !groups.every((g) => /^[0-9a-f]{1,4}$/.test(g)))
     return ip;
   return `${groups
-    .slice(0, 4)
+    .slice(0, kept)
     .map((g) => parseInt(g, 16).toString(16))
-    .join(":")}::/64`;
+    .join(":")}::/${kept * 16}`;
 }
 export function caller(req: Request) {
   // Cloudflare overwrites this header at the hosting boundary; do not trust X-Forwarded-For.
   return network(req.headers.get("cf-connecting-ip") || "unidentified");
+}
+// The /48 around an IPv6 caller, or null for IPv4. Homes often get a /56
+// and free tunnel brokers hand out a /48, so moving to another /64 is free.
+export function wideCaller(req: Request) {
+  const wide = network(req.headers.get("cf-connecting-ip") || "", 3);
+  return wide.endsWith("::/48") ? wide : null;
+}
+// Each network can open a few free accounts a day, so free images can't be
+// collected by signing up again and again. Invitations don't count. An IPv6
+// /48 has its own cap as well, a little above one /64's.
+export async function newAccountLimit(req: Request) {
+  const max = Math.floor(setting("SIGNUPS_PER_NETWORK_PER_DAY", 5)),
+    wideMax = Math.floor(setting("SIGNUPS_PER_WIDE_NETWORK_PER_DAY", 8)),
+    wide = wideCaller(req);
+  try {
+    await limit(`new-account:${caller(req)}`, max, 86400);
+    if (wide) await limit(`new-account:${wide}`, wideMax, 86400);
+  } catch (e) {
+    if (e instanceof AppError && e.status === 429)
+      throw new AppError(
+        429,
+        "Several accounts were already created from this network today. Please try again tomorrow or ask for an invitation.",
+      );
+    throw e;
+  }
 }
 // Per-network only: a shared site-wide bucket would let one attacker lock
 // every visitor out.
@@ -262,9 +337,27 @@ export async function publicLimit(
 ) {
   await limit(`${purpose}:caller:${caller(req)}`, max, seconds);
 }
+// Photo checks before signup that reach the AI service: besides its hourly
+// allowance, each network gets only so many a day, so one network can't use
+// up what all visitors share.
+export async function guestPhotoDailyLimit(req: Request) {
+  const max = Math.floor(setting("AI_GUEST_DAILY_CALLS_PER_NETWORK", 60));
+  try {
+    await publicLimit(req, "guest-photo-analysis-day", max, 86400);
+  } catch (e) {
+    if (e instanceof AppError && e.status === 429)
+      throw new AppError(
+        429,
+        "Photo suggestions from this network are used up for today. Tell us what’s in your photo, or try again tomorrow.",
+      );
+    throw e;
+  }
+}
 // After 20 sign-in attempts for one email within 15 minutes of each other,
 // each further attempt waits 1 s, 2 s, 4 s … up to 5 minutes after the last.
-// It slows guessing from many networks without locking the account.
+// It slows guessing from many networks without locking the account. The wait
+// isn't stated, so it can't be timed, and a browser that signed in to the
+// account before skips it: knowing an owner's email can't keep them out.
 const loginWindow = 900000,
   loginFreeAttempts = 20,
   loginMaxWait = 300000;
@@ -272,6 +365,7 @@ const loginKey = (email: string) => digest(`login:email:${email}`);
 export async function loginLimit(req: Request, email: string) {
   // A stranger cannot exhaust an owner's allowance merely by knowing their email.
   await limit(`login:pair:${caller(req)}:${email}`, 10);
+  if (await signedInBefore(req, email)) return;
   const t = now();
   // Claim the attempt atomically, so parallel requests cannot share a slot.
   const claimed = await one(
@@ -290,25 +384,10 @@ export async function loginLimit(req: Request, email: string) {
     t,
   );
   if (claimed) return;
-  const row = await one(
-    "SELECT count,expires_at FROM rate_limits WHERE key=?",
-    loginKey(email),
-  );
-  const wait = row
-    ? row.expires_at -
-      loginWindow +
-      Math.min(
-        loginMaxWait,
-        1000 * 2 ** Math.min(row.count - loginFreeAttempts, 20),
-      ) -
-      t
-    : 1000;
-  const seconds = Math.max(1, Math.ceil(wait / 1000)),
-    [amount, unit] =
-      seconds < 60 ? [seconds, "second"] : [Math.ceil(seconds / 60), "minute"];
+  // Resets are secure links from an administrator or support (auth.tsx).
   throw new AppError(
     429,
-    `Too many sign-in attempts for this account. Try again in ${amount} ${unit}${amount === 1 ? "" : "s"}.`,
+    "Too many sign-in attempts for this account. Please try again later, or request a secure reset link.",
   );
 }
 export async function loginSucceeded(email: string) {
@@ -413,12 +492,34 @@ export async function limitedForm(req: Request, max: number) {
     );
   }
 }
+// A text call cut off before it settled (its Worker was stopped, or a menu
+// reading outlived the time a closed tab allows) would hold its whole
+// reservation until midnight UTC. Twice its timeout later it counts as
+// uncertain, at no more than the most a finished call of its kind cost that
+// day. Images are reconciled from their outputs instead (tick).
+async function settleAbandonedCalls() {
+  const t = now();
+  await run(
+    `UPDATE ai_spend SET status='uncertain',reserved_cents=MIN(reserved_cents,COALESCE((SELECT MAX(x.reserved_cents) FROM ai_spend x WHERE x.budget_day=ai_spend.budget_day AND x.kind=ai_spend.kind AND x.status='submitted'),reserved_cents))
+     WHERE budget_day>=? AND status='reserved' AND kind!='image' AND created_at<CASE kind WHEN 'import' THEN ? ELSE ? END`,
+    new Date(t - 86400000).toISOString().slice(0, 10),
+    t - 2 * MENU_READING_TIMEOUT_MS,
+    t - 2 * TEXT_TIMEOUT_MS,
+  );
+}
 export async function housekeeping() {
   await run(
     "INSERT INTO app_settings (key,value) VALUES ('worker-heartbeat',?) ON CONFLICT(key) DO UPDATE SET value=excluded.value WHERE CAST(app_settings.value AS INTEGER)<?",
     String(now()),
     now() - 30000,
   );
+  // Every minute, so a cut-off call's reservation is freed within minutes.
+  const sweep = await run(
+    "INSERT INTO app_settings (key,value) VALUES ('ai-spend-sweep-last-run',?) ON CONFLICT(key) DO UPDATE SET value=excluded.value WHERE CAST(app_settings.value AS INTEGER)<?",
+    String(now()),
+    now() - 60000,
+  );
+  if (sweep.meta.changes) await settleAbandonedCalls();
   const claim = await run(
     "INSERT INTO app_settings (key,value) VALUES ('cleanup-last-run',?) ON CONFLICT(key) DO UPDATE SET value=excluded.value WHERE CAST(app_settings.value AS INTEGER)<?",
     String(now()),
@@ -427,6 +528,13 @@ export async function housekeeping() {
   if (!claim.meta.changes) return;
   await run("DELETE FROM rate_limits WHERE expires_at<?", now());
   await run("DELETE FROM sessions WHERE expires_at<?", now());
+  await run("DELETE FROM trusted_devices WHERE expires_at<?", now());
+  // A deleted account's email hash stops its free images being granted again
+  // for a year (free-grants.ts); the privacy page says so.
+  await run(
+    "DELETE FROM free_grant_emails WHERE created_at<?",
+    now() - 365 * 86400000,
+  );
   await run(
     "DELETE FROM invites WHERE expires_at<? AND role='reset'",
     now() - 86400000,
@@ -435,6 +543,18 @@ export async function housekeeping() {
   await run(
     "DELETE FROM events WHERE kind IN ('menu_visit','dish_view','ordering_click','call_click','directions_click','reserve_click') AND created_at<?",
     now() - 90 * 86400000,
+  );
+  // Visitors' funnel steps are reported for the last 30 days (funnel.ts);
+  // keep 90, like guest menu visits.
+  await run(
+    "DELETE FROM events WHERE kind='funnel_step' AND created_at<?",
+    now() - 90 * 86400000,
+  );
+  // What a photo checked before signup showed is kept a week, only so the
+  // same photo isn't read again (photo-analysis.ts).
+  await run(
+    "DELETE FROM events WHERE kind='guest_photo_analysis' AND created_at<?",
+    now() - 7 * 86400000,
   );
   const abandoned = await all(
     "SELECT * FROM storage_reservations WHERE created_at<? AND id NOT IN (SELECT id FROM assets WHERE deleted_at IS NULL) AND id NOT IN (SELECT id FROM menu_imports) AND id NOT IN (SELECT id FROM outputs WHERE status NOT IN ('completed','failed')) LIMIT 50",
@@ -452,4 +572,7 @@ export async function housekeeping() {
     ]);
     await releaseStorage(row.id);
   }
+  // Free images new accounts wait for, as today's grants allow.
+  const { grantHeldImages } = await import("./free-grants");
+  await grantHeldImages();
 }

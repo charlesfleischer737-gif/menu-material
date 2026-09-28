@@ -1,5 +1,8 @@
 import type { Row } from "./client";
-import { postHeadline } from "./post-flow";
+import { postHeadline, updatePost } from "./post-flow";
+import { FREE_POST_TEMPLATES } from "./plans";
+import { brandPostFields } from "./restaurant-look";
+import { emptyAdjustments } from "./studio";
 
 /** Original compositions informed by restaurant feeds; reference imagery is never used in exports. */
 export const postTemplates = [
@@ -174,6 +177,76 @@ export function getPostTemplate(id: string) {
     postTemplates.find((t) => t.id === (aliases[id] || id)) || postTemplates[0]
   );
 }
+/**
+ * A post Free can save: one of its three designs, one photo, as a post or
+ * Story, in the design's own colors and type.
+ */
+export function freePostDraft(draft: Row) {
+  const t = getPostTemplate(String(draft.template || "chef"));
+  const same = (value: unknown, own: string) =>
+    !value || String(value).toLowerCase() === own.toLowerCase();
+  return (
+    FREE_POST_TEMPLATES.includes(t.id) &&
+    (Array.isArray(draft.items) ? draft.items.length : 0) <= 1 &&
+    (Array.isArray(draft.channels) ? draft.channels : []).every(
+      (channel: unknown) => channel === "feed" || channel === "story",
+    ) &&
+    draft.brandMode !== "restaurant" &&
+    draft.brandMode !== "custom" &&
+    (!draft.typography || draft.typography === "template") &&
+    same(draft.color, t.color) &&
+    same(draft.accent, t.accent)
+  );
+}
+// A design's own colors and type, which every Free post uses.
+function designLook(id: string) {
+  const t = getPostTemplate(id);
+  return {
+    color: t.color,
+    accent: t.accent,
+    typography: "template",
+    brandMode: undefined,
+  };
+}
+/**
+ * An empty post: in the restaurant's colors on Pro, and in the first design's
+ * own on Free. The plan has no default; one once gave Free posts Pro colors.
+ */
+export function newPostDraft(restaurant: Row, version: number, pro: boolean) {
+  return {
+    step: 1,
+    compositionVersion: version,
+    items: [],
+    occasion: "showcase",
+    title: "",
+    description: "",
+    price: "",
+    showPrice: false,
+    validity: "",
+    template: "chef",
+    kicker: "",
+    cta: "",
+    textMode: "minimal",
+    showBrand: true,
+    textPlacement: "auto",
+    channels: ["feed", "story"],
+    feedShape: "4:5",
+    // A carousel opens on its offer; without a cover, the first slide carries it.
+    carouselCover: true,
+    layouts: Object.fromEntries(
+      ["feed", "story", "carousel"].map((k) => [
+        k,
+        { ...emptyAdjustments, fit: false, autoFrame: true },
+      ]),
+    ),
+    caption: "",
+    captionMode: "auto",
+    reviewed: false,
+    voice: restaurant.style?.tone || "Warm and welcoming",
+    ...(pro ? brandPostFields(restaurant.style) : designLook("chef")),
+    typography: "template",
+  };
+}
 const retiredHeadlines = [
   "Love at first bite.",
   "A taste of something special.",
@@ -237,6 +310,35 @@ export function applyPostTemplate(draft: Row, id: string) {
         },
       ]),
     ),
+  };
+}
+/**
+ * A design the owner chooses in Post Maker. On Free it also brings the
+ * design's own colors and type, so choosing a free design turns a post made
+ * in the restaurant's look into one Free can save.
+ */
+export function choosePostTemplate(draft: Row, id: string, pro: boolean) {
+  return { ...applyPostTemplate(draft, id), ...(pro ? {} : designLook(id)) };
+}
+/**
+ * A copy of a post that Free can save: its first dish as a post and Story, in
+ * a free design's own colors and type. A post in a Pro design moves to
+ * `design`, a free one.
+ */
+export function freePostCopy(draft: Row, restaurant: Row, design: string) {
+  // The words follow the dish that stays, as when dishes are removed by hand.
+  const copy = updatePost(
+    draft,
+    { items: (draft.items || []).slice(0, 1) },
+    restaurant,
+  );
+  const current = getPostTemplate(String(copy.template || "chef"));
+  return {
+    ...copy,
+    ...(FREE_POST_TEMPLATES.includes(current.id)
+      ? designLook(current.id)
+      : { ...choosePostTemplate(copy, design, false), compositionVersion: 2 }),
+    channels: ["feed", "story"],
   };
 }
 export function postTemplateExample(id: string) {

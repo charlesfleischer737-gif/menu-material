@@ -12,6 +12,7 @@ import HomepageSections from "./homepage-sections";
 import HomepageShowcase from "./homepage-showcase";
 import PhotoComparison from "./photo-comparison";
 import { SiteFooter, SiteHeader } from "./site-chrome";
+import { FREE_SIGNUP_IMAGES } from "@/lib/plans";
 /* eslint-disable @next/next/no-html-link-for-pages --
    Plain links on purpose: next/link's client navigation throws in the vinext
    production build ("navigateClientSide is not a function"), so a <Link>
@@ -139,7 +140,9 @@ export default function Landing({
                 <ArrowRight size={17} />
               </a>
             </Button>
-            <span className="pw-free-note">5 free images · No credit card</span>
+            <span className="pw-free-note">
+              {FREE_SIGNUP_IMAGES} free images · No credit card
+            </span>
           </div>
           <PhotoComparison />
         </section>
@@ -149,7 +152,8 @@ export default function Landing({
           <h2 id="start-title">Start with one dish. See the difference.</h2>
           <p>
             Choose your look, add your photo, and give your food the
-            presentation it deserves. Your first 5 images are free.
+            presentation it deserves. Your first {FREE_SIGNUP_IMAGES} images are
+            free.
           </p>
           <Button size="marketing" asChild>
             <a href="/#studio" onClick={start}>

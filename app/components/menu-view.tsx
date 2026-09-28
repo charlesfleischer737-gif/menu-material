@@ -5,7 +5,9 @@ import { menuHero, menuAppearance } from "@/lib/menu-design";
 import { scheduleLabel } from "@/lib/promotions";
 import { money, Row } from "@/lib/client";
 import { brandTypeface, readableBrandInk } from "@/lib/restaurant-look";
+import { allergyNotice } from "@/lib/dietary";
 import MenuDocumentView, { useDishViews } from "./menu-document-view";
+import ReportMenu from "./report-menu";
 import CustomerMenuSwitcher from "./customer-menu-switcher";
 import { ChevronLeft, ChevronRight } from "lucide-react";
 import type { DesignedMenu } from "@/lib/menu-document";
@@ -322,7 +324,7 @@ function LegacyMenuView({
               className="order-button"
               href={menu.restaurant.orderingUrl}
               onClick={() => track("ordering_click")}
-              rel="noreferrer"
+              rel="nofollow ugc noopener noreferrer"
             >
               Order from {menu.restaurant.name}
             </a>
@@ -547,7 +549,20 @@ function LegacyMenuView({
               .includes(search.toLowerCase()),
           ),
         ) && <p className="mm-menu-no-results">No dishes match “{search}”.</p>}
-      <footer>Made with Menu Material</footer>
+      {/* Menus from before tags existed list no allergens: say so once. */}
+      {!preview && (
+        <p className="mm-menu-allergy">
+          Allergens aren’t listed on this menu. {allergyNotice}
+        </p>
+      )}
+      {menu.credit !== false && (
+        <footer>
+          <a href="/?ref=menu" target="_blank" rel="noopener">
+            Made with Menu Material
+          </a>
+        </footer>
+      )}
+      {!preview && slug && <ReportMenu slug={slug} />}
     </article>
   );
 }

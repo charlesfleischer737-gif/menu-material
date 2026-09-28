@@ -12,8 +12,19 @@ import {
   saveStudioRelease,
 } from "./studio-release";
 import { billingRoute, billingSummary, billingEnabled } from "./billing";
+import { passwordResetEnabled, requestPasswordReset } from "./password-reset";
+import { googleAuthRoute } from "./google-auth";
 import { validateImageDimensions } from "./image-validation";
+import { imagesAvailable } from "./image-availability";
+import {
+  assetVariantKeys,
+  neededVariants,
+  publicVariantKey,
+  requestedVariant,
+  saveVariants,
+} from "./photo-variants";
 import { analyzeGuestPhoto } from "./photo-analysis";
+import { freeImagesStatus, signupFreeImages } from "./free-grants";
 import { checkMenuSharing, menuLinkOrigin } from "./menu-sharing";
 import {
   changeMenuAddress,
@@ -22,12 +33,9 @@ import {
   resolveMenuAddress,
   suggestMenuAddress,
 } from "./menu-address";
-import {
-  isPlaceholderRestaurantName,
-  restaurantNameMessage,
-  slugify,
-} from "../restaurant-identity";
+import { isPlaceholderRestaurantName, slugify } from "../restaurant-identity";
 import { normalizeDietary } from "../dietary";
+import { FREE_SIGNUP_IMAGES, isProFeature } from "../plans";
 import {
   menuDocumentsRoute,
   assetInPublishedDocuments,
@@ -45,6 +53,7 @@ import {
   housekeeping,
   aiControls,
   caller,
+  newAccountLimit,
 } from "./safeguards";
 import {
   all,
@@ -84,7 +93,10 @@ import {
   withRenderEstimates,
 } from "./generation";
 import {
+  alertMenuReport,
+  background,
   checkAlertsInBackground,
+  checkBillingInBackground,
   clientErrorRoute,
   readiness,
   readinessRoute,
@@ -96,6 +108,13 @@ import {
   studioReferenceRequest,
 } from "./studio-references";
 import { creationRoute } from "./creation";
+import {
+  funnelReport,
+  menuExportDetails,
+  recordSignupSource,
+  recordWaitlistJoin,
+  visitorStepRoute,
+} from "./funnel";
 import { libraryRoute } from "./library";
 import {
   advanceBatches,
@@ -145,42 +164,6 @@ const dishSchema = z.object({
     .union([z.boolean(), z.number()])
     .transform((value) => !!value)
     .default(false),
-});
-const menuSchema = z.object({
-  design: z.enum(["bistro", "cafe", "fine", "casual"]).default("bistro"),
-  density: z
-    .enum(["spacious", "comfortable", "compact"])
-    .default("comfortable"),
-  printProfile: z.enum(["home", "press"]).default("home"),
-  title: z.string().max(100).default(""),
-  layout: z.enum(["classic", "grid", "featured"]).default("classic"),
-  appearance: z.enum(["light", "dark"]).default("light"),
-  paper: z.enum(["letter", "a4"]).default("letter"),
-  sections: z
-    .array(
-      z.object({
-        id: z.string().max(100),
-        name: z.string().trim().min(1).max(100),
-        items: z
-          .array(
-            z.object({
-              dishId: z.string().uuid(),
-              photoId: z.string().uuid().nullable().optional(),
-              featured: z.boolean().optional(),
-              crop: z
-                .object({
-                  fit: z.boolean().default(true),
-                  x: z.number().min(0).max(100).default(50),
-                  y: z.number().min(0).max(100).default(50),
-                  zoom: z.number().min(1).max(2).default(1),
-                })
-                .optional(),
-            }),
-          )
-          .max(100),
-      }),
-    )
-    .max(30),
 });
 // A saved look can outlive what it names (a photo style later removed from
 // the catalog). Keep the values that are still valid and use defaults for
@@ -233,33 +216,42 @@ async function signup(req: Request, b: Row) {
         email,
         now(),
       )
-    : { role: "owner", allowance: 5 };
+    : { role: "owner", allowance: FREE_SIGNUP_IMAGES };
   assert(!b.website, 400, "Please check the form and try again.");
   assert(
     invite,
     403,
-    "This invitation is invalid, expired, or belongs to another email. Request a new link from the administrator.",
+    "This link is invalid, expired, or belongs to another email. Request a new link and try again.",
   );
   if (invite.role === "reset") {
     const u = await one("SELECT id FROM users WHERE email=?", email);
     assert(u, 400, "Account not found.");
-    const resetClaim = id();
+    const resetClaim = id(),
+      newPassword = hashPassword(password),
+      resetTime = now();
     await db().batch([
       db()
         .prepare(
-          "UPDATE users SET password=? WHERE id=? AND EXISTS(SELECT 1 FROM invites WHERE hash=? AND used_by IS NULL)",
+          "UPDATE users SET password=? WHERE id=? AND EXISTS(SELECT 1 FROM invites WHERE hash=? AND used_by IS NULL AND expires_at>?)",
         )
-        .bind(hashPassword(password), u.id, hash),
+        .bind(newPassword, u.id, hash, resetTime),
       db()
         .prepare(
-          "DELETE FROM sessions WHERE user_id=? AND EXISTS(SELECT 1 FROM invites WHERE hash=? AND used_by IS NULL)",
+          "DELETE FROM sessions WHERE user_id=? AND EXISTS(SELECT 1 FROM invites WHERE hash=? AND used_by IS NULL AND expires_at>?)",
         )
-        .bind(u.id, hash),
+        .bind(u.id, hash, resetTime),
+      // Browsers that signed in before are no longer trusted either; this
+      // one is, once it signs in below.
       db()
         .prepare(
-          "UPDATE invites SET used_by=? WHERE hash=? AND used_by IS NULL",
+          "DELETE FROM trusted_devices WHERE user_id=? AND EXISTS(SELECT 1 FROM invites WHERE hash=? AND used_by IS NULL AND expires_at>?)",
         )
-        .bind(resetClaim, hash),
+        .bind(u.id, hash, resetTime),
+      db()
+        .prepare(
+          "UPDATE invites SET used_by=? WHERE hash=? AND used_by IS NULL AND expires_at>?",
+        )
+        .bind(resetClaim, hash, resetTime),
       // Any other reset link for this account stops working too.
       db()
         .prepare(
@@ -271,8 +263,9 @@ async function signup(req: Request, b: Row) {
       (await one("SELECT used_by FROM invites WHERE hash=?", hash))?.used_by ===
         resetClaim,
       409,
-      "This reset invitation has already been used.",
+      "This reset link has expired or already been used. Request a new link.",
     );
+    await loginSucceeded(email);
     return await createSession(req, u.id);
   }
   assert(
@@ -287,6 +280,12 @@ async function signup(req: Request, b: Row) {
     409,
     "An administrator already exists. Ask them for an invitation.",
   );
+  if (!invited) await newAccountLimit(req);
+  // Invitations keep their allowance. Otherwise there are no free images for
+  // an email that already had them, and they're held past today's grants.
+  const free = invited
+    ? { allowance: invite.allowance, freeGrant: null }
+    : await signupFreeImages(email);
   const userId = id(),
     rid = id(),
     restaurant = z
@@ -315,14 +314,15 @@ async function signup(req: Request, b: Row) {
       ),
     db()
       .prepare(
-        "INSERT INTO restaurants (id,user_id,name,slug,allowance,created_at) SELECT ?,?,?,?,?,? WHERE EXISTS (SELECT 1 FROM users WHERE id=?)",
+        "INSERT INTO restaurants (id,user_id,name,slug,allowance,free_grant,created_at) SELECT ?,?,?,?,?,?,? WHERE EXISTS (SELECT 1 FROM users WHERE id=?)",
       )
       .bind(
         rid,
         userId,
         restaurant,
         slugify(restaurant) + "-" + rid.slice(0, 8),
-        invite.allowance,
+        free.allowance,
+        free.freeGrant,
         t,
         userId,
       ),
@@ -341,6 +341,8 @@ async function signup(req: Request, b: Row) {
     "This invitation has already been used.",
   );
   await event(rid, "onboarded");
+  // Where the owner came from, if the browser noted it (launch funnel).
+  await recordSignupSource(rid, b.attribution);
   return await createSession(req, userId);
 }
 async function issueInvite(email: string, allowance: number, role = "owner") {
@@ -362,89 +364,6 @@ async function issueInvite(email: string, allowance: number, role = "owner") {
     invite: raw,
     path: `/?invite=${encodeURIComponent(raw)}&email=${encodeURIComponent(email)}${role === "reset" ? "&reset=1" : ""}`,
     expiresAt: now() + 7 * 86400000,
-  };
-}
-async function snapshot(r: Row, draft: Row) {
-  const sections = [];
-  for (const section of draft.sections) {
-    const items = [];
-    for (const item of section.items) {
-      const d = await one(
-        "SELECT * FROM dishes WHERE id=? AND restaurant_id=?",
-        item.dishId,
-        r.id,
-      );
-      assert(d, 400, "One of the dishes in this menu is missing.");
-      let photoId = null;
-      if (item.photoId) {
-        const a = await one(
-          "SELECT * FROM assets WHERE id=? AND restaurant_id=? AND dish_id=? AND approved_at IS NOT NULL AND deleted_at IS NULL",
-          item.photoId,
-          r.id,
-          d.id,
-        );
-        assert(a, 400, "Menu photos must be approved and belong to this dish.");
-        const obj = await bucket().get(a.working_key || a.key);
-        assert(obj, 400, "A menu photo is unavailable. Choose another photo.");
-        await bucket().put(`public/${r.id}/${a.id}`, await obj.arrayBuffer(), {
-          httpMetadata: { contentType: a.working_key ? "image/jpeg" : a.mime },
-        });
-        photoId = a.id;
-      }
-      items.push({
-        id: d.id,
-        name: d.name,
-        description: d.description,
-        price: d.price,
-        available: !!d.available,
-        photoId,
-        featured: item.featured,
-        crop: item.crop,
-      });
-    }
-    sections.push({ id: section.id, name: section.name, items });
-  }
-  let logoId = null;
-  if (r.logo_id) {
-    const a = await one(
-      "SELECT * FROM assets WHERE id=? AND restaurant_id=? AND kind='logo' AND deleted_at IS NULL",
-      r.logo_id,
-      r.id,
-    );
-    if (a) {
-      const obj = await bucket().get(
-        transparentLogo(a) ? a.key : a.working_key || a.key,
-      );
-      if (obj) {
-        await bucket().put(`public/${r.id}/${a.id}`, await obj.arrayBuffer(), {
-          httpMetadata: {
-            contentType: transparentLogo(a) ? a.mime : "image/jpeg",
-          },
-        });
-        logoId = a.id;
-      }
-    }
-  }
-  return {
-    restaurant: {
-      name: r.name,
-      cuisine: r.cuisine,
-      currency: r.currency,
-      brand: r.brand,
-      style: JSON.parse(r.style || "{}"),
-      orderingUrl: r.ordering_url,
-      timezone: r.timezone,
-      hours: JSON.parse(r.hours),
-      logoId,
-    },
-    sections,
-    design: draft.design,
-    density: draft.density,
-    printProfile: draft.printProfile,
-    title: draft.title,
-    layout: draft.layout,
-    appearance: draft.appearance,
-    paper: draft.paper,
   };
 }
 function assetIsPublished(menu: Row, assetId: string) {
@@ -659,21 +578,36 @@ async function downloadAsset(
 ) {
   // Whichever copy a menu published, including JPEG copies made elsewhere.
   if (transparentLogo(a)) key = a.key;
-  const obj = await bucket().get(key);
+  // A guest menu asks for the smaller copy its screen needs (?w=480); the
+  // full photo stands in when a menu was published before copies existed.
+  const width = publicImage && !transparentLogo(a) && requestedVariant(req);
+  const variant = width
+    ? await bucket().get(publicVariantKey(a.restaurant_id, a.id, width))
+    : null;
+  const obj = variant || (await bucket().get(key));
   assert(obj, 404, "Image not found.");
   const type =
-    key === a.working_key
+    variant || key === a.working_key
       ? "image/jpeg"
       : obj.httpMetadata?.contentType || a.mime;
   const h = new Headers({
     "Content-Type": type,
     // An asset ID's image never changes, and each request is still checked
-    // against the published menu; guests need not download it every visit.
+    // against the published menu, so guests keep it for a week and then
+    // revalidate. A deleted photo stops being served at once.
     "Cache-Control": publicImage
-      ? "public, max-age=300, stale-while-revalidate=86400"
+      ? "public, max-age=604800, stale-while-revalidate=2592000"
       : "private, no-store",
     "X-Content-Type-Options": "nosniff",
   });
+  const etag = (obj as { httpEtag?: string }).httpEtag;
+  if (publicImage && etag) {
+    h.set("ETag", etag);
+    if (req.headers.get("if-none-match") === etag) {
+      await obj.body?.cancel().catch(() => {});
+      return new Response(null, { status: 304, headers: h });
+    }
+  }
   // Named after what is sent: the working copy of any upload is a JPEG.
   if (new URL(req.url).searchParams.has("download"))
     h.set(
@@ -730,6 +664,8 @@ async function route(req: Request) {
     }
     if (p[0] === "guest-photo-analysis" && method === "POST")
       return await analyzeGuestPhoto(req);
+    if (p[0] === "funnel" && method === "POST")
+      return await visitorStepRoute(req);
     if (p[0] === "public" && p[1]) {
       // Earlier addresses (printed QR codes) resolve to the restaurant's menu.
       const r = (await resolveMenuAddress(p[1])).restaurant;
@@ -744,6 +680,30 @@ async function route(req: Request) {
         "This menu is not currently available.",
       );
       const snapshot = selected || JSON.parse(r.published);
+      if (p[2] === "report" && method === "POST") {
+        // A guest tells the team about a page that impersonates a business,
+        // misleads or abuses; an administrator reviews it and can take the
+        // restaurant's public pages down.
+        await publicLimit(req, "menu-report", 5, 3600);
+        const input = z
+          .object({
+            reason: z.enum([
+              "impersonation",
+              "misleading",
+              "offensive",
+              "copyright",
+              "other",
+            ]),
+            details: z.string().trim().max(1000).default(""),
+          })
+          .parse(await body(req));
+        await event(r.id, "menu_report", snapshot.documentId || null, {
+          ...input,
+          address: p[1],
+        });
+        background(alertMenuReport(r.slug, input.reason));
+        return response({ ok: true }, 202);
+      }
       const menu =
         p[2] === "assets" && p[3] && assetIsPublished(snapshot, p[3])
           ? snapshot
@@ -760,8 +720,10 @@ async function route(req: Request) {
           404,
           "Image not found.",
         );
+        // Never a photo the owner reported as inaccurate, even one a live
+        // copy still names.
         const a = await one(
-          "SELECT * FROM assets WHERE id=? AND restaurant_id=? AND deleted_at IS NULL AND (approved_at IS NOT NULL OR kind=?)",
+          "SELECT * FROM assets WHERE id=? AND restaurant_id=? AND deleted_at IS NULL AND needs_correction=0 AND (approved_at IS NOT NULL OR kind=?)",
           p[3],
           r.id,
           "logo",
@@ -783,9 +745,17 @@ async function route(req: Request) {
       await tick();
       await housekeeping();
       checkAlertsInBackground();
+      checkBillingInBackground();
       return response({ ok: true });
     }
     if (p[0] === "auth") {
+      if (p[1] === "google") return await googleAuthRoute(req, p[2]);
+      if (p[1] === "recovery" && method === "GET")
+        return response({ enabled: passwordResetEnabled() });
+      if (p[1] === "forgot-password") {
+        assert(method === "POST", 405, "Method not allowed.");
+        return await requestPasswordReset(req);
+      }
       // Per network and before the body is read, so malformed floods stay
       // cheap and only slow their sender.
       if (
@@ -912,6 +882,9 @@ async function route(req: Request) {
             !(await one("SELECT id FROM users WHERE role='admin'")),
           local: config("LOCAL_DEVELOPMENT") === "true",
           aiConnected: !!config("OPENAI_API_KEY"),
+          // Told before signup, so nobody signs up for an image that can't
+          // be made now.
+          imagesAvailable: await imagesAvailable(),
         });
       const { r } = await owner(req);
       // Each photo's history (from a real photo? which size and look?) comes
@@ -929,19 +902,29 @@ async function route(req: Request) {
           r.id,
         ),
       );
+      // First, as held free images may be granted now.
+      const freeImages = r.free_grant ? await freeImagesStatus(r.id) : null;
+      const billing = await billingSummary(r.id),
+        saved = storedStyle(r.style);
       return response({
         user: u,
         studioAvailability: await studioAvailability(r.id),
         restaurant: {
           ...r,
-          style: storedStyle(r.style),
+          // What new work uses: the saved look with Pro, defaults on Free.
+          style: billing.features.unlocked ? saved : storedStyle("{}"),
+          // What Restaurant settings edits and previews on any plan.
+          savedStyle: saved,
           hours: JSON.parse(r.hours),
           menuDraft: JSON.parse(r.menu_draft),
           published: r.published ? JSON.parse(r.published) : null,
         },
         remaining: await remaining(r.id),
-        billing: await billingSummary(r.id),
+        // Free images held back or already had, for the note by the balance.
+        freeImages,
+        billing,
         aiConnected: !!config("OPENAI_API_KEY"),
+        imagesAvailable: await imagesAvailable(billing.plan === "pro"),
         local: config("LOCAL_DEVELOPMENT") === "true",
         // For menu links and QR codes made in the browser.
         menuOrigin: menuLinkOrigin(new URL(req.url).origin),
@@ -1003,7 +986,7 @@ async function route(req: Request) {
       });
     }
     if (p[0] === "admin") {
-      await admin(req);
+      const administrator = await admin(req);
       if (method === "GET" && p[1] === "studio-report") {
         const mode = z
           .enum(["production", "internal"])
@@ -1016,6 +999,8 @@ async function route(req: Request) {
           .parse(url.searchParams.get("days") || 30);
         return response(await studioProgressReport(mode, days));
       }
+      if (method === "GET" && p[1] === "funnel")
+        return response(await funnelReport());
       if (
         method === "GET" &&
         p[1] === "photo-correction" &&
@@ -1038,7 +1023,7 @@ async function route(req: Request) {
       if (method === "GET")
         return response({
           restaurants: await all(
-            "SELECT r.id,r.name,r.slug,r.public_suspended,r.allowance,r.paused,r.daily_budget_cents,r.created_at,u.email,(SELECT count(*) FROM outputs WHERE restaurant_id=r.id AND status='completed') AS completed,(SELECT count(*) FROM outputs WHERE restaurant_id=r.id AND status NOT IN ('completed','failed')) AS reserved,(SELECT count(*) FROM outputs WHERE restaurant_id=r.id AND status='failed') AS failed,(SELECT sum(cost_estimate) FROM outputs WHERE restaurant_id=r.id) AS cost_estimate,(SELECT count(*) FROM assets WHERE restaurant_id=r.id AND approved_at IS NOT NULL AND kind='generated') AS approved,(SELECT sum(CAST(json_extract(details,'$.minutes') AS INTEGER)) FROM events WHERE restaurant_id=r.id AND kind='support_time') AS support_minutes FROM restaurants r JOIN users u ON u.id=r.user_id ORDER BY r.created_at DESC",
+            "SELECT r.id,r.name,r.slug,r.public_suspended,r.allowance,r.paused,r.daily_budget_cents,r.pro_until,r.created_at,u.email,(SELECT count(*) FROM outputs WHERE restaurant_id=r.id AND status='completed') AS completed,(SELECT count(*) FROM outputs WHERE restaurant_id=r.id AND status NOT IN ('completed','failed')) AS reserved,(SELECT count(*) FROM outputs WHERE restaurant_id=r.id AND status='failed') AS failed,(SELECT sum(cost_estimate) FROM outputs WHERE restaurant_id=r.id) AS cost_estimate,(SELECT count(*) FROM assets WHERE restaurant_id=r.id AND approved_at IS NOT NULL AND kind='generated') AS approved,(SELECT sum(CAST(json_extract(details,'$.minutes') AS INTEGER)) FROM events WHERE restaurant_id=r.id AND kind='support_time') AS support_minutes FROM restaurants r JOIN users u ON u.id=r.user_id ORDER BY r.created_at DESC",
           ),
           controls: await aiControls(),
           studioRelease: await studioReleaseControls(),
@@ -1055,13 +1040,18 @@ async function route(req: Request) {
               )?.value || 0,
             ),
           },
-          readiness: await readiness(),
+          readiness: await readiness(req),
           spend: await all(
             "SELECT restaurant_id,kind,SUM(reserved_cents) AS cents FROM ai_spend WHERE budget_day=? AND status!='rejected' GROUP BY restaurant_id,kind",
             new Date(now()).toISOString().slice(0, 10),
           ),
           requests: await all(
             "SELECT id,kind,email,restaurant,status,created_at FROM launch_requests WHERE kind IN ('access','pro') ORDER BY status='new' DESC,created_at DESC LIMIT 200",
+          ),
+          // What guests reported from "Report this page" in the last 90 days.
+          menuReports: await all(
+            "SELECT e.id,e.restaurant_id,e.details,e.created_at,r.name,r.slug,r.public_suspended FROM events e JOIN restaurants r ON r.id=e.restaurant_id WHERE e.kind='menu_report' AND e.created_at>? ORDER BY e.created_at DESC LIMIT 100",
+            now() - 90 * 86400000,
           ),
           // Links that still work: invitations, setup invitations and resets.
           invites: await all(
@@ -1186,18 +1176,36 @@ async function route(req: Request) {
           404,
           "Restaurant not found.",
         );
+        // Pro features without a subscription (never images): a time, or
+        // null to end them. Left out, the current comp stays.
+        const proUntil =
+          b.proUntil === undefined || b.proUntil === null
+            ? b.proUntil
+            : z.number().int().min(0).max(8.64e15).parse(b.proUntil);
+        const allowance = z
+          .number()
+          .int()
+          .min(0)
+          .max(100000)
+          .parse(b.allowance);
+        // Changing the images decides them: free images still held or
+        // already had (free-grants.ts) are no longer added or mentioned.
         await run(
-          "UPDATE restaurants SET allowance=?,paused=?,daily_budget_cents=COALESCE(?,daily_budget_cents) WHERE id=?",
-          z.number().int().min(0).max(100000).parse(b.allowance),
+          "UPDATE restaurants SET free_grant=CASE WHEN allowance=? THEN free_grant END,allowance=?,paused=?,daily_budget_cents=COALESCE(?,daily_budget_cents),pro_until=CASE WHEN ?=1 THEN ? ELSE pro_until END WHERE id=?",
+          allowance,
+          allowance,
           b.paused ? 1 : 0,
           b.dailyBudgetCents === undefined
             ? null
             : z.number().int().min(0).max(1000000).parse(b.dailyBudgetCents),
+          proUntil === undefined ? 0 : 1,
+          proUntil ?? null,
           rid,
         );
         await event(rid, "allowance_updated", null, {
           allowance: b.allowance,
           paused: !!b.paused,
+          ...(proUntil === undefined ? {} : { proUntil }),
         });
         return response({ ok: true });
       }
@@ -1244,6 +1252,33 @@ async function route(req: Request) {
         );
         return response({ ok: true });
       }
+      if (p[1] === "delete-account") {
+        // For an owner who asks and can't sign in. The owner's own deletion
+        // rules apply; typing their email stands in for their password.
+        const input = z
+          .object({ id: z.string().uuid(), confirm: z.string().max(254) })
+          .parse(b);
+        const r = await one("SELECT * FROM restaurants WHERE id=?", input.id);
+        assert(r, 404, "Restaurant not found.");
+        const account = await one(
+          "SELECT id,email,role FROM users WHERE id=?",
+          r.user_id,
+        );
+        assert(account, 404, "Restaurant not found.");
+        assert(
+          input.confirm.trim().toLowerCase() === account.email,
+          400,
+          "Type the owner’s email address to confirm.",
+        );
+        assert(
+          account.id !== administrator.id,
+          400,
+          "Delete your own account in Settings, under Details.",
+        );
+        await deleteAccount(account, r);
+        await event(null, "account_deleted", null, { byAdministrator: true });
+        return response({ ok: true });
+      }
       throw new AppError(404, "Not found.");
     }
     if (p[0] === "account" && p[1] === "delete" && method === "POST") {
@@ -1277,22 +1312,24 @@ async function route(req: Request) {
     if (p[0] === "plan-waitlist" && method === "POST") {
       // One entry per owner; asking again changes nothing.
       const { u, r } = await owner(req);
-      await run(
+      const joined = await run(
         "INSERT OR IGNORE INTO launch_requests (id,kind,email,restaurant,created_at) VALUES (?,'pro',?,?,?)",
         id(),
         u.email,
         r.name,
         now(),
       );
+      // The Pro feature that opened Plans, if one did (launch funnel).
+      if (joined.meta.changes)
+        await recordWaitlistJoin(r.id, await body(req).catch(() => ({})));
       return response({ ok: true });
     }
     const { r } = await owner(req);
     if (
       r.public_suspended &&
       method === "POST" &&
-      ((p[0] === "menu" && p[1] === "publish") ||
-        (["menus", "promotions"].includes(p[0]) &&
-          ["publish", "primary", "live"].includes(p[2])))
+      ["menus", "promotions"].includes(p[0]) &&
+      ["publish", "primary", "live"].includes(p[2])
     )
       throw new AppError(
         403,
@@ -1473,7 +1510,8 @@ async function route(req: Request) {
       const input = await body(req);
       const b = dishSchema.parse(input);
       // The menu builder saves one menu's edit to My Dishes without
-      // touching other menus or anything guests see.
+      // touching other menus or anything guests see, apart from allergens
+      // and diets, which every menu showing the dish must get right.
       const { syncMenus } = z
         .object({ syncMenus: z.boolean().default(true) })
         .parse(input);
@@ -1535,13 +1573,41 @@ async function route(req: Request) {
         r.id,
       );
       assert(saved, 404, "Dish not found.");
-      // Menus showing the dish's previous details follow the edit.
-      const menus =
-        before && syncMenus ? await syncDishToMenus(r.id, before, saved) : [];
-      return response({ id: did, revision: saved.revision, menus });
+      // Menus showing the dish's previous details follow the edit. From the
+      // menu builder, only allergens and dropped diets reach other menus.
+      const { updated: menus, kept } = before
+        ? await syncDishToMenus(r.id, before, saved, {
+            safetyOnly: !syncMenus,
+          })
+        : { updated: [], kept: [] };
+      return response({ id: did, revision: saved.revision, menus, kept });
     }
     if (p[0] === "assets") {
       if (method === "POST" && !p[1]) return await upload(req, r);
+      // Smaller copies of menu photos, made by the owner's browser at publish.
+      if (method === "POST" && p[1] === "variants")
+        return response({
+          needed: await neededVariants(
+            r.id,
+            z
+              .array(z.string().uuid())
+              .max(200)
+              .parse((await body(req)).ids),
+          ),
+        });
+      if (method === "POST" && p[2] === "variants") {
+        assert(
+          Number(req.headers.get("content-length") || 0) <= 5000000,
+          413,
+          "These photo copies are too large.",
+        );
+        await saveVariants(
+          r.id,
+          z.string().uuid().parse(p[1]),
+          await req.formData(),
+        );
+        return response({ ok: true });
+      }
       const a = await one(
         "SELECT * FROM assets WHERE id=? AND restaurant_id=? AND (deleted_at IS NULL OR ?='DELETE')",
         z.string().uuid("Choose an image.").parse(p[1]),
@@ -1580,6 +1646,30 @@ async function route(req: Request) {
         );
       }
       if (method === "DELETE") {
+        // A photo an unfinished image is made from (its original, previous
+        // version or inspiration) stays until the image is done: removing it
+        // would fail the image, and a correction failed that way used to
+        // give an image back.
+        const use = a.deleted_at
+          ? null
+          : await one(
+              `SELECT count(*) AS n,max(o.status!='queued' OR o.response_id IS NOT NULL OR o.lease_until>=? OR j.credit_period LIKE 'complimentary:%') AS started
+               FROM jobs j JOIN outputs o ON o.job_id=j.id
+               WHERE j.restaurant_id=? AND o.status NOT IN ('completed','failed')
+                 AND (j.source_id=? OR j.parent_id=? OR EXISTS(SELECT 1 FROM json_each(j.details,'$.style.referenceIds') WHERE value=?))`,
+              now(),
+              r.id,
+              a.id,
+              a.id,
+              a.id,
+            );
+        assert(
+          !use?.n,
+          409,
+          use?.started
+            ? "An image being made uses this photo. You can remove the photo once it’s finished."
+            : "A queued image uses this photo. Cancel it in Photo Studio, or wait until it’s finished, then remove the photo.",
+        );
         const prune = (menu: Row) => ({
           ...menu,
           ...(menu.restaurant
@@ -1642,6 +1732,7 @@ async function route(req: Request) {
           a.key,
           ...(a.working_key ? [a.working_key] : []),
           `public/${r.id}/${a.id}`,
+          ...assetVariantKeys(r.id, a.id),
         ]);
         await releaseStorage(a.id);
         await event(r.id, "asset_deleted", a.id);
@@ -1730,6 +1821,7 @@ async function route(req: Request) {
         // calls, so closing this page cannot cut one off.
         await tick(r.id, { startNew: !(await workerStatus()).healthy });
         checkAlertsInBackground();
+        checkBillingInBackground();
         return response({ ok: true });
       }
       if (p[1] && p[2] === "cancel") {
@@ -1799,77 +1891,57 @@ async function route(req: Request) {
     }
     if (p[0] === "events" && method === "POST") {
       const b = await body(req);
+      const kind = z
+        .enum([
+          "image_downloaded",
+          "caption_copied",
+          "visit",
+          // Which Pro features people meet, and which ones they buy for.
+          "upgrade_prompt_shown",
+          // "See Pro" or a Pro button clicked; upgrade_clicked is Get Pro.
+          "upgrade_requested",
+          "upgrade_clicked",
+          // A menu's PDF, table card or QR image (lib/funnel.ts).
+          "menu_exported",
+        ])
+        .parse(b.kind);
       await event(
         r.id,
-        z.enum(["image_downloaded", "caption_copied", "visit"]).parse(b.kind),
+        kind,
         b.entityId ? z.string().uuid().parse(b.entityId) : null,
+        kind.startsWith("upgrade_")
+          ? {
+              feature: z
+                .string()
+                .refine(isProFeature, "Unknown feature.")
+                .parse(b.feature),
+            }
+          : kind === "menu_exported"
+            ? menuExportDetails(b)
+            : {},
       );
       return response({ ok: true });
     }
-    if (p[0] === "menu" && method === "POST") {
-      assert(
-        !(await one(
-          "SELECT id FROM menu_documents WHERE restaurant_id=? LIMIT 1",
-          r.id,
-        )),
-        409,
-        "Menu Studio has been upgraded. Reload the workspace to keep editing or publishing your saved menus.",
+    // The single menu from before Menus (menu, menu/publish, menu/unpublish).
+    // Pages use menus/*; a hand-made call here published around Free's
+    // one-live-menu limit.
+    if (p[0] === "menu" && method === "POST")
+      throw new AppError(
+        410,
+        "Menu Studio has been upgraded. Reload the page to keep editing and publishing your menus.",
       );
-      if (p[1] === "unpublish") {
-        await run(
-          "UPDATE restaurants SET published=NULL,published_at=NULL WHERE id=?",
-          r.id,
-        );
-        await event(r.id, "menu_unpublished");
-        return response({ ok: true });
-      }
-      if (p[1] === "publish") {
-        const draft = menuSchema.parse(JSON.parse(r.menu_draft));
-        assert(
-          draft.sections.some((s) => s.items.length),
-          400,
-          "Add at least one dish before publishing.",
-        );
-        assert(
-          !isPlaceholderRestaurantName(r.name),
-          400,
-          restaurantNameMessage,
-        );
-        const menu = await snapshot(r, draft);
-        await run(
-          "UPDATE restaurants SET published=?,published_at=? WHERE id=?",
-          JSON.stringify(menu),
-          now(),
-          r.id,
-        );
-        await event(r.id, "menu_published");
-        return response({ ok: true, path: "/m/" + r.slug });
-      }
-      const draft = menuSchema.parse(await body(req));
-      for (const section of draft.sections)
-        for (const item of section.items)
-          assert(
-            await one(
-              "SELECT id FROM dishes WHERE id=? AND restaurant_id=?",
-              item.dishId,
-              r.id,
-            ),
-            400,
-            "Menu dish not found.",
-          );
-      await run(
-        "UPDATE restaurants SET menu_draft=? WHERE id=?",
-        JSON.stringify(draft),
-        r.id,
-      );
-      return response({ ok: true });
-    }
     throw new AppError(404, "Not found.");
   } catch (e) {
     if (e instanceof z.ZodError)
       return response({ error: e.issues.map((x) => x.message).join(" ") }, 400);
     if (e instanceof AppError && e.status < 500)
-      return response({ error: e.message }, e.status);
+      return response(
+        {
+          error: e.message,
+          ...(e.code ? { code: e.code, feature: e.feature } : {}),
+        },
+        e.status,
+      );
     await reportError(e, {
       request: req,
       status: e instanceof AppError ? e.status : 500,

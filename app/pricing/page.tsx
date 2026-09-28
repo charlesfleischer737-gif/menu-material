@@ -1,52 +1,103 @@
+import type { ReactNode } from "react";
 import PublicInformation from "../components/public-information";
 import PlanCards from "../components/plan-cards";
 import { billingEnabled } from "@/lib/server/billing";
+import { passwordResetEnabled } from "@/lib/server/password-reset";
+import { config } from "@/lib/server/core";
+import { siteContact } from "@/lib/site-contact";
 import { pageMetadata } from "../site-metadata";
-import { PRO_PLAN, PRO_PRICE_LABEL } from "@/lib/plans";
+import { FREE_SIGNUP_IMAGES, PRO_PLAN, PRO_PRICE_LABEL } from "@/lib/plans";
 export const dynamic = "force-dynamic";
 export const metadata = pageMetadata({
   title: "Free & Pro plans · Menu Material",
-  description:
-    "Explore Menu Material plans for restaurant photography. Start with 5 free images.",
+  description: `Explore Menu Material plans for restaurant photography. Start with ${FREE_SIGNUP_IMAGES} free images.`,
   path: "/pricing",
 });
 export default function Pricing() {
   const enabled = billingEnabled();
-  const questions: [string, string][] = [
+  const { supportEmail, termsUrl, refundPolicyUrl } = siteContact(config);
+  const email = supportEmail && (
+    <a href={`mailto:${supportEmail}`}>{supportEmail}</a>
+  );
+  // Refunds are whatever the owner's policy or Terms say; nothing is
+  // promised here.
+  const refunds = refundPolicyUrl ? (
+    <>
+      {" "}
+      For refunds, see the <a href={refundPolicyUrl}>refund policy</a>.
+    </>
+  ) : termsUrl ? (
+    <>
+      {" "}
+      For refunds, see the <a href="/terms">Terms</a>.
+    </>
+  ) : null;
+  const questions: [string, ReactNode][] = [
     [
       "What uses an image?",
-      "Each new photo or AI revision uses one image. Cropping, touch-ups, menus, post layouts and downloads are always free, and images that fail to create are returned.",
+      "Each new photo or AI revision uses one image. Cropping, touch-ups, menus, post layouts and downloads never use one, and images that fail to create are returned.",
     ],
     [
       "Do free images expire?",
-      "No. The 5 free images are a one-time allowance for each account.",
+      `No. The ${FREE_SIGNUP_IMAGES} free images are a one-time allowance for each account.`,
+    ],
+    [
+      "What’s included for free?",
+      "Full-quality photos in every style with no watermark, every download size, one live menu with its QR code, PDF and table card, and posts and Stories in three designs.",
+    ],
+    [
+      "What does Pro add?",
+      `${PRO_PLAN.imagesPerPeriod} images every month, your restaurant look on photos, posts and menus, every post and menu design, campaigns, up to 30 live menus, full menu insights, saved looks, inspiration photos, batches, staff photo links, and no “Made with Menu Material” on your guest menus.`,
     ],
     [
       "How does Pro work?",
-      enabled
-        ? `Pro is ${PRO_PRICE_LABEL} a month for ${PRO_PLAN.imagesPerPeriod} images each billing period. Unused images don’t roll over, and you can cancel future renewals from Plans in your workspace.`
-        : `Pro will be ${PRO_PRICE_LABEL} a month for ${PRO_PLAN.imagesPerPeriod} images each billing period, with payment and cancellation in Plans. Subscriptions aren’t open yet.`,
+      enabled ? (
+        <>
+          Pro is {PRO_PRICE_LABEL} a month for {PRO_PLAN.imagesPerPeriod} images
+          each billing period, and renews every month until you cancel. Unused
+          images don’t roll over. Cancel anytime from Plans in your workspace,
+          under Manage billing.
+          {email && <> Can’t sign in? Email {email}.</>}
+        </>
+      ) : (
+        `Pro will be ${PRO_PRICE_LABEL} a month for ${PRO_PLAN.imagesPerPeriod} images each billing period, with payment and cancellation in Plans. Subscriptions aren’t open yet.`
+      ),
     ],
     [
       "What happens if I cancel?",
-      "Your paid allowance lasts until the end of the billing period. Saved photos and designs stay available.",
+      <>
+        Pro lasts until the end of the billing period you’ve paid for, then
+        doesn’t renew. Your photos, posts, menus and saved looks stay available,
+        and live menus stay live.
+        {enabled && refunds}
+      </>,
     ],
     [
       "Is the quality the same on every plan?",
-      "Yes. Every plan includes Photo Studio, My Dishes, Post Maker and full-quality exports. Always review each image against the dish you serve before sharing it.",
+      "Yes. Every image and export is full quality on every plan. Always review each image against the dish you serve before sharing it.",
     ],
     [
       "How do I reset my password?",
-      "Password-reset emails aren’t available yet. An administrator can send you a secure reset link.",
+      passwordResetEnabled()
+        ? "Choose Forgot password on the sign-in screen and enter your account email. Your one-use reset link expires in 30 minutes."
+        : "An administrator can provide a secure reset link while email recovery is being connected.",
     ],
   ];
+  if (email)
+    questions.push([
+      "How do I get help?",
+      <>
+        Email {email}. Include your account’s email address and your
+        restaurant’s name.
+      </>,
+    ]);
   return (
     <PublicInformation
       title="A little budget. A lot of good-looking food."
       intro={
         enabled
-          ? `Start with 5 free images. Keep creating with Pro for ${PRO_PRICE_LABEL} a month.`
-          : `Start with 5 free images. Pro is coming soon at ${PRO_PRICE_LABEL} a month.`
+          ? `Start with ${FREE_SIGNUP_IMAGES} free images. Pro keeps your restaurant looking its best, every week, for ${PRO_PRICE_LABEL} a month.`
+          : `Start with ${FREE_SIGNUP_IMAGES} free images. Pro is coming soon at ${PRO_PRICE_LABEL} a month.`
       }
     >
       <PlanCards enabled={enabled} />

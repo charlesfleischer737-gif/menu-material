@@ -1,6 +1,7 @@
 import type { Metadata } from "next";
 import { headers } from "next/headers";
 import { config } from "@/lib/server/core";
+import { FREE_SIGNUP_IMAGES } from "@/lib/plans";
 
 // Shared metadata for the public site: its address, link-preview image and
 // the fields each public page sets for search engines and link previews.
@@ -49,7 +50,8 @@ export async function siteOrigin() {
 }
 
 // schema.org data for the homepage. The only offer is the free allowance
-// every account starts with; Pro is not for sale yet.
+// every account starts with. Pro, sold only while Stripe billing is on
+// (billingEnabled()), isn't listed.
 export function homeStructuredData(origin: string) {
   const home = new URL("/", origin).href;
   const organization = {
@@ -76,7 +78,7 @@ export function homeStructuredData(origin: string) {
           "@type": "Offer",
           price: "0",
           priceCurrency: "USD",
-          description: "5 free images to get started. No credit card needed.",
+          description: `${FREE_SIGNUP_IMAGES} free images to get started. No credit card needed.`,
         },
       },
     ],

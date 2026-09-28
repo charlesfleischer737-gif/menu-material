@@ -136,6 +136,14 @@ try {
   checks += 5;
   await call("auth/dev", {});
   const ownerCookie = cookie;
+  // This suite exercises Pro features (look, campaigns, batches, staff links).
+  const ownRestaurant = (await call("state")).restaurant;
+  await call("admin/restaurant", {
+    id: ownRestaurant.id,
+    allowance: ownRestaurant.allowance,
+    paused: false,
+    proUntil: Date.now() + 365 * 86400000,
+  });
   const state = await call("state"),
     r = state.restaurant;
   const inv = await call("admin/invite", {
@@ -158,7 +166,15 @@ try {
     })
   ).id;
   const foreignAsset = (await call("assets", photo(foreignDish), 201)).id;
+  const foreignRestaurant = (await call("state")).restaurant;
   cookie = ownerCookie;
+  // Also Pro, so isolation checks reach ownership rather than the plan.
+  await call("admin/restaurant", {
+    id: foreignRestaurant.id,
+    allowance: foreignRestaurant.allowance,
+    paused: false,
+    proUntil: Date.now() + 365 * 86400000,
+  });
   const reference = (await call("assets", photo(null, "reference"), 201)).id;
   const logo = (await call("assets", photo(null, "logo"), 201)).id;
   const style = {

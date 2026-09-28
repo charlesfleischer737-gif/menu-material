@@ -1159,6 +1159,11 @@
   text-underline-offset: 3px;
 }
 
+.google-sign-in { min-width: 0; }
+.google-sign-in-button { display: flex; justify-content: center; min-height: 44px; }
+.auth-divider { display: flex; align-items: center; gap: 12px; color: var(--muted-foreground); font-size: 0.875rem; margin: 18px 0 0; }
+.auth-divider::before, .auth-divider::after { content: ""; height: 1px; background: var(--border); flex: 1; }
+
 /* Information pages: pricing, privacy and guidelines. */
 .pw-information {
   width: min(760px, calc(100% - 44px));
@@ -1225,7 +1230,8 @@
   line-height: 1.53;
   color: rgb(29 29 31 / 86%);
 }
-.pw-information > section a {
+.pw-information > section a,
+.pw-information-intro a {
   color: var(--green);
   text-decoration: underline;
   text-underline-offset: 3px;
@@ -1386,6 +1392,17 @@
   font-size: var(--text-subhead);
   text-align: center;
 }
+/* Renewal and cancellation terms under Get Pro. */
+.pw-plan-terms {
+  font-size: var(--text-caption);
+  line-height: 1.45;
+  color: var(--on-dark-muted);
+}
+.pw-plan-terms a {
+  color: var(--on-dark);
+  text-decoration: underline;
+  text-underline-offset: 3px;
+}
 .pw-plans-dialog {
   display: flex;
   flex-direction: column;
@@ -1415,6 +1432,49 @@
 .pw-plans-body .pw-plan-grid {
   margin-block: 20px 0;
 }
+.pw-plans-body .fine a {
+  text-decoration: underline;
+  text-underline-offset: 3px;
+}
+/* Cards without their buttons end with their features. */
+.pw-plan-card > .pw-plan-features:last-child {
+  margin-bottom: 0;
+}
+/* The dialog's buttons stay in view below the plans, which scroll on a
+   laptop screen, with any error just above them. */
+.pw-plans-footer {
+  flex: 0 0 auto;
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 12px 24px;
+  padding: 16px 28px 20px;
+  border-top: 1px solid var(--workspace-line);
+}
+.pw-plans-footer > p {
+  flex: 1 1 260px;
+  margin: 0;
+}
+.pw-plans-footer > .error {
+  flex-basis: 100%;
+}
+.pw-plans-footer .pw-plan-terms,
+.pw-plans-status {
+  color: var(--workspace-muted);
+}
+.pw-plans-footer .pw-plan-terms a {
+  color: var(--workspace-ink);
+}
+.pw-plans-status {
+  font-size: var(--text-subhead);
+}
+.pw-plans-actions {
+  display: flex;
+  flex-wrap: wrap;
+  justify-content: flex-end;
+  gap: 10px;
+  margin-left: auto;
+}
 .pw-plan-current {
   margin-top: 20px;
   padding: 20px;
@@ -1423,6 +1483,12 @@
 }
 .pw-plan-current p {
   margin: 8px 0;
+}
+.pw-plan-note {
+  margin: 16px 0 0;
+  padding: 12px 16px;
+  border-radius: var(--radius-card);
+  background: var(--gray-100);
 }
 
 @media (max-width: 1000px) {
@@ -1479,8 +1545,29 @@
   .pw-mobile-menu-trigger {
     display: grid;
   }
+  /* The pitch, the before-and-after and its action share the first screen:
+     the hero is at least the height the browser shows below the header (svh
+     counts its toolbars as showing) and the photo takes whatever the text
+     leaves, from 200px up to 4:5, centered in any height beyond that. */
+  .pw-hero {
+    grid-template-rows: auto minmax(200px, 1fr) auto;
+    row-gap: 24px;
+    min-height: calc(100vh - var(--pw-header-height));
+    min-height: calc(100svh - var(--pw-header-height));
+    padding-bottom: 24px;
+  }
+  .pw-compare-block {
+    align-self: center;
+    height: 100%;
+    max-height: calc((100vw - 44px) * 1.25);
+    margin-top: 0;
+  }
+  .pw-hero-actions {
+    margin-top: 0;
+  }
   .pw-compare {
-    aspect-ratio: 4 / 5;
+    height: 100%;
+    aspect-ratio: auto;
     border-radius: var(--radius-card);
   }
   .pw-information-header h1 {
@@ -1528,6 +1615,10 @@
   .pw-plan-grid {
     grid-template-columns: 1fr;
   }
+  /* Offered for a Pro feature: Pro comes first when the cards stack. */
+  .pw-plan-grid.is-pro-first .pw-plan-card.is-pro {
+    order: -1;
+  }
   .pw-plan-card {
     padding: 24px;
     border-radius: var(--radius-card);
@@ -1537,6 +1628,15 @@
   }
   .pw-plans-body {
     padding: 0 18px 18px;
+  }
+  .pw-plans-footer {
+    gap: 10px;
+    padding: 12px 18px 16px;
+  }
+  /* Full width, the Pro action first. */
+  .pw-plans-actions {
+    flex-direction: column-reverse;
+    width: 100%;
   }
 }
 @media (prefers-reduced-motion: reduce) {

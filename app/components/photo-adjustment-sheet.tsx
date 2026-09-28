@@ -220,9 +220,7 @@ export function PhotoAdjustmentSheet({
             </p>
           )}
           <p role={busy ? "status" : undefined}>
-            {busy
-              ? "Saving a separate version…"
-              : "Your original stays safe. Save a new version."}
+            {busy ? "Saving a separate version…" : "Save a new version."}
           </p>
           <div>
             <button

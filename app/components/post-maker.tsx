@@ -12,6 +12,8 @@ import {
 } from "lucide-react";
 import { api, downloadBlob, type Row } from "@/lib/client";
 import {
+  dishNameMessage,
+  isPlaceholderDishName,
   isPlaceholderRestaurantName,
   restaurantNameMessage,
 } from "@/lib/restaurant-identity";
@@ -36,7 +38,11 @@ import {
 } from "@/lib/post-flow";
 import {
   postTemplates,
-  applyPostTemplate,
+  choosePostTemplate,
+  freePostCopy,
+  freePostDraft,
+  getPostTemplate,
+  newPostDraft,
   ownerChoices,
 } from "@/lib/post-templates";
 import {
@@ -46,6 +52,9 @@ import {
   recommendedDesigns,
 } from "@/lib/post-composition";
 import { campaignZip, renderPost } from "@/lib/creation-export";
+import { FREE_POST_TEMPLATES } from "@/lib/plans";
+import { hasProFeatures, requestUpgrade } from "@/lib/upgrade";
+import { ProBadge, ProNote } from "./pro-badge";
 import { release } from "@/lib/post-kit";
 import { postShape } from "@/lib/sharing";
 import { emptyAdjustments } from "@/lib/studio";
@@ -55,6 +64,7 @@ import {
   Feedback,
   Field,
   DraftRecovery,
+  refusedByPlan,
   SavedDrafts,
   track,
   useAction,
@@ -67,39 +77,8 @@ import WorkspaceTabs from "./workspace-tabs";
 import PostSharing from "./post-sharing";
 import { PostCanvas } from "./post-canvas";
 export { PostCanvas } from "./post-canvas";
-const initial = (restaurant: Row, version = 1) => ({
-  step: 1,
-  compositionVersion: version,
-  items: [],
-  occasion: "showcase",
-  title: "",
-  description: "",
-  price: "",
-  showPrice: false,
-  validity: "",
-  template: "chef",
-  kicker: "",
-  cta: "",
-  textMode: "minimal",
-  showBrand: true,
-  textPlacement: "auto",
-  channels: ["feed", "story"],
-  feedShape: "4:5",
-  // A carousel opens on its offer; without a cover, the first slide carries it.
-  carouselCover: true,
-  layouts: Object.fromEntries(
-    ["feed", "story", "carousel"].map((k) => [
-      k,
-      { ...emptyAdjustments, fit: false, autoFrame: true },
-    ]),
-  ),
-  caption: "",
-  captionMode: "auto",
-  reviewed: false,
-  voice: restaurant.style?.tone || "Warm and welcoming",
-  ...brandPostFields(restaurant.style),
-  typography: "template",
-});
+const freeDesign = (id: string) =>
+  FREE_POST_TEMPLATES.includes(getPostTemplate(id).id);
 export default function PostMaker({
   state,
   refresh,
@@ -115,10 +94,14 @@ export default function PostMaker({
   onSeedUsed: () => void;
   onPhoto: () => void;
 }) {
+  const pro = hasProFeatures(state);
   const store = useCreationDraft(
     "post",
-    initial(state.restaurant),
+    newPostDraft(state.restaurant, 1, pro),
     workspacePreferenceKey(state.user.id, state.restaurant.id),
+    // On Free, a post with Pro options (such as one made on Pro) opens and
+    // downloads, but isn't saved.
+    (draft) => pro || freePostDraft(draft),
   );
   const { draft: b, change, save, start, ready, status } = store;
   const action = useAction();
@@ -135,6 +118,7 @@ export default function PostMaker({
     [issues, setIssues] = useState<string[]>([]),
     [proofIssues, setProofIssues] = useState<string[]>([]),
     [restaurantName, setRestaurantName] = useState(""),
+    [dishName, setDishName] = useState(""),
     [mobileControls, setMobileControls] = useState(false);
   const handled = useRef("");
   const controlsTrigger = useRef<HTMLButtonElement>(null);
@@ -142,8 +126,14 @@ export default function PostMaker({
   // Automatic checks before sharing; they replace an "I checked" box.
   const namePlaceholder = isPlaceholderRestaurantName(state.restaurant.name);
   const captionName = captionPlaceholder(b.caption || "");
+  // A dish still called "Untitled dish" never goes out on a post.
+  const untitled = items.find((i) => isPlaceholderDishName(i.name));
   const postChecks = [
     ...(namePlaceholder ? [restaurantNameMessage] : []),
+    ...(untitled || isPlaceholderDishName(b.title) ? [dishNameMessage] : []),
+    ...(!untitled && /\buntitled dish\b/i.test(b.caption || "")
+      ? ["Your caption still says “Untitled dish”. Change it to your dish’s name."]
+      : []),
     ...(captionName && !namePlaceholder
       ? [
           `Your caption still says “${captionName}”. Change it to your restaurant’s name.`,
@@ -195,8 +185,14 @@ export default function PostMaker({
       items: items.map((item, i) => (i === index ? { ...item, ...p } : item)),
     });
   }
+  // The design a dish opens on; on Free, the best of its three designs.
+  function leadDesign(draft: Row) {
+    const options = recommendedDesigns(draft, state.restaurant);
+    return pro ? options[0] : options.find(freeDesign) || "chef";
+  }
   function applyDesign(id: string) {
-    const patch = applyPostTemplate({ ...b, compositionVersion: 2 }, id);
+    if (!pro && !freeDesign(id)) return requestUpgrade("postTemplates");
+    const patch = choosePostTemplate({ ...b, compositionVersion: 2 }, id, pro);
     update({ ...patch, compositionVersion: 2 });
   }
   useEffect(() => {
@@ -216,7 +212,7 @@ export default function PostMaker({
         if (d && a) {
           const draft = {
             ...postFromPhoto(
-              initial(state.restaurant, 2),
+              newPostDraft(state.restaurant, 2, pro),
               d,
               a,
               state.restaurant,
@@ -225,10 +221,10 @@ export default function PostMaker({
             ...(seed.occasion ? { occasion: seed.occasion } : {}),
           };
           // Open on the design made for this dish, not a fixed default.
-          const lead = recommendedDesigns(draft, state.restaurant)[0];
+          const lead = leadDesign(draft);
           await start({
             ...draft,
-            ...applyPostTemplate(draft, lead),
+            ...choosePostTemplate(draft, lead, pro),
             compositionVersion: 2,
           });
           track("photo_reused", a.id, { dishId: d.id, destination: "post" });
@@ -244,6 +240,12 @@ export default function PostMaker({
     if (ready) change(currentCaption(store.read(), state.restaurant));
   }, [ready, store.id, state.restaurant.name, state.restaurant.currency]);
   function choose(d: Row) {
+    // More than one photo (carousels and offers) is Pro.
+    if (!pro && items.length && !items.some((i) => i.dishId === d.id)) {
+      setPicker(false);
+      requestUpgrade("postTemplates");
+      return;
+    }
     if (items.length >= 6 && !items.some((i) => i.dishId === d.id)) {
       action.setError("Choose up to six photos. Remove one to add another.");
       return;
@@ -269,16 +271,14 @@ export default function PostMaker({
       quantity: 1,
       facts: dishSnapshot(d),
     };
-    const lead = first
-      ? recommendedDesigns({ ...b, items: [item] }, state.restaurant)[0]
-      : "";
+    const lead = first ? leadDesign({ ...b, items: [item] }) : "";
     const words = postDefaults([item]);
     // Later dishes update the words the owner hasn't changed (see updatePost).
     update({
       items: [...items, item],
       ...(first
         ? {
-            ...applyPostTemplate({ ...b, items: [item], ...words }, lead),
+            ...choosePostTemplate({ ...b, items: [item], ...words }, lead, pro),
             compositionVersion: 2,
             ...words,
             captionMode: "auto",
@@ -300,6 +300,14 @@ export default function PostMaker({
     });
     // A headline, description or price the owner hasn't changed follows the dish.
     update({ items: next, factsReviewed: true });
+  }
+  // A copy of a post with Pro options that Free can save and change.
+  function makeFreeCopy() {
+    void act("Making a Free copy", async () => {
+      const first = { ...b, items: items.slice(0, 1) };
+      await start(freePostCopy(b, state.restaurant, leadDesign(first)));
+      action.setNotice("Free copy made. Your original post is unchanged.");
+    });
   }
   async function caption(mode = "draft") {
     const data = await api("post-caption", {
@@ -352,7 +360,10 @@ export default function PostMaker({
       ),
     ]);
     change({ reviewed: false });
-    await save();
+    // A save the plan refuses doesn't stop a download of what's on screen.
+    await save().catch((e) => {
+      if (!refusedByPlan(e)) throw e;
+    });
     setExporting(true);
   }
   if (!ready) return <DraftRecovery store={store} title="Post Maker" />;
@@ -398,7 +409,7 @@ export default function PostMaker({
           disabled={!!busy}
           onClick={() =>
             act("Starting post", async () => {
-              await start(initial(state.restaurant, 2));
+              await start(newPostDraft(state.restaurant, 2, pro));
               setPanel("details");
               setSlide(0);
             })
@@ -436,6 +447,23 @@ export default function PostMaker({
         <div className="mm-fact-notice">
           <strong>{dishNote}</strong>
         </div>
+      )}
+      {!pro && !freePostDraft(b) && (
+        <ProNote
+          feature="postTemplates"
+          alternative={
+            <button
+              className="cx-link"
+              disabled={!!busy}
+              onClick={makeFreeCopy}
+            >
+              Make a Free copy
+            </button>
+          }
+        >
+          This post uses Pro options, so changes to it aren’t saved. You can
+          still download it.
+        </ProNote>
       )}
       {!items.length ? (
         <div className="mm-post-start">
@@ -578,9 +606,10 @@ export default function PostMaker({
                       thumbnail
                       draft={{
                         ...b,
-                        ...applyPostTemplate(
+                        ...choosePostTemplate(
                           { ...b, compositionVersion: 2 },
                           t.id,
+                          pro,
                         ),
                         compositionVersion: 2,
                       }}
@@ -590,6 +619,7 @@ export default function PostMaker({
                     <span>
                       {t.name}
                       {b.template === t.id && <Check size={14} />}
+                      {!pro && !freeDesign(t.id) && <ProBadge />}
                     </span>
                   </button>
                 ))}
@@ -695,10 +725,13 @@ export default function PostMaker({
                     <button
                       className="cx-link"
                       disabled={items.length >= 6}
-                      onClick={() => setPicker(true)}
+                      onClick={() =>
+                        pro ? setPicker(true) : requestUpgrade("postTemplates")
+                      }
                     >
                       <Plus size={15} />
                       Add another photo {items.length >= 6 ? "· limit 6" : ""}
+                      {!pro && <ProBadge />}
                     </button>
                     <Field label="Headline">
                       <textarea
@@ -794,8 +827,10 @@ export default function PostMaker({
                   <>
                     <h2>Design</h2>
                     <p className="mm-muted">
-                      Your restaurant colors carry through each design. The
-                      photo and layout adapt to each format.
+                      {pro
+                        ? "Your restaurant colors carry through each design."
+                        : "Each design uses its own colors and type."}{" "}
+                      The photo and layout adapt to each format.
                     </p>
                     {b.compositionVersion !== 2 ? (
                       // Older designs render at 4:5 only; the improved one offers 3:4.
@@ -900,63 +935,69 @@ export default function PostMaker({
                         onChange={(e) => update({ cta: e.target.value })}
                       />
                     </Field>
-                    <details className="mm-divider">
-                      <summary>Fine-tune this design</summary>
-                      <Field label="Brand color">
-                        <input
-                          type="color"
-                          value={b.color}
-                          onChange={(e) =>
+                    {!pro ? (
+                      <ProNote feature="postTemplates">
+                        Your own colors and fonts on posts are part of Pro.
+                      </ProNote>
+                    ) : (
+                      <details className="mm-divider">
+                        <summary>Fine-tune this design</summary>
+                        <Field label="Brand color">
+                          <input
+                            type="color"
+                            value={b.color}
+                            onChange={(e) =>
+                              update({
+                                color: e.target.value,
+                                brandMode: "custom",
+                              })
+                            }
+                          />
+                        </Field>
+                        <Field label="Accent color">
+                          <input
+                            type="color"
+                            value={b.accent}
+                            onChange={(e) =>
+                              update({
+                                accent: e.target.value,
+                                brandMode: "custom",
+                              })
+                            }
+                          />
+                        </Field>
+                        <Field label="Typography">
+                          <select
+                            value={b.typography || "template"}
+                            onChange={(e) =>
+                              update({ typography: e.target.value })
+                            }
+                          >
+                            <option value="template">
+                              This design’s typography
+                            </option>
+                            {brandTypefaces.map((f) => (
+                              <option key={f.id} value={f.id}>
+                                {f.name}
+                              </option>
+                            ))}
+                          </select>
+                        </Field>
+                        <button
+                          className="cx-link"
+                          onClick={() =>
                             update({
-                              color: e.target.value,
-                              brandMode: "custom",
+                              ...brandPostFields(state.restaurant.style),
+                              voice:
+                                state.restaurant.style?.tone ||
+                                "Warm and welcoming",
                             })
-                          }
-                        />
-                      </Field>
-                      <Field label="Accent color">
-                        <input
-                          type="color"
-                          value={b.accent}
-                          onChange={(e) =>
-                            update({
-                              accent: e.target.value,
-                              brandMode: "custom",
-                            })
-                          }
-                        />
-                      </Field>
-                      <Field label="Typography">
-                        <select
-                          value={b.typography || "template"}
-                          onChange={(e) =>
-                            update({ typography: e.target.value })
                           }
                         >
-                          <option value="template">
-                            This design’s typography
-                          </option>
-                          {brandTypefaces.map((f) => (
-                            <option key={f.id} value={f.id}>
-                              {f.name}
-                            </option>
-                          ))}
-                        </select>
-                      </Field>
-                      <button
-                        className="cx-link"
-                        onClick={() =>
-                          update({
-                            ...brandPostFields(state.restaurant.style),
-                            voice:
-                              state.restaurant.style?.tone ||
-                              "Warm and welcoming",
-                          })
-                        }
-                      >
-                        Apply current restaurant look
-                      </button>
-                    </details>
+                          Apply current restaurant look
+                        </button>
+                      </details>
+                    )}
                   </>
                 )}
                 {panel === "photo" && (
@@ -1324,6 +1365,65 @@ export default function PostMaker({
                     </button>
                   </form>
                 )}
+                {untitled && (
+                  <form
+                    className="mm-inline"
+                    onSubmit={(e) => {
+                      e.preventDefault();
+                      void act("Naming your dish", async () => {
+                        const name = dishName.trim();
+                        if (!name || isPlaceholderDishName(name))
+                          throw Error("Enter the dish’s real name.");
+                        const dish = state.dishes.find(
+                          (d: Row) => d.id === untitled.dishId,
+                        );
+                        // My Dishes takes the name, and menus showing the
+                        // dish follow, as they do for any rename there.
+                        if (dish)
+                          await api(`dishes/${dish.id}`, {
+                            name,
+                            description: dish.description || "",
+                            category: dish.category || "Dishes",
+                            preserve: dish.preserve || "",
+                            portion: dish.portion || "",
+                            plating: dish.plating || "",
+                            setting: dish.setting || "Natural daylight",
+                            price: (Number(dish.price) || 0) / 100,
+                            available: !!dish.available,
+                            confirmed: true,
+                            revision: dish.revision,
+                          });
+                        // Words the owner hasn't changed follow the new name.
+                        update({
+                          items: items.map((i) =>
+                            i.dishId === untitled.dishId
+                              ? {
+                                  ...i,
+                                  name,
+                                  ...(dish
+                                    ? { facts: dishSnapshot({ ...dish, name }) }
+                                    : {}),
+                                }
+                              : i,
+                          ),
+                        });
+                        setDishName("");
+                        await refresh?.();
+                      });
+                    }}
+                  >
+                    <input
+                      aria-label="Dish name"
+                      value={dishName}
+                      maxLength={100}
+                      placeholder="Margherita pizza"
+                      onChange={(e) => setDishName(e.target.value)}
+                    />
+                    <button className="cx-btn cx-secondary" disabled={!!busy}>
+                      Save name
+                    </button>
+                  </form>
+                )}
               </>
             ) : proofIssues.length ? (
               <strong>Ready to share. The note above is optional.</strong>
@@ -1344,32 +1444,37 @@ export default function PostMaker({
             className="cx-link"
             disabled={!postReady || !!busy}
             onClick={() =>
-              act("Preparing downloads", async () => {
-                await save();
-                downloadBlob(
-                  await campaignZip(b, state.restaurant),
-                  `${state.restaurant.slug}-post-pack.zip`,
-                );
-                // The pack counts like any other download in the owner's report.
-                track("export_complete", items[0]?.photoId, {
-                  tool: "post",
-                  method: "download",
-                  design: String(b.template || "chef"),
-                  count: b.channels.reduce(
-                    (n: number, c: string) => n + postSlideCount(b, c),
-                    0,
-                  ),
-                  ...(store.id ? { draftId: store.id } : {}),
-                });
-                action.setNotice("Your post pack download has started.");
-              })
+              !pro
+                ? requestUpgrade("downloads")
+                : act("Preparing downloads", async () => {
+                    await save();
+                    downloadBlob(
+                      await campaignZip(b, state.restaurant),
+                      `${state.restaurant.slug}-post-pack.zip`,
+                    );
+                    // The pack counts like any other download in the owner's report.
+                    track("export_complete", items[0]?.photoId, {
+                      tool: "post",
+                      method: "download",
+                      design: String(b.template || "chef"),
+                      count: b.channels.reduce(
+                        (n: number, c: string) => n + postSlideCount(b, c),
+                        0,
+                      ),
+                      ...(store.id ? { draftId: store.id } : {}),
+                    });
+                    action.setNotice("Your post pack download has started.");
+                  })
             }
           >
             Download all formats & caption
+            {!pro && <ProBadge />}
           </button>
           <p className="mm-muted">
-            Design saved automatically. You choose when to publish in your
-            social app.
+            {pro || freePostDraft(b)
+              ? "Design saved automatically."
+              : "This post uses Pro options, so changes aren’t saved."}{" "}
+            You choose when to publish in your social app.
           </p>
           <Feedback {...action} />
         </DialogContent>

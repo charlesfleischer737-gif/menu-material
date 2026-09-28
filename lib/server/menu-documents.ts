@@ -15,6 +15,8 @@ import {
   run,
   type Row,
 } from "./core";
+import { effectiveStyle, hasProFeatures, proRequired } from "./entitlements";
+import { FREE_LIVE_MENUS, freeCanPublish } from "../plans";
 import {
   menuDocumentSchema,
   upgradeMenuDocument,
@@ -28,8 +30,10 @@ import {
   blockingChecks,
   dishFacts,
   menuPublishChecks,
+  withDishSafety,
 } from "../menu-checks";
 import { provider } from "./generation";
+import { publishVariants } from "./photo-variants";
 import { firstPublicationAddress } from "./menu-address";
 
 function documentRow(row: Row) {
@@ -120,20 +124,21 @@ async function validateReferences(
           },
         },
       );
+      await publishVariants(rid, asset.id);
     }
   }
 }
-async function sampleDishIds(rid: string) {
-  return (
-    await all("SELECT id FROM dishes WHERE restaurant_id=? AND sample=1", rid)
-  ).map((row) => row.id as string);
-}
 /** The same automatic checks the publish dialog shows; the server has the final say. */
 export async function assertMenuReady(r: Row, draft: MenuDocument) {
+  const dishes = await all(
+    "SELECT id,sample,dietary FROM dishes WHERE restaurant_id=?",
+    r.id,
+  );
   const blocking = blockingChecks(
     menuPublishChecks(draft, {
       restaurantName: r.name,
-      sampleDishIds: await sampleDishIds(r.id),
+      sampleDishIds: dishes.filter((d) => d.sample).map((d) => d.id as string),
+      dishes: dishes.map((d) => ({ id: d.id as string, dietary: d.dietary })),
     }),
   );
   assert(
@@ -142,8 +147,24 @@ export async function assertMenuReady(r: Row, draft: MenuDocument) {
     blocking[0]?.message || "Check the menu before publishing.",
   );
 }
-async function publication(r: Row, documentId: string, draft: MenuDocument) {
+async function publication(
+  r: Row,
+  documentId: string,
+  draft: MenuDocument,
+  /** Without Pro, a live menu published again keeps the look it's live in. */
+  keptStyle?: Row | null,
+) {
   await assertMenuReady(r, draft);
+  // A photo the owner reported as inaccurate stays in the draft, where the
+  // publish checks ask for another, but never reaches guests.
+  const reported = new Set(
+    (
+      await all(
+        "SELECT id FROM assets WHERE restaurant_id=? AND needs_correction=1",
+        r.id,
+      )
+    ).map((a) => a.id),
+  );
   const publicDraft = {
     ...draft,
     name: draft.title,
@@ -152,7 +173,14 @@ async function publication(r: Row, documentId: string, draft: MenuDocument) {
     // Sold-out dishes stay in the live copy so a quick update can bring them
     // back; guest menus hide them when the menu leaves unavailable dishes out.
     sections: draft.sections
-      .map((s) => ({ ...s, items: s.items.filter((i) => i.visible) }))
+      .map((s) => ({
+        ...s,
+        items: s.items
+          .filter((i) => i.visible)
+          .map((i) =>
+            i.photoId && reported.has(i.photoId) ? { ...i, photoId: null } : i,
+          ),
+      }))
       .filter((s) => s.items.length),
   };
   await validateReferences(r.id, publicDraft, true);
@@ -188,7 +216,7 @@ async function publication(r: Row, documentId: string, draft: MenuDocument) {
       currency: r.currency,
       logoId,
       orderingUrl: r.ordering_url,
-      style: publicBrandStyle(JSON.parse(r.style || "{}")),
+      style: keptStyle || publicBrandStyle(await effectiveStyle(r)),
     },
   };
 }
@@ -196,7 +224,7 @@ async function publication(r: Row, documentId: string, draft: MenuDocument) {
 const specialsOnly = (published: string | null) =>
   !!published && !JSON.parse(published).sections?.length;
 /** A stand-in with no dishes, so live specials stay open to guests. */
-function specialsPage(r: Row, snapshot: string | null) {
+function specialsPage(r: Row, snapshot: string | null, style: Row) {
   return JSON.stringify({
     restaurant: snapshot
       ? JSON.parse(snapshot).restaurant
@@ -206,10 +234,19 @@ function specialsPage(r: Row, snapshot: string | null) {
           currency: r.currency,
           logoId: null,
           orderingUrl: r.ordering_url,
-          style: publicBrandStyle(JSON.parse(r.style || "{}")),
+          style: publicBrandStyle(style),
         },
     sections: [],
   });
+}
+/** Live menus other than this one, for Free's one-menu limit. */
+async function otherLiveMenus(rid: string, menuId: string) {
+  const row = await one(
+    "SELECT count(*) AS n FROM menu_documents WHERE restaurant_id=? AND id<>? AND archived_at IS NULL AND published IS NOT NULL",
+    rid,
+    menuId,
+  );
+  return Number(row?.n || 0);
 }
 export async function publicMenuDocuments(rid: string) {
   return (
@@ -240,7 +277,7 @@ export async function assetInPublishedDocuments(rid: string, assetId: string) {
   return documents.some((r) => {
     const d = JSON.parse(r.published);
     return (
-      d.restaurant.logoId === assetId ||
+      d.restaurant?.logoId === assetId ||
       d.sections.some((s: Row) =>
         s.items.some((i: Row) => i.photoId === assetId),
       )
@@ -333,7 +370,7 @@ async function linkEntriesToLibrary(r: Row, row: Row, input: unknown) {
     .parse(input);
   await limit("menu-library:" + r.id, 60, 3600);
   const dishes = await all(
-    "SELECT id,name,category,preferred_photo_id,dietary FROM dishes WHERE restaurant_id=? AND archived_at IS NULL AND sample=0 ORDER BY created_at",
+    "SELECT id,name,category,preferred_photo_id,dietary,price,description,revision FROM dishes WHERE restaurant_id=? AND archived_at IS NULL AND sample=0 ORDER BY created_at",
     r.id,
   );
   // Photos the owner reported as inaccurate never join a menu on their own.
@@ -356,6 +393,7 @@ async function linkEntriesToLibrary(r: Row, row: Row, input: unknown) {
     created: boolean;
   }[] = [];
   const inserts = [],
+    fills = [],
     created = new Map<string, { id: string; dietary: string[] }>(),
     t = now();
   for (const entry of b.entries) {
@@ -372,6 +410,24 @@ async function linkEntriesToLibrary(r: Row, row: Row, input: unknown) {
         dietary: normalizeDietary(match.dietary),
         created: false,
       });
+      // A dish made from a photo has no price or description yet; the menu's
+      // become its own, so later My Dishes edits reach this menu.
+      const price = !match.price && entry.price ? entry.price : null,
+        description =
+          !String(match.description || "").trim() && entry.description.trim()
+            ? entry.description.trim()
+            : null;
+      if (price !== null || description !== null) {
+        fills.push(
+          db()
+            .prepare(
+              "UPDATE dishes SET price=COALESCE(?,price),description=COALESCE(?,description),updated_at=?,revision=revision+1 WHERE id=? AND restaurant_id=? AND revision=?",
+            )
+            .bind(price, description, t, match.id, r.id, match.revision),
+        );
+        match.price = price ?? match.price;
+        match.description = description ?? match.description;
+      }
       continue;
     }
     if (created.has(key)) {
@@ -430,15 +486,20 @@ async function linkEntriesToLibrary(r: Row, row: Row, input: unknown) {
       created: true,
     });
   }
-  const statements = [...inserts];
+  const statements = [...inserts, ...fills];
   if (row.published) {
     const live = JSON.parse(row.published),
-      linked = new Map(links.map((l) => [l.entryId, l.dishId]));
+      linked = new Map(links.map((l) => [l.entryId, l]));
     let changed = false;
     for (const section of live.sections || [])
       for (const item of section.items || [])
         if (!item.dishId && linked.has(item.id)) {
-          item.dishId = linked.get(item.id);
+          const link = linked.get(item.id)!;
+          item.dishId = link.dishId;
+          // Guests see the dish's allergens as soon as it's linked.
+          item.dietary = normalizeDietary(item.dietary).length
+            ? withDishSafety(item.dietary, link.dietary)
+            : link.dietary;
           changed = true;
         }
     if (changed) {
@@ -525,6 +586,28 @@ async function menuStats(r: Row) {
     published
       .flatMap((d) => (d.menu.sections || []).flatMap((s: Row) => s.items))
       .find((i: Row) => i.id === top.entity_id || i.dishId === top.entity_id);
+  // Free sees visits. Everything else is still recorded, so Pro shows the
+  // history at once; Free gets only the counts, to show what Pro adds.
+  if (!(await hasProFeatures(r.id))) {
+    const dishes = await one(
+      "SELECT count(DISTINCT entity_id) AS n FROM events WHERE restaurant_id=? AND kind='dish_view' AND created_at>=? AND entity_id IS NOT NULL",
+      r.id,
+      since,
+    );
+    return {
+      published: published.length > 0,
+      views: total("menu_visit"),
+      previousViews: total("menu_visit", 0),
+      locked: {
+        actions:
+          total("ordering_click") +
+          total("reserve_click") +
+          total("call_click") +
+          total("directions_click"),
+        dishes: Number(dishes?.n || 0),
+      },
+    };
+  }
   return {
     published: published.length > 0,
     views: total("menu_visit"),
@@ -690,7 +773,7 @@ async function quickUpdate(r: Row, row: Row, input: unknown) {
       dish.revision,
     );
     if (!updated) continue;
-    for (const menu of await syncDishToMenus(r.id, dish, updated))
+    for (const menu of (await syncDishToMenus(r.id, dish, updated)).updated)
       if (menu.id !== row.id && !others.some((m) => m.id === menu.id))
         others.push(menu);
   }
@@ -987,6 +1070,17 @@ export async function menuDocumentsRoute(req: Request, p: string[], r: Row) {
   );
   if (p[2] === "publish") {
     const draft = menuDocumentSchema.parse(JSON.parse(row.draft));
+    // Free publishes one menu, in the basic design. A menu already live can
+    // always be republished in the design and look it's live in, so prices
+    // and allergens can be fixed after a downgrade without changing it.
+    const unlocked = await hasProFeatures(r.id);
+    const live = row.published ? JSON.parse(row.published) : null;
+    if (!unlocked && !freeCanPublish(draft, live)) proRequired("menuDesigns");
+    const overLimit = async () =>
+      !unlocked &&
+      !row.published &&
+      (await otherLiveMenus(r.id, row.id)) >= FREE_LIVE_MENUS;
+    if (await overLimit()) proRequired("menus");
     // Check before choosing an address, so a blocked publish changes nothing.
     await assertMenuReady(r, draft);
     // A special published before any menu leaves a stand-in with no dishes;
@@ -994,16 +1088,30 @@ export async function menuDocumentsRoute(req: Request, p: string[], r: Row) {
     const addressed = specialsOnly(r.published) ? { ...r, published: null } : r;
     await firstPublicationAddress(addressed, b.address || undefined);
     r.slug = addressed.slug;
-    const content = await publication(r, row.id, draft),
+    const content = await publication(
+        r,
+        row.id,
+        draft,
+        unlocked ? null : live?.restaurant?.style,
+      ),
       serialized = JSON.stringify(content),
       t = now(),
       hid = id();
     await db().batch([
+      // The Free limit holds inside the write, so two tabs can't both pass.
       db()
         .prepare(
-          "UPDATE menu_documents SET published=?,published_revision=revision,published_at=? WHERE id=? AND restaurant_id=? AND revision=? AND archived_at IS NULL",
+          "UPDATE menu_documents SET published=?,published_revision=revision,published_at=? WHERE id=? AND restaurant_id=? AND revision=? AND archived_at IS NULL AND (?=1 OR published IS NOT NULL OR (SELECT count(*) FROM menu_documents o WHERE o.restaurant_id=menu_documents.restaurant_id AND o.id<>menu_documents.id AND o.archived_at IS NULL AND o.published IS NOT NULL)<?)",
         )
-        .bind(serialized, t, row.id, r.id, b.revision),
+        .bind(
+          serialized,
+          t,
+          row.id,
+          r.id,
+          b.revision,
+          unlocked ? 1 : 0,
+          FREE_LIVE_MENUS,
+        ),
       db()
         .prepare(
           "INSERT INTO menu_publication_history (id,menu_id,restaurant_id,snapshot,revision,created_at) SELECT ?,id,restaurant_id,published,revision,? FROM menu_documents WHERE id=? AND published_at=? AND revision=?",
@@ -1024,11 +1132,16 @@ export async function menuDocumentsRoute(req: Request, p: string[], r: Row) {
         )
         .bind(serialized, t, r.id, row.id, t, b.revision),
     ]);
-    assert(
-      await one("SELECT id FROM menu_publication_history WHERE id=?", hid),
-      409,
-      "The menu changed during publication. Review it again.",
-    );
+    if (
+      !(await one("SELECT id FROM menu_publication_history WHERE id=?", hid))
+    ) {
+      if (await overLimit()) proRequired("menus");
+      assert(
+        false,
+        409,
+        "The menu changed during publication. Review it again.",
+      );
+    }
     await event(r.id, "menu_published", row.id, {
       version: 2,
       revision: b.revision,
@@ -1045,15 +1158,30 @@ export async function menuDocumentsRoute(req: Request, p: string[], r: Row) {
     );
     assert(prior, 404, "That menu version is unavailable.");
     const current = menuDocumentSchema.parse(JSON.parse(row.draft));
-    const restored = upgradeMenuDocument(
-      JSON.parse(prior.snapshot),
-      await all("SELECT * FROM dishes WHERE restaurant_id=?", r.id),
+    const dishes = await all(
+      "SELECT * FROM dishes WHERE restaurant_id=?",
+      r.id,
     );
+    const restored = upgradeMenuDocument(JSON.parse(prior.snapshot), dishes);
+    // An older version keeps its wording and prices, but never allergens or
+    // diets that My Dishes has since corrected.
+    const tags = new Map(dishes.map((d) => [d.id, d.dietary]));
     const draft = menuDocumentSchema.parse({
       ...restored,
       name: current.name,
       importSourceId: current.importSourceId,
       importSourceText: current.importSourceText,
+      sections: restored.sections.map((section) => ({
+        ...section,
+        items: section.items.map((item) =>
+          item.dishId && tags.has(item.dishId)
+            ? {
+                ...item,
+                dietary: withDishSafety(item.dietary, tags.get(item.dishId)),
+              }
+            : item,
+        ),
+      })),
     });
     await validateReferences(r.id, draft);
     const saved = await one(
@@ -1118,7 +1246,7 @@ export async function menuDocumentsRoute(req: Request, p: string[], r: Row) {
           r.id,
           r.id,
           t,
-          specialsPage(r, row.published),
+          specialsPage(r, row.published, await effectiveStyle(r)),
           t,
           r.id,
           row.id,
@@ -1153,24 +1281,39 @@ export async function menuDocumentsRoute(req: Request, p: string[], r: Row) {
  * Carry a My Dishes edit (name, description, price, availability, dietary
  * tags) into every
  * menu that still shows the dish's previous details, including the live menu.
- * Menus where the owner tailored that detail keep their own value.
+ * Menus where the owner tailored that detail keep their own value, except
+ * that allergens the dish gains and diets it drops reach every menu. With
+ * `safetyOnly` (an edit made from one menu's builder), only those do.
  */
-export async function syncDishToMenus(rid: string, before: Row, after: Row) {
+export async function syncDishToMenus(
+  rid: string,
+  before: Row,
+  after: Row,
+  { safetyOnly = false }: { safetyOnly?: boolean } = {},
+) {
   const previous = dishFacts(before),
     current = dishFacts(after);
+  const tagsChanged =
+    JSON.stringify(previous.dietary) !== JSON.stringify(current.dietary);
   if (
-    previous.name === current.name &&
-    previous.description === current.description &&
-    previous.price === current.price &&
-    previous.available === current.available &&
-    JSON.stringify(previous.dietary) === JSON.stringify(current.dietary)
+    safetyOnly
+      ? !tagsChanged
+      : previous.name === current.name &&
+        previous.description === current.description &&
+        previous.price === current.price &&
+        previous.available === current.available &&
+        !tagsChanged
   )
-    return [];
+    return { updated: [], kept: [] };
   // Publishing refuses a price of 0, so guests never get one this way: drafts
   // take it (and their checks flag it), while live copies keep their price.
   const withheld = previous.price !== current.price && !current.price,
     liveFacts = withheld ? { ...current, price: previous.price } : current;
   const updated: { id: string; name: string; live: boolean }[] = [];
+  // Menus that show the dish with their own name, description, price or
+  // availability, so the owner knows the edit didn't reach them.
+  const kept: { id: string; name: string; fields: string[] }[] = [];
+  const options = { safetyOnly };
   const rows = await all(
     "SELECT * FROM menu_documents WHERE restaurant_id=? AND archived_at IS NULL",
     rid,
@@ -1178,17 +1321,31 @@ export async function syncDishToMenus(rid: string, before: Row, after: Row) {
   for (const row of rows) {
     try {
       const draft = menuDocumentSchema.parse(JSON.parse(row.draft));
-      const nextDraft = applyDishUpdate(draft, previous, current);
+      const nextDraft = applyDishUpdate(draft, previous, current, options);
       const published = row.published ? JSON.parse(row.published) : null;
       const nextPublished = published
-        ? applyDishUpdate(published as MenuDocument, previous, liveFacts)
+        ? applyDishUpdate(
+            published as MenuDocument,
+            previous,
+            liveFacts,
+            options,
+          )
         : null;
+      if (!safetyOnly) {
+        const fields = tailoredFields(
+          [nextDraft.menu, nextPublished?.menu],
+          previous,
+          current,
+        );
+        if (fields.length) kept.push({ id: row.id, name: draft.name, fields });
+      }
       if (!nextDraft.changed && !nextPublished?.changed) continue;
       // A withheld price leaves the live copy behind this draft.
       const inStep =
         !withheld ||
-        JSON.stringify(applyDishUpdate(draft, previous, liveFacts).menu) ===
-          JSON.stringify(nextDraft.menu);
+        JSON.stringify(
+          applyDishUpdate(draft, previous, liveFacts, options).menu,
+        ) === JSON.stringify(nextDraft.menu);
       const statements = [];
       if (nextDraft.changed)
         statements.push(
@@ -1237,5 +1394,39 @@ export async function syncDishToMenus(rid: string, before: Row, after: Row) {
     await event(rid, "dish_synced_to_menus", after.id, {
       menus: updated.length,
     });
-  return updated;
+  return { updated, kept };
+}
+/** The details just changed in My Dishes that a menu shows its own way. */
+function tailoredFields(
+  menus: (MenuDocument | null | undefined)[],
+  before: ReturnType<typeof dishFacts>,
+  dish: ReturnType<typeof dishFacts>,
+) {
+  const fields = new Set<string>();
+  for (const menu of menus)
+    for (const section of menu?.sections || [])
+      for (const item of section.items)
+        if (item.dishId === dish.id) {
+          if (before.name !== dish.name && item.name !== dish.name)
+            fields.add("name");
+          if (
+            before.description !== dish.description &&
+            item.description !== dish.description
+          )
+            fields.add("description");
+          if (
+            before.price !== dish.price &&
+            (item.priceMode ?? "single") === "single" &&
+            item.price !== dish.price
+          )
+            fields.add("price");
+          if (
+            before.available !== dish.available &&
+            item.available !== dish.available
+          )
+            fields.add("availability");
+        }
+  return ["name", "description", "price", "availability"].filter((field) =>
+    fields.has(field),
+  );
 }

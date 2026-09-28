@@ -7,6 +7,9 @@ process.env.MENU_MATERIAL_DATA_DIR = root;
 process.env.LOCAL_DEVELOPMENT = "true";
 process.env.OPENAI_API_KEY = "fixture-only";
 const { handle } = await import("../lib/server/api.ts");
+const { run } = await import("../lib/server/core.ts");
+const { newMenuDocument, newMenuEntry } =
+  await import("../lib/menu-document.ts");
 const { dishStatus, preferredPhoto, dishSnapshot } =
   await import("../lib/dish-library.ts");
 const { menuChanges, duplicateMenuRows } =
@@ -82,6 +85,16 @@ async function upload(dishId) {
 }
 try {
   await call("auth/dev", {});
+  // This suite exercises Pro features: comp the workspace (never images).
+  {
+    const own = (await call("state")).restaurant;
+    await call("admin/restaurant", {
+      id: own.id,
+      allowance: own.allowance,
+      paused: false,
+      proUntil: Date.now() + 10 * 365 * 86400000,
+    });
+  }
   // Guests never see a placeholder name; publishing requires a real one.
   await call("restaurant/name", { name: "Test Kitchen" });
   const dish = await call("dishes", {
@@ -153,7 +166,7 @@ try {
     (await call("state")).dishes.find((d) => d.id === dish.id).archived_at,
     null,
   );
-  const menu = {
+  const menu = newMenuDocument({
     design: "fine",
     density: "spacious",
     printProfile: "press",
@@ -166,18 +179,21 @@ try {
         id: "mains",
         name: "Mains",
         items: [
-          {
+          newMenuEntry({
             dishId: dish.id,
+            name: "House pasta",
+            description: "Fresh pasta",
+            price: 2000,
             photoId: first.id,
             featured: true,
             crop: { fit: false, x: 65, y: 40, zoom: 1.2 },
-          },
+          }),
         ],
       },
     ],
-  };
-  await call("menu", menu);
-  await call("menu/publish", {});
+  });
+  const menuDoc = await call("menus", { id: crypto.randomUUID(), draft: menu });
+  await call(`menus/${menuDoc.id}/publish`, { revision: menuDoc.revision });
   current = await call("state");
   const published = current.restaurant.published;
   assert.equal(published.design, "fine");
@@ -188,17 +204,22 @@ try {
   );
   assert.equal(published.sections[0].items[0].featured, true);
   const before = current.dishes.find((d) => d.id === dish.id);
-  await call(`dishes/${dish.id}`, {
+  const synced = await call(`dishes/${dish.id}`, {
     ...before,
     available: !!before.available,
     price: 24,
     available: false,
     confirmed: true,
   });
-  assert.equal(
-    (await call("state")).restaurant.published.sections[0].items[0].price,
-    2000,
-    "Shared facts must not silently change the live menu",
+  // Shared facts reach the live menu, and never silently: the owner is told.
+  assert.deepEqual(
+    synced.menus.map((m) => [m.id, m.live]),
+    [[menuDoc.id, true]],
+  );
+  const live = (await call("state")).restaurant.published;
+  assert.deepEqual(
+    [live.sections[0].items[0].price, live.sections[0].items[0].available],
+    [2400, false],
   );
   const changed = structuredClone(published);
   changed.sections[0].items[0].price = 2400;
@@ -248,6 +269,20 @@ try {
     },
     400,
   );
+  // A menu draft from before Menus, which a replacing import starts over.
+  await run(
+    "UPDATE restaurants SET menu_draft=? WHERE id=?",
+    JSON.stringify({
+      sections: [
+        {
+          id: "mains",
+          name: "Mains",
+          items: [{ dishId: dish.id, photoId: first.id }],
+        },
+      ],
+    }),
+    current.restaurant.id,
+  );
   const form = new FormData();
   form.set(
     "file",
@@ -285,7 +320,11 @@ try {
     2,
     "Replace import creates exactly the checked menu, not a second copy of old menu sections",
   );
-  assert.equal(current.restaurant.published.sections[0].items[0].price, 2000);
+  assert.deepEqual(
+    current.restaurant.published,
+    live,
+    "An import leaves the live menu as it was",
+  );
   const oldCookie = cookie;
   cookie = "";
   await call(

@@ -36,6 +36,8 @@ import {
   type MenuSection,
 } from "@/lib/menu-document";
 import { menuDesignSpec } from "@/lib/menu-design-system";
+import { freeCanPublish } from "@/lib/plans";
+import { ProNote } from "./pro-badge";
 import DietaryPicker from "./dietary-picker";
 export const MenuActionContext = createContext({ busy: "", error: "" });
 
@@ -499,6 +501,12 @@ export function MenuItemInspector({
           fieldClass="md-field"
           onChange={(dietary) => change({ dietary })}
         />
+        {item.dishId && (
+          <p className="md-help">
+            Guests always see the allergens in My Dishes. A diet, or No listed
+            allergens, shows only if My Dishes has it too.
+          </p>
+        )}
       </details>
       <Field label="Section">
         <select value={section.id} onChange={(e) => move(e.target.value)}>
@@ -725,16 +733,29 @@ export function MenuSectionInspector({
 }
 export function MenuDesignInspector({
   menu,
+  live,
   change,
   choose,
+  pro = true,
 }: {
   menu: MenuDocument;
+  /** The live copy, whose design Free can keep publishing. */
+  live?: Parameters<typeof freeCanPublish>[1];
   change: (patch: Partial<MenuDocument>) => void;
   choose: () => void;
+  /** Without Pro, Pro options can be tried in the draft but not published. */
+  pro?: boolean;
 }) {
   const spec = menuDesignSpec(menu.design);
+  const proLabel = pro ? "" : " (Pro)";
   return (
     <div className="md-inspector-content">
+      {!pro && !freeCanPublish(menu, live) && (
+        <ProNote feature="menuDesigns">
+          You’re trying Pro options. Free menus publish in The Brasserie, in
+          light, without custom colors or a photo on every dish.
+        </ProNote>
+      )}
       <div className="md-selected-design" style={{ borderColor: spec.color }}>
         <span>{spec.category}</span>
         <h3>{spec.name}</h3>
@@ -752,7 +773,7 @@ export function MenuDesignInspector({
         >
           <option value="restaurant">My restaurant colors</option>
           <option value="signature">Designer palette</option>
-          <option value="custom">Custom color</option>
+          <option value="custom">Custom color{proLabel}</option>
         </select>
       </Field>
       {menu.colorMode === "custom" && (
@@ -772,7 +793,7 @@ export function MenuDesignInspector({
           }
         >
           <option value="light">Light paper</option>
-          <option value="dark">Dark paper</option>
+          <option value="dark">Dark paper{proLabel}</option>
         </select>
       </Field>
       <Field label="Photography">
@@ -784,7 +805,7 @@ export function MenuDesignInspector({
         >
           <option value="classic">Typography only</option>
           <option value="featured">Featured dishes</option>
-          <option value="grid">Every selected photo</option>
+          <option value="grid">Every selected photo{proLabel}</option>
         </select>
       </Field>
       <div className="md-field-pair">

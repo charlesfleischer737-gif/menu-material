@@ -63,10 +63,16 @@ export function useAction() {
   }
   return { busy, error, notice, setError, setNotice, act };
 }
+/** A save the plan refused, such as a post with Pro options on Free. */
+export const refusedByPlan = (e: unknown) =>
+  (e as { code?: string } | null)?.code === "pro_required";
 export function useCreationDraft(
   kind: string,
   initial: Row,
   workspaceKey: string,
+  // Whether the plan can save a draft. One it can't stays on screen: it's
+  // never sent or kept for a reload, and never blocks opening other work.
+  savable: (draft: Row) => boolean = () => true,
 ) {
   const preferenceKey = `${workspaceKey}:draft:${kind}`;
   const recoveryKey = `${preferenceKey}:unsaved`;
@@ -84,8 +90,15 @@ export function useCreationDraft(
     saving = useRef<Promise<void> | null>(null),
     live = useRef(true),
     loading = useRef(0),
-    initialRef = useRef(initial);
+    initialRef = useRef(initial),
+    canSave = useRef(savable);
+  // The plan can change while the page is open.
+  useLayoutEffect(() => {
+    canSave.current = savable;
+  });
   function backup() {
+    // A draft the plan can't save would only come back unsaved.
+    if (!canSave.current(latest.current)) return forgetBackup();
     try {
       sessionStorage.setItem(
         recoveryKey,
@@ -138,7 +151,9 @@ export function useCreationDraft(
         if (
           pending?.id &&
           pending.draft &&
-          JSON.stringify(pending.draft) !== pending.saved
+          JSON.stringify(pending.draft) !== pending.saved &&
+          // Changes the plan can't save don't come back after a reload.
+          canSave.current(pending.draft)
         ) {
           value = pending.draft;
           meta.current = { id: pending.id, revision: pending.revision };
@@ -181,6 +196,12 @@ export function useCreationDraft(
         meta.current.id &&
         JSON.stringify(latest.current) !== saved.current
       ) {
+        // Changes the plan can't save stay on screen, unsent.
+        if (!canSave.current(latest.current)) {
+          setSaveError("");
+          setStatus(draftStatus.unsaved);
+          return;
+        }
         setStatus(draftStatus.saving);
         const content = JSON.stringify(latest.current);
         const data = await api("creation-drafts", {
@@ -232,7 +253,9 @@ export function useCreationDraft(
       setStatus(draftStatus.saved);
     } else {
       backup();
-      setStatus(draftStatus.saving);
+      setStatus(
+        canSave.current(next) ? draftStatus.saving : draftStatus.unsaved,
+      );
     }
   }
   useEffect(() => {
@@ -259,8 +282,17 @@ export function useCreationDraft(
       window.removeEventListener("online", reconnect);
     };
   }, [save]);
+  // Other work opens once this draft is saved. A save the plan refuses leaves
+  // the draft as last saved rather than keeping the owner in it.
+  async function saveBeforeLeaving() {
+    try {
+      await save();
+    } catch (e) {
+      if (!refusedByPlan(e)) throw e;
+    }
+  }
   async function start(value: Row, row?: Row) {
-    await save();
+    await saveBeforeLeaving();
     meta.current = {
       id: row?.id || crypto.randomUUID(),
       revision: row?.revision || 0,
@@ -275,7 +307,7 @@ export function useCreationDraft(
     rememberPreference(preferenceKey, meta.current.id);
   }
   async function resume(id: string) {
-    await save();
+    await saveBeforeLeaving();
     const row = (await api(`creation-drafts/${id}`)).draft;
     if (row.kind !== kind || row.archived_at)
       throw Error("Restore this saved work before opening it.");

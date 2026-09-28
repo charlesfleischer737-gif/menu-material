@@ -20,11 +20,15 @@ const realNow = Date.now;
 let offset = 0;
 Date.now = () => realNow() + offset;
 const { handle } = await import("../lib/server/api.ts");
-const { caller } = await import("../lib/server/safeguards.ts");
-const { all, bucket, digest, one, run } = await import("../lib/server/core.ts");
+const { caller, wideCaller } = await import("../lib/server/safeguards.ts");
+const { all, bucket, digest, one, run, signedInBefore } =
+  await import("../lib/server/core.ts");
+const { grantHeldImages } = await import("../lib/server/free-grants.ts");
 const { validateImageDimensions } =
   await import("../lib/server/image-validation.ts");
 const { resolveMenuAddress } = await import("../lib/server/menu-address.ts");
+const { newMenuDocument, newMenuEntry } =
+  await import("../lib/menu-document.ts");
 
 const photo = readFileSync("public/pasta.jpg");
 let imageCalls = 0,
@@ -34,9 +38,15 @@ globalThis.fetch = async (url) => {
     return new Response("ok");
   if (String(url).startsWith("https://api.openai.com/v1/images/")) {
     imageCalls++;
+    // true fails plainly; a string fails with that error code.
     return imagesFail
       ? Response.json(
-          { error: { message: "Fixture failure" } },
+          {
+            error: {
+              message: "Fixture failure",
+              ...(typeof imagesFail === "string" ? { code: imagesFail } : {}),
+            },
+          },
           { status: 400 },
         )
       : Response.json({
@@ -75,13 +85,19 @@ async function call(
   try {
     json = await res.clone().json();
   } catch {}
-  const setCookie = res.headers.get("set-cookie") || "";
+  // The session cookie, and the device cookie a sign-in also sets.
+  const cookies = res.headers.getSetCookie(),
+    setCookie = cookies[0] || "",
+    deviceCookie =
+      cookies.find((c) => c.startsWith("menu_material_device=")) || "";
   return {
     status: res.status,
     json,
     res,
     setCookie,
     cookie: setCookie.split(";")[0],
+    deviceCookie,
+    device: deviceCookie.split(";")[0],
   };
 }
 async function expect(path, status, options) {
@@ -118,6 +134,19 @@ try {
   assert.equal(network("::ffff:192.0.2.1"), "192.0.2.1");
   assert.equal(network("192.0.2.1"), "192.0.2.1");
   assert.equal(network(""), "unidentified");
+  // Signups also count per IPv6 /48 (tests/plan-limits.mjs).
+  const wideNetwork = (ip) =>
+    wideCaller(
+      new Request("http://localhost/", {
+        headers: ip ? { "cf-connecting-ip": ip } : {},
+      }),
+    );
+  assert.equal(wideNetwork("2001:DB8:5:1::1"), "2001:db8:5::/48");
+  assert.equal(wideNetwork("2001:db8:5:ff00:1::"), "2001:db8:5::/48");
+  assert.equal(wideNetwork("2001:db8::1"), "2001:db8:0::/48");
+  assert.equal(wideNetwork("::ffff:192.0.2.1"), null);
+  assert.equal(wideNetwork("192.0.2.1"), null);
+  assert.equal(wideNetwork(""), null);
   checks++;
   await signup("owner@example.test", "Corner Kitchen", "192.0.2.5");
   const floods = {};
@@ -171,7 +200,10 @@ try {
     body: { email: "owner@example.test", password },
     ip: "198.51.100.100",
   });
-  assert.match(slowed.json.error, /Try again in 1 second\./);
+  // It doesn't say when the next attempt opens, so it can't be timed.
+  const slowedMessage =
+    "Too many sign-in attempts for this account. Please try again later, or request a secure reset link.";
+  assert.equal(slowed.json.error, slowedMessage);
   await expect("auth/login", 200, {
     body: { email: "newcomer@example.test", password },
     ip: "198.51.100.101",
@@ -185,7 +217,7 @@ try {
     body: { email: "owner@example.test", password },
     ip: "198.51.100.103",
   });
-  assert.match(longer.json.error, /Try again in 2 seconds\./);
+  assert.equal(longer.json.error, slowedMessage);
   offset += 2000;
   await expect("auth/login", 200, {
     body: { email: "owner@example.test", password },
@@ -220,6 +252,131 @@ try {
     [401, 429, 429, 429, 429],
   );
   checks++;
+
+  // 20. Someone who knows an owner's email can't keep them out: a browser
+  // that signed in to the account before skips the per-account slowdown,
+  // though its network's own allowance for the email still applies. Only a
+  // hash of its device cookie is kept, and each sign-in replaces it.
+  offset += 16 * 60000; // past the slowdown above
+  const ownersBrowser = await expect("auth/login", 200, {
+    body: { email: "owner@example.test", password },
+    ip: "192.0.2.90",
+  });
+  assert.match(
+    ownersBrowser.deviceCookie,
+    /^menu_material_device=[\w-]{43}; Path=\/api\/auth; HttpOnly; SameSite=Lax; Max-Age=31536000$/,
+  );
+  const deviceHash = (device) => digest(device.split("=")[1]);
+  const ownerId = (
+    await one("SELECT id FROM users WHERE email='owner@example.test'")
+  ).id;
+  assert.equal(
+    (
+      await one(
+        "SELECT user_id FROM trusted_devices WHERE hash=?",
+        deviceHash(ownersBrowser.device),
+      )
+    ).user_id,
+    ownerId,
+  );
+  assert.equal(
+    await one(
+      "SELECT 1 FROM trusted_devices WHERE hash=?",
+      ownersBrowser.device.split("=")[1],
+    ),
+    null,
+    "only a hash is stored",
+  );
+  const newcomersBrowser = await expect("auth/login", 200, {
+    body: { email: "newcomer@example.test", password },
+    ip: "192.0.2.95",
+  });
+  for (let n = 0; n < 25; n++)
+    await call("auth/login", {
+      body: { email: "owner@example.test", password: "attacker guess " + n },
+      ip: `198.51.101.${n + 1}`,
+    });
+  const newDevice = await expect("auth/login", 429, {
+    body: { email: "owner@example.test", password },
+    ip: "192.0.2.91",
+  });
+  assert.equal(newDevice.json.error, slowedMessage);
+  // Another account's device cookie doesn't count.
+  await expect("auth/login", 429, {
+    body: { email: "owner@example.test", password },
+    ip: "192.0.2.96",
+    cookie: newcomersBrowser.device,
+  });
+  // The owner's browser gets through, from any network; a wrong password
+  // from it is simply wrong.
+  await expect("auth/login", 401, {
+    body: { email: "owner@example.test", password: "a typo" },
+    ip: "192.0.2.97",
+    cookie: ownersBrowser.device,
+  });
+  const rotated = await expect("auth/login", 200, {
+    body: { email: "owner@example.test", password },
+    ip: "192.0.2.97",
+    cookie: ownersBrowser.device,
+  });
+  assert.notEqual(rotated.device, ownersBrowser.device);
+  assert.equal(
+    await one(
+      "SELECT 1 FROM trusted_devices WHERE hash=?",
+      deviceHash(ownersBrowser.device),
+    ),
+    null,
+  );
+  // Its network's allowance for the email still applies: 10 tries in 15
+  // minutes.
+  for (let n = 0; n < 8; n++)
+    await expect("auth/login", 401, {
+      body: { email: "owner@example.test", password: "another typo " + n },
+      ip: "192.0.2.97",
+      cookie: rotated.device,
+    });
+  const paired = await expect("auth/login", 429, {
+    body: { email: "owner@example.test", password },
+    ip: "192.0.2.97",
+    cookie: rotated.device,
+  });
+  assert.equal(
+    paired.json.error,
+    "Too many attempts. Please try again in a few minutes.",
+  );
+  // An expired device cookie is a new device, and one sent over HTTPS is
+  // Secure.
+  const fromBrowser = (device) =>
+    new Request("http://localhost/api/auth/login", {
+      headers: { cookie: device },
+    });
+  assert(
+    await signedInBefore(fromBrowser(rotated.device), "owner@example.test"),
+  );
+  await run(
+    "UPDATE trusted_devices SET expires_at=? WHERE hash=?",
+    Date.now() - 1,
+    deviceHash(rotated.device),
+  );
+  assert(
+    !(await signedInBefore(fromBrowser(rotated.device), "owner@example.test")),
+  );
+  const overHttps = await handle(
+    new Request("https://localhost/api/auth/login", {
+      method: "POST",
+      headers: {
+        "cf-connecting-ip": "192.0.2.98",
+        "Content-Type": "application/json",
+      },
+      body: JSON.stringify({ email: "owner@example.test", password }),
+    }),
+  );
+  assert.equal(overHttps.status, 200);
+  assert.match(
+    overHttps.headers.getSetCookie()[1],
+    /^menu_material_device=.+; Secure$/,
+  );
+  checks += 4;
 
   // 9. Passwords are stored with their scrypt parameters; older hashes still
   // sign in and are upgraded then.
@@ -369,6 +526,14 @@ try {
     "owner@example.test",
     secondReset.json.invite,
     200,
+  );
+  // The reset also ends trust in every browser that signed in before; the
+  // one that used the link is trusted from now on.
+  assert.deepEqual(
+    (
+      await all("SELECT hash FROM trusted_devices WHERE user_id=?", ownerId)
+    ).map((d) => d.hash),
+    [deviceHash(reclaimed.device)],
   );
   await redeemReset("owner@example.test", leftover, 403, "attacker password 1");
   await expect("auth/login", 200, {
@@ -582,6 +747,91 @@ try {
   assert.equal(imageCalls, 14);
   checks++;
 
+  // 21. A photo an unfinished image is made from can't be removed until the
+  // image is done. A correction gives an image back only when the service or
+  // the site fails it, not when the owner removed its original meanwhile,
+  // filled their workspace, or worded the report so the safety check
+  // declined it: those go to the team.
+  const newSource = async () => {
+    const form = new FormData();
+    form.set("file", new File([photo], "pasta.jpg", { type: "image/jpeg" }));
+    form.set(
+      "normalized",
+      new File([photo], "dish.jpg", { type: "image/jpeg" }),
+    );
+    form.set("dishId", pasta);
+    return (await expect("assets", 201, { body: form, ...freeOpts })).json.id;
+  };
+  const imageFrom = (sourceId) =>
+    expect("jobs", 202, {
+      body: {
+        dishId: pasta,
+        sourceId,
+        requestKey: crypto.randomUUID(),
+        candidateCount: 1,
+      },
+      ...freeOpts,
+    });
+  const remove = (assetId, status) =>
+    expect(`assets/${assetId}`, status, { method: "DELETE", ...freeOpts });
+  const queuedFor = await newSource();
+  const queuedImage = await imageFrom(queuedFor);
+  assert.equal(
+    (await remove(queuedFor, 409)).json.error,
+    "A queued image uses this photo. Cancel it in Photo Studio, or wait until it’s finished, then remove the photo.",
+  );
+  await expect(`jobs/${queuedImage.json.id}/cancel`, 200, {
+    body: {},
+    ...freeOpts,
+  });
+  await remove(queuedFor, 200);
+  const original = await newSource();
+  const originalAsset = await settled((await imageFrom(original)).json.id);
+  await expect(`photo-corrections/${originalAsset}`, 200, {
+    body: { reason: "ingredients", detail: "Wrong garnish" },
+    ...freeOpts,
+  });
+  const correcting = await expect(
+    `photo-corrections/${originalAsset}/create`,
+    200,
+    { body: {}, ...freeOpts },
+  );
+  assert.equal(
+    (await remove(original, 409)).json.error,
+    "An image being made uses this photo. You can remove the photo once it’s finished.",
+  );
+  // Removed anyway, say by a request already under way, the correction
+  // fails and waits for the team instead of giving an image back.
+  const left = await remaining();
+  await run("UPDATE assets SET deleted_at=? WHERE id=?", Date.now(), original);
+  await settled(correcting.json.jobId, "failed");
+  assert.equal(
+    (await expect(`photo-corrections/${originalAsset}`, 200, freeOpts)).json
+      .status,
+    "review",
+  );
+  assert.equal(await remaining(), left);
+  const declined = await reportedPhoto();
+  imagesFail = "moderation_blocked";
+  await settled(declined.correction, "failed");
+  imagesFail = false;
+  assert.equal(
+    (await expect(`photo-corrections/${declined.asset}`, 200, freeOpts)).json
+      .status,
+    "review",
+  );
+  const crowded = await reportedPhoto();
+  process.env.WORKSPACE_STORAGE_MB = "1";
+  await settled(crowded.correction, "failed");
+  delete process.env.WORKSPACE_STORAGE_MB;
+  assert.equal(
+    (await expect(`photo-corrections/${crowded.asset}`, 200, freeOpts)).json
+      .status,
+    "review",
+  );
+  assert.equal(await remaining(), left - 2, "only the two originals");
+  checks += 4;
+
   // 7. Malformed IDs are a 400, not a 500 that trips the error-burst alert.
   for (const [path, body] of [
     ["captions", { dishId: { a: 1 }, body: "Hello" }],
@@ -773,8 +1023,8 @@ try {
   );
 
   // 16. A transparent PNG logo stays a PNG: in the workspace (and Post
-  // Maker), in what publishing copies, and on the guest menu, even when a
-  // menu published a JPEG copy of it.
+  // Maker), and on the guest menu, even when a menu published a JPEG copy
+  // of it.
   const logoPng = readFileSync("public/apple-touch-icon.png");
   const logo = (
     await expect("assets", 201, {
@@ -786,19 +1036,34 @@ try {
   let logoFile = await expect(`assets/${logo}`, 200, freeOpts);
   assert.equal(logoFile.res.headers.get("content-type"), "image/png");
   assert((await bytesOf(logoFile)).equals(logoPng));
-  await expect("menu", 200, {
-    body: {
-      sections: [{ id: "mains", name: "Mains", items: [{ dishId: pasta }] }],
-    },
+  const freeMenu = (
+    await expect("menus", 200, {
+      body: {
+        id: crypto.randomUUID(),
+        draft: newMenuDocument({
+          sections: [
+            {
+              id: "mains",
+              name: "Mains",
+              items: [
+                newMenuEntry({ dishId: pasta, name: "Pasta", price: 1200 }),
+              ],
+            },
+          ],
+        }),
+      },
+      ...freeOpts,
+    })
+  ).json;
+  await expect(`menus/${freeMenu.id}/publish`, 200, {
+    body: { revision: freeMenu.revision },
     ...freeOpts,
   });
-  const menuPath = (
-    await expect("menu/publish", 200, { body: {}, ...freeOpts })
-  ).json.path;
-  const slug = menuPath.split("/").pop();
-  const published = await bucket().get(`public/${freeRid}/${logo}`);
-  assert.equal(published.httpMetadata.contentType, "image/png");
-  assert(Buffer.from(await published.arrayBuffer()).equals(logoPng));
+  const slug = (await expect("state", 200, freeOpts)).json.restaurant.slug;
+  assert(
+    await bucket().head(`public/${freeRid}/${logo}`),
+    "publishing copies the logo for guests",
+  );
   await bucket().put(`public/${freeRid}/${logo}`, photo, {
     httpMetadata: { contentType: "image/jpeg" },
   });
@@ -807,11 +1072,11 @@ try {
   });
   assert.equal(logoFile.res.headers.get("content-type"), "image/png");
   assert((await bytesOf(logoFile)).equals(logoPng));
-  // 17. Guests' browsers may keep published images briefly; private
-  // workspace images are never cached.
+  // 17. Guests' browsers keep published images for a week, then revalidate;
+  // private workspace images are never cached.
   assert.equal(
     logoFile.res.headers.get("cache-control"),
-    "public, max-age=300, stale-while-revalidate=86400",
+    "public, max-age=604800, stale-while-revalidate=2592000",
   );
   assert.equal(
     (await expect(`assets/${logo}`, 200, freeOpts)).res.headers.get(
@@ -852,7 +1117,10 @@ try {
     restaurant: null,
     redirectTo: null,
   });
-  const blocked = await expect("menu/publish", 403, { body: {}, ...freeOpts });
+  const blocked = await expect(`menus/${freeMenu.id}/publish`, 403, {
+    body: { revision: freeMenu.revision },
+    ...freeOpts,
+  });
   assert.match(blocked.json.error, /taken your public menu pages offline/);
   for (const path of ["menus", "promotions"])
     await expect(`${path}/${crypto.randomUUID()}/publish`, 403, {
@@ -873,7 +1141,10 @@ try {
     cookie: adminCookie,
   });
   await expect(`public/${slug}`, 200, guest);
-  await expect("menu/publish", 200, { body: {}, ...freeOpts });
+  await expect(`menus/${freeMenu.id}/publish`, 200, {
+    body: { revision: freeMenu.revision },
+    ...freeOpts,
+  });
   await expect("admin/takedown", 404, {
     body: { id: crypto.randomUUID(), offline: true },
     cookie: adminCookie,
@@ -951,13 +1222,33 @@ try {
       ...joeOpts,
     })
   ).json.id;
-  await expect("menu", 200, {
-    body: {
-      sections: [{ id: "pizza", name: "Pizza", items: [{ dishId: joeDish }] }],
-    },
+  const joeMenu = (
+    await expect("menus", 200, {
+      body: {
+        id: crypto.randomUUID(),
+        draft: newMenuDocument({
+          sections: [
+            {
+              id: "pizza",
+              name: "Pizza",
+              items: [
+                newMenuEntry({
+                  dishId: joeDish,
+                  name: "Margherita",
+                  price: 1100,
+                }),
+              ],
+            },
+          ],
+        }),
+      },
+      ...joeOpts,
+    })
+  ).json;
+  await expect(`menus/${joeMenu.id}/publish`, 200, {
+    body: { revision: joeMenu.revision },
     ...joeOpts,
   });
-  await expect("menu/publish", 200, { body: {}, ...joeOpts });
   for (let n = 1; n <= 4; n++)
     await expect("restaurant/address", 200, {
       body: { address: `joes-pizza-${n}` },
@@ -1003,7 +1294,10 @@ try {
     body: { address: "joes-pizza-3" },
     cookie: adminCookie,
   });
-  await expect("menu/unpublish", 200, { body: {}, ...joeOpts });
+  await expect(`menus/${joeMenu.id}/unpublish`, 200, {
+    body: { revision: joeMenu.revision, confirmed: true },
+    ...joeOpts,
+  });
   offset += 3600000; // past the hourly limit on address changes
   await expect("restaurant/address", 200, {
     body: { address: "joes-pizza-7" },
@@ -1169,9 +1463,14 @@ try {
     "events",
     "studio_look_uses",
     "billing_accounts",
+    "billing_periods",
     "ai_spend",
   ])
     assert(before[table], `fixture has ${table} rows`);
+  assert(
+    await one("SELECT 1 FROM trusted_devices WHERE user_id=?", freeUser),
+    "fixture has a trusted device",
+  );
   assert(filesUnder(`private/${freeRid}`).length > 5);
   assert(filesUnder(`public/${freeRid}`).length > 0);
   const joeFiles = filesUnder(`private/${joeRid}`).length;
@@ -1203,16 +1502,21 @@ try {
     deletion({ password: "not the password", confirm: "DELETE" }),
   );
   assert.equal(wrong.json.error, "That password is incorrect.");
+  // A live subscription is cancelled first. Billing isn't configured here,
+  // so the last known state decides and Stripe isn't contacted (nor is
+  // Manage billing offered, since it's off too).
   const billed = await expect(
     "account/delete",
     409,
     deletion({ password, confirm: "DELETE" }),
   );
-  assert.match(billed.json.error, /billing records/);
-  // The payment records above are test fixtures; support would handle them.
-  await run("DELETE FROM billing_periods WHERE restaurant_id=?", freeRid);
+  assert.equal(
+    billed.json.error,
+    "Your Pro subscription is still active, so your account can’t be deleted yet.",
+  );
+  // Once it has ended, its billing records go with the account.
   await run(
-    "UPDATE billing_accounts SET customer_id=NULL,subscription_id=NULL WHERE restaurant_id=?",
+    "UPDATE billing_accounts SET status='canceled' WHERE restaurant_id=?",
     freeRid,
   );
   const lastAdmin = await expect(
@@ -1236,6 +1540,7 @@ try {
   assert.equal(await one("SELECT id FROM users WHERE id=?", freeUser), null);
   for (const [table, column, value] of [
     ["sessions", "user_id", freeUser],
+    ["trusted_devices", "user_id", freeUser],
     ["invites", "email", "free@example.test"],
     ["launch_requests", "email", "free@example.test"],
   ])
@@ -1245,6 +1550,14 @@ try {
       0,
       table,
     );
+  // Only a one-way hash of the email stays, so its free images aren't
+  // granted again (tests/plans.mjs).
+  const freeGrantKept = (email) =>
+    one(
+      "SELECT 1 AS kept FROM free_grant_emails WHERE hash=?",
+      digest(`free-grant:${email}`),
+    );
+  assert(await freeGrantKept("free@example.test"));
   await expect("dishes", 401, {
     body: { name: "Soup", description: "Tomato soup" },
     ...freeOpts,
@@ -1269,8 +1582,129 @@ try {
   await expect("state", 200, { cookie: adminCookie });
   checks++;
 
+  // 13. An administrator can delete an owner's account, for an owner who
+  // asks and can't sign in, by typing the owner's email. The owner's own
+  // rules apply, and the administrator can't delete their own this way.
+  const joeUser = (
+    await one("SELECT id FROM users WHERE email='joe@example.test'")
+  ).id;
+  const byAdmin = (id, confirm, cookie = adminCookie) => ({
+    body: { id, confirm },
+    cookie,
+    ip: "192.0.2.62",
+  });
+  await expect(
+    "admin/delete-account",
+    403,
+    byAdmin(joeRid, "joe@example.test", joeOpts.cookie),
+  );
+  await expect(
+    "admin/delete-account",
+    400,
+    byAdmin(joeRid, "someone@example.test"),
+  );
+  await expect("admin/delete-account", 400, byAdmin("not-an-id", "x"));
+  await expect(
+    "admin/delete-account",
+    404,
+    byAdmin(crypto.randomUUID(), "joe@example.test"),
+  );
+  const adminRid = (await expect("state", 200, { cookie: adminCookie })).json
+    .restaurant.id;
+  assert.match(
+    (
+      await expect(
+        "admin/delete-account",
+        400,
+        byAdmin(adminRid, "ops1@example.test"),
+      )
+    ).json.error,
+    /in Settings/,
+  );
+  await run(
+    "INSERT INTO billing_accounts (restaurant_id,customer_id,subscription_id,status) VALUES (?,'cus_joe','sub_joe','past_due')",
+    joeRid,
+  );
+  assert.match(
+    (
+      await expect(
+        "admin/delete-account",
+        409,
+        byAdmin(joeRid, "joe@example.test"),
+      )
+    ).json.error,
+    /Pro subscription is still active/,
+  );
+  assert(await one("SELECT id FROM restaurants WHERE id=?", joeRid));
+  await run(
+    "UPDATE billing_accounts SET status='canceled' WHERE restaurant_id=?",
+    joeRid,
+  );
+  await expect(
+    "admin/delete-account",
+    200,
+    byAdmin(joeRid, " JOE@example.test "),
+  );
+  assert.equal(
+    await one("SELECT id FROM restaurants WHERE id=?", joeRid),
+    null,
+  );
+  assert.equal(await one("SELECT id FROM users WHERE id=?", joeUser), null);
+  assert.equal(
+    await one("SELECT 1 FROM trusted_devices WHERE user_id=?", joeUser),
+    null,
+  );
+  assert(await freeGrantKept("joe@example.test"));
+  assert.equal(
+    await one("SELECT * FROM billing_accounts WHERE restaurant_id=?", joeRid),
+    null,
+  );
+  assert.deepEqual(filesUnder(`private/${joeRid}`), []);
+  await expect(`assets/${joePhoto}`, 401, joeOpts);
+  assert.equal(
+    (await expect("admin", 200, { cookie: adminCookie })).json.restaurants.some(
+      (r) => r.id === joeRid,
+    ),
+    false,
+  );
+  checks++;
+
+  // 22. An administrator changing an account's images decides them: free
+  // images it was waiting for (lib/server/free-grants.ts) aren't added later,
+  // and the note about them goes. Saving other controls keeps the wait.
+  process.env.FREE_SIGNUP_GRANTS_PER_DAY = "0";
+  const waiter = await signup(
+    "waiter@example.test",
+    "Wait Kitchen",
+    "192.0.2.150",
+  );
+  const waiterOpts = { cookie: waiter.cookie, ip: "192.0.2.150" };
+  const waiterState = (await expect("state", 200, waiterOpts)).json;
+  assert.deepEqual(waiterState.freeImages, {
+    status: "held",
+    images: 5,
+    days: null,
+  });
+  const controls = (allowance) => ({
+    body: { id: waiterState.restaurant.id, allowance, paused: false },
+    cookie: adminCookie,
+  });
+  await expect("admin/restaurant", 200, controls(0));
+  assert.equal(
+    (await expect("state", 200, waiterOpts)).json.freeImages.status,
+    "held",
+  );
+  await expect("admin/restaurant", 200, controls(3));
+  delete process.env.FREE_SIGNUP_GRANTS_PER_DAY;
+  offset += 2 * 60000;
+  await grantHeldImages();
+  const decided = (await expect("state", 200, waiterOpts)).json;
+  assert.equal(decided.remaining, 3);
+  assert.equal(decided.freeImages, null);
+  checks += 2;
+
   console.log(
-    `PASS: ${checks} account security checks: per-network limits on the IPv6 /64 with no site-wide lockout, a per-account sign-in slowdown, versioned password hashes, sliding sessions, revocable reset and setup links, the Pro waitlist, once-only free images, ID validation, lenient saved looks, staff link scope and limits, WebP and AVIF uploads, transparent logos, cacheable public images, admin takedown, menu-address squatting, signup time zones and account deletion.`,
+    `PASS: ${checks} account security checks: per-network limits on the IPv6 /64 (and /48 for signups) with no site-wide lockout, a per-account sign-in slowdown that states no wait and that browsers which signed in before skip, versioned password hashes, sliding sessions, revocable reset and setup links, the Pro waitlist, once-only free images (and photos kept while an image uses them), ID validation, lenient saved looks, staff link scope and limits, WebP and AVIF uploads, transparent logos, cacheable public images, admin takedown, menu-address squatting, signup time zones, account deletion (keeping only a hash of the email, against a second free grant), administrator account deletion and administrators deciding held free images.`,
   );
 } finally {
   rmSync(root, { recursive: true, force: true });

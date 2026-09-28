@@ -28,6 +28,7 @@ import type { PhotoStyle } from "@/lib/photo-styles";
 import { studioCreationBlock } from "@/lib/studio-discovery";
 import type { useStudioLibrary } from "./use-studio-library";
 import { StyleTile } from "./studio-style-tile";
+import { ProBadge, ProNote } from "./pro-badge";
 
 /** Favorites, recent looks and named restaurant looks, as one collection. */
 export function StudioSavedLooks({
@@ -35,6 +36,7 @@ export function StudioSavedLooks({
   restaurantLook,
   selectedKey,
   guest,
+  pro = true,
   disabledStyleIds = [],
   tile,
   onApply,
@@ -43,6 +45,7 @@ export function StudioSavedLooks({
   restaurantLook?: PhotoStyle;
   selectedKey: string;
   guest: boolean;
+  pro?: boolean;
   disabledStyleIds?: string[];
   tile: (
     style: PhotoStyle,
@@ -231,8 +234,13 @@ export function StudioSavedLooks({
       {!guest && (
         <section aria-labelledby="st-saved-looks">
           <h3 id="st-saved-looks" className="st-library-heading">
-            Restaurant looks
+            Restaurant looks {!pro && <ProBadge />}
           </h3>
+          {!pro && (
+            <ProNote feature="savedLooks">
+              Saved looks are part of Pro. Any you saved are kept.
+            </ProNote>
+          )}
           {named.length || legacy ? (
             <div className="st-library-grid">
               {legacy && tile(legacy, "saved")}

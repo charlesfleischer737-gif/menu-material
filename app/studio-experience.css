@@ -364,7 +364,7 @@
 }
 @media (max-width: 760px) {
   .cx-guest .cx-main.cx-feature-main {
-    padding: 22px 20px 40px;
+    padding: 16px 20px 40px;
   }
 }
 .ps2-save-dialog {
@@ -388,12 +388,13 @@
     padding: 0 20px 15px;
   }
 }
+/* Spaced from the studio below as the page header is. */
 .ps2-guest-recovery {
   display: flex;
   align-items: center;
   flex-wrap: wrap;
   gap: 15px;
-  margin: 20px 0 0;
+  margin: 20px 0;
   border: 1px solid var(--gray-300);
   border-radius: 14px;
   background: var(--gray-200);
@@ -417,6 +418,9 @@
 @media (max-width: 760px) {
   .cx-guest .cx-guest-free {
     display: none;
+  }
+  .ps2-guest-recovery {
+    margin: 16px 0;
   }
 }
 

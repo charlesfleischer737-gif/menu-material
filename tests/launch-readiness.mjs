@@ -472,7 +472,8 @@ try {
   assert.equal(race.filter((r) => r.status === "fulfilled").length, 1);
   checks++;
   await run("DELETE FROM ai_spend");
-  await call("admin/ai-controls", { paused: false, dailyBudgetCents: 200 });
+  // Room for one $2 image, also within Free plans' 70% share of it.
+  await call("admin/ai-controls", { paused: false, dailyBudgetCents: 300 });
   const globalRace = await Promise.allSettled([
     reserveAi({ restaurantId: a.rid, kind: "image" }),
     reserveAi({ restaurantId: b.rid, kind: "image" }),

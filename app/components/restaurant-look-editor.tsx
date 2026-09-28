@@ -15,6 +15,8 @@ import { emptyAdjustments } from "@/lib/studio";
 import type { Row } from "@/lib/client";
 import { PostCanvas } from "./post-maker";
 import MenuView from "./menu-view";
+import { ProBadge, ProNote } from "./pro-badge";
+import { hasProFeatures } from "@/lib/upgrade";
 
 function BrandColor({
   label,
@@ -156,10 +158,16 @@ export default function RestaurantLookEditor({
       <div className="cx-brand-heading">
         <Palette size={22} />
         <div>
-          <h3>Restaurant look</h3>
+          <h3>Restaurant look {!hasProFeatures(state) && <ProBadge />}</h3>
           <p>Start with a complete look, then make it your own.</p>
         </div>
       </div>
+      {!hasProFeatures(state) && (
+        <ProNote feature="look">
+          Set up and preview your look here. It’s saved, and Pro puts it on your
+          photos, posts, menus and table cards.
+        </ProNote>
+      )}
       <div
         className="cx-look-presets"
         role="group"

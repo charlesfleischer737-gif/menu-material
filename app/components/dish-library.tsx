@@ -50,7 +50,21 @@ import DietaryPicker from "./dietary-picker";
 import { ConfirmDelete } from "./controls";
 import CreativeHeader from "./creative-header";
 import PhotoDownloads from "./photo-downloads";
+import { hasProFeatures, requestUpgrade } from "@/lib/upgrade";
 import Kitty from "./kitty";
+
+const listed = (words: string[]) =>
+  words.length < 2
+    ? words.join("")
+    : `${words.slice(0, -1).join(", ")} and ${words[words.length - 1]}`;
+/** "Lunch keeps its own price." for menus the edit didn't reach. */
+function keptNotice(kept: Row[]) {
+  if (!kept.length) return "";
+  const fields = [...new Set(kept.flatMap((m) => m.fields as string[]))];
+  return `${listed(kept.map((m) => m.name))} ${
+    kept.length === 1 ? "keeps its" : "keep their"
+  } own ${listed(fields)}.`;
+}
 
 export default function DishLibrary({
   state,
@@ -516,6 +530,9 @@ export default function DishLibrary({
                 .map((a) => a.id);
               if (ids.length !== selected.length)
                 action.setError("Choose dishes with photos to download.");
+              // Several photos download as a ZIP, which is Pro.
+              else if (ids.length > 1 && !hasProFeatures(state))
+                requestUpgrade("downloads");
               else setDownloadIds(ids);
             }}
           >
@@ -976,7 +993,8 @@ export default function DishLibrary({
                       revision: saved.revision,
                     }));
                     setDirty(false);
-                    const menus = (saved.menus || []) as Row[];
+                    const menus = (saved.menus || []) as Row[],
+                      kept = (saved.kept || []) as Row[];
                     if (menus.length)
                       window.dispatchEvent(
                         new CustomEvent("menu-material:menus-changed", {
@@ -984,11 +1002,18 @@ export default function DishLibrary({
                         }),
                       );
                     action.setNotice(
-                      menus.length
-                        ? `Dish details saved and updated on ${menus
-                            .map((m) => `${m.name}${m.live ? " (live)" : ""}`)
-                            .join(", ")}.`
-                        : "Dish details saved.",
+                      [
+                        menus.length
+                          ? `Dish details saved and updated on ${menus
+                              .map(
+                                (m) => `${m.name}${m.live ? " (live)" : ""}`,
+                              )
+                              .join(", ")}.`
+                          : "Dish details saved.",
+                        keptNotice(kept),
+                      ]
+                        .filter(Boolean)
+                        .join(" "),
                     );
                   })
                 }
@@ -1189,7 +1214,12 @@ export default function DishLibrary({
           initialFormat={usedLineage?.format || "menu"}
           style={usedStyle}
           onUse={(use) => selectPhoto(usedPhoto, use)}
-          onPack={() => setPhotoUse({ ...photoUse, kind: "pack" })}
+          packPro={!hasProFeatures(state)}
+          onPack={() =>
+            hasProFeatures(state)
+              ? setPhotoUse({ ...photoUse, kind: "pack" })
+              : requestUpgrade("downloads")
+          }
         />
       )}
       {photoUse?.kind === "pack" && usedPhoto?.approved_at && (

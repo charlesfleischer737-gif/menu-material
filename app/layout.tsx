@@ -1,7 +1,11 @@
 import type { Metadata } from "next";
 import ErrorReporter from "./components/error-reporter";
 import ScrollMemory from "./components/scroll-memory";
+import VisitSource from "./components/visit-source";
+import { SiteContactProvider } from "./components/site-contact";
 import { shareImage, siteName, siteOrigin } from "./site-metadata";
+import { config } from "@/lib/server/core";
+import { siteContact } from "@/lib/site-contact";
 // Imported here rather than from CSS so the build bundles the font files.
 import "@fontsource-variable/inter/opsz.css";
 import "./globals.css";
@@ -11,6 +15,7 @@ import "./creation.css";
 import "./studio-onboarding.css";
 import "./restaurant-look.css";
 import "./launch.css";
+import "./launch-funnel.css";
 import "./marketing.css";
 import "./photo-exports.css";
 import "./creative-workspace.css";
@@ -26,6 +31,7 @@ import "./photo-studio.css";
 import "./kitties.css";
 // One control family (buttons, segmented choices); loaded last.
 import "./controls.css";
+import { FREE_SIGNUP_IMAGES } from "@/lib/plans";
 // Defaults for every page. Public pages add their own canonical address and
 // link-preview text with pageMetadata() from ./site-metadata.
 export async function generateMetadata(): Promise<Metadata> {
@@ -33,8 +39,7 @@ export async function generateMetadata(): Promise<Metadata> {
     // Makes canonical, og:url and og:image URLs absolute.
     metadataBase: new URL(await siteOrigin()),
     title: "Menu Material — Food photos worth ordering from.",
-    description:
-      "Turn real dish photos into professional images and matching posts for Toast, delivery apps, your website, and Instagram. Start with 5 free images.",
+    description: `Turn real dish photos into professional images and matching posts for Toast, delivery apps, your website, and Instagram. Start with ${FREE_SIGNUP_IMAGES} free images.`,
     icons: {
       icon: "/favicon.svg?v=menu-material-2",
       shortcut: "/favicon.svg?v=menu-material-2",
@@ -66,7 +71,12 @@ export default function RootLayout({
       <body>
         <ErrorReporter />
         <ScrollMemory />
-        {children}
+        <VisitSource />
+        {/* The support address and Terms, for the footer, sign-in, plans
+            and error pages. */}
+        <SiteContactProvider value={siteContact(config)}>
+          {children}
+        </SiteContactProvider>
       </body>
     </html>
   );

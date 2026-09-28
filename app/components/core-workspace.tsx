@@ -25,6 +25,7 @@ import {
 } from "@/components/ui/dropdown-menu";
 import { api, type Row } from "@/lib/client";
 import { rememberScroll } from "@/lib/scroll-memory";
+import { imagesLeft } from "@/lib/free-images";
 import {
   hasSavedContent,
   readPreference,
@@ -37,6 +38,8 @@ import CreativeHeader from "./creative-header";
 import WorkspacePlaceholder from "./workspace-placeholder";
 import PhotoStudio from "./photo-studio";
 import { deferredWorkspace } from "./deferred-workspace";
+import { ProBadge } from "./pro-badge";
+import { hasProFeatures } from "@/lib/upgrade";
 const DishLibrary = deferredWorkspace(
   "My Dishes",
   () => import("./dish-library"),
@@ -179,6 +182,16 @@ export default function CoreWorkspace({
     if (where === "post") {
       setPostSeed({ token: crypto.randomUUID(), dishId, photoId, ...extra });
       navigate("post");
+    } else if (where === "promote") {
+      // Campaigns open on this dish and photo (a preview on Free).
+      const dish = state.dishes.find((d: Row) => d.id === dishId);
+      setLegacySeed({
+        title: dish?.name || "",
+        description: dish?.description || "",
+        price: dish?.price ?? 0,
+        items: [{ dishId, photoId, quantity: 1 }],
+      });
+      navigate("campaigns");
     } else if (where === "menu" || where === "print") {
       setMenuSeed({
         token: crypto.randomUUID(),
@@ -207,7 +220,9 @@ export default function CoreWorkspace({
     post: "Post",
     menu: "Menus",
   };
-  const pro = state.billing?.plan === "pro";
+  // Pro features: a paid plan, a comp or a renewal being retried.
+  const pro =
+    state.billing?.plan === "pro" || state.billing?.features?.pro === true;
   const restaurantName = state.restaurant?.name || "Your restaurant";
   const accountMenu = (
     <DropdownMenu>
@@ -236,7 +251,8 @@ export default function CoreWorkspace({
         </DropdownMenuLabel>
         <DropdownMenuItem className="cx-account-credits" onSelect={onPlans}>
           <Sparkles size={16} aria-hidden="true" />
-          {state.remaining} images left · {pro ? "Pro" : "Free"}
+          {imagesLeft(state.remaining, state.freeImages)} ·{" "}
+          {pro ? "Pro" : "Free"}
         </DropdownMenuItem>
         <DropdownMenuSeparator />
         <DropdownMenuItem onSelect={onSettings}>
@@ -311,7 +327,7 @@ export default function CoreWorkspace({
         <div className="cx-sidebar-bottom">
           <button className="cx-credits" onClick={onPlans}>
             <Sparkles size={15} aria-hidden="true" />
-            <span>{state.remaining} images left</span>
+            <span>{imagesLeft(state.remaining, state.freeImages)}</span>
             <span className="cx-plan-chip">{pro ? "Pro" : "Free"}</span>
           </button>
           {accountMenu}
@@ -410,7 +426,8 @@ export default function CoreWorkspace({
                     className="cx-link"
                     onClick={() => navigate("campaigns")}
                   >
-                    Campaigns <ArrowRight size={16} />
+                    Campaigns {!hasProFeatures(state) && <ProBadge />}
+                    <ArrowRight size={16} />
                   </button>
                 }
               />

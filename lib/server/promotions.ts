@@ -15,6 +15,7 @@ import {
   run,
   type Row,
 } from "./core";
+import { hasProFeatures, requirePro } from "./entitlements";
 import { defaultStyle, localToInstant, promotionStatus } from "../promotions";
 import { publicBrandStyle } from "../restaurant-look";
 import { photoStyles } from "../photo-styles";
@@ -165,6 +166,11 @@ async function offerContent(r: Row, draft: Row, ready = false) {
         400,
         `Approve an accurate photo of ${dish.name} first.`,
       );
+      assert(
+        !asset.needs_correction,
+        400,
+        `You reported the photo of ${dish.name} as inaccurate. Choose another photo.`,
+      );
     }
     items.push({ ...item, name: dish.name });
   }
@@ -197,8 +203,10 @@ export async function publicMenu(r: Row, t = now()) {
   if (live.length) {
     const [dishRows, assetRows] = await Promise.all([
       all("SELECT id FROM dishes WHERE restaurant_id=? AND available=1", r.id),
+      // A special whose photo was deleted or reported as inaccurate waits
+      // for another photo.
       all(
-        "SELECT id FROM assets WHERE restaurant_id=? AND approved_at IS NOT NULL AND deleted_at IS NULL",
+        "SELECT id FROM assets WHERE restaurant_id=? AND approved_at IS NOT NULL AND deleted_at IS NULL AND needs_correction=0",
         r.id,
       ),
     ]);
@@ -232,6 +240,8 @@ export async function publicMenu(r: Row, t = now()) {
   return {
     ...menu,
     contact,
+    // "Made with Menu Material", decided on each visit: Pro removes it.
+    credit: !(await hasProFeatures(r.id)),
     menus: await publicMenuDocuments(r.id),
     restaurant: { ...restaurant, style: publicBrandStyle(restaurant.style) },
     specials: specials.map((special) => ({
@@ -272,6 +282,10 @@ export async function promotionRoute(req: Request, p: string[], r: Row) {
   if (req.method === "GET") return response({ promotion: offerRow(existing!) });
   assert(req.method === "POST", 405, "Method not allowed.");
   const b = await body(req);
+  // Existing campaigns stay viewable and downloadable and can be taken off
+  // the menu on any plan; making or changing one is Pro.
+  if (!["unpublish", "sold-out", "export", "copy-caption"].includes(p[2]))
+    await requirePro(r.id, "campaigns");
   if (p[2]) {
     const saved = existing!,
       draft = JSON.parse(saved.draft);

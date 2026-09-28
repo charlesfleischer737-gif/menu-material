@@ -16,8 +16,6 @@ import {
   Images,
   Lightbulb,
   LoaderCircle,
-  PenLine,
-  ShieldCheck,
   SlidersHorizontal,
   Sparkles,
   Undo2,
@@ -68,9 +66,14 @@ import {
 } from "@/lib/style-relevance";
 import { styleThumbnail, type PhotoStyle } from "@/lib/photo-styles";
 import type { Row } from "@/lib/client";
+import { isPlaceholderDishName } from "@/lib/restaurant-identity";
 import { track } from "./creation-shared";
 import { useStudioLibrary } from "./use-studio-library";
 import { PhotoInspirationSheet } from "./photo-inspiration-sheet";
+import { ProBadge } from "./pro-badge";
+import { FREE_SIGNUP_IMAGES, proFeatures, type ProFeature } from "@/lib/plans";
+import { freeImagesNote } from "@/lib/free-images";
+import { hasProFeatures, requestUpgrade } from "@/lib/upgrade";
 import WorkspaceActionBar from "./workspace-action-bar";
 import { StudioStyleLibrary, type LibraryOrigin } from "./studio-style-library";
 import { StudioCustomizeSheet } from "./studio-customize-sheet";
@@ -89,6 +92,7 @@ import {
   recipeFromDraft,
   type SavedLook,
 } from "@/lib/studio-library";
+import { guestCreationBlock } from "@/lib/guest-studio";
 
 // The generated master is square, portrait or landscape; these are the four
 // shapes owners reach for. Other saved destinations stay selectable.
@@ -172,6 +176,10 @@ export function StudioWorkbench({
   const saved = useStudioLibrary(
     state.guest ? undefined : state.restaurant?.id,
   );
+  // A signed-out guest has no plan yet; the free plan's rules apply.
+  const guestOnly = !!state.guest && !state.user,
+    pro = !guestOnly && hasProFeatures(state),
+    [proHint, setProHint] = useState("");
   const [sampleLoading, setSampleLoading] = useState(false);
   const busy = parentBusy || (sampleLoading ? "Preparing your photo" : "");
   const lookName = b.savedLookName || selected.name;
@@ -196,9 +204,12 @@ export function StudioWorkbench({
       b.styleIntent
     )
       return;
-    const defaultLook = saved.library.looks.find(
-      (look) => look.id === saved.library.defaultLookId && !look.archived,
-    );
+    // A default saved look starts new photos with Pro features.
+    const defaultLook = pro
+      ? saved.library.looks.find(
+          (look) => look.id === saved.library.defaultLookId && !look.archived,
+        )
+      : undefined;
     update({
       ...(defaultLook ? applySavedLook(defaultLook) : {}),
       studioDefaultResolved: true,
@@ -292,10 +303,20 @@ export function StudioWorkbench({
         : referenceRetryTrigger
       ).current?.focus({ preventScroll: true });
   }, [inspirationStatus]);
+  // Saved looks and inspiration photos are Pro. A signed-out guest can't
+  // open Plans, so they read why here instead.
+  function offerPro(feature: ProFeature) {
+    if (guestOnly)
+      setProHint(
+        `${proFeatures[feature].blocked} Choose one of the looks to try Photo Studio free.`,
+      );
+    else requestUpgrade(feature);
+  }
   function openInspiration(
     origin: "browse" | "custom" | "main",
     trigger: HTMLButtonElement,
   ) {
+    if (!pro) return offerPro("savedLooks");
     inspirationSession.current = {
       base: origin === "custom" ? { ...b, ...controls } : { ...b },
       origin,
@@ -325,9 +346,11 @@ export function StudioWorkbench({
           : imageFor(state.restaurant.style.photoPreset),
       }
     : undefined;
-  const defaultSaved = saved.library.looks.find(
-    (look) => look.id === saved.library.defaultLookId && !look.archived,
-  );
+  const defaultSaved = pro
+    ? saved.library.looks.find(
+        (look) => look.id === saved.library.defaultLookId && !look.archived,
+      )
+    : undefined;
   const savedTile = (look: SavedLook): PhotoStyle => ({
     id: look.id,
     name: look.name,
@@ -493,7 +516,11 @@ export function StudioWorkbench({
   // A guest who has signed in (the guest studio hands their work over) sees
   // their account's real allowance and availability.
   const signedOutGuest = !!state.guest && !state.user;
+  // The guest studio says so before a photo is added, and after signup, when
+  // no image can be made now: one message, in place of Create's usual note.
+  const guestUnavailable = state.guest ? guestCreationBlock(state) : "";
   const canCreate =
+    !guestUnavailable &&
     !creationBlock &&
     !inspirationBlock &&
     photoReady &&
@@ -508,6 +535,7 @@ export function StudioWorkbench({
     (photoUploading
       ? "Your original is saving. You can choose a style while you wait."
       : "") ||
+    guestUnavailable ||
     creationBlock ||
     inspirationBlock ||
     (b.menuDocument
@@ -525,10 +553,17 @@ export function StudioWorkbench({
             : !signedOutGuest && !state.aiConnected
               ? "Photo creation is temporarily unavailable. Your work is saved."
               : state.remaining <= 0
-                ? "You’ve used your available images."
+                ? freeImagesNote(state.freeImages) ||
+                  "You’ve used your available images."
                 : signedOutGuest
-                  ? "Create a free account to continue · 5 free images"
+                  ? `Create a free account to continue · ${FREE_SIGNUP_IMAGES} free images`
                   : `Uses 1 image · ${state.remaining} left`);
+  // Out of images, plans are offered; free images on their way need none.
+  const offerPlans =
+    !signedOutGuest &&
+    !guestUnavailable &&
+    state.remaining <= 0 &&
+    state.freeImages?.status !== "held";
   const showImage =
     b.look === "keep" && source
       ? source
@@ -608,6 +643,7 @@ export function StudioWorkbench({
     );
   }
   function applySaved(look: SavedLook) {
+    if (!pro) return offerPro("savedLooks");
     if (!state.guest)
       track("look_selected", undefined, {
         ...measurementContext,
@@ -806,7 +842,29 @@ export function StudioWorkbench({
       {busy || (photoUploading ? "Saving your photo…" : "Create photo")}
     </button>
   );
-
+  // Secondary ways to start sit below the photo source choices on every screen.
+  const noPhoto = (
+    <p className="st-no-photo">
+      No photo handy?{" "}
+      <span>
+        <button
+          className="st-text-button"
+          disabled={!!busy}
+          onClick={() => update({ mode: "description" })}
+        >
+          Describe your dish
+        </button>{" "}
+        or{" "}
+        <button
+          className="st-text-button"
+          disabled={!!busy}
+          onClick={() => void trySample()}
+        >
+          try a sample
+        </button>
+      </span>
+    </p>
+  );
   const tile = (style: PhotoStyle, index: number) => {
     const reason = suggestionReason(style, context);
     const polish = style.id === "keep";
@@ -986,33 +1044,49 @@ export function StudioWorkbench({
                   </p>
                 </div>
               ) : (
-                <button
-                  className="st-dropzone"
-                  disabled={!!busy}
-                  aria-describedby="st-dropzone-hint"
-                  onClick={() => upload.current?.click()}
-                >
-                  <span className="st-dropzone-icon" aria-hidden="true">
-                    <ImagePlus size={30} strokeWidth={1.4} />
-                  </span>
-                  <b>
-                    {dragging
-                      ? "Drop to add your photo"
-                      : "Add a photo of your dish"}
-                  </b>
-                  <span id="st-dropzone-hint">
-                    <span className="st-when-pointer">
-                      Drop or paste it here, or click to choose a file.
+                <div className="st-photo-source">
+                  <button
+                    className="st-dropzone"
+                    disabled={!!busy}
+                    aria-describedby="st-dropzone-hint"
+                    onClick={() => upload.current?.click()}
+                  >
+                    <span className="st-dropzone-icon" aria-hidden="true">
+                      <ImagePlus size={30} strokeWidth={1.4} />
                     </span>
-                    <span className="st-when-touch">
-                      Tap to take a photo or choose one.
+                    <b>
+                      {dragging
+                        ? "Drop to add your photo"
+                        : "Add a photo of your dish"}
+                    </b>
+                    <span id="st-dropzone-hint">
+                      <span className="st-when-pointer">
+                        Drop or paste it here, or click to choose a file.
+                      </span>
+                      <span className="st-when-touch">
+                        Tap to take a photo or choose one.
+                      </span>
                     </span>
-                  </span>
-                  <small>
-                    Shoot from above or at a slight angle, with the whole plate
-                    in frame.
-                  </small>
-                </button>
+                    <small>
+                      Shoot from above or at a slight angle, with the whole
+                      plate in frame.
+                    </small>
+                  </button>
+                  {!state.guest && originals.length > 0 && (
+                    <div className="st-source-library">
+                      <span>or</span>
+                      <button
+                        ref={dishesTrigger}
+                        className="st-pill st-pill-wide"
+                        disabled={!!busy}
+                        onClick={() => setDishesOpen(true)}
+                      >
+                        <Images size={18} aria-hidden="true" />
+                        From My Dishes
+                      </button>
+                    </div>
+                  )}
+                </div>
               )}
               {busy && (
                 <div className="st-canvas-busy" role="status">
@@ -1021,45 +1095,20 @@ export function StudioWorkbench({
                 </div>
               )}
             </div>
-            <div className="st-stage-foot">
-              <span>
-                <ShieldCheck size={14} aria-hidden="true" />
-                {state.guest
-                  ? state.user
-                    ? "Your photo is saved to your account when you create it."
-                    : "Your photo is kept on this device until you sign up."
-                  : b.mode === "description"
-                    ? "Illustrations are labeled as illustrations."
-                    : "Your original photo is always kept."}
-              </span>
-              {source && !state.guest && b.mode === "photo" && (
-                <button
-                  className="st-text-button"
-                  disabled={!!busy || photoUploading}
-                  onClick={quickEdit}
-                >
-                  Just crop or brighten
-                </button>
-              )}
-              {!source && b.mode === "photo" && (
-                <button
-                  className="st-text-button"
-                  disabled={!!busy}
-                  onClick={() => update({ mode: "description" })}
-                >
-                  <PenLine size={14} />
-                  No photo? Describe your dish
-                </button>
-              )}
-              {b.mode === "description" && (
-                <button
-                  className="st-text-button"
-                  onClick={() => update({ mode: "photo" })}
-                >
-                  Use a real photo instead
-                </button>
-              )}
-            </div>
+            {(!source || b.mode === "description") && (
+              <div className="st-stage-foot">
+                {b.mode === "photo" ? (
+                  noPhoto
+                ) : (
+                  <button
+                    className="st-text-button"
+                    onClick={() => update({ mode: "photo" })}
+                  >
+                    Use a real photo instead
+                  </button>
+                )}
+              </div>
+            )}
             {(advice || b.analysisAdvice) && (
               <p className="st-note" role="status">
                 <Lightbulb size={15} aria-hidden="true" />
@@ -1084,45 +1133,6 @@ export function StudioWorkbench({
             )}
           </section>
           <aside className="st-inspector" aria-label="Photo settings">
-            {!source && b.mode === "photo" && (
-              <section className="st-section" aria-labelledby="st-photo-title">
-                <h2 id="st-photo-title" className="st-section-title">
-                  Photo
-                </h2>
-                <button
-                  className="st-pill st-pill-wide st-photo-pill"
-                  disabled={!!busy || photoUploading}
-                  onClick={() => upload.current?.click()}
-                >
-                  Choose a photo
-                </button>
-                <p className="st-photo-links">
-                  {!state.guest && originals.length > 0 && (
-                    <>
-                      <button
-                        ref={dishesTrigger}
-                        className="st-text-button"
-                        disabled={!!busy || photoUploading}
-                        onClick={() => setDishesOpen(true)}
-                      >
-                        From My Dishes
-                      </button>
-                      <span aria-hidden="true">·</span>
-                    </>
-                  )}
-                  <button
-                    className="st-text-button"
-                    disabled={!!busy || photoUploading}
-                    onClick={() => void trySample()}
-                  >
-                    {!state.guest && originals.length
-                      ? "Try a sample"
-                      : "No photo handy? Try a sample"}
-                  </button>
-                </p>
-              </section>
-            )}
-
             <section className="st-section" aria-labelledby="st-style-title">
               <div className="st-section-head">
                 <h2 id="st-style-title" className="st-section-title">
@@ -1336,7 +1346,13 @@ export function StudioWorkbench({
                       ? "Replace inspiration photo"
                       : "Edit inspiration photo"
                     : "Add inspiration photo"}
+                  {!pro && <ProBadge />}
                 </button>
+              )}
+              {proHint && (
+                <div className="st-alert" role="status">
+                  <p>{proHint}</p>
+                </div>
               )}
               {inspirationBlock && (
                 <div className="st-alert" role="status">
@@ -1434,6 +1450,22 @@ export function StudioWorkbench({
                 </h2>
                 <span className="st-optional">Optional</span>
               </div>
+              {b.mode !== "description" &&
+                !b.sample &&
+                (!dish || isPlaceholderDishName(dish.name)) && (
+                  // A new photo becomes a dish in My Dishes; its name is what
+                  // menus and posts show, so ask for it while it has none.
+                  <label className="st-field">
+                    <span>Dish name</span>
+                    <input
+                      className="st-input"
+                      value={b.name || ""}
+                      maxLength={100}
+                      placeholder="What’s this dish called?"
+                      onChange={(event) => update({ name: event.target.value })}
+                    />
+                  </label>
+                )}
               <textarea
                 className="st-input st-details"
                 aria-labelledby="st-details-title"
@@ -1450,13 +1482,14 @@ export function StudioWorkbench({
               </span>
             </section>
 
+            {/* Shown before a photo is added when no image can be made. */}
             <WorkspaceActionBar
-              className={`st-action${photoReady ? "" : " is-waiting"}`}
+              className={`st-action${photoReady || guestUnavailable ? "" : " is-waiting"}`}
             >
               {createButton}
               <p className="st-action-note">
                 {reason}
-                {!signedOutGuest && state.remaining <= 0 && (
+                {offerPlans && (
                   <button
                     className="st-text-button"
                     onClick={() =>
@@ -1496,6 +1529,7 @@ export function StudioWorkbench({
         store={saved}
         restaurantLook={restaurantLook}
         guest={!!state.guest}
+        pro={pro}
         busy={!!busy}
         timezone={state.restaurant?.timezone}
         expectations={(id) => lookExpectations(b, id, state.restaurant)}
@@ -1575,6 +1609,7 @@ export function StudioWorkbench({
         }
         onInspiration={(trigger) => openInspiration("custom", trigger)}
         onSaveLook={() => {
+          if (!pro) return offerPro("savedLooks");
           setSaveName(b.savedLookName || selected.name);
           setSaveError("");
           setSaveOpen(true);

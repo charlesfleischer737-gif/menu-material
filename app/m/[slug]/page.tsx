@@ -10,6 +10,9 @@ import {
   menuStructuredData,
 } from "@/lib/menu-structured-data";
 export const dynamic = "force-dynamic";
+// Menus from accounts in their first week stay out of search results, so a
+// throwaway account can't borrow the site's standing for spam.
+const newAccountMs = 7 * 86400000;
 export async function generateMetadata({
   params,
 }: {
@@ -31,9 +34,11 @@ export async function generateMetadata({
   const image = menuPreviewImage(published, slug, origin),
     url = new URL(`/m/${slug}`, origin).href,
     description = `View the current menu from ${name}${r.address ? `, ${r.address}` : ""}.`;
+  const fresh = Date.now() - Number(r.created_at || 0) < newAccountMs;
   return {
     title: name + " — Menu",
     description,
+    ...(fresh ? { robots: { index: false, follow: false } } : {}),
     alternates: { canonical: url },
     openGraph: {
       title: name + " — Menu",

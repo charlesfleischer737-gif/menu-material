@@ -7,7 +7,11 @@
 export type DietaryTag = {
   id: string;
   label: string;
-  kind: "diet" | "allergen";
+  /**
+   * "none" is the owner's word that a dish has none of the listed allergens.
+   * Without it, a dish with no allergen tags is one nobody has checked.
+   */
+  kind: "diet" | "allergen" | "none";
   /** Printed after the dish name and explained in the menu's key. */
   code?: string;
 };
@@ -30,7 +34,10 @@ export const dietaryTags: DietaryTag[] = [
   { id: "contains-mustard", label: "Mustard", kind: "allergen" },
   { id: "contains-lupin", label: "Lupin", kind: "allergen" },
   { id: "contains-sulphites", label: "Sulphites", kind: "allergen" },
+  { id: "no-listed-allergens", label: "No listed allergens", kind: "none" },
 ];
+/** The owner checked the dish: it has none of the allergens above. */
+export const noListedAllergens = "no-listed-allergens";
 const byId = new Map(dietaryTags.map((tag) => [tag.id, tag]));
 export const dietTags = dietaryTags.filter((tag) => tag.kind === "diet");
 export const allergenTags = dietaryTags.filter(
@@ -100,6 +107,9 @@ export function normalizeDietary(
     else if (!notes.some((n) => n.toLowerCase() === value.toLowerCase()))
       notes.push(value);
   }
+  // A listed allergen always outranks "no listed allergens".
+  if (allergenTags.some((tag) => tags.has(tag.id)))
+    tags.delete(noListedAllergens);
   return [
     ...dietaryTags.filter((tag) => tags.has(tag.id)).map((tag) => tag.id),
     ...notes,
@@ -110,6 +120,8 @@ export function dietaryParts(values: unknown) {
   return {
     diets: dietTags.filter((tag) => normalized.includes(tag.id)),
     allergens: allergenTags.filter((tag) => normalized.includes(tag.id)),
+    /** The owner checked: none of the listed allergens. */
+    noneListed: normalized.includes(noListedAllergens),
     notes: normalized.filter((value) => !byId.has(value)),
   };
 }
@@ -135,6 +147,36 @@ export function containsText(allergens: DietaryTag[]) {
   return allergens.length
     ? `Contains: ${allergens.map((tag) => lower(tag.label)).join(", ")}`
     : "";
+}
+export const unlistedAllergensText = "Allergens not listed — ask us";
+export const noListedAllergensText = `Contains none of the ${allergenTags.length} major allergens`;
+/** Whether the owner has said which of the listed allergens a dish has. */
+export function allergensListed(values: unknown) {
+  const { allergens, noneListed } = dietaryParts(values);
+  return allergens.length > 0 || noneListed;
+}
+/**
+ * The allergen line guests read under a dish: "Contains: milk, egg", the
+ * owner's word that it has none of them, or, when nobody has said, "ask us",
+ * so a dish without allergens listed never reads as having none.
+ */
+export function guestAllergenText(values: unknown) {
+  const { allergens, noneListed } = dietaryParts(values);
+  return allergens.length
+    ? containsText(allergens)
+    : noneListed
+      ? noListedAllergensText
+      : unlistedAllergensText;
+}
+/**
+ * A guest's "Hide dishes with" choice hides a dish that lists one of the
+ * chosen allergens. A dish whose allergens aren't listed stays, with its
+ * "ask us" line: hiding it, or not, would be a guess.
+ */
+export function hiddenByAllergens(values: unknown, chosen: readonly string[]) {
+  if (!chosen.length) return false;
+  const tags = normalizeDietary(values);
+  return chosen.some((id) => tags.includes(id));
 }
 /** Printed under a dish: "V · GF · Contains: milk, egg". */
 export function printedDietary(values: unknown) {

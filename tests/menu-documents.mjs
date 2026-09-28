@@ -54,6 +54,16 @@ async function call(path, data, expected = 200, method) {
 }
 try {
   await call("auth/dev", {});
+  // This suite exercises Pro features: comp the workspace (never images).
+  {
+    const own = (await call("state")).restaurant;
+    await call("admin/restaurant", {
+      id: own.id,
+      allowance: own.allowance,
+      paused: false,
+      proUntil: Date.now() + 10 * 365 * 86400000,
+    });
+  }
   // Guests never see a placeholder name; publishing requires a real one.
   await call("restaurant/name", { name: "Test Kitchen" });
   const state = await call("state"),
@@ -144,7 +154,9 @@ try {
   const firstId = initialized.menus[0].id,
     rid = state.restaurant.id;
   assert.equal((await call("menus/initialize", {})).menus[0].id, firstId);
-  await call("menu/unpublish", {}, 409);
+  // The single-menu routes from before Menus are gone.
+  for (const path of ["menu", "menu/publish", "menu/unpublish"])
+    await call(path, {}, 410);
   const dish = await call("dishes", {
     name: "Roast chicken",
     description: "Charred leeks, potato purée, chicken jus",

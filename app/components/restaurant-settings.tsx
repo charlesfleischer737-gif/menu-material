@@ -132,7 +132,8 @@ function restaurantProfile(restaurant: Row): Row {
     cuisine: restaurant.cuisine || "",
     brand: restaurant.brand || "",
     currency: restaurant.currency || "USD",
-    style: restaurant.style,
+    // The saved look, which Free can edit and preview but not apply.
+    style: restaurant.savedStyle || restaurant.style,
     timezone: restaurant.timezone || "America/New_York",
     orderingUrl: restaurant.ordering_url || "",
     reservationUrl: restaurant.reservation_url || "",

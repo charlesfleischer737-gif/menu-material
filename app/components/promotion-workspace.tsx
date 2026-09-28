@@ -10,6 +10,9 @@ import {
 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import CreativeHeader from "./creative-header";
+import { ProBadge, ProNote } from "./pro-badge";
+import { proFeatures } from "@/lib/plans";
+import { hasProFeatures, requestUpgrade } from "@/lib/upgrade";
 import { draftStatus } from "@/lib/workspace-status";
 import {
   api,
@@ -19,10 +22,15 @@ import {
   type Row,
 } from "@/lib/client";
 import {
+  comparable,
   defaultStyle,
   localTime,
   localToInstant,
+  offerChanged,
+  offerPhoto,
+  offerPhotoUsable,
   offerTypes,
+  sameContent,
 } from "@/lib/promotions";
 import {
   exportFormats,
@@ -31,24 +39,6 @@ import {
   type ExportFormat,
 } from "@/lib/offer-export";
 
-function comparable(value: unknown): string {
-  return JSON.stringify(value, (k, v) =>
-    k === "revision"
-      ? undefined
-      : v && typeof v === "object" && !Array.isArray(v)
-        ? Object.fromEntries(
-            Object.keys(v)
-              .sort()
-              .map((key) => [key, v[key]]),
-          )
-        : v,
-  );
-}
-function sameContent(a: Row | null, b: Row | null) {
-  return (
-    comparable({ ...a, activeMs: 0 }) === comparable({ ...b, activeMs: 0 })
-  );
-}
 class DraftSaveError extends Error {}
 
 function initial(r: Row, seed: Row = {}) {
@@ -177,6 +167,71 @@ function OfferPreview({
   );
 }
 
+/**
+ * Campaigns are Pro. Free sees its own dish as the matching post, Story and
+ * counter sign, drawn here; nothing is saved.
+ */
+function CampaignPreview({ state, seed }: { state: Row; seed: Row | null }) {
+  const r = state.restaurant,
+    dishes: Row[] = state.dishes || [],
+    assets: Row[] = state.assets || [];
+  const photoOf = (dishId: string) =>
+    assets.find((a) => a.dish_id === dishId && offerPhotoUsable(a));
+  const choices = dishes.filter((d) => !d.sample && photoOf(d.id));
+  const [dishId, setDishId] = useState<string>(
+    seed?.items?.[0]?.dishId || choices[0]?.id || "",
+  );
+  const dish = dishes.find((d) => d.id === dishId);
+  const seeded = seed?.items?.[0]?.dishId === dishId ? seed : null;
+  const photoId = seeded?.items?.[0]?.photoId || photoOf(dishId)?.id;
+  const draft = initial(r, {
+    title: seeded?.title || dish?.name || "",
+    description: seeded?.description || dish?.description || "",
+    price: seeded?.price ?? dish?.price ?? 0,
+    items: dish ? [{ dishId: dish.id, quantity: 1, photoId }] : [],
+  });
+  return (
+    <div className="promotion-pro-preview">
+      <h2>
+        {proFeatures.campaigns.title} <ProBadge />
+      </h2>
+      <p>{proFeatures.campaigns.detail}</p>
+      {choices.length ? (
+        <label className="field">
+          Preview with
+          <select value={dishId} onChange={(e) => setDishId(e.target.value)}>
+            {choices.map((d) => (
+              <option key={d.id} value={d.id}>
+                {d.name}
+              </option>
+            ))}
+          </select>
+        </label>
+      ) : (
+        <p className="mm-muted">
+          Approve a photo of a dish to see it as a campaign.
+        </p>
+      )}
+      {dish && photoId && (
+        <div className="promotion-pro-previews">
+          {(["feed", "story", "sign"] as const).map((format) => (
+            <figure key={format}>
+              <OfferPreview
+                draft={draft}
+                restaurant={r}
+                dishes={dishes}
+                format={format}
+                onChoosePhoto={() => {}}
+              />
+              <figcaption>{exportFormats[format].label}</figcaption>
+            </figure>
+          ))}
+        </div>
+      )}
+      <Button onClick={() => requestUpgrade("campaigns")}>See Pro</Button>
+    </div>
+  );
+}
 export default function PromotionWorkspace({
   state,
   refresh,
@@ -203,6 +258,8 @@ export default function PromotionWorkspace({
     [newDish, setNewDish] = useState<Row | null>(null),
     [recovery, setRecovery] = useState<Row | null>(null),
     [advice, setAdvice] = useState("");
+  // Without Pro, campaigns can be previewed, and old ones viewed.
+  const pro = hasProFeatures(state);
   const saved = useRef<Row | null>(null),
     current = useRef<Row | null>(null),
     saving = useRef<Promise<Row> | null>(null),
@@ -230,7 +287,7 @@ export default function PromotionWorkspace({
     const previous = saved.current,
       draft = current.current;
     if (!previous || !draft) throw Error("Choose a promotion first.");
-    if (comparable(draft) === comparable(previous.draft)) {
+    if (!offerChanged(draft, previous.draft, pro)) {
       saveFailed.current = false;
       setSaveError("");
       setStatus(draftStatus.saved);
@@ -270,7 +327,7 @@ export default function PromotionWorkspace({
     } finally {
       saving.current = null;
     }
-  }, [r.id]);
+  }, [r.id, pro]);
   useEffect(() => {
     if (!form) return;
     if (saved.current && comparable(form) !== comparable(saved.current.draft)) {
@@ -334,11 +391,19 @@ export default function PromotionWorkspace({
     }
   };
   const open = async (p: Row) => {
-    if (current.current) await persist();
+    // On Free, edits the server refuses never keep another campaign closed.
+    if (current.current)
+      await persist().catch((e) => {
+        if (pro) throw e;
+      });
     p = (await api("promotions/" + p.id)).promotion;
     let pending: Row | null = null;
     try {
-      pending = JSON.parse(sessionStorage.getItem(recoveryKey(p.id)) || "null");
+      // Unsaved edits come back only with Pro: Free can't save them.
+      if (pro)
+        pending = JSON.parse(
+          sessionStorage.getItem(recoveryKey(p.id)) || "null",
+        );
     } catch {}
     const restored = pending?.revision === p.revision;
     saved.current = p;
@@ -370,6 +435,8 @@ export default function PromotionWorkspace({
       );
   }, [active, state.promotions]);
   useEffect(() => {
+    // Without Pro, a suggestion or dish opens in the preview instead.
+    if (!pro) return;
     if (seed && seedUsed.current !== seed) {
       seedUsed.current = seed;
       void action("Preparing suggestion", async () => {
@@ -407,13 +474,7 @@ export default function PromotionWorkspace({
   const choose = (did: string) => {
     const dish = dishes.find((d) => d.id === did);
     if (!dish) return;
-    const photo =
-      assets.find(
-        (a) =>
-          a.dish_id === did &&
-          a.approved_at &&
-          ["source", "generated"].includes(a.kind),
-      ) || assets.find((a) => a.dish_id === did && a.kind === "source");
+    const photo = offerPhoto(assets, did);
     const next = {
       ...current.current!,
       items: [{ dishId: did, quantity: 1, photoId: photo?.id || null }],
@@ -458,9 +519,13 @@ export default function PromotionWorkspace({
         action={
           <Button
             disabled={!!busy}
-            onClick={() => action("Starting campaign", () => create())}
+            onClick={() =>
+              pro
+                ? action("Starting campaign", () => create())
+                : requestUpgrade("campaigns")
+            }
           >
-            <Plus /> New campaign
+            <Plus /> New campaign {!pro && <ProBadge />}
           </Button>
         }
       />
@@ -513,7 +578,19 @@ export default function PromotionWorkspace({
           )}
         </div>
       )}
-      {!form ? (
+      {!pro && form && (
+        <ProNote feature="campaigns">
+          Campaigns are part of Pro. You can still view this one, download its
+          files and take it off your menu.
+        </ProNote>
+      )}
+      {!form && !pro ? (
+        <CampaignPreview
+          key={seed?.items?.[0]?.dishId || ""}
+          state={state}
+          seed={seed || null}
+        />
+      ) : !form ? (
         <div className="cx-empty promotion-empty">
           <Sparkles />
           <h2>Make tonight’s special easy to share.</h2>
@@ -805,13 +882,7 @@ export default function PromotionWorkspace({
                               {
                                 dishId: d.id,
                                 quantity: 1,
-                                photoId:
-                                  assets.find(
-                                    (a) =>
-                                      a.dish_id === d.id &&
-                                      a.approved_at &&
-                                      ["source", "generated"].includes(a.kind),
-                                  )?.id || null,
+                                photoId: offerPhoto(assets, d.id)?.id || null,
                               },
                             ]);
                         }}
@@ -822,7 +893,8 @@ export default function PromotionWorkspace({
                             (d) =>
                               !form.items.some((i: Row) => i.dishId === d.id) &&
                               assets.some(
-                                (a) => a.dish_id === d.id && a.approved_at,
+                                (a) =>
+                                  a.dish_id === d.id && offerPhotoUsable(a),
                               ),
                           )
                           .map((d) => (
@@ -953,9 +1025,11 @@ export default function PromotionWorkspace({
                                 ? "Created from description"
                                 : "AI edited photo"
                               : "Original photo"}
-                            {selectedAsset.approved_at
-                              ? " · Approved"
-                              : " · Needs review"}
+                            {selectedAsset.needs_correction
+                              ? " · Reported as inaccurate"
+                              : selectedAsset.approved_at
+                                ? " · Approved"
+                                : " · Needs review"}
                           </figcaption>
                         </figure>
                       )}
@@ -965,7 +1039,8 @@ export default function PromotionWorkspace({
                         .filter(
                           (a) =>
                             a.dish_id === selectedDish.id &&
-                            ["source", "generated"].includes(a.kind),
+                            ["source", "generated"].includes(a.kind) &&
+                            !a.needs_correction,
                         )
                         .map((a) => (
                           <button
@@ -1321,6 +1396,10 @@ export default function PromotionWorkspace({
                         for (const i of form.items) {
                           const a = assets.find((x) => x.id === i.photoId);
                           if (!a) throw Error("Select a photo for each dish.");
+                          if (a.needs_correction)
+                            throw Error(
+                              `You reported the photo of ${dishes.find((d) => d.id === i.dishId)?.name || "this dish"} as inaccurate. Choose another photo.`,
+                            );
                           if (!a.approved_at)
                             throw Error(
                               "Confirm each photo above before approving the package.",

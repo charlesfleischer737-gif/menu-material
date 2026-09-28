@@ -1,13 +1,20 @@
-import { entitlementSql } from "./entitlements";
+import {
+  effectiveStyle,
+  entitlementSql,
+  imageEntitlement,
+  requirePro,
+} from "./entitlements";
 import { z } from "zod";
 import { checkStudioGeneration } from "./studio-release";
 import { validateImageDimensions } from "./image-validation";
+import { imagesRenewal } from "../plans";
 import {
   limitedForm,
   reserveStorage,
   releaseStorage,
   aiControls,
   caller,
+  MENU_READING_TIMEOUT_MS,
 } from "./safeguards";
 import {
   all,
@@ -98,14 +105,20 @@ export async function advanceBatches(restaurantId?: string) {
         "SELECT * FROM restaurants WHERE id=?",
         item.restaurant_id,
       );
-      const job = await enqueue(r!, {
-        dishId: item.dish_id,
-        sourceId: item.source_id,
-        requestKey: item.id,
-        ...JSON.parse(item.settings || "{}"),
-        style: JSON.parse(item.settings || "{}").style || JSON.parse(r!.style),
-        editMode: "preserve",
-      });
+      const job = await enqueue(
+        r!,
+        {
+          dishId: item.dish_id,
+          sourceId: item.source_id,
+          requestKey: item.id,
+          ...JSON.parse(item.settings || "{}"),
+          style:
+            JSON.parse(item.settings || "{}").style || JSON.parse(r!.style),
+          editMode: "preserve",
+        },
+        undefined,
+        { accepted: true },
+      );
       await run(
         "UPDATE batch_items SET status='submitted',job_id=?,error=NULL WHERE id=?",
         job.id,
@@ -161,11 +174,13 @@ export async function retryFailed(r: Row, jobId: string) {
     r.id,
     job.id,
   );
-  assert(
-    retried.meta.changes,
-    402,
-    "Not enough images left. Check your plan or wait until your images renew.",
-  );
+  // Free images are a one-time grant, so never "wait until they renew".
+  if (!retried.meta.changes)
+    assert(
+      false,
+      402,
+      `Not enough images left. ${imagesRenewal((await imageEntitlement(r.id)).plan)}`,
+    );
   await run("UPDATE jobs SET status='queued' WHERE id=?", job.id);
   await event(r.id, "generation_retried", job.id, { slots: failed.length });
 }
@@ -179,6 +194,8 @@ export async function menuTools(req: Request, p: string[], r: Row) {
       );
       return response({ ok: true });
     }
+    // Existing links keep working until they expire; new ones are Pro.
+    await requirePro(r.id, "staffLinks");
     const raw = token();
     await run(
       "INSERT INTO staff_links (hash,restaurant_id,expires_at,created_at) VALUES (?,?,?,?)",
@@ -239,6 +256,8 @@ export async function menuTools(req: Request, p: string[], r: Row) {
       );
       return response({ ok: true });
     }
+    // A batch already accepted can finish and retry; starting one is Pro.
+    await requirePro(r.id, "batches");
     for (const i of b.items) {
       assert(
         await one(
@@ -261,6 +280,7 @@ export async function menuTools(req: Request, p: string[], r: Row) {
           "Photo not found.",
         );
     }
+    const batchStyle = await effectiveStyle(r);
     await db().batch(
       b.items.map((i) =>
         db()
@@ -275,7 +295,7 @@ export async function menuTools(req: Request, p: string[], r: Row) {
             i.sourceId,
             JSON.stringify({
               candidateCount: b.candidateCount,
-              style: JSON.parse(r.style),
+              style: batchStyle,
             }),
             now(),
           ),
@@ -379,16 +399,17 @@ export async function menuTools(req: Request, p: string[], r: Row) {
         "Menu reading is not connected yet. You can enter an editable draft manually.",
       );
       await limit("import:" + r.id, 10, 3600);
+      // A reading still within its time can't be started twice.
       const claimed = await run(
         "UPDATE menu_imports SET status='reading',read_started_at=?,error=NULL WHERE id=? AND (status!='reading' OR read_started_at IS NULL OR read_started_at<?)",
         now(),
         imp.id,
-        now() - 120000,
+        now() - MENU_READING_TIMEOUT_MS - 60000,
       );
       assert(
         claimed.meta.changes,
         409,
-        "This menu is already being read. If it was interrupted, retry after two minutes.",
+        "This menu is already being read. If it was interrupted, retry after three minutes.",
       );
       try {
         const obj = await bucket().get(imp.key);
@@ -424,6 +445,7 @@ export async function menuTools(req: Request, p: string[], r: Row) {
             max_output_tokens: 9000,
           },
           { restaurantId: r.id, kind: "import" },
+          MENU_READING_TIMEOUT_MS,
         );
         const text = res.output
           ?.flatMap((x: Row) => x.content || [])
@@ -637,7 +659,8 @@ export async function menuTools(req: Request, p: string[], r: Row) {
       400,
       "Approve a photo for an available dish to get menu-based suggestions.",
     );
-    const suggestions = [];
+    const suggestions = [],
+      lookStyle = await effectiveStyle(r);
     const today = localTime(now(), r.timezone).slice(0, 10);
     for (let offset = 0; offset < 14 && suggestions.length < 3; offset++) {
       const date = new Date(
@@ -674,7 +697,7 @@ export async function menuTools(req: Request, p: string[], r: Row) {
         items: [{ dishId: d.id, quantity: 1, photoId: d.photoId }],
         startsLocal,
         endsLocal,
-        style: { ...defaultStyle, ...JSON.parse(r.style) },
+        style: { ...defaultStyle, ...lookStyle },
         caption: `${d.name}. ${d.description}`.slice(0, 2200),
         reason:
           goal === "catering"
@@ -771,6 +794,43 @@ export async function menuTools(req: Request, p: string[], r: Row) {
   }
   return null;
 }
+// Far more guests than a busy dining room on one Wi-Fi network brings a
+// restaurant in a day.
+const GUEST_SESSIONS_PER_NETWORK_PER_DAY = 500;
+// Whether a guest session's events count for the restaurant. A session seen
+// in the last day does; a new one takes one of its network's places for the
+// day. Both are kept only as hashed counters that expire.
+async function guestSessionCounts(
+  restaurantId: string,
+  network: string,
+  session: string,
+) {
+  const seen = digest(`guest-session:${restaurantId}:${network}:${session}`);
+  if (
+    await one(
+      "SELECT 1 AS found FROM rate_limits WHERE key=? AND expires_at>?",
+      seen,
+      now(),
+    )
+  )
+    return true;
+  try {
+    await limit(
+      `guest-sessions:${restaurantId}:${network}`,
+      GUEST_SESSIONS_PER_NETWORK_PER_DAY,
+      86400,
+    );
+  } catch (e) {
+    if ((e as { status?: number }).status === 429) return false;
+    throw e;
+  }
+  await run(
+    "INSERT INTO rate_limits (key,count,expires_at) VALUES (?,1,?) ON CONFLICT(key) DO UPDATE SET expires_at=excluded.expires_at",
+    seen,
+    now() + 86400000,
+  );
+  return true;
+}
 export async function publicEvent(
   req: Request,
   p: string[],
@@ -826,19 +886,27 @@ export async function publicEvent(
   // Dish views have their own allowance, so a dining room of guests
   // scrolling on the restaurant's Wi-Fi never crowds out visits and taps.
   // One network (an IPv6 /64 counts as one) also has a cap across all
-  // restaurants.
+  // restaurants. Each dish viewed is a row, so each one counts.
   const ip = caller(req),
-    group = b.kind === "dish_view" ? "views" : "guests";
+    group = b.kind === "dish_view" ? "views" : "guests",
+    rows = b.kind === "dish_view" ? viewed.length : 1;
   await limit(
     `public-event-ip:${group}:${ip}`,
     group === "views" ? 4800 : 1200,
     3600,
+    rows,
   );
   await limit(
     `public-event:${group}:${r.id}:${ip}`,
     group === "views" ? 1200 : 300,
     3600,
+    rows,
   );
+  // A new session ID costs nothing, so fresh ones could inflate a menu's
+  // stats: past its daily share of guests, a network's events are dropped
+  // without telling the guest.
+  if (!(await guestSessionCounts(r.id, ip, b.session)))
+    return response({ ok: true, counted: false });
   const menuId = menu.documentId || null,
     details = JSON.stringify({ menu: menuId, src: b.src || null }),
     t = now();

@@ -35,6 +35,10 @@ import {
   DropdownMenuTrigger,
 } from "@/components/ui/dropdown-menu";
 import { api, normalizePhoto, type Row } from "@/lib/client";
+import { recordVisitorStep } from "@/lib/funnel-client";
+import { isPlaceholderDishName } from "@/lib/restaurant-identity";
+import { hasProFeatures, requestUpgrade } from "@/lib/upgrade";
+import { ProBadge } from "./pro-badge";
 import {
   looks,
   photoStyles,
@@ -95,6 +99,7 @@ import {
 import { useInspirationAvailability } from "./use-inspiration-availability";
 import { PhotoComparison, StudioCreating } from "./studio-onboarding";
 import { cancelledError, heldImageMessage } from "@/lib/creation-progress";
+import { freeImagesNote } from "@/lib/free-images";
 import { StudioWorkbench } from "./studio-workbench";
 import { radioKeys, radioTab } from "./radio-keys";
 import {
@@ -140,6 +145,7 @@ export default function PhotoStudio({
     ),
     { draft: b, change, save, start, ready, status, read } = draftStore;
   const root = useStepFocus(b.step <= 3 ? 1 : b.step, ready);
+  const pro = hasProFeatures(state);
   const action = useAction(),
     { act, busy, setNotice, setError } = action;
   const [advice, setAdvice] = useState(""),
@@ -271,8 +277,8 @@ export default function PhotoStudio({
   // My Dishes owns a saved dish's name; the studio only shows it.
   const dish = state.dishes.find((d: Row) => d.id === b.dishId),
     dishName: string = dish
-      ? dish.name === "Untitled dish"
-        ? ""
+      ? isPlaceholderDishName(dish.name)
+        ? b.name || ""
         : dish.name
       : b.name || "";
   // The shown photo's own history, never the editable draft, decides its size
@@ -710,7 +716,26 @@ export default function PhotoStudio({
   // An existing dish is only read: its name and description are My Dishes’.
   async function ensureDish(fresh?: { name: string; sample?: boolean }) {
     const request = studioDishRequest(b, state.restaurant, fresh);
-    if (!request) return b.dishId as string;
+    if (!request) {
+      // A dish still called "Untitled dish" takes the name typed in Details;
+      // a name the owner gave it in My Dishes is never replaced.
+      const name = String(b.name || "").trim();
+      if (dish && isPlaceholderDishName(dish.name) && name)
+        await api(`dishes/${dish.id}`, {
+          name,
+          description: dish.description || "",
+          category: dish.category || "Dishes",
+          preserve: dish.preserve || "",
+          portion: dish.portion || "",
+          plating: dish.plating || "",
+          setting: dish.setting || "Natural daylight",
+          price: (Number(dish.price) || 0) / 100,
+          available: !!dish.available,
+          confirmed: true,
+          revision: dish.revision,
+        });
+      return b.dishId as string;
+    }
     const data = await api("dishes", request);
     change({ dishId: data.id });
     return data.id;
@@ -792,12 +817,13 @@ export default function PhotoStudio({
         originalBytes: file.size,
         workingBytes: normalized.size,
       });
+      if (!options.sample) recordVisitorStep("photo");
     });
   }
   function requireCreation() {
     if (!state.aiConnected)
       throw Error(
-        "Image creation is not connected yet. Your photo and choices are saved. You can use your original photo while the connection is set up.",
+        "Image creation is not connected yet. Try again once the connection is set up.",
       );
   }
   async function generate(parentId?: string) {
@@ -851,6 +877,7 @@ export default function PhotoStudio({
       format: request.controls?.format || "menu",
       ...(looks.some((entry) => entry.id === look) ? { look } : {}),
     });
+    recordVisitorStep("create");
     const j = await api("jobs", {
       studioDraftId: draftStore.id,
       ...request,
@@ -940,7 +967,7 @@ export default function PhotoStudio({
       updates.some((update) => update.status === "rejected")
         ? "Your new version is saved. Some page details couldn’t refresh; reopen this dish to see its saved versions."
         : stillOpen
-          ? "Saved as a new version. Your original and earlier photos are still here."
+          ? "Saved as a new version."
           : "Your new version is saved in this dish’s history.",
     );
   }
@@ -949,8 +976,21 @@ export default function PhotoStudio({
       throw Error(
         "The saved photo settings are still loading. Try again in a moment.",
       );
+    // Free reuses the look itself; matching this photo as an inspiration, or
+    // a saved look, is Pro.
+    const reused =
+      reuse && !pro
+        ? {
+            ...resultRecipe,
+            photoReferenceIds: [],
+            referenceId: "",
+            savedLookId: "",
+            savedLookName: "",
+            savedLookVersion: null,
+          }
+        : resultRecipe;
     const recipe = reuse
-      ? recipeFromDraft({ ...b, ...resultRecipe }, state.restaurant)
+      ? recipeFromDraft({ ...b, ...reused }, state.restaurant)
       : {};
     setFinishOpen(false);
     await start({
@@ -960,9 +1000,9 @@ export default function PhotoStudio({
       ...(reuse
         ? {
             format: resultFormat,
-            referenceId: resultRecipe?.referenceId,
-            savedLookId: resultRecipe?.savedLookId,
-            savedLookName: resultRecipe?.savedLookName,
+            referenceId: reused?.referenceId,
+            savedLookId: reused?.savedLookId,
+            savedLookName: reused?.savedLookName,
             styleIntent: true,
             studioDefaultResolved: true,
           }
@@ -1017,7 +1057,10 @@ export default function PhotoStudio({
     );
   }
   async function openPhotoAction(action: PhotoAction) {
-    await selectPhoto(action);
+    // A photo pack downloads every size at once, which is Pro.
+    if (action === "pack" && !pro) return requestUpgrade("downloads");
+    // Promoting a dish is a marketing use of the photo, like a post.
+    await selectPhoto(action === "promote" ? "post" : action);
     if (action === "download") setFinishOpen(true);
     else if (action === "pack") setPackOpen(true);
     else handoff(action);
@@ -1037,7 +1080,7 @@ export default function PhotoStudio({
   const failedRetry = !state.aiConnected
     ? "Photo creation is temporarily unavailable. Your work is saved."
     : state.remaining < 1
-      ? "You’ve used your available images."
+      ? freeImagesNote(state.freeImages) || "You’ve used your available images."
       : "";
   // Why the latest image stopped: cancelled by the owner while it waited, or
   // it couldn't be created.
@@ -1326,9 +1369,9 @@ export default function PhotoStudio({
                   </h2>
                   <p className="st-result-copy">
                     {cancelled
-                      ? "No images were used. Your photo and choices are saved."
+                      ? "No images were used."
                       : failureText ||
-                        "You don’t need to do anything else. Your original and choices are saved."}
+                        "Try again, or change your photo settings."}
                   </p>
                 </div>
                 <div className="st-action st-action-inline">
@@ -1528,15 +1571,23 @@ export default function PhotoStudio({
                       </DropdownMenuItem>
                       {asset?.approved_at && (
                         <DropdownMenuItem
-                          onSelect={() => needRecipe() && setSaveLookOpen(true)}
+                          onSelect={() =>
+                            !pro
+                              ? requestUpgrade("savedLooks")
+                              : needRecipe() && setSaveLookOpen(true)
+                          }
                         >
-                          Save this look
+                          Save this look {!pro && <ProBadge />}
                         </DropdownMenuItem>
                       )}
                       <DropdownMenuItem
-                        onSelect={() => needRecipe() && setBatchOpen(true)}
+                        onSelect={() =>
+                          !pro
+                            ? requestUpgrade("batches")
+                            : needRecipe() && setBatchOpen(true)
+                        }
                       >
-                        Apply to more dishes
+                        Apply to more dishes {!pro && <ProBadge />}
                       </DropdownMenuItem>
                       {asset?.approved_at && (
                         <>
@@ -1733,6 +1784,7 @@ export default function PhotoStudio({
                     : `${formatNames[resultFormat]} · ${formatShapes[resultFormat]} · No image used`
                 }
                 onAction={openPhotoAction}
+                proActions={pro ? [] : ["promote", "pack"]}
               />
             </aside>
           </div>
@@ -1830,7 +1882,9 @@ export default function PhotoStudio({
           initialFormat={resultFormat}
           style={resultStyle}
           onUse={selectPhoto}
+          packPro={!pro}
           onPack={() => {
+            if (!pro) return requestUpgrade("downloads");
             setFinishOpen(false);
             setPackOpen(true);
           }}
