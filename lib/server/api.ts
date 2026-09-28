@@ -594,10 +594,16 @@ async function upload(req: Request, r: Row, forcedKind?: string) {
     workingKey = `private/${r.id}/working/${aid}.jpg`;
   await reserveStorage(r.id, aid, 2 * (bytes.byteLength + working.byteLength));
   try {
-    await bucket().put(key, bytes, { httpMetadata: { contentType: mime } });
-    await bucket().put(workingKey, working, {
-      httpMetadata: { contentType: "image/jpeg" },
-    });
+    // Both copies are independent. Wait for both writes to settle before
+    // cleanup on failure, so a late write cannot leave an orphaned file.
+    const writes = await Promise.allSettled([
+      bucket().put(key, bytes, { httpMetadata: { contentType: mime } }),
+      bucket().put(workingKey, working, {
+        httpMetadata: { contentType: "image/jpeg" },
+      }),
+    ]);
+    for (const write of writes)
+      if (write.status === "rejected") throw write.reason;
     const inserted = await run(
       "INSERT INTO assets (id,restaurant_id,dish_id,kind,key,working_key,mime,name,created_at,upload_key,upload_fingerprint) VALUES (?,?,?,?,?,?,?,?,?,?,?) ON CONFLICT(restaurant_id,upload_key) DO NOTHING",
       aid,

@@ -153,6 +153,32 @@ export default function PhotoStudio({
   const [correctionOpen, setCorrectionOpen] = useState(false);
   const [exporting, setExporting] = useState(false);
   const [referenceBusy, setReferenceBusy] = useState(false);
+  const [localPhoto, setLocalPhoto] = useState<{
+    url: string;
+    sourceId: string;
+    sample: boolean;
+  } | null>(null);
+  const photoMounted = useRef(true);
+  useEffect(() => {
+    photoMounted.current = true;
+    return () => {
+      photoMounted.current = false;
+    };
+  }, []);
+  const photoUploading = !!localPhoto && !localPhoto.sourceId;
+  const localPhotoUrl = localPhoto?.url;
+  useEffect(() => {
+    if (localPhotoUrl) return () => URL.revokeObjectURL(localPhotoUrl);
+  }, [localPhotoUrl]);
+  useEffect(() => {
+    if (!photoUploading) return;
+    const warn = (event: BeforeUnloadEvent) => {
+      event.preventDefault();
+      event.returnValue = "";
+    };
+    window.addEventListener("beforeunload", warn);
+    return () => window.removeEventListener("beforeunload", warn);
+  }, [photoUploading]);
   const [batchOpen, setBatchOpen] = useState(false),
     [saveLookOpen, setSaveLookOpen] = useState(false);
   const [resultRecipe, setResultRecipe] = useState<Row | null>(null);
@@ -212,7 +238,13 @@ export default function PhotoStudio({
   const seedHandled = useRef("");
   const selected = resolvePhotoLook(b) || unavailablePhotoLook,
     source =
-      b.mode === "photo" && b.sourceId ? `/api/assets/${b.sourceId}` : "",
+      localPhoto &&
+      (photoUploading ||
+        (b.mode === "photo" && localPhoto.sourceId === b.sourceId))
+        ? localPhoto.url
+        : b.mode === "photo" && b.sourceId
+          ? `/api/assets/${b.sourceId}`
+          : "",
     job = state.jobs.find((j: Row) => j.id === b.jobId),
     output = state.outputs.find(
       (o: Row) => o.job_id === b.jobId && o.status === "completed",
@@ -360,7 +392,7 @@ export default function PhotoStudio({
   }, [resultId, asset?.approved_at, asset?.needs_correction]);
   const comparing = canCompare && compare && !before && adjust !== "quick";
   function chooseLook(id: string) {
-    if (busy) return;
+    if (busy && !photoUploading) return;
     const preset = looks.find((l) => l.id === id);
     if (!preset) return;
     update(studioLookPatch(read(), id, state.restaurant));
@@ -567,7 +599,14 @@ export default function PhotoStudio({
     });
   }, [ready, job, running, b.jobId, state.outputs, active, root]);
   useEffect(() => {
-    if (!ready || !b.sourceId || b.mode !== "photo" || b.step > 3) return;
+    if (
+      !ready ||
+      photoUploading ||
+      !b.sourceId ||
+      b.mode !== "photo" ||
+      b.step > 3
+    )
+      return;
     const sourceId = b.sourceId;
     const current = read();
     if (
@@ -613,7 +652,14 @@ export default function PhotoStudio({
     return () => {
       cancelled = true;
     };
-  }, [ready, b.sourceId, b.mode, b.step <= 3, state.aiConnected]);
+  }, [
+    ready,
+    photoUploading,
+    b.sourceId,
+    b.mode,
+    b.step <= 3,
+    state.aiConnected,
+  ]);
   function update(patch: Row) {
     const adjusted = [
       "surface",
@@ -681,7 +727,16 @@ export default function PhotoStudio({
       return;
     }
     await act("Preparing your photo", async () => {
+      const startedAt = performance.now();
       const normalized = await normalizePhoto(file);
+      if (!photoMounted.current) return;
+      const preparedAt = performance.now();
+      setLocalPhoto({
+        url: URL.createObjectURL(normalized),
+        sourceId: "",
+        sample: !!options.sample,
+      });
+      setAdvice("");
       const fresh =
         options.sample || b.sample
           ? {
@@ -689,12 +744,18 @@ export default function PhotoStudio({
               sample: !!options.sample,
             }
           : undefined;
-      const did = await ensureDish(fresh);
-      const fd = new FormData();
-      fd.set("file", file);
-      fd.set("normalized", normalized, "working.jpg");
-      fd.set("dishId", did);
-      const a = await api("assets", fd);
+      let a: Row;
+      try {
+        const did = await ensureDish(fresh);
+        const fd = new FormData();
+        fd.set("file", file);
+        fd.set("normalized", normalized, "working.jpg");
+        fd.set("dishId", did);
+        a = await api("assets", fd);
+      } catch (error) {
+        setLocalPhoto(null);
+        throw error;
+      }
       update({
         ...(fresh ? { name: fresh.name, description: "" } : {}),
         sample: !!options.sample,
@@ -712,15 +773,25 @@ export default function PhotoStudio({
         adjustments: { ...emptyAdjustments },
         step: 1,
       });
+      setLocalPhoto((current) => current && { ...current, sourceId: a.id });
       setBefore(false);
-      setAdvice(
-        await photoAdvice(
-          new File([normalized], "photo.jpg", { type: "image/jpeg" }),
-        ),
-      );
-      await save();
-      await refresh();
-      track("upload_complete", a.id);
+      // The original is durably saved. Advice, draft persistence and a full
+      // workspace reload must not hold the photo or style controls hostage.
+      void photoAdvice(
+        new File([normalized], "photo.jpg", { type: "image/jpeg" }),
+      )
+        .then((message) => {
+          if (read().sourceId === a.id) setAdvice(message);
+        })
+        .catch(() => {});
+      void save().catch(() => {}); // DraftRecovery exposes save failures.
+      void refresh().catch(() => {});
+      track("upload_complete", a.id, {
+        prepareMs: Math.round(preparedAt - startedAt),
+        uploadMs: Math.round(performance.now() - preparedAt),
+        originalBytes: file.size,
+        workingBytes: normalized.size,
+      });
     });
   }
   function requireCreation() {
@@ -1097,7 +1168,20 @@ export default function PhotoStudio({
       <Feedback {...action} />
       {b.step <= 3 && (
         <StudioWorkbench
-          draft={b}
+          draft={
+            photoUploading
+              ? {
+                  ...b,
+                  mode: "photo",
+                  sample: localPhoto.sample,
+                  sourceId: "",
+                  menuDocument: false,
+                  analysisStatus: "none",
+                  analysisAdvice: "",
+                  analysisSubject: "",
+                }
+              : b
+          }
           state={{
             ...state,
             studioDraftId: draftStore.id,
@@ -1106,7 +1190,11 @@ export default function PhotoStudio({
           selected={selected}
           styleImage={styleImage}
           source={source}
-          busy={busy || (referenceBusy ? "Preparing inspiration" : "")}
+          busy={
+            (photoUploading ? "" : busy) ||
+            (referenceBusy ? "Preparing inspiration" : "")
+          }
+          photoUploading={photoUploading}
           advice={advice}
           update={update}
           chooseLook={chooseLook}

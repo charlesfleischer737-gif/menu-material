@@ -79,8 +79,13 @@ export default function HomeClient({ hasSession }: { hasSession: boolean }) {
   const signedInRef = useRef(false),
     signingOut = useRef(false),
     signInOffered = useRef(false);
+  const refreshRequest = useRef(0);
   const refresh = useCallback(async () => {
+    const request = ++refreshRequest.current;
     const data = await api("state");
+    // A background upload refresh can finish after a newer generation
+    // refresh. Never let that older snapshot erase the new job or photo.
+    if (request !== refreshRequest.current) return;
     // A lapsed session reads as signed out. Keep the open workspace and any
     // unsaved work, and ask for sign-in instead.
     if (!data.user && signedInRef.current && !signingOut.current) {

@@ -67,7 +67,7 @@ export function watchJobs({
   // Each advance is followed by one status check, so a result the page saved
   // itself shows at once. While a render holds the advance open, progress
   // comes from a check on each interval instead. Hidden pages skip checks.
-  const timer = schedule(() => {
+  const tick = () => {
     if (stopped) return;
     if (workerHealthy()) {
       // The worker's health is only as fresh as the last reload: reload now
@@ -88,7 +88,11 @@ export function watchJobs({
         advancing = false;
         void check();
       });
-  }, every);
+  };
+  const timer = schedule(tick, every);
+  // Newly queued work starts immediately instead of waiting for the first
+  // polling interval. The same single-flight guard handles later ticks.
+  tick();
   return () => {
     stopped = true;
     unschedule(timer);
