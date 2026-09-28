@@ -131,6 +131,7 @@ export function StudioWorkbench({
   styleImage,
   source,
   busy: parentBusy,
+  photoUploading = false,
   advice,
   update,
   chooseLook,
@@ -152,6 +153,7 @@ export function StudioWorkbench({
   styleImage: string;
   source: string;
   busy: string;
+  photoUploading?: boolean;
   advice: string;
   update: (patch: Row) => void;
   chooseLook: (id: string) => void;
@@ -524,11 +526,15 @@ export function StudioWorkbench({
     photoReady &&
     !vesselConflict &&
     !busy &&
+    !photoUploading &&
     (signedOutGuest || state.aiConnected) &&
     state.remaining > 0 &&
     (b.look !== "reference" || !!referencePhoto) &&
     !b.menuDocument;
   const reason =
+    (photoUploading
+      ? "Your original is saving. You can choose a style while you wait."
+      : "") ||
     guestUnavailable ||
     creationBlock ||
     inspirationBlock ||
@@ -719,7 +725,7 @@ export function StudioWorkbench({
     });
   }
   function accept(files: ArrayLike<File> | null) {
-    if (!files?.length || busy) return;
+    if (!files?.length || busy || photoUploading) return;
     if (files.length > 1)
       setNotice(`Using ${files[0].name}. Add one dish photo at a time.`);
     else setNotice("");
@@ -828,12 +834,12 @@ export function StudioWorkbench({
 
   const createButton = (
     <button className="st-create" disabled={!canCreate} onClick={create}>
-      {busy ? (
+      {busy || photoUploading ? (
         <LoaderCircle size={18} className="cx-spin" />
       ) : (
         <Sparkles size={18} />
       )}
-      {busy || "Create photo"}
+      {busy || (photoUploading ? "Saving your photo…" : "Create photo")}
     </button>
   );
   // Secondary ways to start sit below the photo source choices on every screen.
@@ -917,7 +923,7 @@ export function StudioWorkbench({
                 (source ? (
                   <button
                     className="st-pill"
-                    disabled={!!busy}
+                    disabled={!!busy || photoUploading}
                     onClick={quickEdit}
                   >
                     <SlidersHorizontal size={16} />
@@ -927,7 +933,7 @@ export function StudioWorkbench({
                   <button
                     ref={dishesTrigger}
                     className="st-pill"
-                    disabled={!!busy}
+                    disabled={!!busy || photoUploading}
                     onClick={() => setDishesOpen(true)}
                   >
                     <Images size={16} />
@@ -954,7 +960,8 @@ export function StudioWorkbench({
               className={`st-canvas${source && b.mode === "photo" ? " has-photo" : ""}${dragging ? " is-dragging" : ""}`}
               onDragOver={(event) => {
                 event.preventDefault();
-                if (!busy && b.mode === "photo") setDragging(true);
+                if (!busy && !photoUploading && b.mode === "photo")
+                  setDragging(true);
               }}
               onDragLeave={(event) => {
                 if (!event.currentTarget.contains(event.relatedTarget as Node))
@@ -980,7 +987,7 @@ export function StudioWorkbench({
                   </span>
                   <button
                     className="st-glass-button"
-                    disabled={!!busy}
+                    disabled={!!busy || photoUploading}
                     onClick={() => upload.current?.click()}
                   >
                     <Upload size={15} />
@@ -1114,7 +1121,11 @@ export function StudioWorkbench({
                 <span>
                   This looks like a menu. Use a photo of one dish here, or open
                   it in Menus.{" "}
-                  <button className="st-text-button" onClick={openMenu}>
+                  <button
+                    className="st-text-button"
+                    disabled={photoUploading}
+                    onClick={openMenu}
+                  >
                     Open in Menus
                   </button>
                 </span>
@@ -1134,7 +1145,7 @@ export function StudioWorkbench({
                     <DropdownMenuTrigger asChild>
                       <button
                         className="st-subject"
-                        disabled={!!busy}
+                        disabled={!!busy || photoUploading}
                         aria-label={
                           confirmed
                             ? `Suggestions for ${b.analysisSubject || subjectLabel(b.recommendationFamily, b.recommendationDrink)}. Change what’s in your photo`
@@ -1496,7 +1507,7 @@ export function StudioWorkbench({
       <input
         ref={upload}
         hidden
-        disabled={!!busy}
+        disabled={!!busy || photoUploading}
         type="file"
         accept="image/jpeg,image/png,image/heic,image/heif,.heic,.heif"
         onChange={(event) => {

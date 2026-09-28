@@ -3,6 +3,7 @@ import { photoStyles, styleCategories, type PhotoStyle } from "./photo-styles";
 // Lead with a mix of subjects, light and color, then weave the collections
 // together so browsing feels like a gallery rather than a category catalog.
 const featured = [
+  "bold-crimson",
   "studio-color",
   "beverage-ritual",
   "menu-wood",
@@ -15,6 +16,7 @@ const featured = [
 ];
 // The most striking photographs open each part of the lookbook at double size.
 const spotlight = [
+  "bold-crimson",
   "studio-color",
   "bar-rooftop",
   "fine-presented",

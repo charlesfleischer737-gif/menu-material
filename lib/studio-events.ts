@@ -135,11 +135,23 @@ const fields = {
     "export",
   ]),
   milliseconds: z.number().int().min(1).max(60000),
+  prepareMs: z.number().int().min(0).max(3600000),
+  uploadMs: z.number().int().min(0).max(3600000),
+  originalBytes: z
+    .number()
+    .int()
+    .min(1)
+    .max(20 * 1024 * 1024),
+  workingBytes: z
+    .number()
+    .int()
+    .min(1)
+    .max(8 * 1024 * 1024),
   exportKey: z.string().regex(/^(?:[a-f0-9]{64}|[a-f0-9-]{36}:master)$/),
 } as const;
 const common = ["draftId", "sourceId", "guest", "device"];
 const allowed: Record<string, string[]> = {
-  upload_complete: [],
+  upload_complete: ["prepareMs", "uploadMs", "originalBytes", "workingBytes"],
   style_selected: ["look", "category", "origin", "selectedRank"],
   look_selected: ["look", "lookId", "version", "origin", "selectedRank"],
   generation_submission: ["format", "look"],

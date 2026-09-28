@@ -10,10 +10,13 @@ import {
   postTemplateExample,
 } from "../lib/post-templates.ts";
 const hashes = new Set();
-assert.equal(styleCategories.length, 7);
-assert.equal(photoStyles.length, 56);
+assert.equal(styleCategories.length, 8);
+assert.equal(photoStyles.length, 60);
 for (const category of styleCategories)
-  assert.equal(photoStyles.filter((s) => s.category === category.id).length, 8);
+  assert.equal(
+    photoStyles.filter((s) => s.category === category.id).length,
+    category.id === "bold" ? 4 : 8,
+  );
 for (const style of photoStyles) {
   const bytes = readFileSync("public" + style.image);
   assert.equal(bytes.subarray(0, 4).toString(), "RIFF", style.id);
@@ -43,8 +46,15 @@ for (const style of photoStyles) {
     "Example photos must never replace the customer source",
   );
 }
-assert.equal(hashes.size, 56, "Every preset needs its own photograph");
-assert.equal(new Set(photoStyles.map((s) => s.prompt)).size, 56);
+assert.equal(
+  hashes.size,
+  photoStyles.length,
+  "Every preset needs its own photograph",
+);
+assert.equal(
+  new Set(photoStyles.map((s) => s.prompt)).size,
+  photoStyles.length,
+);
 assert.equal(postTemplates.length, 10);
 assert.equal(new Set(postTemplates.map((t) => t.example)).size, 10);
 const customer = {
@@ -75,5 +85,5 @@ assert.equal(getPostTemplate("photo").id, "editorial");
 assert.equal(getPostTemplate("price").id, "special");
 assert.equal(getPostTemplate("story").id, "chef");
 console.log(
-  "PASS: 56 distinct style photos and generation prompts; 7 categories with 8 styles each; 10 template examples; customer facts and legacy drafts preserved.",
+  "PASS: 60 distinct style photos and generation prompts; 8 collections including 4 Bold & Dramatic looks; 10 template examples; customer facts and legacy drafts preserved.",
 );

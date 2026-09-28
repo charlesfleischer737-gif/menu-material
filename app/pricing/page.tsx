@@ -2,6 +2,7 @@ import type { ReactNode } from "react";
 import PublicInformation from "../components/public-information";
 import PlanCards from "../components/plan-cards";
 import { billingEnabled } from "@/lib/server/billing";
+import { passwordResetEnabled } from "@/lib/server/password-reset";
 import { config } from "@/lib/server/core";
 import { siteContact } from "@/lib/site-contact";
 import { pageMetadata } from "../site-metadata";
@@ -77,14 +78,9 @@ export default function Pricing() {
     ],
     [
       "How do I reset my password?",
-      email ? (
-        <>
-          Password-reset emails aren’t automatic yet. Email {email} from your
-          account’s email address for a secure reset link.
-        </>
-      ) : (
-        "Password-reset emails aren’t available yet. An administrator can send you a secure reset link."
-      ),
+      passwordResetEnabled()
+        ? "Choose Forgot password on the sign-in screen and enter your account email. Your one-use reset link expires in 30 minutes."
+        : "An administrator can provide a secure reset link while email recovery is being connected.",
     ],
   ];
   if (email)

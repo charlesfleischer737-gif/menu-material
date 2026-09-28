@@ -39,6 +39,9 @@ const stopWords = new Set([
   "backdrop",
 ]);
 const synonyms: Record<string, string[]> = {
+  extravagant: ["bold", "dramatic"],
+  wow: ["bold", "dramatic"],
+  bold: ["bold", "dramatic", "saturated", "electric"],
   cozy: ["warm", "candle", "cafe"],
   cosy: ["warm", "candle", "cafe"],
   cafe: ["cafe", "coffee"],

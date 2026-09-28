@@ -1,6 +1,7 @@
 import assert from "node:assert/strict";
 import { existsSync } from "node:fs";
 import { exploreStyles, lookbook } from "../lib/explore-styles.ts";
+import { styleCategories } from "../lib/photo-styles.ts";
 import { exploreStyleSelection } from "../lib/studio-discovery.ts";
 import { photoBrief, photoStyles, styleFor } from "../lib/studio.ts";
 import { photoAnalysisRecommendation } from "../lib/studio-onboarding.ts";
@@ -54,11 +55,12 @@ assert.deepEqual(
 );
 assert.deepEqual(
   lookbookOrder.flatMap((entry, index) => (entry.feature ? [index] : [])),
-  [0, 15, 26, 41],
+  [0, 15, 26, 41, 52],
   "Each part of the lookbook opens with a feature",
 );
 assert.ok(
-  new Set(exploreStyles.slice(0, 13).map((style) => style.category)).size === 7,
+  new Set(exploreStyles.slice(0, 13).map((style) => style.category)).size ===
+    styleCategories.length,
   "Every collection appears before the occasions band",
 );
 const subsets = [

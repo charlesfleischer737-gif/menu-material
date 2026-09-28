@@ -22,6 +22,28 @@ export const sessions = sqliteTable("sessions", {
     .references(() => users.id),
   expiresAt: integer("expires_at").notNull(),
 });
+// Google's stable subject identifies a person even if their email changes.
+export const googleIdentities = sqliteTable("google_identities", {
+  subject: text().primaryKey(),
+  userId: text("user_id")
+    .notNull()
+    .unique()
+    .references(() => users.id, { onDelete: "cascade" }),
+  createdAt: integer("created_at").notNull(),
+});
+// Short-lived, browser-bound proofs. Never store Google's raw ID token.
+export const googleAuthFlows = sqliteTable(
+  "google_auth_flows",
+  {
+    hash: text().primaryKey(),
+    nonceHash: text("nonce_hash").notNull(),
+    subject: text(),
+    email: text(),
+    authoritative: integer().notNull().default(0),
+    expiresAt: integer("expires_at").notNull(),
+  },
+  (t) => [index("idx_google_auth_flows_expiry").on(t.expiresAt)],
+);
 // Browsers that have signed in to an account, by a hash of their device
 // cookie. Their sign-ins skip the per-account slowdown that anyone who knows
 // the email can cause (lib/server/core.ts).
@@ -458,27 +480,41 @@ export const menuImports = sqliteTable(
   },
   (t) => [index("idx_imports_restaurant").on(t.restaurantId)],
 );
-export const menuDocuments = sqliteTable("menu_documents", {
-  id: text().primaryKey(),
-  restaurantId: text("restaurant_id").notNull().references(() => restaurants.id),
-  draft: text().notNull(),
-  revision: integer().notNull().default(1),
-  published: text(),
-  publishedRevision: integer("published_revision"),
-  publishedAt: integer("published_at"),
-  isPrimary: integer("is_primary").notNull().default(0),
-  archivedAt: integer("archived_at"),
-  createdAt: integer("created_at").notNull(),
-  updatedAt: integer("updated_at").notNull(),
-}, t => [index("idx_menu_documents_restaurant").on(t.restaurantId)]);
-export const menuPublicationHistory = sqliteTable("menu_publication_history", {
-  id: text().primaryKey(),
-  menuId: text("menu_id").notNull().references(() => menuDocuments.id),
-  restaurantId: text("restaurant_id").notNull().references(() => restaurants.id),
-  snapshot: text().notNull(),
-  revision: integer().notNull(),
-  createdAt: integer("created_at").notNull(),
-}, t => [index("idx_menu_history_document").on(t.menuId)]);
+export const menuDocuments = sqliteTable(
+  "menu_documents",
+  {
+    id: text().primaryKey(),
+    restaurantId: text("restaurant_id")
+      .notNull()
+      .references(() => restaurants.id),
+    draft: text().notNull(),
+    revision: integer().notNull().default(1),
+    published: text(),
+    publishedRevision: integer("published_revision"),
+    publishedAt: integer("published_at"),
+    isPrimary: integer("is_primary").notNull().default(0),
+    archivedAt: integer("archived_at"),
+    createdAt: integer("created_at").notNull(),
+    updatedAt: integer("updated_at").notNull(),
+  },
+  (t) => [index("idx_menu_documents_restaurant").on(t.restaurantId)],
+);
+export const menuPublicationHistory = sqliteTable(
+  "menu_publication_history",
+  {
+    id: text().primaryKey(),
+    menuId: text("menu_id")
+      .notNull()
+      .references(() => menuDocuments.id),
+    restaurantId: text("restaurant_id")
+      .notNull()
+      .references(() => restaurants.id),
+    snapshot: text().notNull(),
+    revision: integer().notNull(),
+    createdAt: integer("created_at").notNull(),
+  },
+  (t) => [index("idx_menu_history_document").on(t.menuId)],
+);
 export const staffLinks = sqliteTable(
   "staff_links",
   {

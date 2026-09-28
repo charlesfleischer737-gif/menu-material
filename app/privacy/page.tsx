@@ -31,12 +31,21 @@ export default function Privacy() {
           Information used by Menu Material
         </h2>
         <p>
-          Menu Material stores your account email, protected password record,
-          restaurant details, uploaded photos, menu files, drafts, generated
-          images and usage records. Usage records include creation status,
-          approvals, exports and support activity. To slow abuse, such as
-          repeated sign-in attempts, it keeps counters keyed by a one-way hash
-          of your network address or email; they expire within a day.
+          Menu Material stores your account email, protected password record (if
+          you set a password), restaurant details, uploaded photos, menu files,
+          drafts, generated images and usage records. Usage records include
+          creation status, approvals, exports and support activity. To slow
+          abuse, such as repeated sign-in attempts, it keeps counters keyed by a
+          one-way hash of your network address or email; they expire within a
+          day.
+        </p>
+        <p>
+          If you choose Continue with Google, Google verifies your identity and
+          Menu Material stores your Google account identifier and email address
+          to sign you in. We do not receive your Google password or request
+          access to your Gmail, Drive, or other Google files. Connecting Google
+          to an existing account requires confirmation of your Menu Material
+          password.
         </p>
         <p>
           Photos chosen before signup are kept only in this browser, where they

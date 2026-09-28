@@ -12,6 +12,8 @@ import {
   saveStudioRelease,
 } from "./studio-release";
 import { billingRoute, billingSummary, billingEnabled } from "./billing";
+import { passwordResetEnabled, requestPasswordReset } from "./password-reset";
+import { googleAuthRoute } from "./google-auth";
 import { validateImageDimensions } from "./image-validation";
 import { imagesAvailable } from "./image-availability";
 import {
@@ -219,35 +221,37 @@ async function signup(req: Request, b: Row) {
   assert(
     invite,
     403,
-    "This invitation is invalid, expired, or belongs to another email. Request a new link from the administrator.",
+    "This link is invalid, expired, or belongs to another email. Request a new link and try again.",
   );
   if (invite.role === "reset") {
     const u = await one("SELECT id FROM users WHERE email=?", email);
     assert(u, 400, "Account not found.");
-    const resetClaim = id();
+    const resetClaim = id(),
+      newPassword = hashPassword(password),
+      resetTime = now();
     await db().batch([
       db()
         .prepare(
-          "UPDATE users SET password=? WHERE id=? AND EXISTS(SELECT 1 FROM invites WHERE hash=? AND used_by IS NULL)",
+          "UPDATE users SET password=? WHERE id=? AND EXISTS(SELECT 1 FROM invites WHERE hash=? AND used_by IS NULL AND expires_at>?)",
         )
-        .bind(hashPassword(password), u.id, hash),
+        .bind(newPassword, u.id, hash, resetTime),
       db()
         .prepare(
-          "DELETE FROM sessions WHERE user_id=? AND EXISTS(SELECT 1 FROM invites WHERE hash=? AND used_by IS NULL)",
+          "DELETE FROM sessions WHERE user_id=? AND EXISTS(SELECT 1 FROM invites WHERE hash=? AND used_by IS NULL AND expires_at>?)",
         )
-        .bind(u.id, hash),
+        .bind(u.id, hash, resetTime),
       // Browsers that signed in before are no longer trusted either; this
       // one is, once it signs in below.
       db()
         .prepare(
-          "DELETE FROM trusted_devices WHERE user_id=? AND EXISTS(SELECT 1 FROM invites WHERE hash=? AND used_by IS NULL)",
+          "DELETE FROM trusted_devices WHERE user_id=? AND EXISTS(SELECT 1 FROM invites WHERE hash=? AND used_by IS NULL AND expires_at>?)",
         )
-        .bind(u.id, hash),
+        .bind(u.id, hash, resetTime),
       db()
         .prepare(
-          "UPDATE invites SET used_by=? WHERE hash=? AND used_by IS NULL",
+          "UPDATE invites SET used_by=? WHERE hash=? AND used_by IS NULL AND expires_at>?",
         )
-        .bind(resetClaim, hash),
+        .bind(resetClaim, hash, resetTime),
       // Any other reset link for this account stops working too.
       db()
         .prepare(
@@ -259,8 +263,9 @@ async function signup(req: Request, b: Row) {
       (await one("SELECT used_by FROM invites WHERE hash=?", hash))?.used_by ===
         resetClaim,
       409,
-      "This reset invitation has already been used.",
+      "This reset link has expired or already been used. Request a new link.",
     );
+    await loginSucceeded(email);
     return await createSession(req, u.id);
   }
   assert(
@@ -508,10 +513,16 @@ async function upload(req: Request, r: Row, forcedKind?: string) {
     workingKey = `private/${r.id}/working/${aid}.jpg`;
   await reserveStorage(r.id, aid, 2 * (bytes.byteLength + working.byteLength));
   try {
-    await bucket().put(key, bytes, { httpMetadata: { contentType: mime } });
-    await bucket().put(workingKey, working, {
-      httpMetadata: { contentType: "image/jpeg" },
-    });
+    // Both copies are independent. Wait for both writes to settle before
+    // cleanup on failure, so a late write cannot leave an orphaned file.
+    const writes = await Promise.allSettled([
+      bucket().put(key, bytes, { httpMetadata: { contentType: mime } }),
+      bucket().put(workingKey, working, {
+        httpMetadata: { contentType: "image/jpeg" },
+      }),
+    ]);
+    for (const write of writes)
+      if (write.status === "rejected") throw write.reason;
     const inserted = await run(
       "INSERT INTO assets (id,restaurant_id,dish_id,kind,key,working_key,mime,name,created_at,upload_key,upload_fingerprint) VALUES (?,?,?,?,?,?,?,?,?,?,?) ON CONFLICT(restaurant_id,upload_key) DO NOTHING",
       aid,
@@ -738,6 +749,13 @@ async function route(req: Request) {
       return response({ ok: true });
     }
     if (p[0] === "auth") {
+      if (p[1] === "google") return await googleAuthRoute(req, p[2]);
+      if (p[1] === "recovery" && method === "GET")
+        return response({ enabled: passwordResetEnabled() });
+      if (p[1] === "forgot-password") {
+        assert(method === "POST", 405, "Method not allowed.");
+        return await requestPasswordReset(req);
+      }
       // Per network and before the body is read, so malformed floods stay
       // cheap and only slow their sender.
       if (
@@ -1571,7 +1589,10 @@ async function route(req: Request) {
         return response({
           needed: await neededVariants(
             r.id,
-            z.array(z.string().uuid()).max(200).parse((await body(req)).ids),
+            z
+              .array(z.string().uuid())
+              .max(200)
+              .parse((await body(req)).ids),
           ),
         });
       if (method === "POST" && p[2] === "variants") {

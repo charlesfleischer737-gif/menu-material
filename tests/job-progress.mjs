@@ -54,8 +54,11 @@ const stop = watchJobs({
 });
 assert.equal(every, 2000, "Progress is checked every two seconds");
 
-await step();
-assert.equal(advances, 1);
+assert.equal(
+  advances,
+  1,
+  "New work starts without waiting for a polling interval",
+);
 assert.equal(statusCalls, 0, "Status is checked once the advance returns");
 await step();
 assert.equal(reloads, 1, "Progress shows while a render holds a request open");

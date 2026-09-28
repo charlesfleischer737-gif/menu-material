@@ -415,6 +415,8 @@ export async function deleteAccount(u: Row, r: Row) {
     ].map(owned),
     db().prepare("DELETE FROM restaurants WHERE id=?").bind(rid),
     db().prepare("DELETE FROM sessions WHERE user_id=?").bind(u.id),
+    db().prepare("DELETE FROM google_identities WHERE user_id=?").bind(u.id),
+    db().prepare("DELETE FROM google_auth_flows WHERE email=?").bind(u.email),
     db().prepare("DELETE FROM trusted_devices WHERE user_id=?").bind(u.id),
     rememberFreeGrant(u.email, r),
     db().prepare("DELETE FROM invites WHERE email=?").bind(u.email),

@@ -1,2 +1,0 @@
--- Guests and Free plans together use only part of the site-wide daily AI budget; each reservation records whether it was made under an active paid plan.
-ALTER TABLE `ai_spend` ADD `paid` integer DEFAULT 0 NOT NULL;

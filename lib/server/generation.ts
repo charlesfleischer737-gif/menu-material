@@ -725,52 +725,55 @@ function retryAfter(headers: Headers) {
 // take about two minutes, so this leaves headroom before giving up.
 const IMAGE_TIMEOUT_MS = 150000;
 async function inputImages(job: Row) {
-  const list: { role: string; blob: Blob; name: string }[] = [];
   const details = JSON.parse(job.details);
   await requireStudioReferences(
     job.restaurant_id,
     details.style?.referenceIds || [],
   );
-  for (const assetId of [
+  const assetIds = [
     ...new Set(
       [
         job.source_id,
         job.parent_id,
-        ...(JSON.parse(job.details).style?.referenceIds || []),
+        ...(details.style?.referenceIds || []),
       ].filter(Boolean),
     ),
-  ]) {
-    const a = await one(
-      "SELECT * FROM assets WHERE id=? AND restaurant_id=? AND deleted_at IS NULL",
-      assetId,
-      job.restaurant_id,
-    );
-    assert(a, 400, "A reference image was deleted. Start a new request.");
-    const obj = await bucket().get(a.working_key || a.key);
-    assert(
-      obj,
-      400,
-      "The reference image is unavailable. Please upload it again.",
-    );
-    const bytes = await obj.arrayBuffer();
-    assert(
-      bytes.byteLength <= 8 * 1024 * 1024,
-      400,
-      "This image needs resizing. Please upload it again.",
-    );
-    const mime = a.working_key ? "image/jpeg" : a.mime;
-    list.push({
-      role:
-        assetId === job.source_id
-          ? "ORIGINAL DISH PHOTO: the only source of truth for food identity, portion and branding."
-          : assetId === job.parent_id
-            ? "PREVIOUS RESULT: change only the requested styling. Restore food from the original when needed."
-            : "STYLE INSPIRATION ONLY: use setting, light and color. Never copy this image's food, text, branding or people.",
-      blob: new Blob([bytes], { type: mime }),
-      name: `${assetId}.${mime === "image/png" ? "png" : mime === "image/webp" ? "webp" : "jpg"}`,
-    });
-  }
-  return list;
+  ];
+  // Read independent inputs together. Promise.all preserves their order:
+  // the original remains first even when a reference finishes loading first.
+  return Promise.all(
+    assetIds.map(async (assetId) => {
+      const a = await one(
+        "SELECT * FROM assets WHERE id=? AND restaurant_id=? AND deleted_at IS NULL",
+        assetId,
+        job.restaurant_id,
+      );
+      assert(a, 400, "A reference image was deleted. Start a new request.");
+      const obj = await bucket().get(a.working_key || a.key);
+      assert(
+        obj,
+        400,
+        "The reference image is unavailable. Please upload it again.",
+      );
+      const bytes = await obj.arrayBuffer();
+      assert(
+        bytes.byteLength <= 8 * 1024 * 1024,
+        400,
+        "This image needs resizing. Please upload it again.",
+      );
+      const mime = a.working_key ? "image/jpeg" : a.mime;
+      return {
+        role:
+          assetId === job.source_id
+            ? "ORIGINAL DISH PHOTO: the only source of truth for food identity, portion and branding."
+            : assetId === job.parent_id
+              ? "PREVIOUS RESULT: change only the requested styling. Restore food from the original when needed."
+              : "STYLE INSPIRATION ONLY: use setting, light and color. Never copy this image's food, text, branding or people.",
+        blob: new Blob([bytes], { type: mime }),
+        name: `${assetId}.${mime === "image/png" ? "png" : mime === "image/webp" ? "webp" : "jpg"}`,
+      };
+    }),
+  );
 }
 // An edit takes one prompt for all its photos, so each role is named by position.
 function photoGuide(images: { role: string }[]) {

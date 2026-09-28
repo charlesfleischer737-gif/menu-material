@@ -1159,6 +1159,11 @@
   text-underline-offset: 3px;
 }
 
+.google-sign-in { min-width: 0; }
+.google-sign-in-button { display: flex; justify-content: center; min-height: 44px; }
+.auth-divider { display: flex; align-items: center; gap: 12px; color: var(--muted-foreground); font-size: 0.875rem; margin: 18px 0 0; }
+.auth-divider::before, .auth-divider::after { content: ""; height: 1px; background: var(--border); flex: 1; }
+
 /* Information pages: pricing, privacy and guidelines. */
 .pw-information {
   width: min(760px, calc(100% - 44px));
