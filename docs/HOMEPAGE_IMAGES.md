@@ -24,6 +24,8 @@ The showcase wall is two rows of up to 300 CSS px tiles that drift in opposite d
 
 `scripts/prepare-web-images.mjs` resizes each source with lanczos3 and encodes WebP at quality 82 with sharp YUV conversion (`smartSubsample`) and effort 6. Quality 78–85 was compared on crops of the burger bun, the cheesecake crumb and the cobalt backdrop at 2× zoom: there is no banding or blocking at 82, only a slight softening of the finest paper grain, and the files are about a tenth of the earlier lossless ones. The `drawing` and `photo` presets and `smartDeblock` looked no better. `npm run test:web-assets` checks every copy against its source (PSNR at least 34 dB at display sizes, 31 dB for thumbnails; measured 35–40 dB and 32–38 dB), its dimensions, and weight budgets (hero pair at 1536 px ≤ 300 KB, each 960 px gallery photo ≤ 150 KB, each 640 px showcase photo ≤ 100 KB; the showcase copies measure 34.7–39.3 dB). It also checks that every showcase name matches a current catalog style and that the library count in the style gallery's copy is right.
 
+The 640 px Fantasy Burst Explore preview uses quality 94 with the same resize and sharp YUV settings. Its saturated colors fall below the 34 dB fidelity floor at the default quality 82; quality 94 measures 34.6 dB at 93 KB, still much smaller than the unchanged original. This exception is saved in `scripts/prepare-web-images.mjs` so regeneration preserves the fix.
+
 ### Weight
 
 Measured September 24, 2026 with Playwright on a fresh cache, scrolling the whole page so every lazy image loads:

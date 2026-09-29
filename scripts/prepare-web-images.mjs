@@ -20,10 +20,16 @@ const photoWebp = { quality: 82, smartSubsample: true, effort: 6 };
 const only = process.argv[2];
 
 async function derive(source, path, width) {
+  // Burst's saturated colors need less compression at 640 px to meet the
+  // display-asset check's 34 dB fidelity floor; quality 94 measures 34.6 dB.
+  const encoding =
+    source === "public/studio/styles/fantasy-burst.webp" && width === 640
+      ? { ...photoWebp, quality: 94 }
+      : photoWebp;
   await sharp(source)
     .rotate()
     .resize({ width, withoutEnlargement: true, kernel: "lanczos3" })
-    .webp(photoWebp)
+    .webp(encoding)
     .toFile(path);
   const size = (await stat(path)).size;
   if (size >= (await stat(source)).size)
