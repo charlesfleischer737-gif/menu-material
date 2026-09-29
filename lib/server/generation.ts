@@ -11,6 +11,8 @@ import { z } from "zod";
 import { checkStudioGeneration } from "./studio-release";
 import { keepAlive, reportError } from "./monitoring";
 import { PIPELINE_VERSION, looks } from "../studio";
+import { foodFantasyStyle } from "../photo-styles";
+import { foodFantasyPrompt } from "./food-fantasy";
 import { TYPICAL_RENDER_MS, typicalRenderMs } from "../creation-progress";
 import { styleSchema } from "./promotions";
 import {
@@ -73,6 +75,9 @@ export function imagePrompt(
   slot = 0,
   fromDescription = false,
 ) {
+  const fantasy = foodFantasyStyle({}, d.creativeStyleId);
+  if (fantasy)
+    return foodFantasyPrompt(d, fantasy, revision, slot, fromDescription);
   const c = d.controls || {};
   const style = d.style?.photoStyle || d.setting || "Natural daylight";
   // Legacy "As shown" means the selected style card, never the source photo.
@@ -339,7 +344,11 @@ export async function enqueue(
         })
         .parse(input.lookContext)
     : null;
+  const fantasy = correctionOriginal
+    ? foodFantasyStyle({}, captured.creativeStyleId)
+    : foodFantasyStyle(style, lookContext?.presetId);
   const details: Row = {
+    ...(fantasy ? { creativeStyleId: fantasy.id } : {}),
     controls,
     pipelineVersion: PIPELINE_VERSION,
     model: rendering.model,
@@ -440,6 +449,7 @@ export async function enqueue(
   }
   // Saved looks and inspiration photos are Pro for new work. A correction
   // repeats what the original request used.
+  if (fantasy && !policy && !accepted) await requirePro(r.id, "foodFantasy");
   if (
     !policy &&
     !accepted &&
@@ -765,9 +775,13 @@ async function inputImages(job: Row) {
       return {
         role:
           assetId === job.source_id
-            ? "ORIGINAL DISH PHOTO: the only source of truth for food identity, portion and branding."
+            ? details.creativeStyleId
+              ? "ORIGINAL DISH PHOTO: source for the dish and its ingredients. Exaggerate scale, texture and arrangement only as the selected Food Fantasy direction permits; preserve existing branding."
+              : "ORIGINAL DISH PHOTO: the only source of truth for food identity, portion and branding."
             : assetId === job.parent_id
-              ? "PREVIOUS RESULT: change only the requested styling. Restore food from the original when needed."
+              ? details.creativeStyleId
+                ? "PREVIOUS CREATIVE RESULT: keep the successful food-art direction while applying the requested change."
+                : "PREVIOUS RESULT: change only the requested styling. Restore food from the original when needed."
               : "STYLE INSPIRATION ONLY: use setting, light and color. Never copy this image's food, text, branding or people.",
         blob: new Blob([bytes], { type: mime }),
         name: `${assetId}.${mime === "image/png" ? "png" : mime === "image/webp" ? "webp" : "jpg"}`,

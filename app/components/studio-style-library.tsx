@@ -216,6 +216,7 @@ export function StudioStyleLibrary({
           .filter(Boolean)
           .join(". ")}
         image={polish ? source || undefined : style.image}
+        badge={style.pro ? <ProBadge className="st-style-pro" /> : undefined}
         media={
           polish && !source ? (
             <span className="st-tile-icon" aria-hidden="true">
@@ -297,7 +298,7 @@ export function StudioStyleLibrary({
               Styles
             </DialogTitle>
             <DialogDescription>
-              {available.length} looks · designed to keep your food as served
+              {available.length} looks · photography and Pro creative food art
             </DialogDescription>
           </div>
           <div className="st-search" role="search">
@@ -649,12 +650,22 @@ export function StudioStyleLibrary({
                         width={1000}
                         height={1000}
                       />
-                      <figcaption>Style example</figcaption>
+                      <figcaption>
+                        {detail.treatment === "fantasy"
+                          ? "Creative food art example · Pro"
+                          : "Style example"}
+                      </figcaption>
                     </figure>
                     <div className="st-detail-copy">
                       <span className="st-detail-kicker">{detail.group}</span>
                       <h3 id="st-detail-title" ref={detailTitle} tabIndex={-1}>
                         {detail.name}
+                        {detail.pro && (
+                          <>
+                            {" "}
+                            <ProBadge />
+                          </>
+                        )}
                       </h3>
                       <p>{detail.description || detail.cue}</p>
                       {detail.bestFor && (
@@ -691,10 +702,16 @@ export function StudioStyleLibrary({
                             </p>
                           )}
                           <p className="st-fidelity">
-                            <ShieldCheck size={15} aria-hidden="true" />
-                            {detailInfo.fromPhoto
-                              ? "Designed to keep your food and portion as served — check each result before sharing."
-                              : "Review the result against the real dish."}
+                            {detail.treatment === "fantasy" ? (
+                              <Sparkles size={15} aria-hidden="true" />
+                            ) : (
+                              <ShieldCheck size={15} aria-hidden="true" />
+                            )}
+                            {detail.treatment === "fantasy"
+                              ? "Creative food art with exaggerated proportions and presentation. Made for creative campaigns."
+                              : detailInfo.fromPhoto
+                                ? "Designed to keep your food and portion as served — check each result before sharing."
+                                : "Review the result against the real dish."}
                           </p>
                         </section>
                       )}
@@ -736,7 +753,7 @@ export function StudioStyleLibrary({
                       )
                     }
                   >
-                    Use this style
+                    {detail.pro && !pro ? "Unlock with Pro" : "Use this style"}
                     <ArrowRight size={16} />
                   </button>
                 </footer>

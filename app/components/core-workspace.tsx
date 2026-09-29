@@ -359,6 +359,7 @@ export default function CoreWorkspace({
           {visited.includes("explore") && (
             <div hidden={view !== "explore"} aria-hidden={view !== "explore"}>
               <ExploreGallery
+                pro={hasProFeatures(state)}
                 active={foreground && view === "explore"}
                 disabledStyleIds={state.studioAvailability?.disabledStyleIds}
                 timezone={state.restaurant?.timezone}

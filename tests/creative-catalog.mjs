@@ -10,12 +10,12 @@ import {
   postTemplateExample,
 } from "../lib/post-templates.ts";
 const hashes = new Set();
-assert.equal(styleCategories.length, 8);
-assert.equal(photoStyles.length, 60);
+assert.equal(styleCategories.length, 9);
+assert.equal(photoStyles.length, 63);
 for (const category of styleCategories)
   assert.equal(
     photoStyles.filter((s) => s.category === category.id).length,
-    category.id === "bold" ? 4 : 8,
+    category.id === "fantasy" ? 3 : category.id === "bold" ? 4 : 8,
   );
 for (const style of photoStyles) {
   const bytes = readFileSync("public" + style.image);
@@ -85,5 +85,5 @@ assert.equal(getPostTemplate("photo").id, "editorial");
 assert.equal(getPostTemplate("price").id, "special");
 assert.equal(getPostTemplate("story").id, "chef");
 console.log(
-  "PASS: 60 distinct style photos and generation prompts; 8 collections including 4 Bold & Dramatic looks; 10 template examples; customer facts and legacy drafts preserved.",
+  "PASS: 63 distinct style examples and generation prompts; 9 collections including 3 Pro Food Fantasy looks; 10 template examples; customer facts and legacy drafts preserved.",
 );

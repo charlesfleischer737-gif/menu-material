@@ -74,6 +74,7 @@ import { ProBadge } from "./pro-badge";
 import { FREE_SIGNUP_IMAGES, proFeatures, type ProFeature } from "@/lib/plans";
 import { freeImagesNote } from "@/lib/free-images";
 import { hasProFeatures, requestUpgrade } from "@/lib/upgrade";
+import { foodFantasyStyle } from "@/lib/photo-styles";
 import WorkspaceActionBar from "./workspace-action-bar";
 import { StudioStyleLibrary, type LibraryOrigin } from "./studio-style-library";
 import { StudioCustomizeSheet } from "./studio-customize-sheet";
@@ -183,6 +184,11 @@ export function StudioWorkbench({
   const [sampleLoading, setSampleLoading] = useState(false);
   const busy = parentBusy || (sampleLoading ? "Preparing your photo" : "");
   const lookName = b.savedLookName || selected.name;
+  const fantasy = foodFantasyStyle(
+    { photoStyle: b.photoStyleSnapshot || selected.prompt },
+    b.look,
+  );
+  const fantasyLocked = !!fantasy && !pro;
   const disabledStyles: string[] =
     state.studioAvailability?.disabledStyleIds || [];
   const creationBlock = studioCreationBlock(b, state.studioAvailability);
@@ -308,7 +314,7 @@ export function StudioWorkbench({
   function offerPro(feature: ProFeature) {
     if (guestOnly)
       setProHint(
-        `${proFeatures[feature].blocked} Choose one of the looks to try Photo Studio free.`,
+        `${proFeatures[feature].blocked} Choose a photography look to try Photo Studio free.`,
       );
     else requestUpgrade(feature);
   }
@@ -586,6 +592,10 @@ export function StudioWorkbench({
     origin: LibraryOrigin | "suggestion" = "suggestion",
     extra: { occasionId?: string; rank?: number } = {},
   ) {
+    if (!pro && photoStyles.find((style) => style.id === id)?.pro) {
+      setLibraryOpen(false);
+      return offerPro("foodFantasy");
+    }
     const savedLook = saved.library.looks.find((look) => look.id === id);
     if (savedLook) return applySaved(savedLook);
     if (disabledStyles.includes(id)) {
@@ -833,13 +843,24 @@ export function StudioWorkbench({
   ];
 
   const createButton = (
-    <button className="st-create" disabled={!canCreate} onClick={create}>
+    <button
+      className="st-create"
+      disabled={fantasyLocked ? !!busy : !canCreate}
+      onClick={() => (fantasyLocked ? offerPro("foodFantasy") : create())}
+    >
       {busy || photoUploading ? (
         <LoaderCircle size={18} className="cx-spin" />
       ) : (
         <Sparkles size={18} />
       )}
-      {busy || (photoUploading ? "Saving your photo…" : "Create photo")}
+      {busy ||
+        (fantasyLocked
+          ? "Unlock Food Fantasy with Pro"
+          : photoUploading
+            ? "Saving your photo…"
+            : fantasy
+              ? "Create food art"
+              : "Create photo")}
     </button>
   );
   // Secondary ways to start sit below the photo source choices on every screen.
@@ -888,6 +909,7 @@ export function StudioWorkbench({
                 .join(". ")
         }
         image={polish ? source || undefined : style.image}
+        badge={style.pro ? <ProBadge className="st-style-pro" /> : undefined}
         media={
           polish && !source ? (
             <span className="st-tile-icon" aria-hidden="true">
@@ -1477,8 +1499,9 @@ export function StudioWorkbench({
                 onChange={(event) => update({ note: event.target.value })}
               />
               <span id="st-details-hint" className="sr-only">
-                Describe the light, setting or framing you’d like. Your food
-                always stays the same.
+                {fantasy
+                  ? "Describe the exaggeration, light or composition you’d like."
+                  : "Describe the light, setting or framing you’d like. Your food always stays the same."}
               </span>
             </section>
 
@@ -1488,7 +1511,9 @@ export function StudioWorkbench({
             >
               {createButton}
               <p className="st-action-note">
-                {reason}
+                {fantasyLocked
+                  ? "Food Fantasy creative styles are part of Pro."
+                  : reason}
                 {offerPlans && (
                   <button
                     className="st-text-button"
@@ -1500,6 +1525,12 @@ export function StudioWorkbench({
                   </button>
                 )}
               </p>
+              {fantasy && (
+                <p className="st-action-note">
+                  Creative food art · Proportions and presentation are
+                  intentionally exaggerated.
+                </p>
+              )}
             </WorkspaceActionBar>
           </aside>
         </div>

@@ -39,6 +39,9 @@ const stopWords = new Set([
   "backdrop",
 ]);
 const synonyms: Record<string, string[]> = {
+  surreal: ["surreal", "fantasy"],
+  exaggerated: ["exaggerated", "fantasy"],
+  dramatic: ["dramatic", "fantasy"],
   extravagant: ["bold", "dramatic"],
   wow: ["bold", "dramatic"],
   bold: ["bold", "dramatic", "saturated", "electric"],

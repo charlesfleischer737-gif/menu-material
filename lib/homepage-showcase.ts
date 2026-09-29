@@ -6,7 +6,7 @@
 
 // Every style in the library (lib/photo-styles.ts), for the style gallery's
 // copy on the homepage.
-export const libraryStyleCount = 60;
+export const libraryStyleCount = 63;
 
 export type ShowcaseStyle = { id: string; name: string; alt: string };
 

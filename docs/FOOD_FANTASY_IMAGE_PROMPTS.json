@@ -1,0 +1,28 @@
+{
+  "generator": "Built-in image_gen tool",
+  "created": "2026-09-28",
+  "purpose": "Pro Food Fantasy creative-art style examples",
+  "images": [
+    {
+      "id": "fantasy-melt",
+      "name": "Melt monument",
+      "prompt": "Use case: ads-marketing. Asset type: one square 1254x1254 standalone food-campaign art image for a Pro 'Food Fantasy' catalog. Deliberately surreal, hyperreal food art: tactile appetizing food textures paired with impossible/exaggerated scale and motion, noticeably more extravagant than a realistic restaurant photograph. Premium art direction, controlled composition, strong studio light, no text, logos, watermarks, interface or collage. Food still recognizable, not plastic or cartoon. Leave enough safe margin for the whole composition. Scene: fiery saturated orange-red seamless backdrop. A single cheeseburger in a low cream paper tray becomes a towering sculptural hero: one bun and one patty, huge extravagant golden melted-cheese folds draped like silk ribbons down the patty and into the tray, visibly exaggerated cheese proportions, gently stretched bun and patty scale, crisp lettuce, pickles. Low angle macro advertising perspective, dramatic side light, molten satin highlights, dark anchoring shadow. Cheeseburger elements grounded; no cheese rain or random flying bits. Bold editorial food fantasy, not an ordinary burger photograph.",
+      "source": "/Users/charlesfleischer/.codex/generated_images/01a0e9e3-f30f-74a0-bd3a-91be1c86f5a8/exec-330f6794-63ac-4b4d-a0d2-d1b63ac80648.png",
+      "output": "public/studio/styles/fantasy-melt.webp"
+    },
+    {
+      "id": "fantasy-burst",
+      "name": "Flavor in flight",
+      "prompt": "Use case: ads-marketing. Asset type: one square 1254x1254 standalone food-campaign art image for a Pro 'Food Fantasy' catalog. Deliberately surreal, hyperreal food art: tactile appetizing food textures paired with impossible/exaggerated scale and motion, noticeably more extravagant than a realistic restaurant photograph. Premium art direction, controlled composition, strong studio light, no text, logos, watermarks, interface or collage. Food still recognizable, not plastic or cartoon. Leave enough safe margin for the whole composition. Scene: electric cyan seamless table and deep cobalt backdrop. One grilled fish taco in a small white plate, its grilled fish flakes, shredded purple and green slaw and cilantro lifted in one spectacular suspended spiral just above the taco, as a deconstructed food sculpture. One lime wedge on plate. Exaggerated curved tortilla, ingredient pieces enlarged modestly and separated in an elegant controlled upward burst; no confetti, unrelated food or flames. Macro crisp tortilla bubbles and char, moist fish detail. Bright neutral keylight on food and vivid cyan rim, full airborne composition framed against uncluttered blue. Unmistakably surreal levitation, appetizing premium food advertising.",
+      "source": "/Users/charlesfleischer/.codex/generated_images/01a0e9e3-f30f-74a0-bd3a-91be1c86f5a8/exec-69400162-817a-4374-a59c-d2ff0193ddd4.png",
+      "output": "public/studio/styles/fantasy-burst.webp"
+    },
+    {
+      "id": "fantasy-swirl",
+      "name": "Sugar skyscraper",
+      "prompt": "Use case: ads-marketing. Asset type: one square 1254x1254 standalone food-campaign art image for a Pro 'Food Fantasy' catalog. Deliberately surreal, hyperreal food art: tactile appetizing food textures paired with impossible/exaggerated scale and motion, noticeably more extravagant than a realistic restaurant photograph. Premium art direction, controlled composition, strong studio light, no text, logos, watermarks, interface or collage. Food still recognizable, not plastic or cartoon. Leave enough safe margin for the whole composition. Scene: saturated violet-magenta seamless set with a ruby-pink circular spotlight behind the dessert. Exactly one small vanilla cupcake in a cream fluted paper liner on a lilac pedestal, topped with an impossibly tall generous spiral of strawberry-pink frosting, roughly four times the cupcake height, with broad sculptural silky frosting folds and one glossy fresh strawberry balanced on top. Exaggerate height and voluptuous frosting texture, playful high-end dessert campaign. Strong soft side key, pink glow restricted to background, juicy fruit seeds and convincing cake crumb, no extra cupcakes, scattered decorations or text. Entire tall silhouette fits square composition. Stylized premium food fantasy, no plastic 3D toy appearance.",
+      "source": "/Users/charlesfleischer/.codex/generated_images/01a0e9e3-f30f-74a0-bd3a-91be1c86f5a8/exec-f5cafc1e-3de8-4618-bc9a-06bfbdf27384.png",
+      "output": "public/studio/styles/fantasy-swirl.webp"
+    }
+  ]
+}

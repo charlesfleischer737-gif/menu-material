@@ -74,7 +74,7 @@ export default function PlanCards({
         </p>
         <Features
           items={[
-            "Full-quality photos in every style, no watermark",
+            "All realistic photo styles, full quality, no watermark",
             "Every download size, for delivery apps and social",
             "One live menu with its QR code, PDF and table card",
             "Posts and Stories in three designs",
@@ -106,6 +106,7 @@ export default function PlanCards({
         </p>
         <Features
           items={[
+            "Food Fantasy: exaggerated, larger-than-life food art",
             "Your restaurant look on every photo, post and menu",
             "Every post and menu design, plus carousels",
             "Campaigns: a matching post, Story, counter sign and menu special",

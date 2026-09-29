@@ -39,6 +39,7 @@ import { recordVisitorStep } from "@/lib/funnel-client";
 import { isPlaceholderDishName } from "@/lib/restaurant-identity";
 import { hasProFeatures, requestUpgrade } from "@/lib/upgrade";
 import { ProBadge } from "./pro-badge";
+import { foodFantasyStyle } from "@/lib/photo-styles";
 import {
   looks,
   photoStyles,
@@ -188,6 +189,12 @@ export default function PhotoStudio({
   const [batchOpen, setBatchOpen] = useState(false),
     [saveLookOpen, setSaveLookOpen] = useState(false);
   const [resultRecipe, setResultRecipe] = useState<Row | null>(null);
+  const resultFantasy =
+    resultRecipe &&
+    foodFantasyStyle(
+      { photoStyle: resultRecipe.photoStyleSnapshot },
+      resultRecipe.look,
+    );
   const [resultHasGeneration, setResultHasGeneration] = useState(false);
   const resultAction = useRef<HTMLButtonElement>(null),
     resultHeading = useRef<HTMLHeadingElement>(null),
@@ -1605,11 +1612,14 @@ export default function PhotoStudio({
                   ref={resultHeading}
                   tabIndex={-1}
                 >
-                  Your food. Beautifully presented.
+                  {resultFantasy
+                    ? "Your food. Larger than life."
+                    : "Your food. Beautifully presented."}
                 </h2>
                 <p className="st-result-copy">
-                  Take a close look at your dish. When it feels right, save a
-                  size made for where you’ll use it.
+                  {resultFantasy
+                    ? "Creative food art with intentionally exaggerated proportions and presentation. Review your artwork, then save a size for your campaign."
+                    : "Take a close look at your dish. When it feels right, save a size made for where you’ll use it."}
                 </p>
                 {failedChange && (
                   <div className="st-alert">
