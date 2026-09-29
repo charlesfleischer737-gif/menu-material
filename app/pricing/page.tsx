@@ -43,7 +43,7 @@ export default function Pricing() {
     ],
     [
       "What’s included for free?",
-      "Full-quality photos in every style with no watermark, every download size, one live menu with its QR code, PDF and table card, and posts and Stories in three designs.",
+      "All realistic photo styles in full quality with no watermark, every download size, one live menu with its QR code, PDF and table card, and posts and Stories in three designs. Food Fantasy creative styles are part of Pro.",
     ],
     [
       "What does Pro add?",

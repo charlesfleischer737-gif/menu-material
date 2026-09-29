@@ -1071,3 +1071,9 @@
     transform: none;
   }
 }
+.ex-tile-image > .ex-style-pro {
+  position: absolute;
+  top: 12px;
+  right: 12px;
+  z-index: 1;
+}

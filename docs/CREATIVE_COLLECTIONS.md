@@ -4,7 +4,15 @@ September 15, 2026. The core tools retain their source-photo, approval, persiste
 
 ## Photo Studio
 
-Sixty curated presets across eight collections. The seven original collections each have eight styles; Bold & Dramatic adds four. Each preset has a distinct photograph, lighting/surface/composition prompt, intended uses and visible traits, browsable in the single-page workbench. The selected reference updates immediately. Original food identity and serving size remain generation requirements; results still require review. Examples are never passed as food references to the provider.
+Sixty-three curated presets across nine collections. The seven original collections each have eight styles; Bold & Dramatic adds four and Pro Food Fantasy adds three. Each preset has a distinct example, lighting/surface/composition prompt, intended uses and visible traits, browsable in the single-page workbench. The selected reference updates immediately. Photography styles retain original food identity and serving size; Food Fantasy deliberately exaggerates scale and presentation while retaining ingredient identity. Examples are never passed as food references to the provider.
+
+### Food Fantasy · Pro
+
+Added September 28, 2026. Deliberately stylized campaign art with appetizing food textures and exaggerated geometry. Melt monument amplifies existing cheese and sauce into sculptural folds; Flavor in flight suspends existing ingredients in a controlled burst; Sugar skyscraper stretches existing frosting and dessert layers into a tower. Each style is labeled as creative food art in Explore, the library and the workbench, with a Pro badge and upgrade action.
+
+The server resolves this treatment from a known catalog ID or exact saved prompt, enforces Pro before reserving a new image, and captures the creative direction for generation and corrections. It ignores arbitrary client treatment flags. Paid work already accepted and reusable completed results remain accessible after a downgrade. Normal photography prompts remain unchanged. This collection permits exaggerated proportions and arrangement, but not new ingredient types, toppings, servings or brands. Owner controls and source drink vessels remain authoritative.
+
+Original examples and exact built-in image-generation prompts are recorded in `FOOD_FANTASY_IMAGE_PROMPTS.json`. These examples demonstrate the artistic direction, not a verified transformation of a customer photo. `tests/food-fantasy.mjs` covers the paid gate, saved-prompt resolution, credit preservation, downgrade replay and prompt separation.
 
 ### Bold & Dramatic
 

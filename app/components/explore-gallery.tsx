@@ -15,6 +15,7 @@ import {
   ChevronRight,
   Search,
   ShieldCheck,
+  Sparkles,
   X,
 } from "lucide-react";
 import {
@@ -38,6 +39,8 @@ import { styleImageSrcSet } from "@/lib/style-images";
 import { orderedOccasions } from "@/lib/studio-occasions";
 import { maximumStyleQueryLength, searchStyles } from "@/lib/studio-search";
 import Kitty from "./kitty";
+import { ProBadge } from "./pro-badge";
+import { requestUpgrade } from "@/lib/upgrade";
 import { radioKeys, radioTab } from "./radio-keys";
 
 // Ends the placeholder shimmer and fades the photo in once it has arrived.
@@ -59,12 +62,14 @@ const occasionsAfter = 13;
 const invitation = ["menu-courtyard", "studio-levitate", "bar-velvet"];
 
 export default function ExploreGallery({
+  pro = false,
   active = true,
   disabledStyleIds = [],
   timezone,
   onTryStyle,
   onOpenStudio,
 }: {
+  pro?: boolean;
   active?: boolean;
   disabledStyleIds?: string[];
   timezone?: string;
@@ -312,11 +317,12 @@ export default function ExploreGallery({
       className="ex-tile"
       data-explore-style={style.id}
       data-feature={feature || undefined}
-      aria-label={`${style.name} — ${style.group}`}
+      aria-label={`${style.name} — ${style.group}${style.pro ? " · Pro creative food art" : ""}`}
       aria-haspopup="dialog"
       onClick={(event) => open(style, event.currentTarget)}
     >
       <span className="ex-tile-image">
+        {style.pro && <ProBadge className="ex-style-pro" />}
         <img
           ref={(img) => {
             if (img?.complete) showPhoto(img);
@@ -328,7 +334,7 @@ export default function ExploreGallery({
               ? "(max-width: 760px) 100vw, 50vw"
               : "(max-width: 760px) 50vw, 25vw"
           }
-          alt={`${style.name} food photography style: ${style.cue}`}
+          alt={`${style.name} ${style.treatment === "fantasy" ? "creative food art" : "food photography"} style: ${style.cue}`}
           width={1000}
           height={1000}
           loading={index < 5 ? "eager" : "lazy"}
@@ -663,9 +669,14 @@ export default function ExploreGallery({
                     </div>
                   )}
                   <p className="ex-fidelity">
-                    <ShieldCheck size={16} aria-hidden="true" />
-                    Designed to keep your food and portion as served — check
-                    each result before sharing.
+                    {detail.treatment === "fantasy" ? (
+                      <Sparkles size={16} aria-hidden="true" />
+                    ) : (
+                      <ShieldCheck size={16} aria-hidden="true" />
+                    )}
+                    {detail.treatment === "fantasy"
+                      ? "Creative food art · Proportions and presentation are intentionally exaggerated."
+                      : "Designed to keep your food and portion as served — check each result before sharing."}
                   </p>
                   {more.length > 0 && (
                     <section className="ex-more" aria-labelledby="ex-more">
@@ -694,18 +705,31 @@ export default function ExploreGallery({
                 </div>
               </div>
               <footer className="ex-detail-action">
-                <small>AI-generated style example</small>
+                <small>
+                  {detail.pro
+                    ? "Pro · Creative food art example"
+                    : "AI-generated style example"}
+                </small>
                 <button
                   type="button"
                   className="ex-try"
                   disabled={unavailable}
                   onClick={() => {
+                    if (detail.pro && !pro) {
+                      setDetailOpen(false);
+                      requestUpgrade("foodFantasy");
+                      return;
+                    }
                     trying.current = true;
                     setDetailOpen(false);
                     onTryStyle(detail.id);
                   }}
                 >
-                  {unavailable ? "Temporarily unavailable" : "Use this look"}
+                  {unavailable
+                    ? "Temporarily unavailable"
+                    : detail.pro && !pro
+                      ? "Unlock with Pro"
+                      : "Use this look"}
                   {!unavailable && <ArrowRight size={18} aria-hidden="true" />}
                 </button>
               </footer>

@@ -338,6 +338,13 @@ export function styleFor(
       : look.prompt;
   return {
     ...base,
+    photoPreset:
+      look.id === "restaurant"
+        ? base.photoPreset || ""
+        : photoStyles.find(
+            (entry) =>
+              entry.id === look.id || entry.prompt === brief.photoStyleSnapshot,
+          )?.id || "",
     photoStyle:
       brief.photoStyleSnapshot ??
       (look.id === "restaurant"

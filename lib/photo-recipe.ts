@@ -25,6 +25,7 @@ export function capturedPhotoRecipe(context: Row): Row {
     };
   return {
     look:
+      details.creativeStyleId ||
       look.presetId ||
       photoStyles.find((style) => style.prompt === details.style?.photoStyle)
         ?.id ||

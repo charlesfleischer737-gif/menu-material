@@ -78,6 +78,12 @@ export function freeCanPublish(
 // Each Pro feature: what the upgrade sheet promises and what a blocked
 // request says. Titles also list Pro's features on the pricing page.
 export const proFeatures = {
+  foodFantasy: {
+    title: "Food Fantasy creative styles",
+    detail:
+      "Exaggerate food details with sculptural melts, floating ingredients and towering dessert swirls for creative campaigns.",
+    blocked: "Food Fantasy creative styles are part of Pro.",
+  },
   look: {
     title: "Your restaurant look everywhere",
     detail:

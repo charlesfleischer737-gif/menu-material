@@ -15,6 +15,8 @@ export const photoBackdrops: PhotoBackdrop[] = [
   "dark",
 ];
 export type PhotoStyle = {
+  pro?: boolean;
+  treatment?: "fantasy";
   id: string;
   name: string;
   cue: string;
@@ -117,6 +119,15 @@ export const styleCategories = [
     use: "Social launches, signature dishes and standout website photos",
     tip: "Turn up the setting, keep the serving real. Your ingredients, portions and natural textures stay true to the original.",
     color: "#ed3850",
+  },
+  {
+    id: "fantasy",
+    name: "Food Fantasy",
+    description:
+      "Oversized details, floating ingredients and sculptural sweets. Creative food art, with Pro.",
+    use: "Creative social campaigns and playful food advertising",
+    tip: "Food proportions and presentation are intentionally exaggerated. Choose a photography style when you need to show the dish as served.",
+    color: "#bb39dd",
   },
 ] as const;
 export const photoStyles: PhotoStyle[] = [
@@ -1193,4 +1204,87 @@ export const photoStyles: PhotoStyle[] = [
     image: "/studio/styles/bold-golden.webp",
     angle: "keep",
   },
+  {
+    id: "fantasy-melt",
+    pro: true,
+    treatment: "fantasy",
+    backdrop: "colorful",
+    staged: true,
+    category: "fantasy",
+    group: "Food Fantasy",
+    name: "Melt monument",
+    cue: "Oversized folds · molten highlights",
+    description:
+      "Turn an existing melted or saucy detail into an extravagant sculpture, with larger-than-life folds and glossy highlights.",
+    bestFor: "Cheeseburgers, cheesy sandwiches and saucy signature dishes",
+    traits: [
+      "Exaggerated proportions",
+      "Saturated orange-red",
+      "Sculptural food art",
+    ],
+    prompt:
+      "Surreal food campaign on saturated orange-red. Enlarge the main food silhouette; exaggerate existing cheese or sauce into extravagant silky folds. Without cheese or sauce, amplify the subject's existing texture instead. Dramatic sidelight, grounded shadow. No invented ingredients or text.",
+    image: "/studio/styles/fantasy-melt.webp",
+    angle: "keep",
+  },
+  {
+    id: "fantasy-burst",
+    pro: true,
+    treatment: "fantasy",
+    backdrop: "colorful",
+    staged: true,
+    category: "fantasy",
+    group: "Food Fantasy",
+    name: "Flavor in flight",
+    cue: "Floating ingredients · electric color",
+    description:
+      "Lift the dish's own ingredients into a suspended spiral, with amplified texture and an impossible sense of motion.",
+    bestFor: "Tacos, burgers, salads and layered dishes",
+    traits: [
+      "Surreal levitation",
+      "Electric cobalt and cyan",
+      "Amplified texture",
+    ],
+    prompt:
+      "Surreal deconstructed food art on electric cobalt and cyan. Lift the dish's existing visible ingredients into one controlled suspended spiral above its serving vessel; enlarge textures and separate layers dramatically. Neutral keylight, cyan rim. No unrelated ingredients, extra servings or text.",
+    image: "/studio/styles/fantasy-burst.webp",
+    angle: "keep",
+  },
+  {
+    id: "fantasy-swirl",
+    pro: true,
+    treatment: "fantasy",
+    backdrop: "colorful",
+    staged: true,
+    category: "fantasy",
+    group: "Food Fantasy",
+    name: "Sugar skyscraper",
+    cue: "Towering swirls · candy-colored light",
+    description:
+      "Stretch an existing dessert swirl or layer into a towering centerpiece with exaggerated curves and luscious texture.",
+    bestFor: "Cupcakes, soft serve, frosted cakes and creamy desserts",
+    traits: [
+      "Exaggerated height",
+      "Violet and pink spotlight",
+      "Sculptural swirls",
+    ],
+    prompt:
+      "Surreal dessert sculpture on violet with a ruby-pink circular spotlight. Stretch existing frosting, cream or soft layers into an impossibly tall generous spiral; for firm food, exaggerate its existing silhouette instead. Appetizing tactile detail. No added toppings, ingredients, servings or text.",
+    image: "/studio/styles/fantasy-swirl.webp",
+    angle: "keep",
+  },
 ];
+
+/** Resolve Pro art through a catalog ID or an exact saved catalog recipe. */
+export function foodFantasyStyle(
+  style: { photoPreset?: string; photoStyle?: string } = {},
+  presetId?: string,
+) {
+  return photoStyles.find(
+    (look) =>
+      look.treatment === "fantasy" &&
+      (look.id === presetId ||
+        look.id === style.photoPreset ||
+        look.prompt === style.photoStyle),
+  );
+}

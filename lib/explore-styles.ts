@@ -4,6 +4,7 @@ import { photoStyles, styleCategories, type PhotoStyle } from "./photo-styles";
 // together so browsing feels like a gallery rather than a category catalog.
 const featured = [
   "bold-crimson",
+  "fantasy-burst",
   "studio-color",
   "beverage-ritual",
   "menu-wood",
@@ -17,6 +18,7 @@ const featured = [
 // The most striking photographs open each part of the lookbook at double size.
 const spotlight = [
   "bold-crimson",
+  "fantasy-melt",
   "studio-color",
   "bar-rooftop",
   "fine-presented",
