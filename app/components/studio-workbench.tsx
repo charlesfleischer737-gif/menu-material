@@ -1154,356 +1154,379 @@ export function StudioWorkbench({
               </div>
             )}
           </section>
-          <aside className="st-inspector" aria-label="Photo settings">
-            <section className="st-section" aria-labelledby="st-style-title">
-              <div className="st-section-head">
-                <h2 id="st-style-title" className="st-section-title">
-                  Style
-                </h2>
-                {source && b.mode === "photo" && (
-                  <DropdownMenu
-                    onOpenChange={(open) => open && setDrinkList(false)}
-                  >
-                    <DropdownMenuTrigger asChild>
-                      <button
-                        className="st-subject"
-                        disabled={!!busy || photoUploading}
-                        aria-label={
-                          confirmed
-                            ? `Suggestions for ${b.analysisSubject || subjectLabel(b.recommendationFamily, b.recommendationDrink)}. Change what’s in your photo`
-                            : "Tell us what’s in your photo"
-                        }
-                      >
-                        {b.analysisStatus === "analyzing" ? (
-                          <>
-                            <LoaderCircle size={13} className="cx-spin" />
-                            <span>Reading your photo…</span>
-                          </>
-                        ) : (
-                          <span>
-                            {confirmed
-                              ? `For ${(b.analysisSubject || subjectLabel(b.recommendationFamily, b.recommendationDrink)).toLowerCase()}`
-                              : "What’s in your photo?"}
-                          </span>
-                        )}
-                        <ChevronDown size={13} aria-hidden="true" />
-                      </button>
-                    </DropdownMenuTrigger>
-                    <DropdownMenuContent
-                      ref={subjectMenu}
-                      className="cx-workspace-popover st-menu"
-                      align="end"
+          <aside
+            className="st-inspector st-inspector-settings"
+            aria-label="Photo settings"
+          >
+            <div
+              className="st-inspector-scroll"
+              role="region"
+              aria-label="Photo controls"
+              tabIndex={0}
+            >
+              <section className="st-section" aria-labelledby="st-style-title">
+                <div className="st-section-head">
+                  <h2 id="st-style-title" className="st-section-title">
+                    Style
+                  </h2>
+                  {source && b.mode === "photo" && (
+                    <DropdownMenu
+                      onOpenChange={(open) => open && setDrinkList(false)}
                     >
-                      {drinkList ? (
-                        <>
-                          <DropdownMenuItem
-                            onSelect={(event) => {
-                              event.preventDefault();
-                              showDrinks(false);
-                            }}
-                          >
-                            <ChevronLeft aria-hidden="true" />
-                            Back
-                          </DropdownMenuItem>
-                          <DropdownMenuLabel>Drinks</DropdownMenuLabel>
-                          <DropdownMenuRadioGroup
-                            value={
-                              confirmed && b.recommendationFamily === "Drinks"
-                                ? b.recommendationDrink
-                                : ""
-                            }
-                            onValueChange={(value) => identify("Drinks", value)}
-                          >
-                            {drinkKinds.map((kind) => (
-                              <DropdownMenuRadioItem key={kind} value={kind}>
-                                {drinkNames[kind]}
-                              </DropdownMenuRadioItem>
-                            ))}
-                          </DropdownMenuRadioGroup>
-                        </>
-                      ) : (
-                        <>
-                          <DropdownMenuLabel>
-                            Suggest styles for
-                          </DropdownMenuLabel>
-                          <DropdownMenuRadioGroup
-                            value={
-                              confirmed && b.recommendationFamily !== "Drinks"
-                                ? b.recommendationFamily
-                                : ""
-                            }
-                            onValueChange={(value) => identify(value)}
-                          >
-                            {foodFamilies
-                              .filter((family) => family !== "Drinks")
-                              .map((family) => (
-                                <DropdownMenuRadioItem
-                                  key={family}
-                                  value={family}
-                                >
-                                  {family}
+                      <DropdownMenuTrigger asChild>
+                        <button
+                          className="st-subject"
+                          disabled={!!busy || photoUploading}
+                          aria-label={
+                            confirmed
+                              ? `Suggestions for ${b.analysisSubject || subjectLabel(b.recommendationFamily, b.recommendationDrink)}. Change what’s in your photo`
+                              : "Tell us what’s in your photo"
+                          }
+                        >
+                          {b.analysisStatus === "analyzing" ? (
+                            <>
+                              <LoaderCircle size={13} className="cx-spin" />
+                              <span>Reading your photo…</span>
+                            </>
+                          ) : (
+                            <span>
+                              {confirmed
+                                ? `For ${(b.analysisSubject || subjectLabel(b.recommendationFamily, b.recommendationDrink)).toLowerCase()}`
+                                : "What’s in your photo?"}
+                            </span>
+                          )}
+                          <ChevronDown size={13} aria-hidden="true" />
+                        </button>
+                      </DropdownMenuTrigger>
+                      <DropdownMenuContent
+                        ref={subjectMenu}
+                        className="cx-workspace-popover st-menu"
+                        align="end"
+                      >
+                        {drinkList ? (
+                          <>
+                            <DropdownMenuItem
+                              onSelect={(event) => {
+                                event.preventDefault();
+                                showDrinks(false);
+                              }}
+                            >
+                              <ChevronLeft aria-hidden="true" />
+                              Back
+                            </DropdownMenuItem>
+                            <DropdownMenuLabel>Drinks</DropdownMenuLabel>
+                            <DropdownMenuRadioGroup
+                              value={
+                                confirmed && b.recommendationFamily === "Drinks"
+                                  ? b.recommendationDrink
+                                  : ""
+                              }
+                              onValueChange={(value) =>
+                                identify("Drinks", value)
+                              }
+                            >
+                              {drinkKinds.map((kind) => (
+                                <DropdownMenuRadioItem key={kind} value={kind}>
+                                  {drinkNames[kind]}
                                 </DropdownMenuRadioItem>
                               ))}
-                          </DropdownMenuRadioGroup>
-                          <DropdownMenuItem
-                            inset
-                            data-drinks
-                            onSelect={(event) => {
-                              event.preventDefault();
-                              showDrinks(true);
-                            }}
-                          >
-                            Drinks
-                            {confirmed &&
-                              b.recommendationFamily === "Drinks" && (
-                                <span className="st-menu-value">
-                                  {drinkNames[b.recommendationDrink] || "Drink"}
-                                </span>
+                            </DropdownMenuRadioGroup>
+                          </>
+                        ) : (
+                          <>
+                            <DropdownMenuLabel>
+                              Suggest styles for
+                            </DropdownMenuLabel>
+                            <DropdownMenuRadioGroup
+                              value={
+                                confirmed && b.recommendationFamily !== "Drinks"
+                                  ? b.recommendationFamily
+                                  : ""
+                              }
+                              onValueChange={(value) => identify(value)}
+                            >
+                              {foodFamilies
+                                .filter((family) => family !== "Drinks")
+                                .map((family) => (
+                                  <DropdownMenuRadioItem
+                                    key={family}
+                                    value={family}
+                                  >
+                                    {family}
+                                  </DropdownMenuRadioItem>
+                                ))}
+                            </DropdownMenuRadioGroup>
+                            <DropdownMenuItem
+                              inset
+                              data-drinks
+                              onSelect={(event) => {
+                                event.preventDefault();
+                                showDrinks(true);
+                              }}
+                            >
+                              Drinks
+                              {confirmed &&
+                                b.recommendationFamily === "Drinks" && (
+                                  <span className="st-menu-value">
+                                    {drinkNames[b.recommendationDrink] ||
+                                      "Drink"}
+                                  </span>
+                                )}
+                              <ChevronRight
+                                className="st-menu-chevron"
+                                aria-hidden="true"
+                              />
+                            </DropdownMenuItem>
+                            {retryAnalysis &&
+                              b.analysisStatus === "unavailable" &&
+                              state.aiConnected && (
+                                <>
+                                  <DropdownMenuSeparator />
+                                  <DropdownMenuItem onSelect={retryAnalysis}>
+                                    Read my photo again
+                                  </DropdownMenuItem>
+                                </>
                               )}
-                            <ChevronRight
-                              className="st-menu-chevron"
-                              aria-hidden="true"
-                            />
-                          </DropdownMenuItem>
-                          {retryAnalysis &&
-                            b.analysisStatus === "unavailable" &&
-                            state.aiConnected && (
-                              <>
-                                <DropdownMenuSeparator />
-                                <DropdownMenuItem onSelect={retryAnalysis}>
-                                  Read my photo again
-                                </DropdownMenuItem>
-                              </>
-                            )}
-                        </>
-                      )}
-                    </DropdownMenuContent>
-                  </DropdownMenu>
-                )}
-              </div>
-              <div
-                ref={grid}
-                className="st-style-grid"
-                role="group"
-                aria-label={
-                  confirmed
-                    ? `Styles suggested for your ${subjectLabel(b.recommendationFamily, b.recommendationDrink)}`
-                    : "Suggested styles"
-                }
-              >
-                {tiles.map(tile)}
-                <StyleTile
-                  label="All styles"
-                  description={`Browse all ${available.length} styles, collections and occasions`}
-                  media={<StyleMosaic images={mosaic} />}
-                  kind="dialog"
-                  buttonRef={browseTrigger}
-                  disabled={!!busy}
-                  onSelect={() => {
-                    setDetail(null);
-                    setLibraryOpen(true);
-                  }}
-                />
-              </div>
-              <div className="st-selected">
-                <div>
-                  <b>{lookName}</b>
-                  {b.occasionId && (
-                    <span className="st-occasion">
-                      {occasionName(b.occasionId)} collection
-                    </span>
+                          </>
+                        )}
+                      </DropdownMenuContent>
+                    </DropdownMenu>
                   )}
-                  <span>{changes.filter(Boolean).join(" · ")}</span>
                 </div>
-                <button
-                  ref={customizeTrigger}
-                  className="st-text-button"
-                  disabled={!!busy || !resolvePhotoLook(b)}
-                  onClick={() => customize()}
-                >
-                  <SlidersHorizontal size={14} />
-                  Customize
-                </button>
-              </div>
-              {creationBlock && (
-                <p className="st-alert" role="status">
-                  {creationBlock}
-                </p>
-              )}
-              {vesselConflict && (
-                <p className="st-alert">
-                  This look changes the serving dish. For a drink, keep the
-                  glass you serve it in.{" "}
-                  <button
-                    className="st-text-button"
-                    onClick={() =>
-                      update({
-                        plate: "keep",
-                        studioOverrides: [
-                          ...new Set([...(b.studioOverrides || []), "plate"]),
-                        ],
-                      })
-                    }
-                  >
-                    Keep my glass
-                  </button>
-                </p>
-              )}
-              {(b.look === "reference" || referencePhoto) && (
-                <button
-                  ref={referenceTrigger}
-                  className="st-reference"
-                  disabled={!!busy}
-                  onClick={(event) =>
-                    openInspiration("main", event.currentTarget)
+                <div
+                  ref={grid}
+                  className="st-style-grid"
+                  role="group"
+                  aria-label={
+                    confirmed
+                      ? `Styles suggested for your ${subjectLabel(b.recommendationFamily, b.recommendationDrink)}`
+                      : "Suggested styles"
                   }
                 >
-                  {referencePhoto && inspirationStatus !== "unavailable" ? (
-                    <img src={referencePhoto.url} alt="" />
-                  ) : (
-                    <ImagePlus size={16} />
-                  )}
-                  {referencePhoto
-                    ? inspirationStatus === "unavailable"
-                      ? "Replace inspiration photo"
-                      : "Edit inspiration photo"
-                    : "Add inspiration photo"}
-                  {!pro && <ProBadge />}
-                </button>
-              )}
-              {proHint && (
-                <div className="st-alert" role="status">
-                  <p>{proHint}</p>
-                </div>
-              )}
-              {inspirationBlock && (
-                <div className="st-alert" role="status">
-                  <p>{inspirationBlock}</p>
-                  {retryInspiration && (
-                    <div>
-                      <button
-                        ref={referenceRetryTrigger}
-                        className="st-text-button"
-                        disabled={!!busy || inspirationStatus === "checking"}
-                        onClick={() => {
-                          returnFromReferenceCheck.current = true;
-                          retryInspiration();
-                        }}
-                      >
-                        {inspirationStatus === "checking"
-                          ? "Checking…"
-                          : "Check again"}
-                      </button>
-                      <button
-                        className="st-text-button"
-                        disabled={!!busy}
-                        onClick={() => {
-                          setDetail(null);
-                          setLibraryOpen(true);
-                        }}
-                      >
-                        Choose another style
-                        <ArrowRight size={14} />
-                      </button>
-                    </div>
-                  )}
-                </div>
-              )}
-              <p className="st-status" role="status">
-                {notice}
-                {undo && (
-                  <button
-                    className="st-text-button"
+                  {tiles.map(tile)}
+                  <StyleTile
+                    label="All styles"
+                    description={`Browse all ${available.length} styles, collections and occasions`}
+                    media={<StyleMosaic images={mosaic} />}
+                    kind="dialog"
+                    buttonRef={browseTrigger}
                     disabled={!!busy}
-                    onClick={() => {
-                      update(undo.patch);
-                      setNotice(`${undo.name} restored.`);
-                      setUndo(null);
+                    onSelect={() => {
+                      setDetail(null);
+                      setLibraryOpen(true);
                     }}
-                  >
-                    <Undo2 size={13} />
-                    Undo
-                  </button>
-                )}
-              </p>
-            </section>
-
-            <section className="st-section" aria-labelledby="st-format-title">
-              <h2 id="st-format-title" className="st-section-title">
-                Format
-              </h2>
-              <div
-                className="st-segmented st-format-choice"
-                role="radiogroup"
-                aria-labelledby="st-format-title"
-                onKeyDown={radioKeys}
-                style={{ "--segments": formatOptions.length } as CSSProperties}
-              >
-                {formatOptions.map((id, index) => (
-                  <button
-                    key={id}
-                    role="radio"
-                    aria-checked={b.format === id}
-                    aria-label={`${formatName[id] || formats[id].short}, ${formatShape[id] || ""}, ${formatUse[id] || formats[id].label}`}
-                    tabIndex={radioTab(index, formatOptions.indexOf(b.format))}
-                    disabled={!!busy}
-                    onClick={() => chooseFormat(id)}
-                  >
-                    <span className="st-format-name">
-                      {formatName[id] || formats[id].short}
-                    </span>
-                    {formatShape[id] && (
-                      <small className="st-format-ratio">
-                        {formatShape[id]}
-                      </small>
+                  />
+                </div>
+                <div className="st-selected">
+                  <div>
+                    <b>{lookName}</b>
+                    {b.occasionId && (
+                      <span className="st-occasion">
+                        {occasionName(b.occasionId)} collection
+                      </span>
                     )}
+                    <span>{changes.filter(Boolean).join(" · ")}</span>
+                  </div>
+                  <button
+                    ref={customizeTrigger}
+                    className="st-text-button"
+                    disabled={!!busy || !resolvePhotoLook(b)}
+                    onClick={() => customize()}
+                  >
+                    <SlidersHorizontal size={14} />
+                    Customize
                   </button>
-                ))}
-              </div>
-              <p className="st-format-use" aria-hidden="true">
-                {formatUse[b.format] || format.label}
-              </p>
-            </section>
-
-            <section className="st-section" aria-labelledby="st-details-title">
-              <div className="st-section-head">
-                <h2 id="st-details-title" className="st-section-title">
-                  Details
-                </h2>
-                <span className="st-optional">Optional</span>
-              </div>
-              {b.mode !== "description" &&
-                !b.sample &&
-                (!dish || isPlaceholderDishName(dish.name)) && (
-                  // A new photo becomes a dish in My Dishes; its name is what
-                  // menus and posts show, so ask for it while it has none.
-                  <label className="st-field">
-                    <span>Dish name</span>
-                    <input
-                      className="st-input"
-                      value={b.name || ""}
-                      maxLength={100}
-                      placeholder="What’s this dish called?"
-                      onChange={(event) => update({ name: event.target.value })}
-                    />
-                  </label>
+                </div>
+                {creationBlock && (
+                  <p className="st-alert" role="status">
+                    {creationBlock}
+                  </p>
                 )}
-              <textarea
-                className="st-input st-details"
+                {vesselConflict && (
+                  <p className="st-alert">
+                    This look changes the serving dish. For a drink, keep the
+                    glass you serve it in.{" "}
+                    <button
+                      className="st-text-button"
+                      onClick={() =>
+                        update({
+                          plate: "keep",
+                          studioOverrides: [
+                            ...new Set([...(b.studioOverrides || []), "plate"]),
+                          ],
+                        })
+                      }
+                    >
+                      Keep my glass
+                    </button>
+                  </p>
+                )}
+                {(b.look === "reference" || referencePhoto) && (
+                  <button
+                    ref={referenceTrigger}
+                    className="st-reference"
+                    disabled={!!busy}
+                    onClick={(event) =>
+                      openInspiration("main", event.currentTarget)
+                    }
+                  >
+                    {referencePhoto && inspirationStatus !== "unavailable" ? (
+                      <img src={referencePhoto.url} alt="" />
+                    ) : (
+                      <ImagePlus size={16} />
+                    )}
+                    {referencePhoto
+                      ? inspirationStatus === "unavailable"
+                        ? "Replace inspiration photo"
+                        : "Edit inspiration photo"
+                      : "Add inspiration photo"}
+                    {!pro && <ProBadge />}
+                  </button>
+                )}
+                {proHint && (
+                  <div className="st-alert" role="status">
+                    <p>{proHint}</p>
+                  </div>
+                )}
+                {inspirationBlock && (
+                  <div className="st-alert" role="status">
+                    <p>{inspirationBlock}</p>
+                    {retryInspiration && (
+                      <div>
+                        <button
+                          ref={referenceRetryTrigger}
+                          className="st-text-button"
+                          disabled={!!busy || inspirationStatus === "checking"}
+                          onClick={() => {
+                            returnFromReferenceCheck.current = true;
+                            retryInspiration();
+                          }}
+                        >
+                          {inspirationStatus === "checking"
+                            ? "Checking…"
+                            : "Check again"}
+                        </button>
+                        <button
+                          className="st-text-button"
+                          disabled={!!busy}
+                          onClick={() => {
+                            setDetail(null);
+                            setLibraryOpen(true);
+                          }}
+                        >
+                          Choose another style
+                          <ArrowRight size={14} />
+                        </button>
+                      </div>
+                    )}
+                  </div>
+                )}
+                <p className="st-status" role="status">
+                  {notice}
+                  {undo && (
+                    <button
+                      className="st-text-button"
+                      disabled={!!busy}
+                      onClick={() => {
+                        update(undo.patch);
+                        setNotice(`${undo.name} restored.`);
+                        setUndo(null);
+                      }}
+                    >
+                      <Undo2 size={13} />
+                      Undo
+                    </button>
+                  )}
+                </p>
+              </section>
+
+              <section className="st-section" aria-labelledby="st-format-title">
+                <h2 id="st-format-title" className="st-section-title">
+                  Format
+                </h2>
+                <div
+                  className="st-segmented st-format-choice"
+                  role="radiogroup"
+                  aria-labelledby="st-format-title"
+                  onKeyDown={radioKeys}
+                  style={
+                    { "--segments": formatOptions.length } as CSSProperties
+                  }
+                >
+                  {formatOptions.map((id, index) => (
+                    <button
+                      key={id}
+                      role="radio"
+                      aria-checked={b.format === id}
+                      aria-label={`${formatName[id] || formats[id].short}, ${formatShape[id] || ""}, ${formatUse[id] || formats[id].label}`}
+                      tabIndex={radioTab(
+                        index,
+                        formatOptions.indexOf(b.format),
+                      )}
+                      disabled={!!busy}
+                      onClick={() => chooseFormat(id)}
+                    >
+                      <span className="st-format-name">
+                        {formatName[id] || formats[id].short}
+                      </span>
+                      {formatShape[id] && (
+                        <small className="st-format-ratio">
+                          {formatShape[id]}
+                        </small>
+                      )}
+                    </button>
+                  ))}
+                </div>
+                <p className="st-format-use" aria-hidden="true">
+                  {formatUse[b.format] || format.label}
+                </p>
+              </section>
+
+              <section
+                className="st-section"
                 aria-labelledby="st-details-title"
-                aria-describedby="st-details-hint"
-                value={b.note || ""}
-                maxLength={500}
-                rows={3}
-                placeholder="Candlelight, more room above the dish…"
-                onChange={(event) => update({ note: event.target.value })}
-              />
-              <span id="st-details-hint" className="sr-only">
-                {fantasy
-                  ? "Describe the exaggeration, light or composition you’d like."
-                  : "Describe the light, setting or framing you’d like. Your food always stays the same."}
-              </span>
-            </section>
+              >
+                <div className="st-section-head">
+                  <h2 id="st-details-title" className="st-section-title">
+                    Details
+                  </h2>
+                  <span className="st-optional">Optional</span>
+                </div>
+                {b.mode !== "description" &&
+                  !b.sample &&
+                  (!dish || isPlaceholderDishName(dish.name)) && (
+                    // A new photo becomes a dish in My Dishes; its name is what
+                    // menus and posts show, so ask for it while it has none.
+                    <label className="st-field">
+                      <span>Dish name</span>
+                      <input
+                        className="st-input"
+                        value={b.name || ""}
+                        maxLength={100}
+                        placeholder="What’s this dish called?"
+                        onChange={(event) =>
+                          update({ name: event.target.value })
+                        }
+                      />
+                    </label>
+                  )}
+                <textarea
+                  className="st-input st-details"
+                  aria-labelledby="st-details-title"
+                  aria-describedby="st-details-hint"
+                  value={b.note || ""}
+                  maxLength={500}
+                  rows={3}
+                  placeholder="Candlelight, more room above the dish…"
+                  onChange={(event) => update({ note: event.target.value })}
+                />
+                <span id="st-details-hint" className="sr-only">
+                  {fantasy
+                    ? "Describe the exaggeration, light or composition you’d like."
+                    : "Describe the light, setting or framing you’d like. Your food always stays the same."}
+                </span>
+              </section>
+            </div>
 
             {/* Shown before a photo is added when no image can be made. */}
             <WorkspaceActionBar
