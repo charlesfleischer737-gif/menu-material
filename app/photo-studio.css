@@ -1023,15 +1023,16 @@ textarea.st-input {
 .st-rows {
   display: grid;
   gap: 2px;
-  margin: 20px -12px 0;
+  margin: 16px -12px 0;
 }
+/* One line each: the name says what it does, and costs show where they apply. */
 :is(.st-studio) .st-row {
   display: grid;
   grid-template-columns: 24px minmax(0, 1fr) auto;
   align-items: center;
   gap: 12px;
   width: 100%;
-  min-height: 56px;
+  min-height: 48px;
   padding: 8px 12px;
   border: 0;
   border-radius: 14px;
@@ -1055,18 +1056,9 @@ textarea.st-input {
 .st-row[aria-expanded="true"] > svg:last-child {
   rotate: 180deg;
 }
-.st-row b,
-.st-row small {
-  display: block;
-}
-.st-row b {
+.st-row > span {
   font-size: var(--text-callout);
-  font-weight: 600;
-}
-.st-row small {
-  margin-top: 1px;
-  color: var(--st-muted);
-  font-size: var(--text-caption);
+  font-weight: 500;
 }
 .st-ai {
   display: grid;
@@ -2511,25 +2503,29 @@ textarea.st-input {
   width: 40px;
   height: 40px;
 }
+/* Four equal tiles on one row. Pro sits in the corner, so it never changes a
+   tile's height or pushes its icon out of line with the others. */
 .st-hub-row {
   display: grid;
-  grid-template-columns: repeat(3, minmax(0, 1fr));
+  grid-template-columns: repeat(4, minmax(0, 1fr));
   gap: 8px;
+  margin-top: 4px;
 }
 :is(.st-studio) .st-hub-button {
+  position: relative;
   display: grid;
   justify-items: center;
-  align-content: center;
-  gap: 4px;
+  align-content: start;
+  gap: 6px;
   min-width: 0;
-  min-height: 60px;
-  padding: 8px 4px;
+  min-height: 64px;
+  padding: 12px 2px 10px;
   border: 0;
   border-radius: 14px;
   background: var(--st-fill);
   color: var(--st-ink);
   font: inherit;
-  font-size: var(--text-footnote);
+  font-size: var(--text-caption);
   font-weight: 600;
   line-height: 1.2;
   text-align: center;
@@ -2540,6 +2536,15 @@ textarea.st-input {
 }
 :is(.st-studio) .st-hub-button > svg {
   color: var(--st-accent);
+}
+.st-hub-button > .pro-badge {
+  position: absolute;
+  top: -6px;
+  right: -4px;
+  padding: 0 6px;
+  box-shadow: 0 0 0 2px var(--st-surface);
+  font-size: 0.625rem;
+  line-height: 16px;
 }
 :is(.st-studio) .st-hub-button:hover:not(:disabled) {
   background: var(--st-fill-hover);
@@ -2575,12 +2580,18 @@ textarea.st-input {
     height: 44px;
   }
   :is(.st-studio) .st-hub-button {
-    min-height: 52px;
-    padding: 6px 2px;
-    font-size: var(--text-caption);
+    gap: 4px;
+    min-height: 56px;
+    padding: 9px 2px 8px;
   }
   .st-hub .st-action-note {
     display: none;
+  }
+  /* Too tall to pin, the actions stay part of the card, not a box within it. */
+  .st-inspector .st-hub[data-in-flow="true"] {
+    margin: 4px 0 0;
+    padding: 12px 0 16px;
+    border: 0;
   }
 }
 .st-tile-media > .st-style-pro {

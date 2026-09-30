@@ -52,8 +52,6 @@ import {
   samplePhoto,
   studioDishRequest,
   adjustedPhotoSize,
-  formatNames,
-  formatShapes,
   withoutRemovedPhotos,
   type PhotoFormat,
 } from "@/lib/studio";
@@ -1616,11 +1614,11 @@ export default function PhotoStudio({
                     ? "Your food. Larger than life."
                     : "Your food. Beautifully presented."}
                 </h2>
-                <p className="st-result-copy">
-                  {resultFantasy
-                    ? "Creative food art with intentionally exaggerated proportions and presentation. Review your artwork, then save a size for your campaign."
-                    : "Take a close look at your dish. When it feels right, save a size made for where you’ll use it."}
-                </p>
+                {resultFantasy && (
+                  <p className="st-result-copy">
+                    Proportions and presentation are intentionally exaggerated.
+                  </p>
+                )}
                 {failedChange && (
                   <div className="st-alert">
                     <p>
@@ -1684,10 +1682,7 @@ export default function PhotoStudio({
                   onClick={() => openQuickEdits(resultId)}
                 >
                   <SlidersHorizontal size={18} aria-hidden="true" />
-                  <span>
-                    <b>Quick adjustments</b>
-                    <small>Crop, light and warmth · No image used</small>
-                  </span>
+                  <span>Quick adjustments</span>
                   <ChevronRight size={16} aria-hidden="true" />
                 </button>
                 <button
@@ -1697,10 +1692,7 @@ export default function PhotoStudio({
                   onClick={() => setAdjust(adjust === "ai" ? "" : "ai")}
                 >
                   <Sparkles size={18} aria-hidden="true" />
-                  <span>
-                    <b>Change the setting with AI</b>
-                    <small>Describe it in your words · Uses 1 image</small>
-                  </span>
+                  <span>Change the setting with AI</span>
                   <ChevronDown size={16} aria-hidden="true" />
                 </button>
                 {adjust === "ai" && (
@@ -1759,16 +1751,9 @@ export default function PhotoStudio({
                   >
                     <CircleAlert size={18} aria-hidden="true" />
                     <span>
-                      <b>
-                        {asset?.needs_correction
-                          ? "View food correction report"
-                          : "Something changed in my food"}
-                      </b>
-                      <small>
-                        {asset?.needs_correction
-                          ? "Kept in history, left out of automatic choices"
-                          : "Tell us what’s different"}
-                      </small>
+                      {asset?.needs_correction
+                        ? "View food correction report"
+                        : "Something changed in my food"}
                     </span>
                     <ChevronRight size={16} aria-hidden="true" />
                   </button>
@@ -1776,10 +1761,7 @@ export default function PhotoStudio({
                 {b.photoBatchId && (
                   <button className="st-row" onClick={() => setBatchOpen(true)}>
                     <Images size={18} aria-hidden="true" />
-                    <span>
-                      <b>Return to photo set</b>
-                      <small>Continue with your other dishes</small>
-                    </span>
+                    <span>Return to photo set</span>
                     <ChevronRight size={16} aria-hidden="true" />
                   </button>
                 )}
@@ -1791,7 +1773,7 @@ export default function PhotoStudio({
                 note={
                   adjust === "quick"
                     ? "Save this version before using your adjusted photo."
-                    : `${formatNames[resultFormat]} · ${formatShapes[resultFormat]} · No image used`
+                    : undefined
                 }
                 onAction={openPhotoAction}
                 proActions={pro ? [] : ["promote", "pack"]}

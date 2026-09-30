@@ -14,6 +14,13 @@ export const photoActionLabels: Record<PhotoAction, string> = {
   menu: "Add to menu",
   promote: "Promote this dish",
 };
+/** Short names for the photo hub's tiles, so all four fit on one row. */
+const tileLabels: Record<Exclude<PhotoAction, "download">, string> = {
+  post: "Post",
+  menu: "Menu",
+  promote: "Promote",
+  pack: "Photo pack",
+};
 
 export function PhotoHubActions({
   disabled = false,
@@ -23,7 +30,8 @@ export function PhotoHubActions({
   proActions = [],
 }: {
   disabled?: boolean;
-  note: string;
+  /** A status line under the actions, when there is something to say. */
+  note?: string;
   onAction: (action: PhotoAction) => Promise<void>;
   downloadRef?: Ref<HTMLButtonElement>;
   /** Actions marked Pro, so no one starts work their plan can't finish. */
@@ -46,9 +54,9 @@ export function PhotoHubActions({
       setBusy(false);
     }
   }
+  const status = busy ? "Preparing…" : note;
   return (
     <WorkspaceActionBar className="st-action st-hub">
-      <p className="st-action-note">{photoReviewReminder}</p>
       <button
         ref={downloadRef}
         className="st-create"
@@ -70,26 +78,31 @@ export function PhotoHubActions({
             ["promote", Sparkles],
             ["pack", Package],
           ] as const
-        ).map(([action, Icon]) => (
-          <button
-            key={action}
-            className="st-hub-button"
-            disabled={disabled || busy}
-            onClick={() => void start(action)}
-          >
-            <Icon size={17} aria-hidden="true" />
-            {photoActionLabels[action]}
-            {proActions.includes(action) && <ProBadge />}
-          </button>
-        ))}
+        ).map(([action, Icon]) => {
+          const pro = proActions.includes(action);
+          return (
+            <button
+              key={action}
+              className="st-hub-button"
+              aria-label={`${photoActionLabels[action]}${pro ? ", Pro" : ""}`}
+              disabled={disabled || busy}
+              onClick={() => void start(action)}
+            >
+              <Icon size={20} aria-hidden="true" />
+              {tileLabels[action]}
+              {pro && <ProBadge />}
+            </button>
+          );
+        })}
       </div>
       {error && (
         <p className="st-hub-error" role="alert">
           {error}
         </p>
       )}
-      <p className="st-action-note" role="status">
-        {busy ? "Preparing…" : note}
+      <p className="st-action-note">{photoReviewReminder}</p>
+      <p className={status ? "st-action-note" : "sr-only"} role="status">
+        {status}
       </p>
     </WorkspaceActionBar>
   );
