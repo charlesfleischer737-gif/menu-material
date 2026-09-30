@@ -2,7 +2,6 @@
 import { useRef, useState, type Ref } from "react";
 import { BookOpen, Download, Megaphone, Package, Sparkles } from "lucide-react";
 import { photoReviewReminder } from "@/lib/photo-use";
-import WorkspaceActionBar from "./workspace-action-bar";
 import { ProBadge } from "./pro-badge";
 
 export type PhotoAction = "download" | "pack" | "post" | "menu" | "promote";
@@ -56,7 +55,8 @@ export function PhotoHubActions({
   }
   const status = busy ? "Preparing…" : note;
   return (
-    <WorkspaceActionBar className="st-action st-hub">
+    // Part of the panel, not pinned: on phones the tab bar stays the only bar.
+    <div className="st-action st-hub">
       <button
         ref={downloadRef}
         className="st-create"
@@ -104,6 +104,6 @@ export function PhotoHubActions({
       <p className={status ? "st-action-note" : "sr-only"} role="status">
         {status}
       </p>
-    </WorkspaceActionBar>
+    </div>
   );
 }
