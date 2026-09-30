@@ -1153,22 +1153,6 @@ export const photoStyles: PhotoStyle[] = [
     angle: "keep",
   },
   {
-    id: "bold-electric",
-    backdrop: "colorful",
-    category: "bold",
-    group: "Bold & Dramatic",
-    name: "Electric blue",
-    cue: "Cobalt blue · yellow spotlight",
-    description:
-      "Electric cobalt and a diagonal yellow spotlight bring campaign energy while the food keeps its natural color.",
-    bestFor: "Tacos, bao, colorful bowls and fresh lunch specials",
-    traits: ["Cobalt color", "Diagonal yellow light", "Neutral light on food"],
-    prompt:
-      "Electric cobalt seamless table and backdrop with a diagonal lemon-yellow spotlight on the backdrop only. Neutral keylight on food; grounded shadows. Close full-serving portrait. Keep original food, portion, texture and serving ware. No added food, floating elements, artificial gloss or text.",
-    image: "/studio/styles/bold-electric.webp",
-    angle: "keep",
-  },
-  {
     id: "bold-spotlight",
     backdrop: "dark",
     category: "bold",
