@@ -131,11 +131,6 @@ export const proFeatures = {
       "Photo packs for every delivery and social size, and ZIPs of any selection.",
     blocked: "Photo packs and ZIP downloads are part of Pro.",
   },
-  staffLinks: {
-    title: "Staff photo links",
-    detail: "Share an upload link with your team. You approve every photo.",
-    blocked: "Staff photo links are part of Pro.",
-  },
   insights: {
     title: "Menu insights",
     detail:

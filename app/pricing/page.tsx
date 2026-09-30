@@ -47,7 +47,7 @@ export default function Pricing() {
     ],
     [
       "What does Pro add?",
-      `${PRO_PLAN.imagesPerPeriod} images every month, your restaurant look on photos, posts and menus, every post and menu design, campaigns, up to 30 live menus, full menu insights, saved looks, inspiration photos, batches, staff photo links, and no “Made with Menu Material” on your guest menus.`,
+      `${PRO_PLAN.imagesPerPeriod} images every month, your restaurant look on photos, posts and menus, every post and menu design, campaigns, up to 30 live menus, full menu insights, saved looks, inspiration photos, batches, and no “Made with Menu Material” on your guest menus.`,
     ],
     [
       "How does Pro work?",

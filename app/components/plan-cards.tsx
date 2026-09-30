@@ -112,7 +112,6 @@ export default function PlanCards({
             "Campaigns: a matching post, Story, counter sign and menu special",
             "Up to 30 live menus, with full menu insights",
             "Saved looks, inspiration photos and batches",
-            "Staff photo links",
             "No “Made with Menu Material” on your menus",
             "Cancel future renewals anytime",
           ]}

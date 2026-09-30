@@ -201,19 +201,6 @@ assert(
   await page.evaluate(() => document.documentElement.scrollWidth <= innerWidth),
   "No phone horizontal overflow",
 );
-await page.getByRole("button", { name: "Menu tools", exact: true }).click();
-await page.getByRole("tab", { name: "Weekly assistant", exact: true }).click();
-await page
-  .getByRole("button", { name: "Suggest promotions", exact: true })
-  .click();
-await page
-  .getByRole("button", { name: "Edit this promotion" })
-  .first()
-  .waitFor();
-await page.screenshot({
-  path: artifactDir + "/phone-weekly.png",
-  fullPage: true,
-});
 await page
   .getByRole("button", { name: "Restaurant settings", exact: true })
   .click();
@@ -239,7 +226,7 @@ console.log(
   JSON.stringify({
     passed: true,
     checks:
-      "Core creation, editing, approval, PNG exports, explicit publication, persistence, mobile overflow, weekly suggestions and customer menu",
+      "Core creation, editing, approval, PNG exports, explicit publication, persistence, mobile overflow and customer menu",
     artifacts: artifactDir,
     errors,
   }),

@@ -437,10 +437,6 @@ export default function CoreWorkspace({
                   state={state}
                   refresh={refresh}
                   selectDish={(d) => photo(d.id)}
-                  onSuggestion={(s) => {
-                    setLegacySeed(s);
-                    navigate("campaigns");
-                  }}
                 />
               </div>
             </>

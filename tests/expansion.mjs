@@ -11,7 +11,7 @@ const root = mkdtempSync(join(tmpdir(), "menu-material-expansion-"));
 process.env.MENU_MATERIAL_DATA_DIR = root;
 process.env.OPENAI_API_KEY = "fixture-only";
 const { handle } = await import("../lib/server/api.ts");
-const { all, one, run } = await import("../lib/server/core.ts");
+const { all, one, run, digest } = await import("../lib/server/core.ts");
 const { publicMenu } = await import("../lib/server/promotions.ts");
 const { newMenuDocument, newMenuEntry } =
   await import("../lib/menu-document.ts");
@@ -429,15 +429,26 @@ try {
   assert.equal(insights.counts.dish_view, 1);
   assert.equal(insights.active.average, 45000);
   assert.equal(insights.counts.promotion_exported, 1);
-  const staff = (await call("staff-links", {})).path.split("/").at(-1);
+  const staff = "s".repeat(43);
+  await run(
+    "INSERT INTO staff_links (hash,restaurant_id,expires_at,created_at) VALUES (?,?,?,?)",
+    digest(staff),
+    r.id,
+    Date.now() + 86400000,
+    Date.now(),
+  );
+  const linksBefore = (await all("SELECT hash FROM staff_links")).length;
+  await call("staff-links", {}, 410);
+  await call("staff-links/revoke", {}, 410);
+  assert.equal((await all("SELECT hash FROM staff_links")).length, linksBefore);
+  const submitted = (await call("assets", photo(dish), 201)).id;
+  await run("UPDATE assets SET kind='staff' WHERE id=?", submitted);
+  const assetsBefore = (await all("SELECT id FROM assets")).length;
   cookie = "";
-  const staffInfo = await call("staff/" + staff);
-  assert(staffInfo.dishes.every((d) => d.id !== foreignDish));
-  assert.deepEqual(Object.keys(staffInfo.dishes[0]).sort(), ["id", "name"]);
-  await call("staff/" + staff + "/upload", photo(foreignDish), 404);
-  const submitted = (
-    await call("staff/" + staff + "/upload", photo(dish, "logo"), 201)
-  ).id;
+  await call("staff/" + staff, undefined, 410);
+  await call("staff/" + staff + "/upload", photo(dish), 410);
+  await call("staff/" + staff + "/upload", photo(foreignDish), 410);
+  assert.equal((await all("SELECT id FROM assets")).length, assetsBefore);
   await call("assets/" + submitted, undefined, 401);
   await call("public/" + r.slug + "/assets/" + submitted, undefined, 404);
   cookie = foreignCookie;
@@ -448,10 +459,6 @@ try {
     (await one("SELECT kind FROM assets WHERE id=?", submitted)).kind,
     "source",
   );
-  await call("staff-links/revoke", {});
-  cookie = "";
-  await call("staff/" + staff, undefined, 404);
-  cookie = ownerCookie;
   const fd = new FormData();
   fd.set("file", new File([jpg], "menu.jpg", { type: "image/jpeg" }));
   const imported = (await call("imports", fd)).id;
@@ -617,10 +624,7 @@ try {
   );
   const job = fresh.jobs.find((j) => j.id === item.job_id);
   assert.equal(JSON.parse(job.details).preserve, "Exactly 3 basil leaves");
-  const suggestions = (await call("suggestions", { goal: "lunch" }))
-    .suggestions;
-  assert.equal(suggestions.length, 3);
-  assert(suggestions.every((s) => s.items[0].photoId && s.price === 1400));
+  await call("suggestions", { goal: "lunch" }, 410);
   await call("promotions/" + pid + "/unpublish", {});
   assert.equal((await call("public/" + r.slug)).menu.specials.length, 0);
   await call("public/" + r.slug + "/assets/" + source, undefined, 404);
@@ -639,7 +643,7 @@ try {
   assert.equal(disk.prepare("SELECT count(*) n FROM menu_imports").get().n, 1);
   disk.close();
   console.log(
-    `PASS: ${checks} expansion API/timezone checks plus persistence, price/photo isolation, publication snapshots, exact expiry, DST transitions, staff scope, import review, engagement deduplication and partial batch recovery assertions.`,
+    `PASS: ${checks} expansion API/timezone checks plus persistence, price/photo isolation, publication snapshots, exact expiry, DST transitions, retired tools, historical staff photos, import review, engagement deduplication and partial batch recovery assertions.`,
   );
   console.log(
     "All provider responses in this test are isolated fixtures. No live generation or sales results claimed.",

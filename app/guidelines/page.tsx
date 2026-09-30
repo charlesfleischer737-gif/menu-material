@@ -68,9 +68,9 @@ export default function Guidelines() {
           Keep access secure
         </h2>
         <p>
-          Use a unique password and keep invitation, reset and staff-upload
-          links private. Do not share another restaurant’s work, bypass usage
-          limits or submit harmful or unlawful material.
+          Use a unique password and keep invitation and reset links private. Do
+          not share another restaurant’s work, bypass usage limits or submit
+          harmful or unlawful material.
         </p>
         <p>
           AI creation may pause while usage limits or service issues are

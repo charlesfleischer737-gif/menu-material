@@ -31,12 +31,11 @@ import {
   one,
   response,
   run,
-  token,
   viewer,
   type Row,
 } from "./core";
 import { enqueue, provider } from "./generation";
-import { localTime, localToInstant, defaultStyle } from "../promotions";
+import { defaultStyle } from "../promotions";
 import { menuPlacementIds } from "../menu-placements";
 const importRows = z
   .array(
@@ -53,44 +52,6 @@ const importRows = z
   )
   .max(60);
 
-export async function staffAccess(
-  req: Request,
-  p: string[],
-  upload: (req: Request, r: Row, kind?: string) => Promise<Response>,
-) {
-  if (p[0] !== "staff") return null;
-  assert(p[1]?.length === 43, 404, "This upload link is unavailable.");
-  const link = await one(
-    "SELECT * FROM staff_links WHERE hash=? AND revoked_at IS NULL AND expires_at>?",
-    digest(p[1]),
-    now(),
-  );
-  assert(
-    link,
-    404,
-    "This upload link has expired or was revoked. Ask the owner for a new link.",
-  );
-  const r = await one(
-    "SELECT * FROM restaurants WHERE id=?",
-    link.restaurant_id,
-  );
-  assert(r, 404, "Restaurant unavailable.");
-  if (req.method === "GET" && !p[2])
-    return response({
-      name: r.name,
-      // Staff see the restaurant's current dishes, not archived or sample ones.
-      dishes: await all(
-        "SELECT id,name FROM dishes WHERE restaurant_id=? AND archived_at IS NULL AND sample=0 ORDER BY name",
-        r.id,
-      ),
-    });
-  assert(req.method === "POST" && p[2] === "upload", 404, "Not found.");
-  await limit("staff-ip:" + caller(req) + ":" + link.hash, 20, 3600);
-  await limit("staff-link:" + link.hash, 100, 86400);
-  const result = await upload(req, r, "staff");
-  await event(r.id, "staff_upload_submitted");
-  return result;
-}
 export async function advanceBatches(restaurantId?: string) {
   if ((await aiControls()).paused) return;
   const rows = await all(
@@ -185,27 +146,6 @@ export async function retryFailed(r: Row, jobId: string) {
   await event(r.id, "generation_retried", job.id, { slots: failed.length });
 }
 export async function menuTools(req: Request, p: string[], r: Row) {
-  if (p[0] === "staff-links" && req.method === "POST") {
-    if (p[1] === "revoke") {
-      await run(
-        "UPDATE staff_links SET revoked_at=? WHERE restaurant_id=? AND revoked_at IS NULL",
-        now(),
-        r.id,
-      );
-      return response({ ok: true });
-    }
-    // Existing links keep working until they expire; new ones are Pro.
-    await requirePro(r.id, "staffLinks");
-    const raw = token();
-    await run(
-      "INSERT INTO staff_links (hash,restaurant_id,expires_at,created_at) VALUES (?,?,?,?)",
-      digest(raw),
-      r.id,
-      now() + 7 * 86400000,
-      now(),
-    );
-    return response({ path: "/s/" + raw, expiresAt: now() + 7 * 86400000 });
-  }
   if (p[0] === "batches" && req.method === "POST") {
     if (p[1] === "retry") {
       const b = await body(req),
@@ -638,82 +578,6 @@ export async function menuTools(req: Request, p: string[], r: Row) {
         imp.id,
       );
     return response({ ok: true });
-  }
-  if (p[0] === "suggestions" && req.method === "POST") {
-    const { goal } = z
-      .object({ goal: z.enum(["lunch", "catering", "new_dish"]) })
-      .parse(await body(req));
-    const hours = JSON.parse(r.hours);
-    assert(
-      hours.length === 7,
-      400,
-      "Save your opening hours in Restaurant settings first.",
-    );
-    const dishes = await all(
-      "SELECT d.*, (SELECT id FROM assets WHERE dish_id=d.id AND restaurant_id=d.restaurant_id AND approved_at IS NOT NULL AND deleted_at IS NULL AND kind IN ('source','generated') ORDER BY created_at DESC LIMIT 1) AS photoId FROM dishes d WHERE restaurant_id=? AND available=1 AND confirmed_at IS NOT NULL ORDER BY created_at DESC",
-      r.id,
-    );
-    const candidates = dishes.filter((d) => d.photoId);
-    assert(
-      candidates.length,
-      400,
-      "Approve a photo for an available dish to get menu-based suggestions.",
-    );
-    const suggestions = [],
-      lookStyle = await effectiveStyle(r);
-    const today = localTime(now(), r.timezone).slice(0, 10);
-    for (let offset = 0; offset < 14 && suggestions.length < 3; offset++) {
-      const date = new Date(
-          Date.parse(today + "T12:00:00Z") + offset * 86400000,
-        ),
-        day = date.getUTCDay(),
-        h = hours.find((x: Row) => x.day === day);
-      if (!h || h.closed || (goal === "lunch" && (day === 0 || day === 6)))
-        continue;
-      const dateText = date.toISOString().slice(0, 10),
-        open = h.open,
-        close = h.close;
-      const start = goal === "lunch" && open < "11:00" ? "11:00" : open;
-      const end = goal === "lunch" && close > "14:00" ? "14:00" : close;
-      if (goal === "lunch" && (start >= "14:00" || end <= start)) continue;
-      const endDate =
-        goal !== "lunch" && close <= open
-          ? new Date(date.getTime() + 86400000).toISOString().slice(0, 10)
-          : dateText;
-      const startsLocal = dateText + "T" + start,
-        endsLocal = endDate + "T" + end;
-      if (localToInstant(startsLocal, r.timezone) < now()) continue;
-      const d: Row = candidates[suggestions.length % candidates.length];
-      suggestions.push({
-        type: goal === "new_dish" ? "special" : goal,
-        title:
-          goal === "lunch"
-            ? `${d.name} for lunch`
-            : goal === "catering"
-              ? `${d.name} catering`
-              : `Spotlight: ${d.name}`,
-        description: d.description.slice(0, 500),
-        price: d.price,
-        items: [{ dishId: d.id, quantity: 1, photoId: d.photoId }],
-        startsLocal,
-        endsLocal,
-        style: { ...defaultStyle, ...lookStyle },
-        caption: `${d.name}. ${d.description}`.slice(0, 2200),
-        reason:
-          goal === "catering"
-            ? "Starts with one menu portion at its regular price. Adjust catering quantities and pricing."
-            : "Uses your actual dish, approved photo, regular price and opening hours.",
-      });
-    }
-    assert(
-      suggestions.length,
-      400,
-      "No matching opening times found in the next two weeks. Check your hours.",
-    );
-    return response({
-      suggestions,
-      method: "Menu-based suggestions; no automatic publication.",
-    });
   }
   if (p[0] === "insights" && req.method === "GET") {
     const since = now() - 28 * 86400000;
