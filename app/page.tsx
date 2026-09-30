@@ -5,7 +5,7 @@ import { jsonLd } from "@/lib/menu-structured-data";
 import { FREE_SIGNUP_IMAGES } from "@/lib/plans";
 
 export const metadata = pageMetadata({
-  title: "Menu Material — Food photos worth ordering from.",
+  title: "Menu Material — Make your food look as good as it tastes",
   description: `Turn real dish photos into professional images and matching posts for Toast, delivery apps, your website, and Instagram. Start with ${FREE_SIGNUP_IMAGES} free images.`,
   path: "/",
   shareDescription:
