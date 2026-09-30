@@ -25,12 +25,13 @@ function Features({ items }: { items: string[] }) {
  * billing portal is set to cancel at the end of the paid period
  * (docs/FREE_PRO_PLANS.md).
  */
-export function PlanTerms() {
+export function PlanTerms({ compact = false }: { compact?: boolean }) {
   const { termsUrl, refundPolicyUrl } = useSiteContact();
   return (
     <p className="pw-plan-terms">
-      Renews monthly until you cancel. Cancel anytime in Plans, under Manage
-      billing, and Pro stays until the end of the month you’ve paid for.
+      {compact
+        ? "Renews monthly in USD. Cancel anytime; keep Pro through your paid month."
+        : "Renews monthly until you cancel. Cancel anytime in Plans, under Manage billing, and Pro stays until the end of the month you’ve paid for."}
       {termsUrl && (
         <>
           {" "}
@@ -55,6 +56,7 @@ export default function PlanCards({
   enabled = false,
   proFirst = false,
   actions = true,
+  compact = false,
 }: {
   enabled?: boolean;
   /** Lead with Pro when the cards stack, for an offer of a Pro feature. */
@@ -62,24 +64,44 @@ export default function PlanCards({
   /** False leaves out the cards' buttons: the Plans dialog keeps its own in
       view below the cards. */
   actions?: boolean;
+  /** Short comparison for the dialog; phones summarize the current Free plan. */
+  compact?: boolean;
 }) {
   return (
-    <div className={`pw-plan-grid ${proFirst ? "is-pro-first" : ""}`}>
-      <article className="pw-plan-card">
-        <h2>Free</h2>
+    <div
+      className={`pw-plan-grid ${proFirst ? "is-pro-first" : ""} ${compact ? "is-compact" : ""}`}
+    >
+      <article className="pw-plan-card is-free">
+        <div className="pw-plan-name">
+          <h2>Free</h2>
+          {compact && (
+            <span className="pw-plan-current-label">Your current plan</span>
+          )}
+        </div>
         <p className="pw-plan-tagline">A great first impression.</p>
         <p className="pw-plan-price">$0</p>
         <p className="pw-plan-allowance">
-          <strong>{FREE_SIGNUP_IMAGES} images</strong> to get started.
+          <strong>{FREE_SIGNUP_IMAGES} images</strong>
+          {compact ? ", one time." : " to get started."}
         </p>
         <Features
-          items={[
-            "All realistic photo styles, full quality, no watermark",
-            "Every download size, for delivery apps and social",
-            "One live menu with its QR code, PDF and table card",
-            "Posts and Stories in three designs",
-            "Free images never expire. No credit card",
-          ]}
+          items={
+            compact
+              ? [
+                  "All realistic styles. Full quality",
+                  "Every download size. No watermark",
+                  "1 live menu, QR, PDF & table card",
+                  "Posts & Stories in 3 designs",
+                  "Images never expire. No credit card",
+                ]
+              : [
+                  "All realistic photo styles, full quality, no watermark",
+                  "Every download size, for delivery apps and social",
+                  "One live menu with its QR code, PDF and table card",
+                  "Posts and Stories in three designs",
+                  "Free images never expire. No credit card",
+                ]
+          }
         />
         {actions && (
           <div className="pw-plan-action">
@@ -95,7 +117,9 @@ export default function PlanCards({
           {!enabled && <span className="pw-plan-badge">Coming soon</span>}
         </div>
         <p className="pw-plan-tagline">
-          Keep your restaurant looking its best, every week.
+          {compact
+            ? "Everything in Free, plus:"
+            : "Keep your restaurant looking its best, every week."}
         </p>
         <p className="pw-plan-price">
           {PRO_PRICE_LABEL}
@@ -105,16 +129,25 @@ export default function PlanCards({
           <strong>{PRO_PLAN.imagesPerPeriod} images</strong> every month.
         </p>
         <Features
-          items={[
-            "Food Fantasy: exaggerated, larger-than-life food art",
-            "Your restaurant look on every photo, post and menu",
-            "Every post and menu design, plus carousels",
-            "Campaigns: a matching post, Story, counter sign and menu special",
-            "Up to 30 live menus, with full menu insights",
-            "Saved looks, inspiration photos and batches",
-            "No “Made with Menu Material” on your menus",
-            "Cancel future renewals anytime",
-          ]}
+          items={
+            compact
+              ? [
+                  "Food Fantasy & your brand",
+                  "All designs, carousels & campaigns",
+                  "30 menus, no branding & insights",
+                  "Saved looks, inspiration & batches",
+                ]
+              : [
+                  "Food Fantasy: exaggerated, larger-than-life food art",
+                  "Your restaurant look on every photo, post and menu",
+                  "Every post and menu design, plus carousels",
+                  "Campaigns: a matching post, Story, counter sign and menu special",
+                  "Up to 30 live menus, with full menu insights",
+                  "Saved looks, inspiration photos and batches",
+                  "No “Made with Menu Material” on your menus",
+                  "Cancel future renewals anytime",
+                ]
+          }
         />
         {actions && (
           <div className="pw-plan-action">
