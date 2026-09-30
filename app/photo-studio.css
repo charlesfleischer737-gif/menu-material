@@ -714,8 +714,48 @@ textarea.st-input {
 .st-field + .st-details {
   margin-top: 12px;
 }
+.st-inspector .st-details-heading {
+  margin: 0;
+}
+.st-details-toggle {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  width: 100%;
+  min-height: 44px;
+  padding: 0;
+  border: 0;
+  border-radius: 8px;
+  background: none;
+  color: inherit;
+  font: inherit;
+  text-align: left;
+  cursor: pointer;
+}
+.st-details-toggle .st-optional {
+  margin-left: auto;
+  font-weight: 400;
+}
+.st-details-toggle > svg {
+  flex: none;
+  color: var(--st-muted);
+  transition: transform var(--duration-fast) var(--ease);
+}
+.st-details-toggle[data-state="open"] > svg {
+  transform: rotate(180deg);
+}
+.st-details-toggle:focus-visible {
+  outline: 2px solid var(--st-accent);
+  outline-offset: 4px;
+}
+.st-details-content {
+  padding-top: 12px;
+}
+.st-details-content[hidden] {
+  display: none;
+}
 
-/* Create stays outside the desktop controls' scroll area. */
+/* Desktop settings and Create flow with the page beside the sticky photo. */
 .st-inspector .st-action {
   display: grid;
   gap: 8px;
@@ -736,42 +776,6 @@ textarea.st-input {
   color: var(--st-muted);
   font-size: var(--text-footnote);
   text-align: center;
-}
-@media (min-width: 981px) {
-  .st-inspector-settings {
-    position: sticky;
-    top: var(--st-sticky-top);
-    max-height: var(--st-canvas-height);
-    padding: 0;
-  }
-  .st-inspector-scroll {
-    container: st-inspector / inline-size;
-    position: relative;
-    min-height: 0;
-    padding: 4px var(--st-inspector-padding) 16px;
-    overflow-y: auto;
-    overscroll-behavior-y: contain;
-    scrollbar-gutter: stable;
-    scrollbar-width: thin;
-    scroll-padding-block: 20px;
-    border-radius: var(--st-panel);
-  }
-  .st-inspector-scroll:focus-visible {
-    outline: 2px solid var(--st-accent);
-    outline-offset: -2px;
-  }
-  .st-inspector-settings .st-action {
-    flex: none;
-    position: static;
-    margin: 0;
-    border-top: 1px solid var(--st-line);
-    border-radius: 0 0 var(--st-panel) var(--st-panel);
-    background: var(--st-surface);
-  }
-  .st-inspector-settings:has(.st-action:not(.is-waiting)) .st-inspector-scroll {
-    border-bottom-right-radius: 0;
-    border-bottom-left-radius: 0;
-  }
 }
 
 /* Paused */
