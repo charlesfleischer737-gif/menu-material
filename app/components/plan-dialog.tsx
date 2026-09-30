@@ -259,55 +259,65 @@ export default function PlanDialog({
               proFirst={!!offered}
               enabled={billing.enabled}
               actions={false}
+              compact
             />
           )}
-          {billing.canManage && billing.plan !== "pro" && (
-            <button
+          <div className="pw-plans-support">
+            {billing.canManage && billing.plan !== "pro" && (
+              <button
+                className="cx-link"
+                disabled={busy}
+                onClick={() => void visit("portal")}
+              >
+                Manage existing billing or update payment
+              </button>
+            )}
+            {billing.enabled && (
+              <button
+                className="cx-link"
+                disabled={busy}
+                onClick={() => void sync()}
+              >
+                Refresh payment status
+              </button>
+            )}
+            <a
               className="cx-link"
-              disabled={busy}
-              onClick={() => void visit("portal")}
+              href="/pricing"
+              target="_blank"
+              rel="noreferrer"
             >
-              Manage existing billing or update payment
-            </button>
-          )}
-          {billing.enabled && (
-            <button
-              className="cx-link"
-              disabled={busy}
-              onClick={() => void sync()}
-            >
-              Refresh payment status
-            </button>
-          )}
-          {billing.enabled ? (
-            <p className="fine">
-              Prices in USD. Pro renews monthly until cancelled. Unused monthly
-              images don’t roll over. Images that fail to create are returned.
-              Your saved work remains available when you cancel.
-              {/* Beside Get Pro, the footer links these. */}
-              {billing.plan === "pro" && termsUrl && (
-                <>
-                  {" "}
-                  <a href="/terms" target="_blank" rel="noreferrer">
-                    Terms
-                  </a>
-                </>
-              )}
-              {billing.plan === "pro" && refundPolicyUrl && (
-                <>
-                  {termsUrl ? " · " : " "}
-                  <a href={refundPolicyUrl} target="_blank" rel="noreferrer">
-                    Refund policy
-                  </a>
-                </>
-              )}
-            </p>
-          ) : (
-            <p className="fine">Images that fail to create are returned.</p>
-          )}
+              Full plan details
+            </a>
+          </div>
+          {billing.plan === "pro" &&
+            (billing.enabled ? (
+              <p className="fine">
+                USD. Monthly images don’t roll over. Failed images are returned.
+                Your saved work stays when you cancel.
+                {/* Beside Get Pro, the footer links these. */}
+                {billing.plan === "pro" && termsUrl && (
+                  <>
+                    {" "}
+                    <a href="/terms" target="_blank" rel="noreferrer">
+                      Terms
+                    </a>
+                  </>
+                )}
+                {billing.plan === "pro" && refundPolicyUrl && (
+                  <>
+                    {termsUrl ? " · " : " "}
+                    <a href={refundPolicyUrl} target="_blank" rel="noreferrer">
+                      Refund policy
+                    </a>
+                  </>
+                )}
+              </p>
+            ) : (
+              <p className="fine">Images that fail to create are returned.</p>
+            ))}
         </div>
-        {/* The buttons stay in view below the plans, which scroll on a
-            laptop screen, with any error beside them. */}
+        {/* Compact plans and their actions share one view. */}
         <div className="pw-plans-footer" ref={footer}>
           {error && (
             <p className="error" role="alert">
@@ -326,9 +336,7 @@ export default function PlanDialog({
             </div>
           ) : (
             <>
-              {billing.enabled ? (
-                <PlanTerms />
-              ) : (
+              {!billing.enabled && (
                 <p
                   className="pw-plans-status"
                   role="status"
@@ -375,6 +383,7 @@ export default function PlanDialog({
                   )
                 )}
               </div>
+              {billing.enabled && <PlanTerms compact />}
             </>
           )}
         </div>
