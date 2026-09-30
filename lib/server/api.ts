@@ -116,12 +116,7 @@ import {
   visitorStepRoute,
 } from "./funnel";
 import { libraryRoute } from "./library";
-import {
-  advanceBatches,
-  menuTools,
-  publicEvent,
-  staffAccess,
-} from "./menu-tools";
+import { advanceBatches, menuTools, publicEvent } from "./menu-tools";
 import {
   offerRow,
   promotionRoute,
@@ -406,13 +401,8 @@ function imageMime(bytes: Uint8Array) {
   }
   return null;
 }
-async function upload(req: Request, r: Row, forcedKind?: string) {
-  // Staff links have their own hourly allowance, so they never use up the owner's.
-  await limit(
-    (forcedKind === "staff" ? "staff-uploads:" : "uploads:") + r.id,
-    100,
-    3600,
-  );
+async function upload(req: Request, r: Row) {
+  await limit("uploads:" + r.id, 100, 3600);
   assert(
     Number(req.headers.get("content-length") || 0) <= 30 * 1024 * 1024,
     413,
@@ -422,12 +412,11 @@ async function upload(req: Request, r: Row, forcedKind?: string) {
     file = f.get("file"),
     normalized = f.get("normalized"),
     kind =
-      forcedKind ||
-      (f.get("kind") === "logo"
+      f.get("kind") === "logo"
         ? "logo"
         : f.get("kind") === "reference"
           ? "reference"
-          : "source");
+          : "source";
   assert(
     file instanceof File && file.size > 0 && file.size <= 20 * 1024 * 1024,
     400,
@@ -455,26 +444,18 @@ async function upload(req: Request, r: Row, forcedKind?: string) {
   );
   validateImageDimensions(bytes, mime);
   validateImageDimensions(working, "image/jpeg", true);
-  const dishId =
-    kind === "source" || kind === "staff"
-      ? String(f.get("dishId") || "")
-      : null;
+  const dishId = kind === "source" ? String(f.get("dishId") || "") : null;
   if (dishId)
     assert(
       await one(
-        "SELECT 1 FROM dishes WHERE id=? AND restaurant_id=? AND (?!='staff' OR (archived_at IS NULL AND sample=0))",
+        "SELECT 1 FROM dishes WHERE id=? AND restaurant_id=?",
         dishId,
         r.id,
-        kind,
       ),
       404,
       "Dish not found.",
     );
-  assert(
-    !["source", "staff"].includes(kind) || dishId,
-    400,
-    "Save your dish first.",
-  );
+  assert(kind !== "source" || dishId, 400, "Save your dish first.");
   const uploadKey = f.get("requestKey")
     ? z.string().uuid().parse(f.get("requestKey"))
     : null;
@@ -630,8 +611,8 @@ async function route(req: Request) {
     if (!(p[0] === "billing" && p[1] === "webhook") && method !== "GET")
       sameOrigin(req);
     if (p[0] === "billing") return await billingRoute(req, p);
-    const staffResponse = await staffAccess(req, p, upload);
-    if (staffResponse) return staffResponse;
+    if (["staff", "staff-links", "suggestions"].includes(p[0]))
+      return response({ error: "This tool is no longer available." }, 410);
     if (
       p[0] === "health" &&
       p[1] === "ready" &&

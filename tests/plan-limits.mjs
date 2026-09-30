@@ -565,7 +565,7 @@ try {
     draft: { look: "menu-stone" },
   });
 
-  // 7. Campaigns, batches, staff links, saved looks and inspiration are Pro.
+  // 7. Campaigns, batches, saved looks and inspiration are Pro.
   await proOnly("promotions", { type: "special" }, "campaigns");
   const source = await upload(dish.id);
   await proOnly(
@@ -585,8 +585,8 @@ try {
     },
     "batches",
   );
-  await proOnly("staff-links", {}, "staffLinks");
-  await call("staff-links/revoke", {});
+  await call("staff-links", {}, 410);
+  await call("staff-links/revoke", {}, 410);
   const namedLook = {
     id: crypto.randomUUID(),
     name: "Evening menu",
@@ -683,7 +683,7 @@ try {
   stats = await call("menus/stats");
   assert.equal(typeof stats.orders, "number");
   assert.equal(stats.locked, undefined);
-  await call("staff-links", {});
+  await call("staff-links", {}, 410);
   await call(
     "studio-library",
     {
@@ -878,7 +878,7 @@ try {
     assert.equal(state.billing.features.unlocked, true);
     assert.equal(state.billing.features.pro, false);
     assert.equal(state.restaurant.style.primary, look.primary);
-    await call("staff-links", {});
+    await call("staff-links", {}, 410);
     guest = await guestMenu();
     assert.equal(guest.credit, false);
     checks += 4;
@@ -889,7 +889,7 @@ try {
   checks++;
 
   console.log(
-    `PASS: ${checks} plan limit checks: signup cap per network and per IPv6 /48, Free defaults for the restaurant look, one basic live menu (also across two tabs, and with the old single-menu routes gone), three free post designs (New posts, free designs over a Pro post's look, and Free copies), Pro-only campaigns, batches, staff links, saved looks and inspiration photos, trimmed insights, the menu credit, admin comps, keeping work after a downgrade, the renewal grace and the switch.`,
+    `PASS: ${checks} plan limit checks: signup cap per network and per IPv6 /48, Free defaults for the restaurant look, one basic live menu (also across two tabs, and with the old single-menu routes gone), three free post designs (New posts, free designs over a Pro post's look, and Free copies), Pro-only campaigns, batches, saved looks and inspiration photos, trimmed insights, the menu credit, admin comps, keeping work after a downgrade, the renewal grace and the switch.`,
   );
 } finally {
   rmSync(root, { recursive: true, force: true });

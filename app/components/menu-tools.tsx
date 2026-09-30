@@ -2,15 +2,8 @@
 import { useEffect, useRef, useState } from "react";
 import { Button } from "@/components/ui/button";
 import { Tabs, TabsList, TabsTrigger, TabsContent } from "@/components/ui/tabs";
-import { api, normalizePhoto, money, type Row } from "@/lib/client";
-import {
-  Upload,
-  Copy,
-  RefreshCw,
-  Check,
-  Camera,
-  ArrowRight,
-} from "lucide-react";
+import { api, normalizePhoto, type Row } from "@/lib/client";
+import { Upload, RefreshCw, Camera, ArrowRight } from "lucide-react";
 import { photoAdvice } from "@/lib/photo-advice";
 import { draftStatus } from "@/lib/workspace-status";
 import WorkspaceActionBar from "./workspace-action-bar";
@@ -25,12 +18,10 @@ export default function MenuTools({
   state,
   refresh,
   selectDish,
-  onSuggestion,
 }: {
   state: Row;
   refresh: () => Promise<void>;
   selectDish: (d: Row) => void;
-  onSuggestion: (s: Row) => void;
 }) {
   const [busy, setBusy] = useState(""),
     [tool, setTool] = useState("import"),
@@ -120,8 +111,6 @@ export default function MenuTools({
         <select value={tool} onChange={(event) => setTool(event.target.value)}>
           <option value="import">Import menu</option>
           <option value="batch">Photos & batches</option>
-          <option value="staff">Staff uploads</option>
-          <option value="weekly">Weekly assistant</option>
           <option value="insights">Activity</option>
         </select>
       </label>
@@ -133,8 +122,6 @@ export default function MenuTools({
         >
           <TabsTrigger value="import">Import menu</TabsTrigger>
           <TabsTrigger value="batch">Photos & batches</TabsTrigger>
-          <TabsTrigger value="staff">Staff uploads</TabsTrigger>
-          <TabsTrigger value="weekly">Weekly assistant</TabsTrigger>
           <TabsTrigger value="insights">Activity</TabsTrigger>
         </TabsList>
         <TabsContent value="import" forceMount className="tools-tab">
@@ -145,12 +132,6 @@ export default function MenuTools({
             {...{ state, refresh, busy, selectDish, missing }}
             act={localAct}
           />
-        </TabsContent>
-        <TabsContent value="staff" forceMount className="tools-tab">
-          <StaffUploads {...{ state, refresh, busy }} act={localAct} />
-        </TabsContent>
-        <TabsContent value="weekly" forceMount className="tools-tab">
-          <Weekly {...{ state, act, busy, onSuggestion }} />
         </TabsContent>
         <TabsContent value="insights" className="tools-tab">
           <Insights />
@@ -838,259 +819,6 @@ function BatchProgressItem({
       </div>
       <WorkspaceOperationStatus feedback={operation.feedback} />
     </article>
-  );
-}
-function StaffUploads({ state, refresh, act, busy }: Row) {
-  const [link, setLink] = useState("");
-  const [handled, setHandled] = useState<string[]>([]);
-  const [reviewNotice, setReviewNotice] = useState("");
-  const [refreshError, setRefreshError] = useState(false);
-  const reviewHeading = useRef<HTMLHeadingElement>(null);
-  const links = useWorkspaceOperation(act, busy);
-  const review = useWorkspaceOperation(act, busy);
-  const pending = state.assets.filter(
-    (asset: Row) => asset.kind === "staff" && !handled.includes(asset.id),
-  );
-  async function reviewed(asset: Row, name: string, approved: boolean) {
-    review.changed("");
-    setHandled((ids) => [...ids, asset.id]);
-    setReviewNotice(
-      approved
-        ? `Approved photo saved with ${name}.`
-        : `Photo rejected for ${name}.`,
-    );
-    if (reviewHeading.current?.getClientRects().length)
-      reviewHeading.current.focus();
-    try {
-      await refresh();
-      setRefreshError(false);
-    } catch {
-      setRefreshError(true);
-    }
-  }
-  return (
-    <div className="panel staff-review">
-      <h3>Let your team send dish photos</h3>
-      <p className="muted">
-        An upload-only link for this restaurant, valid for 7 days. Staff choose
-        a dish and submit photos for your review.
-      </p>
-      {!hasProFeatures(state) && (
-        <ProNote feature="staffLinks">
-          New staff links are part of Pro. Links you already shared keep working
-          until they expire, and you can still review what arrives.
-        </ProNote>
-      )}
-      <div className="button-row">
-        <Button
-          disabled={!!busy}
-          onClick={() =>
-            !hasProFeatures(state)
-              ? requestUpgrade("staffLinks")
-              : links.run(
-                  "Creating staff upload link",
-                  "Upload link ready. Copy it to share with your team.",
-                  async () => {
-                    const value = await api("staff-links", {});
-                    setLink(location.origin + value.path);
-                  },
-                )
-          }
-        >
-          Create staff upload link {!hasProFeatures(state) && <ProBadge />}
-        </Button>
-        <Button
-          variant="outline"
-          className="staff-revoke"
-          disabled={!!busy}
-          onClick={() =>
-            links.run(
-              "Revoking staff links",
-              "Existing staff upload links are now disabled.",
-              async () => {
-                await api("staff-links/revoke", {});
-                setLink("");
-              },
-            )
-          }
-        >
-          Revoke all staff links
-        </Button>
-      </div>
-      {link && (
-        <div className="invitation-result">
-          <input aria-label="Staff upload link" readOnly value={link} />
-          <Button
-            variant="outline"
-            disabled={!!busy}
-            onClick={() =>
-              links.run(
-                "Copying staff link",
-                "Staff link copied. Share it with your team.",
-                async () => {
-                  await navigator.clipboard.writeText(link);
-                },
-              )
-            }
-          >
-            <Copy /> Copy link
-          </Button>
-        </div>
-      )}
-      <WorkspaceOperationStatus feedback={links.feedback} />
-      <div className="staff-review-header">
-        <h3 ref={reviewHeading} tabIndex={-1}>
-          Photos awaiting review <span>({pending.length})</span>
-        </h3>
-        <Button
-          variant="outline"
-          disabled={!!busy}
-          onClick={() =>
-            review.run(
-              "Refreshing photos",
-              "Review list is up to date.",
-              async () => {
-                await refresh();
-                setRefreshError(false);
-              },
-            )
-          }
-        >
-          <RefreshCw /> Refresh list
-        </Button>
-      </div>
-      {refreshError && (
-        <p className="error" role="alert">
-          Your review was saved, but the list couldn’t refresh. Use Refresh list
-          to check for new photos.
-        </p>
-      )}
-      <WorkspaceOperationStatus
-        feedback={
-          review.feedback.message
-            ? review.feedback
-            : { kind: "success", message: reviewNotice }
-        }
-      />
-      {!pending.length ? (
-        <p className="empty">No staff photos waiting for review.</p>
-      ) : (
-        <div className="staff-grid">
-          {pending.map((asset: Row) => (
-            <StaffReviewCard
-              key={asset.id}
-              asset={asset}
-              name={
-                state.dishes.find((dish: Row) => dish.id === asset.dish_id)
-                  ?.name || "Unavailable dish"
-              }
-              act={act}
-              busy={busy}
-              onReviewed={reviewed}
-            />
-          ))}
-        </div>
-      )}
-    </div>
-  );
-}
-function StaffReviewCard({ asset, name, act, busy, onReviewed }: Row) {
-  const [confirmed, setConfirmed] = useState(false);
-  const operation = useWorkspaceOperation(act, busy);
-  return (
-    <article className="staff-review-card">
-      <img src={"/api/assets/" + asset.id} alt={"Staff upload for " + name} />
-      <h4>{name}</h4>
-      <label className="check-label">
-        <input
-          type="checkbox"
-          checked={confirmed}
-          disabled={!!busy}
-          aria-label={`Confirm staff photo matches ${name}`}
-          onChange={(event) => setConfirmed(event.target.checked)}
-        />
-        <span>This photo matches the dish we serve.</span>
-      </label>
-      <div className="staff-review-actions">
-        <Button
-          disabled={!!busy || !confirmed}
-          aria-label={`Approve staff photo for ${name}`}
-          onClick={() =>
-            operation.run("Approving photo", "Photo approved.", async () => {
-              await api("assets/" + asset.id + "/approve", { accurate: true });
-              await onReviewed(asset, name, true);
-            })
-          }
-        >
-          <Check /> Approve
-        </Button>
-        <Button
-          variant="outline"
-          className="staff-reject"
-          disabled={!!busy}
-          aria-label={`Reject staff photo for ${name}`}
-          onClick={() =>
-            operation.run("Rejecting photo", "Photo rejected.", async () => {
-              await api("assets/" + asset.id, undefined, "DELETE");
-              await onReviewed(asset, name, false);
-            })
-          }
-        >
-          Reject photo
-        </Button>
-      </div>
-      <WorkspaceOperationStatus feedback={operation.feedback} />
-    </article>
-  );
-}
-function Weekly({ state, act, busy, onSuggestion }: Row) {
-  const [goal, setGoal] = useState("lunch"),
-    [suggestions, setSuggestions] = useState<Row[]>([]);
-  return (
-    <div className="panel">
-      <h3>A little help with your week</h3>
-      <p className="muted">
-        Suggestions use your available dishes, approved photos, regular prices
-        and opening hours. You make the final offer.
-      </p>
-      <label className="field">
-        Your goal
-        <select value={goal} onChange={(e) => setGoal(e.target.value)}>
-          <option value="lunch">Bring attention to weekday lunch</option>
-          <option value="catering">Build a catering offer</option>
-          <option value="new_dish">Spotlight a new dish</option>
-        </select>
-      </label>
-      <Button
-        disabled={!!busy}
-        onClick={() =>
-          act("Preparing menu-based suggestions", async () =>
-            setSuggestions((await api("suggestions", { goal })).suggestions),
-          )
-        }
-      >
-        Suggest promotions
-      </Button>
-      <div className="suggestion-grid">
-        {suggestions.map((s, i) => (
-          <article className="panel" key={i}>
-            <img src={"/api/assets/" + s.items[0].photoId} alt={s.title} />
-            <h3>{s.title}</h3>
-            <b>{money(s.price, state.restaurant.currency)}</b>
-            <p>{s.reason}</p>
-            <p className="fine">
-              {s.startsLocal.replace("T", " ")} · {state.restaurant.timezone}
-            </p>
-            <Button variant="outline" onClick={() => onSuggestion(s)}>
-              {hasProFeatures(state)
-                ? "Edit this promotion"
-                : "Preview this promotion"}
-              {!hasProFeatures(state) && <ProBadge />}
-            </Button>
-          </article>
-        ))}
-      </div>
-    </div>
   );
 }
 function Insights() {
