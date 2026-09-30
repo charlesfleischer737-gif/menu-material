@@ -4,7 +4,7 @@ September 15, 2026. The core tools retain their source-photo, approval, persiste
 
 ## Photo Studio
 
-Sixty-three curated presets across nine collections. The seven original collections each have eight styles; Bold & Dramatic adds four and Pro Food Fantasy adds three. Each preset has a distinct example, lighting/surface/composition prompt, intended uses and visible traits, browsable in the single-page workbench. The selected reference updates immediately. Photography styles retain original food identity and serving size; Food Fantasy deliberately exaggerates scale and presentation while retaining ingredient identity. Examples are never passed as food references to the provider.
+Sixty-two curated presets across nine collections. The seven original collections each have eight styles; Bold & Dramatic and Pro Food Fantasy each add three. Each preset has a distinct example, lighting/surface/composition prompt, intended uses and visible traits, browsable in the single-page workbench. The selected reference updates immediately. Photography styles retain original food identity and serving size; Food Fantasy deliberately exaggerates scale and presentation while retaining ingredient identity. Examples are never passed as food references to the provider.
 
 ### Food Fantasy · Pro
 
@@ -21,11 +21,10 @@ Added September 28, 2026. More extravagant settings for social launches, signatu
 | Style | Treatment | Particularly useful for |
 |---|---|---|
 | Crimson close-up | Saturated red · Hard sidelight · Grounded shadow | Burgers, sandwiches and signature snacks |
-| Electric blue | Electric cobalt · Diagonal yellow spotlight · Neutral food light | Tacos, bao and colorful lunch specials |
 | The main event | Dark cherry velvet · Warm spotlight · Natural highlights | Pasta, steak and dinner specials |
 | Golden hour, amplified | Saturated amber · Hard sun · Large architectural shadow | Cheesecake, pastries and desserts |
 
-The collection is available in Photo Studio and Explore. The crimson and electric-blue looks also appear in the homepage showcase. Search recognizes “extravagant” and “wow.” All four remain available on the existing free photo plan. Examples are original built-in image-generator outputs; exact prompts and provenance are recorded in `BOLD_STYLES_IMAGE_PROMPTS.json`. They demonstrate the art direction, not a verified transformation of an uploaded customer dish.
+The collection is available in Photo Studio and Explore. Crimson close-up also appears in the homepage showcase. Search recognizes “extravagant” and “wow.” All three remain available on the existing free photo plan. Examples are original built-in image-generator outputs; exact prompts and provenance are recorded in `BOLD_STYLES_IMAGE_PROMPTS.json`. They demonstrate the art direction, not a verified transformation of an uploaded customer dish.
 
 ### Delivery & Takeout
 

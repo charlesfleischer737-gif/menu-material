@@ -11,11 +11,11 @@ import {
 } from "../lib/post-templates.ts";
 const hashes = new Set();
 assert.equal(styleCategories.length, 9);
-assert.equal(photoStyles.length, 63);
+assert.equal(photoStyles.length, 62);
 for (const category of styleCategories)
   assert.equal(
     photoStyles.filter((s) => s.category === category.id).length,
-    category.id === "fantasy" ? 3 : category.id === "bold" ? 4 : 8,
+    ["fantasy", "bold"].includes(category.id) ? 3 : 8,
   );
 for (const style of photoStyles) {
   const bytes = readFileSync("public" + style.image);
@@ -85,5 +85,5 @@ assert.equal(getPostTemplate("photo").id, "editorial");
 assert.equal(getPostTemplate("price").id, "special");
 assert.equal(getPostTemplate("story").id, "chef");
 console.log(
-  "PASS: 63 distinct style examples and generation prompts; 9 collections including 3 Pro Food Fantasy looks; 10 template examples; customer facts and legacy drafts preserved.",
+  "PASS: 62 distinct style examples and generation prompts; 9 collections including 3 Pro Food Fantasy looks; 10 template examples; customer facts and legacy drafts preserved.",
 );
