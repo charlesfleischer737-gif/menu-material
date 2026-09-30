@@ -2587,11 +2587,10 @@ textarea.st-input {
   .st-hub .st-action-note {
     display: none;
   }
-  /* Too tall to pin, the actions stay part of the card, not a box within it. */
-  .st-inspector .st-hub[data-in-flow="true"] {
-    margin: 4px 0 0;
-    padding: 12px 0 16px;
-    border: 0;
+  /* The actions close the card, lined up with the rows above. */
+  .st-inspector .st-hub {
+    gap: 8px;
+    padding: 12px 0;
   }
 }
 .st-tile-media > .st-style-pro {
