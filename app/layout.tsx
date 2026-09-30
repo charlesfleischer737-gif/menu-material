@@ -38,7 +38,7 @@ export async function generateMetadata(): Promise<Metadata> {
   return {
     // Makes canonical, og:url and og:image URLs absolute.
     metadataBase: new URL(await siteOrigin()),
-    title: "Menu Material — Food photos worth ordering from.",
+    title: "Menu Material — Make your food look as good as it tastes",
     description: `Turn real dish photos into professional images and matching posts for Toast, delivery apps, your website, and Instagram. Start with ${FREE_SIGNUP_IMAGES} free images.`,
     icons: {
       icon: "/favicon.svg?v=menu-material-2",
@@ -48,7 +48,7 @@ export async function generateMetadata(): Promise<Metadata> {
     openGraph: {
       type: "website",
       siteName,
-      title: "Menu Material — Food photos worth ordering from.",
+      title: "Menu Material — Make your food look as good as it tastes",
       description:
         "Better food photos for menus, delivery apps, and social media. Made from your actual dish.",
       images: [shareImage],
@@ -56,7 +56,7 @@ export async function generateMetadata(): Promise<Metadata> {
     twitter: {
       card: "summary_large_image",
       title: "Menu Material",
-      description: "Food photos worth ordering from.",
+      description: "Make your food look as good as it tastes",
       images: [{ url: shareImage.url, alt: shareImage.alt }],
     },
   };
