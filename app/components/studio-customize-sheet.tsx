@@ -44,7 +44,11 @@ const lights = [
 ];
 const wares = [
   { value: "keep", name: "Keep mine", help: "Your original serving dish" },
-  { value: "style", name: "Follow this look", help: "May replace your dish" },
+  {
+    value: "style",
+    name: "Follow this look",
+    help: "Use this style’s serving dish",
+  },
   { value: "white", name: "Simple white", help: "White serving ware" },
 ];
 const imageFor = (id: string) =>
