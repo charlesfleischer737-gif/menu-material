@@ -564,8 +564,8 @@ try {
   );
   assert.equal(
     requests[0].quality,
-    "medium",
-    "queued jobs retain their quality",
+    "high",
+    "new jobs default to high quality and keep it through configuration changes",
   );
   assert.equal(requests[0].output_format, "jpeg");
   assert.equal(requests[0].output_compression, "95");

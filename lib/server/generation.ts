@@ -64,7 +64,7 @@ function imageSettings(
           : "1024x1024",
     quality: z
       .enum(["low", "medium", "high", "xhigh", "max", "auto"])
-      .parse(config("OPENAI_IMAGE_QUALITY", "medium")),
+      .parse(config("OPENAI_IMAGE_QUALITY", "high")),
     output_format: "jpeg",
     output_compression: 95,
   };

@@ -14,7 +14,7 @@ export function watchJobs({
   reload,
   hidden = () => document.hidden,
   workerHealthy = workerHealthSnapshot,
-  every = 2000,
+  every = 1000,
   hiddenEvery = 8000,
   healthEvery = 60000,
   schedule = (callback, ms) => setInterval(callback, ms),
