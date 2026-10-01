@@ -22,7 +22,6 @@ import {
   Smartphone,
   Undo2,
   Upload,
-  X,
   Zap,
 } from "lucide-react";
 import { api, dishCount, downloadBlob, type Row } from "@/lib/client";
@@ -56,6 +55,7 @@ import {
 import { addonLabel, inferMenuPurpose, isAddonName } from "@/lib/menu-paste";
 import { normalizeDietary } from "@/lib/dietary";
 import { isPlaceholderDishName } from "@/lib/restaurant-identity";
+import { draftStatus } from "@/lib/workspace-status";
 import { menuPhotoIds, preparePhotoCopies } from "@/lib/menu-photo-copies";
 import type { MenuContact } from "@/lib/restaurant-contact";
 import type { MenuPdfResult } from "@/lib/menu-pdf-v2";
@@ -65,6 +65,8 @@ import MenuDocumentView from "./menu-document-view";
 import MenuStats, { MenuStatsSummary, useMenuStats } from "./menu-stats";
 import MenuQuickUpdate, { type QuickChange } from "./menu-quick-update";
 import WorkspaceActionBar from "./workspace-action-bar";
+import { Toast } from "./toast";
+import { usePresence, viewTransition } from "./motion";
 import {
   DropdownMenu,
   DropdownMenuContent,
@@ -78,6 +80,7 @@ import {
   MenuDetailsInspector,
   MenuDesignInspector,
   MenuDialog,
+  MenuDialogOpen,
   MenuItemInspector,
   MenuSectionInspector,
 } from "./menu-studio-controls";
@@ -114,13 +117,15 @@ export default function MenuStudio({
     [mobilePanel, setMobilePanel] = useState("preview"),
     [focusPreview, setFocusPreview] = useState(false),
     [busy, setBusy] = useState(""),
-    [notice, setNotice] = useState(""),
+    [notice, setNotice] = useState({ text: "", id: 0 }),
     [error, setError] = useState(""),
     [proof, setProof] = useState<MenuPdfResult | null>(null),
     [history, setHistory] = useState<Row[]>([]),
     [archivedMenus, setArchivedMenus] = useState<SavedMenu[]>([]),
     [newName, setNewName] = useState(""),
-    [query, setQuery] = useState("");
+    [query, setQuery] = useState(""),
+    // Share opened by a first publish, which it celebrates once.
+    [justPublished, setJustPublished] = useState(false);
   const linking = useRef(false);
   const [statsOpen, setStatsOpen] = useState(false);
   const stats = useMenuStats(
@@ -129,7 +134,10 @@ export default function MenuStudio({
   const seedHandled = useRef(""),
     inspectorRef = useRef<HTMLElement>(null),
     actionLock = useRef(false),
-    noticeTimer = useRef<ReturnType<typeof setTimeout> | null>(null);
+    currentDialog = useRef("");
+  // A closed dialog stays mounted for its exit; the next one replaces it.
+  const presence = usePresence(dialog),
+    shown = presence.value;
   const restaurant = {
       name: state.restaurant.name,
       currency: state.restaurant.currency,
@@ -176,10 +184,18 @@ export default function MenuStudio({
       (i) =>
         i.visible && !i.photoId && !(i.dishId && photographed.has(i.dishId)),
     );
+  // Each message is a fresh toast with its own 6.5 seconds, even a repeat.
   function tell(message: string) {
-    setNotice(message);
-    if (noticeTimer.current) clearTimeout(noticeTimer.current);
-    noticeTimer.current = setTimeout(() => setNotice(""), 6500);
+    setNotice((before) => ({ text: message, id: before.id + 1 }));
+  }
+  /**
+   * Opens a dialog. From another dialog, the panel morphs into the next one
+   * instead of cutting to it (menu-studio.css, "dialog-swap").
+   */
+  function switchDialog(next: string) {
+    if (currentDialog.current && next && next !== currentDialog.current)
+      void viewTransition(() => setDialog(next), "dialog-swap");
+    else setDialog(next);
   }
   async function act(label: string, fn: () => Promise<void>) {
     if (actionLock.current) return;
@@ -539,17 +555,14 @@ export default function MenuStudio({
     window.addEventListener("keydown", key);
     return () => window.removeEventListener("keydown", key);
   }, [dialog]);
-  useEffect(
-    () => () => {
-      if (noticeTimer.current) clearTimeout(noticeTimer.current);
-    },
-    [],
-  );
+  useEffect(() => {
+    currentDialog.current = dialog;
+  }, [dialog]);
   async function openHistory() {
     await store.saveNow();
     const result = await api(`menus/${record!.id}/history`);
     setHistory(result.history);
-    setDialog("history");
+    switchDialog("history");
   }
   async function documentAction(
     action: string,
@@ -636,13 +649,15 @@ export default function MenuStudio({
               <ChevronDown size={18} />
             </button>
             <div className="md-status-row">
-              <span className="md-save-status" role="status">
+              {/* Autosave isn't read out each time; a failed save is, as an
+                  alert (the error toast, or the open dialog's message). */}
+              <span className="md-save-status" role="status" aria-live="off">
                 {(!!items.length ||
                   !!draft.sections.length ||
                   !!record.published ||
                   !!store.error) && (
                   <>
-                    <i className={store.error ? "is-error" : ""} />
+                    <SaveMark status={store.status} failed={!!store.error} />
                     {store.status}
                   </>
                 )}
@@ -780,12 +795,18 @@ export default function MenuStudio({
           setOpen={setStatsOpen}
           onShare={record.published ? () => setDialog("share") : undefined}
         />
-        {(error || store.error) && (
-          <div className="md-notice md-error" role="alert">
-            <span>{error || store.error}</span>
-            {store.error ? (
-              <div>
+        {/* Messages float above the work instead of pushing it down. A
+            save that failed offers its way out; other errors can be
+            dismissed. Quick work never shows a progress toast. */}
+        <Toast
+          open={!!(error || store.error)}
+          tone="error"
+          onDismiss={store.error ? undefined : () => setError("")}
+          actions={
+            store.error ? (
+              <span className="md-recovery-actions">
                 <button
+                  type="button"
                   onClick={() =>
                     downloadBlob(
                       new Blob([JSON.stringify(draft, null, 2)], {
@@ -798,36 +819,34 @@ export default function MenuStudio({
                   Download recovery copy
                 </button>
                 <button
+                  type="button"
                   onClick={() => void act("Reloading saved menu", store.reload)}
                 >
                   Reload saved menu
                 </button>
-                <button onClick={() => void act("Saving menu", store.saveNow)}>
+                <button
+                  type="button"
+                  onClick={() => void act("Saving menu", store.saveNow)}
+                >
                   Retry save
                 </button>
-              </div>
-            ) : (
-              <button
-                className="md-icon"
-                aria-label="Dismiss error"
-                onClick={() => setError("")}
-              >
-                <X size={16} />
-              </button>
-            )}
-          </div>
-        )}
-        {notice && (
-          <div className="md-notice md-success" role="status">
-            <Check size={16} />
-            {notice}
-          </div>
-        )}
-        {busy && (
-          <div className="md-working" role="status">
-            {busy}…
-          </div>
-        )}
+              </span>
+            ) : undefined
+          }
+        >
+          {error || store.error}
+        </Toast>
+        <Toast
+          key={notice.id}
+          open={!!notice.text}
+          duration={6500}
+          onDismiss={() => setNotice((before) => ({ ...before, text: "" }))}
+        >
+          {notice.text}
+        </Toast>
+        <Toast open={!!busy} tone="busy" delay={400}>
+          {`${busy}…`}
+        </Toast>
         <nav className="md-mobile-nav" aria-label="Menu workspace">
           <button
             aria-pressed={mobilePanel === "outline"}
@@ -1302,555 +1321,581 @@ export default function MenuStudio({
             </aside>
           </div>
         )}
-        {dialog === "design" && (
-          <MenuDesignPicker
-            menu={menu}
-            pro={pro}
-            liveDesign={record.published?.design}
-            close={() => setDialog("")}
-            apply={(design) => {
-              patch({ design });
-              setDialog("");
-              setPanel("design");
-              tell(
-                `${menuDesignSpec(design).name} applied. Your content and photo choices are preserved.`,
-              );
-            }}
-          />
-        )}
-        {dialog === "review" && (
-          <MenuImportReview
-            menu={draft}
-            change={patch}
-            close={() => {
-              setDialog("");
-              void linkToLibrary();
-            }}
-          />
-        )}
-        {dialog === "source" && (
-          <MenuSourceDialog
-            mode={source}
-            setMode={setSource}
-            state={state}
-            close={() => setDialog("")}
-            append={append}
-            refresh={refresh}
-            onMenu={items.flatMap((i) => (i.dishId ? [i.dishId] : []))}
-          />
-        )}
-        {(dialog === "export" || dialog === "publish") && (
-          <MenuDeliveryDialog
-            mode={dialog}
-            menu={menu}
-            contact={contact}
-            record={record}
-            checks={checks}
-            restaurant={state.restaurant}
-            close={() => setDialog("")}
-            select={(id) => {
-              setDialog("");
-              select(id);
-            }}
-            removeItem={(id) =>
-              change((before) => ({
-                ...before,
-                sections: before.sections.map((s) => ({
-                  ...s,
-                  items: s.items.filter((i) => i.id !== id),
-                })),
-              }))
-            }
-            attachAddon={attachAddon}
-            applyDishTags={(id) =>
-              change((before) => ({
-                ...before,
-                sections: before.sections.map((s) => ({
-                  ...s,
-                  items: s.items.map((i) => {
-                    const dish =
-                      i.id === id &&
-                      (state.dishes as Row[]).find((d) => d.id === i.dishId);
-                    return dish
-                      ? { ...i, dietary: withDishSafety(i.dietary, dish.dietary) }
-                      : i;
-                  }),
-                })),
-              }))
-            }
-            applyDishFacts={(ids) =>
-              change((before) => ({
-                ...before,
-                sections: before.sections.map((s) => ({
-                  ...s,
-                  items: s.items.map((i) => {
-                    const dish =
-                      ids.includes(i.id) &&
-                      (state.dishes as Row[]).find((d) => d.id === i.dishId);
-                    return dish ? withDishFacts(i, dish) : i;
-                  }),
-                })),
-              }))
-            }
-            nameDish={async (id, name) => {
-              const dishId = items.find((i) => i.id === id)?.dishId;
-              change((before) => ({
-                ...before,
-                sections: before.sections.map((s) => ({
-                  ...s,
-                  items: s.items.map((i) => (i.id === id ? { ...i, name } : i)),
-                })),
-              }));
-              // A dish My Dishes still calls "Untitled dish" takes the name
-              // there too, and other menus showing it follow.
-              const dish = (state.dishes as Row[]).find((d) => d.id === dishId);
-              if (!dish || !isPlaceholderDishName(dish.name)) return;
-              await store.saveNow();
-              await api(`dishes/${dish.id}`, {
-                name,
-                description: dish.description || "",
-                category: dish.category || "Dishes",
-                preserve: dish.preserve || "",
-                portion: dish.portion || "",
-                plating: dish.plating || "",
-                setting: dish.setting || "Natural daylight",
-                price: (Number(dish.price) || 0) / 100,
-                available: !!dish.available,
-                confirmed: true,
-                revision: dish.revision,
-              });
-              await refresh();
-            }}
-            applyPurpose={applyPurpose}
-            saveRestaurantName={async (name) => {
-              await api("restaurant/name", { name });
-              await refresh();
-            }}
-            published={async (address) => {
-              const first = !record.published;
-              await documentAction("publish", address ? { address } : {});
-              // Smaller copies of the photos, for guests' phones.
-              void preparePhotoCopies(menuPhotoIds(draft)).catch(() => {});
-              // Share opens by itself when a menu first goes live; later
-              // updates keep the same link and QR code.
-              setDialog(first ? "share" : "");
-              tell(
-                first
-                  ? "Your menu is live. Future edits stay private until you publish again."
-                  : "Your changes are live. Future edits stay private until you publish again.",
-              );
-            }}
-            save={async () => {
-              await store.saveNow();
-            }}
-            setProfile={(printProfile) => patch({ printProfile })}
-            pro={pro}
-            liveElsewhere={store.menus.some(
-              (m) => m.published && m.id !== record.id,
-            )}
-            useFreeDesign={() =>
-              patch({
-                design: "bistro",
-                appearance: "light",
-                ...(draft.layout === "grid" ? { layout: "featured" } : {}),
-                ...(draft.colorMode === "custom"
-                  ? { colorMode: "restaurant" }
-                  : {}),
-              })
-            }
-          />
-        )}
-        {dialog === "quick" && record.published && (
-          <MenuQuickUpdate
-            live={record.published}
-            busy={!!busy}
-            close={() => setDialog("")}
-            apply={applyQuickUpdate}
-          />
-        )}
-        {dialog === "share" && (
-          <MenuShareDialog
-            record={record}
-            pro={pro}
-            restaurant={state.restaurant}
-            origin={state.menuOrigin}
-            fallbackName={
-              store.menus.find((m) => m.published && m.id !== record.id)?.draft
-                .name
-            }
-            close={() => setDialog("")}
-            action={async (action) => {
-              const wasMain = record.isPrimary;
-              await documentAction(action, { confirmed: true });
-              if (action === "unpublish") setDialog("");
-              tell(
-                action === "primary"
-                  ? "This is now the menu on your restaurant’s main QR code."
-                  : wasMain
-                    ? "This menu is offline. Its draft is saved, and it becomes your main menu again when you publish it."
-                    : "This menu is offline. Its draft is saved.",
-              );
-            }}
-          />
-        )}
-        {dialog === "library" && (
-          <MenuDialog
-            title="Your menus"
-            description="A menu for every service, season, and occasion."
-            close={() => setDialog("")}
-          >
-            <div className="md-menu-library">
-              {store.menus.map((m) => (
+        <MenuDialogOpen.Provider value={presence.open}>
+          {shown === "design" && (
+            <MenuDesignPicker
+              menu={menu}
+              pro={pro}
+              liveDesign={record.published?.design}
+              close={() => setDialog("")}
+              apply={(design) => {
+                patch({ design });
+                setDialog("");
+                setPanel("design");
+                tell(
+                  `${menuDesignSpec(design).name} applied. Your content and photo choices are preserved.`,
+                );
+              }}
+            />
+          )}
+          {shown === "review" && (
+            <MenuImportReview
+              menu={draft}
+              change={patch}
+              close={() => {
+                setDialog("");
+                void linkToLibrary();
+              }}
+            />
+          )}
+          {shown === "source" && (
+            <MenuSourceDialog
+              mode={source}
+              setMode={setSource}
+              state={state}
+              close={() => setDialog("")}
+              append={append}
+              refresh={refresh}
+              onMenu={items.flatMap((i) => (i.dishId ? [i.dishId] : []))}
+            />
+          )}
+          {(shown === "export" || shown === "publish") && (
+            <MenuDeliveryDialog
+              mode={shown}
+              menu={menu}
+              contact={contact}
+              record={record}
+              checks={checks}
+              restaurant={state.restaurant}
+              close={() => setDialog("")}
+              select={(id) => {
+                setDialog("");
+                select(id);
+              }}
+              removeItem={(id) =>
+                change((before) => ({
+                  ...before,
+                  sections: before.sections.map((s) => ({
+                    ...s,
+                    items: s.items.filter((i) => i.id !== id),
+                  })),
+                }))
+              }
+              attachAddon={attachAddon}
+              applyDishTags={(id) =>
+                change((before) => ({
+                  ...before,
+                  sections: before.sections.map((s) => ({
+                    ...s,
+                    items: s.items.map((i) => {
+                      const dish =
+                        i.id === id &&
+                        (state.dishes as Row[]).find((d) => d.id === i.dishId);
+                      return dish
+                        ? {
+                            ...i,
+                            dietary: withDishSafety(i.dietary, dish.dietary),
+                          }
+                        : i;
+                    }),
+                  })),
+                }))
+              }
+              applyDishFacts={(ids) =>
+                change((before) => ({
+                  ...before,
+                  sections: before.sections.map((s) => ({
+                    ...s,
+                    items: s.items.map((i) => {
+                      const dish =
+                        ids.includes(i.id) &&
+                        (state.dishes as Row[]).find((d) => d.id === i.dishId);
+                      return dish ? withDishFacts(i, dish) : i;
+                    }),
+                  })),
+                }))
+              }
+              nameDish={async (id, name) => {
+                const dishId = items.find((i) => i.id === id)?.dishId;
+                change((before) => ({
+                  ...before,
+                  sections: before.sections.map((s) => ({
+                    ...s,
+                    items: s.items.map((i) =>
+                      i.id === id ? { ...i, name } : i,
+                    ),
+                  })),
+                }));
+                // A dish My Dishes still calls "Untitled dish" takes the name
+                // there too, and other menus showing it follow.
+                const dish = (state.dishes as Row[]).find(
+                  (d) => d.id === dishId,
+                );
+                if (!dish || !isPlaceholderDishName(dish.name)) return;
+                await store.saveNow();
+                await api(`dishes/${dish.id}`, {
+                  name,
+                  description: dish.description || "",
+                  category: dish.category || "Dishes",
+                  preserve: dish.preserve || "",
+                  portion: dish.portion || "",
+                  plating: dish.plating || "",
+                  setting: dish.setting || "Natural daylight",
+                  price: (Number(dish.price) || 0) / 100,
+                  available: !!dish.available,
+                  confirmed: true,
+                  revision: dish.revision,
+                });
+                await refresh();
+              }}
+              applyPurpose={applyPurpose}
+              saveRestaurantName={async (name) => {
+                await api("restaurant/name", { name });
+                await refresh();
+              }}
+              published={async (address) => {
+                const first = !record.published;
+                await documentAction("publish", address ? { address } : {});
+                // Smaller copies of the photos, for guests' phones.
+                void preparePhotoCopies(menuPhotoIds(draft)).catch(() => {});
+                // When a menu first goes live, this dialog becomes Share, which
+                // says so itself; later updates keep the same link and QR code.
+                if (first) {
+                  setJustPublished(true);
+                  switchDialog("share");
+                  return;
+                }
+                setDialog("");
+                tell(
+                  "Your changes are live. Future edits stay private until you publish again.",
+                );
+              }}
+              save={async () => {
+                await store.saveNow();
+              }}
+              setProfile={(printProfile) => patch({ printProfile })}
+              pro={pro}
+              liveElsewhere={store.menus.some(
+                (m) => m.published && m.id !== record.id,
+              )}
+              useFreeDesign={() =>
+                patch({
+                  design: "bistro",
+                  appearance: "light",
+                  ...(draft.layout === "grid" ? { layout: "featured" } : {}),
+                  ...(draft.colorMode === "custom"
+                    ? { colorMode: "restaurant" }
+                    : {}),
+                })
+              }
+            />
+          )}
+          {shown === "quick" && record.published && (
+            <MenuQuickUpdate
+              live={record.published}
+              busy={!!busy}
+              close={() => setDialog("")}
+              apply={applyQuickUpdate}
+            />
+          )}
+          {shown === "share" && (
+            <MenuShareDialog
+              record={record}
+              pro={pro}
+              restaurant={state.restaurant}
+              origin={state.menuOrigin}
+              fallbackName={
+                store.menus.find((m) => m.published && m.id !== record.id)
+                  ?.draft.name
+              }
+              justPublished={justPublished}
+              close={() => {
+                setDialog("");
+                setJustPublished(false);
+              }}
+              action={async (action) => {
+                const wasMain = record.isPrimary;
+                await documentAction(action, { confirmed: true });
+                if (action === "unpublish") {
+                  setDialog("");
+                  setJustPublished(false);
+                }
+                tell(
+                  action === "primary"
+                    ? "This is now the menu on your restaurant’s main QR code."
+                    : wasMain
+                      ? "This menu is offline. Its draft is saved, and it becomes your main menu again when you publish it."
+                      : "This menu is offline. Its draft is saved.",
+                );
+              }}
+            />
+          )}
+          {shown === "library" && (
+            <MenuDialog
+              title="Your menus"
+              description="A menu for every service, season, and occasion."
+              close={() => setDialog("")}
+            >
+              <div className="md-menu-library">
+                {store.menus.map((m) => (
+                  <button
+                    key={m.id}
+                    disabled={!!busy}
+                    className={m.id === record.id ? "is-selected" : ""}
+                    onClick={() =>
+                      void act("Opening menu", async () => {
+                        await store.select(m.id);
+                        setSelected("");
+                        setDialog("");
+                      })
+                    }
+                  >
+                    <span
+                      className="md-menu-swatch"
+                      style={{
+                        background: menuDesignSpec(m.draft.design).paper,
+                        color: menuDesignSpec(m.draft.design).color,
+                      }}
+                    >
+                      <FileText size={24} />
+                    </span>
+                    <span>
+                      <strong>
+                        {m.id === record.id ? draft.name : m.draft.name}
+                      </strong>
+                      <small>
+                        {m.draft.sections.reduce(
+                          (n, s) => n + s.items.length,
+                          0,
+                        )}{" "}
+                        dishes · {m.published ? "Published" : "Draft"}
+                        {m.isPrimary ? " · Main menu" : ""}
+                        {restaurantSettingsChanged(
+                          m.published,
+                          state.restaurant,
+                          { look: pro },
+                        )
+                          ? " · Republish to apply your restaurant settings"
+                          : ""}
+                      </small>
+                    </span>
+                    {m.id === record.id && <Check size={17} />}
+                  </button>
+                ))}
+              </div>
+              <div className="md-dialog-actions">
                 <button
-                  key={m.id}
+                  className="md-button"
+                  onClick={() => {
+                    setNewName("");
+                    switchDialog("new");
+                  }}
+                >
+                  <Plus size={16} /> New menu
+                </button>
+                <button
+                  className="md-button md-secondary"
                   disabled={!!busy}
-                  className={m.id === record.id ? "is-selected" : ""}
                   onClick={() =>
-                    void act("Opening menu", async () => {
-                      await store.select(m.id);
-                      setSelected("");
+                    void act("Duplicating menu", async () => {
+                      await store.create({
+                        ...draft,
+                        name: `${draft.name.slice(0, 105)} — copy`,
+                      });
                       setDialog("");
+                      tell("An independent copy is ready to edit.");
                     })
                   }
                 >
-                  <span
-                    className="md-menu-swatch"
-                    style={{
-                      background: menuDesignSpec(m.draft.design).paper,
-                      color: menuDesignSpec(m.draft.design).color,
-                    }}
-                  >
-                    <FileText size={24} />
-                  </span>
-                  <span>
-                    <strong>
-                      {m.id === record.id ? draft.name : m.draft.name}
-                    </strong>
-                    <small>
-                      {m.draft.sections.reduce((n, s) => n + s.items.length, 0)}{" "}
-                      dishes · {m.published ? "Published" : "Draft"}
-                      {m.isPrimary ? " · Main menu" : ""}
-                      {restaurantSettingsChanged(
-                        m.published,
-                        state.restaurant,
-                        { look: pro },
-                      )
-                        ? " · Republish to apply your restaurant settings"
-                        : ""}
-                    </small>
-                  </span>
-                  {m.id === record.id && <Check size={17} />}
+                  Duplicate current
                 </button>
-              ))}
-            </div>
-            <div className="md-dialog-actions">
-              <button
-                className="md-button"
-                onClick={() => {
-                  setNewName("");
-                  setDialog("new");
-                }}
-              >
-                <Plus size={16} /> New menu
-              </button>
-              <button
-                className="md-button md-secondary"
-                disabled={!!busy}
-                onClick={() =>
-                  void act("Duplicating menu", async () => {
-                    await store.create({
-                      ...draft,
-                      name: `${draft.name.slice(0, 105)} — copy`,
-                    });
-                    setDialog("");
-                    tell("An independent copy is ready to edit.");
-                  })
-                }
-              >
-                Duplicate current
-              </button>
-            </div>
-            <div className="md-library-tools">
-              <button
-                className="md-text-button"
-                disabled={!!busy}
-                onClick={() =>
-                  void act("Loading archived menus", async () => {
-                    const result = await api("menus/archived");
-                    setArchivedMenus(result.menus);
-                    setDialog("archived");
-                  })
-                }
-              >
-                Archived menus
-              </button>
-              <button
-                className="md-text-button"
-                disabled={!!busy}
-                onClick={() =>
-                  void act("Loading publication history", openHistory)
-                }
-              >
-                <History size={15} /> Publication history
-              </button>
-              <button
-                className="md-text-button md-danger"
-                onClick={() => setDialog("archive")}
-              >
-                Archive current menu
-              </button>
-            </div>
-          </MenuDialog>
-        )}
-        {dialog === "archived" && (
-          <MenuDialog
-            title="Archived menus"
-            description="Restore a menu as a private draft. Its publication history is kept."
-            close={() => setDialog("library")}
-          >
-            <div className="md-history">
-              {archivedMenus.length ? (
-                archivedMenus.map((m) => (
-                  <div key={m.id}>
-                    <strong>{m.draft.name}</strong>
-                    <button
-                      className="md-button md-secondary"
-                      disabled={!!busy}
-                      onClick={() =>
-                        void act("Restoring menu", async () => {
-                          await store.saveNow();
-                          const restored = await api(
-                            `menus/${m.id}/unarchive`,
-                            { revision: m.revision },
-                          );
-                          await store.accept(restored as SavedMenu);
-                          setSelected("");
-                          setDialog("");
-                          tell("Menu restored as a private draft.");
-                        })
-                      }
-                    >
-                      Restore menu
-                    </button>
-                  </div>
-                ))
-              ) : (
-                <p className="md-help">No archived menus.</p>
-              )}
-            </div>
-          </MenuDialog>
-        )}
-        {dialog === "dish-library" && item && section && (
-          <MenuDialog
-            title={item.dishId ? "Update My Dishes" : "Save to My Dishes"}
-            description="Keep these details in your dish library for new menus. Your other menus and your live menu keep their own details, except that new allergens and removed diets reach every menu straight away. Guests see the rest of this edit when you publish this menu."
-            close={() => setDialog("")}
-          >
-            <h3>{item.name || "Untitled dish"}</h3>
-            <p className="md-help">{item.description}</p>
-            <p className="md-help">
-              Section: {section.name}
-              {item.priceMode === "single" && item.price !== null
-                ? ` · Price: ${menuPrice(item.price, restaurant.currency)}`
-                : " · Size prices and add-ons stay on this menu."}
-            </p>
-            {(!item.sourceReviewed ||
-              !item.name ||
-              item.name.length > 100 ||
-              section.name.length > 100) && (
-              <p className="md-inline-error">
-                Review this dish first. The library supports dish and section
-                names up to 100 characters.
+              </div>
+              <div className="md-library-tools">
+                <button
+                  className="md-text-button"
+                  disabled={!!busy}
+                  onClick={() =>
+                    void act("Loading archived menus", async () => {
+                      const result = await api("menus/archived");
+                      setArchivedMenus(result.menus);
+                      switchDialog("archived");
+                    })
+                  }
+                >
+                  Archived menus
+                </button>
+                <button
+                  className="md-text-button"
+                  disabled={!!busy}
+                  onClick={() =>
+                    void act("Loading publication history", openHistory)
+                  }
+                >
+                  <History size={15} /> Publication history
+                </button>
+                <button
+                  className="md-text-button md-danger"
+                  onClick={() => switchDialog("archive")}
+                >
+                  Archive current menu
+                </button>
+              </div>
+            </MenuDialog>
+          )}
+          {shown === "archived" && (
+            <MenuDialog
+              title="Archived menus"
+              description="Restore a menu as a private draft. Its publication history is kept."
+              close={() => switchDialog("library")}
+            >
+              <div className="md-history">
+                {archivedMenus.length ? (
+                  archivedMenus.map((m) => (
+                    <div key={m.id}>
+                      <strong>{m.draft.name}</strong>
+                      <button
+                        className="md-button md-secondary"
+                        disabled={!!busy}
+                        onClick={() =>
+                          void act("Restoring menu", async () => {
+                            await store.saveNow();
+                            const restored = await api(
+                              `menus/${m.id}/unarchive`,
+                              { revision: m.revision },
+                            );
+                            await store.accept(restored as SavedMenu);
+                            setSelected("");
+                            setDialog("");
+                            tell("Menu restored as a private draft.");
+                          })
+                        }
+                      >
+                        Restore menu
+                      </button>
+                    </div>
+                  ))
+                ) : (
+                  <p className="md-help">No archived menus.</p>
+                )}
+              </div>
+            </MenuDialog>
+          )}
+          {shown === "dish-library" && item && section && (
+            <MenuDialog
+              title={item.dishId ? "Update My Dishes" : "Save to My Dishes"}
+              description="Keep these details in your dish library for new menus. Your other menus and your live menu keep their own details, except that new allergens and removed diets reach every menu straight away. Guests see the rest of this edit when you publish this menu."
+              close={() => setDialog("")}
+            >
+              <h3>{item.name || "Untitled dish"}</h3>
+              <p className="md-help">{item.description}</p>
+              <p className="md-help">
+                Section: {section.name}
+                {item.priceMode === "single" && item.price !== null
+                  ? ` · Price: ${menuPrice(item.price, restaurant.currency)}`
+                  : " · Size prices and add-ons stay on this menu."}
               </p>
-            )}
-            <button
-              className="md-button"
-              disabled={
-                !!busy ||
-                !item.sourceReviewed ||
+              {(!item.sourceReviewed ||
                 !item.name ||
                 item.name.length > 100 ||
-                section.name.length > 100
-              }
-              onClick={() =>
-                void act("Saving dish details", async () => {
-                  await store.saveNow();
-                  const existing = (state.dishes as Row[]).find(
-                    (d) => d.id === item.dishId,
-                  );
-                  const result = await api(
-                    item.dishId ? `dishes/${item.dishId}` : "dishes",
-                    {
-                      ...existing,
-                      creationId: item.dishId || crypto.randomUUID(),
-                      revision: existing?.revision,
-                      name: item.name,
-                      description: item.description,
-                      category: section.name,
-                      price:
-                        item.priceMode === "single" && item.price !== null
-                          ? item.price / 100
-                          : (existing?.price || 0) / 100,
-                      available: item.available,
-                      dietary: item.dietary,
-                      confirmed: true,
-                      // This menu already has the edit; other menus and
-                      // live menus keep theirs.
-                      syncMenus: false,
-                    },
-                  );
-                  editItem(item.id, { dishId: result.id });
-                  await store.saveNow();
-                  await refresh();
-                  setDialog("");
-                  const synced = (result.menus || []) as Row[];
-                  tell(
-                    !item.dishId
-                      ? "Saved to My Dishes. You can now use its photos on this menu."
-                      : synced.length
-                        ? `My Dishes updated. Allergens and diets also changed on ${synced
-                            .map((m) => `${m.name}${m.live ? " (live)" : ""}`)
-                            .join(", ")}.`
-                        : "My Dishes updated. Your other menus and live menus are unchanged.",
-                  );
-                })
-              }
+                section.name.length > 100) && (
+                <p className="md-inline-error">
+                  Review this dish first. The library supports dish and section
+                  names up to 100 characters.
+                </p>
+              )}
+              <button
+                className="md-button"
+                disabled={
+                  !!busy ||
+                  !item.sourceReviewed ||
+                  !item.name ||
+                  item.name.length > 100 ||
+                  section.name.length > 100
+                }
+                onClick={() =>
+                  void act("Saving dish details", async () => {
+                    await store.saveNow();
+                    const existing = (state.dishes as Row[]).find(
+                      (d) => d.id === item.dishId,
+                    );
+                    const result = await api(
+                      item.dishId ? `dishes/${item.dishId}` : "dishes",
+                      {
+                        ...existing,
+                        creationId: item.dishId || crypto.randomUUID(),
+                        revision: existing?.revision,
+                        name: item.name,
+                        description: item.description,
+                        category: section.name,
+                        price:
+                          item.priceMode === "single" && item.price !== null
+                            ? item.price / 100
+                            : (existing?.price || 0) / 100,
+                        available: item.available,
+                        dietary: item.dietary,
+                        confirmed: true,
+                        // This menu already has the edit; other menus and
+                        // live menus keep theirs.
+                        syncMenus: false,
+                      },
+                    );
+                    editItem(item.id, { dishId: result.id });
+                    await store.saveNow();
+                    await refresh();
+                    setDialog("");
+                    const synced = (result.menus || []) as Row[];
+                    tell(
+                      !item.dishId
+                        ? "Saved to My Dishes. You can now use its photos on this menu."
+                        : synced.length
+                          ? `My Dishes updated. Allergens and diets also changed on ${synced
+                              .map((m) => `${m.name}${m.live ? " (live)" : ""}`)
+                              .join(", ")}.`
+                          : "My Dishes updated. Your other menus and live menus are unchanged.",
+                    );
+                  })
+                }
+              >
+                {item.dishId ? "Update dish library" : "Save dish to library"}
+              </button>
+            </MenuDialog>
+          )}
+          {shown === "new" && (
+            <MenuDialog
+              title="Create a menu"
+              description="Give it a name so you can find it again."
+              close={() => setDialog("")}
             >
-              {item.dishId ? "Update dish library" : "Save dish to library"}
-            </button>
-          </MenuDialog>
-        )}
-        {dialog === "new" && (
-          <MenuDialog
-            title="Create a menu"
-            description="Give it a name so you can find it again."
-            close={() => setDialog("")}
-          >
-            <Field label="Menu name">
-              <input
-                autoFocus
-                value={newName}
-                maxLength={120}
-                placeholder="Weekend brunch"
-                onChange={(e) => setNewName(e.target.value)}
-                onKeyDown={(e) => {
-                  if (e.key === "Enter" && newName.trim())
+              <Field label="Menu name">
+                <input
+                  autoFocus
+                  value={newName}
+                  maxLength={120}
+                  placeholder="Weekend brunch"
+                  onChange={(e) => setNewName(e.target.value)}
+                  onKeyDown={(e) => {
+                    if (e.key === "Enter" && newName.trim())
+                      void act("Creating menu", async () => {
+                        await store.create(
+                          newMenuDocument({ name: newName, title: newName }),
+                        );
+                        setSelected("");
+                        setDialog("");
+                      });
+                  }}
+                />
+              </Field>
+              <div className="md-dialog-actions">
+                <button
+                  className="md-button"
+                  disabled={!newName.trim() || !!busy}
+                  onClick={() =>
                     void act("Creating menu", async () => {
                       await store.create(
                         newMenuDocument({ name: newName, title: newName }),
                       );
                       setSelected("");
                       setDialog("");
-                    });
-                }}
-              />
-            </Field>
-            <div className="md-dialog-actions">
-              <button
-                className="md-button"
-                disabled={!newName.trim() || !!busy}
-                onClick={() =>
-                  void act("Creating menu", async () => {
-                    await store.create(
-                      newMenuDocument({ name: newName, title: newName }),
-                    );
-                    setSelected("");
-                    setDialog("");
-                  })
-                }
-              >
-                Create menu
-              </button>
-            </div>
-          </MenuDialog>
-        )}
-        {dialog === "archive" && (
-          <MenuDialog
-            title={`Archive ${draft.name}?`}
-            description="This menu will leave your active collection and go offline. Download a recovery copy first if you want a local backup."
-            close={() => setDialog("")}
-          >
-            <div className="md-dialog-actions">
-              <button
-                className="md-button"
-                disabled={!!busy}
-                onClick={() =>
-                  void act("Archiving menu", async () => {
-                    await documentAction("archive", { confirmed: true });
-                    setDialog("");
-                    tell("Menu archived.");
-                  })
-                }
-              >
-                Archive menu
-              </button>
-              <button
-                className="md-button md-secondary"
-                onClick={() =>
-                  downloadBlob(
-                    new Blob([JSON.stringify(draft, null, 2)], {
-                      type: "application/json",
-                    }),
-                    `${draft.name}-backup.json`,
-                  )
-                }
-              >
-                Download backup
-              </button>
-            </div>
-          </MenuDialog>
-        )}
-        {dialog === "history" && (
-          <MenuDialog
-            title="Publication history"
-            description="Restore a previous version as a draft. Your live menu changes only when you publish."
-            close={() => setDialog("")}
-          >
-            <div className="md-history">
-              {history.length ? (
-                history.map((h) => (
-                  <div key={h.id}>
-                    <div>
-                      <strong>{new Date(h.createdAt).toLocaleString()}</strong>
-                      <small>Revision {h.revision}</small>
+                    })
+                  }
+                >
+                  Create menu
+                </button>
+              </div>
+            </MenuDialog>
+          )}
+          {shown === "archive" && (
+            <MenuDialog
+              title={`Archive ${draft.name}?`}
+              description="This menu will leave your active collection and go offline. Download a recovery copy first if you want a local backup."
+              close={() => setDialog("")}
+            >
+              <div className="md-dialog-actions">
+                <button
+                  className="md-button"
+                  disabled={!!busy}
+                  onClick={() =>
+                    void act("Archiving menu", async () => {
+                      await documentAction("archive", { confirmed: true });
+                      setDialog("");
+                      tell("Menu archived.");
+                    })
+                  }
+                >
+                  Archive menu
+                </button>
+                <button
+                  className="md-button md-secondary"
+                  onClick={() =>
+                    downloadBlob(
+                      new Blob([JSON.stringify(draft, null, 2)], {
+                        type: "application/json",
+                      }),
+                      `${draft.name}-backup.json`,
+                    )
+                  }
+                >
+                  Download backup
+                </button>
+              </div>
+            </MenuDialog>
+          )}
+          {shown === "history" && (
+            <MenuDialog
+              title="Publication history"
+              description="Restore a previous version as a draft. Your live menu changes only when you publish."
+              close={() => setDialog("")}
+            >
+              <div className="md-history">
+                {history.length ? (
+                  history.map((h) => (
+                    <div key={h.id}>
+                      <div>
+                        <strong>
+                          {new Date(h.createdAt).toLocaleString()}
+                        </strong>
+                        <small>Revision {h.revision}</small>
+                      </div>
+                      <button
+                        className="md-button md-secondary md-small"
+                        disabled={!!busy}
+                        onClick={() =>
+                          void act("Restoring draft", async () => {
+                            await documentAction("restore", {
+                              historyId: h.id,
+                            });
+                            setSelected("");
+                            setDialog("");
+                            tell(
+                              "Previous publication restored as a draft. Review before publishing.",
+                            );
+                          })
+                        }
+                      >
+                        Restore as draft
+                      </button>
                     </div>
-                    <button
-                      className="md-button md-secondary md-small"
-                      disabled={!!busy}
-                      onClick={() =>
-                        void act("Restoring draft", async () => {
-                          await documentAction("restore", { historyId: h.id });
-                          setSelected("");
-                          setDialog("");
-                          tell(
-                            "Previous publication restored as a draft. Review before publishing.",
-                          );
-                        })
-                      }
-                    >
-                      Restore as draft
-                    </button>
-                  </div>
-                ))
-              ) : (
-                <p>Published versions will appear here.</p>
-              )}
-            </div>
-          </MenuDialog>
-        )}
-        {dialog === "bulk" && (
-          <MenuBulkPrices
-            menu={draft}
-            close={() => setDialog("")}
-            apply={(sections) => {
-              patch({ sections });
-              setDialog("");
-              tell(
-                "Prices updated in this menu. Use Undo to reverse the change.",
-              );
-            }}
-          />
-        )}
+                  ))
+                ) : (
+                  <p>Published versions will appear here.</p>
+                )}
+              </div>
+            </MenuDialog>
+          )}
+          {shown === "bulk" && (
+            <MenuBulkPrices
+              menu={draft}
+              close={() => setDialog("")}
+              apply={(sections) => {
+                patch({ sections });
+                setDialog("");
+                tell(
+                  "Prices updated in this menu. Use Undo to reverse the change.",
+                );
+              }}
+            />
+          )}
+        </MenuDialogOpen.Provider>
         {dialog && (error || busy) && (
           <div className="md-modal-status" role={error ? "alert" : "status"}>
             {error || `${busy}…`}
@@ -1858,6 +1903,35 @@ export default function MenuStudio({
         )}
       </section>
     </MenuActionContext.Provider>
+  );
+}
+
+/**
+ * The mark beside the save status: a dot that breathes while a save is on its
+ * way, then a small check once it lands. Only a save the owner just watched
+ * pops; a menu that opens already saved shows the check at rest.
+ */
+function SaveMark({ status, failed }: { status: string; failed: boolean }) {
+  const state = failed
+    ? "error"
+    : status === draftStatus.saved
+      ? "saved"
+      : status === draftStatus.saving || status === "Unsaved changes"
+        ? "saving"
+        : "idle";
+  const [watched, setWatched] = useState(false);
+  if (state === "saving" && !watched) setWatched(true);
+  return state === "saved" ? (
+    <svg
+      className="md-save-mark"
+      data-pop={watched || undefined}
+      viewBox="0 0 12 12"
+      aria-hidden="true"
+    >
+      <path d="M2.6 6.3 5 8.6l4.4-5" />
+    </svg>
+  ) : (
+    <i className="md-save-mark" data-state={state} aria-hidden="true" />
   );
 }
 

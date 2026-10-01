@@ -428,10 +428,19 @@ body:has(
   min-width: 0;
   text-wrap: pretty;
 }
+/* Actions get a row of their own under the message, lined up with its
+   text, so a message with several never gets squeezed. */
+.mm-toast:has(.mm-toast-actions) {
+  flex-wrap: wrap;
+  row-gap: 2px;
+}
 .mm-toast-actions {
   display: flex;
   flex-wrap: wrap;
+  order: 1;
+  flex-basis: 100%;
   gap: 4px 14px;
+  padding-left: 34px;
 }
 .mm-toast-actions button {
   min-height: 32px;

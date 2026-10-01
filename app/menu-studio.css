@@ -140,14 +140,43 @@
   gap: 6px;
   flex-wrap: wrap;
 }
-.md-save-status i {
+/* The save mark: a dot that breathes while a save is on its way, then a
+   small check that pops in once it lands. Both share one box, so the words
+   beside them never shift. */
+.md-save-mark {
+  display: inline-grid;
+  flex: none;
+  place-items: center;
+  width: 11px;
+  height: 11px;
+}
+i.md-save-mark::before {
+  content: "";
   width: 5px;
   height: 5px;
   border-radius: 50%;
   background: var(--gray-500);
 }
-.md-save-status i.is-error {
+i.md-save-mark[data-state="saving"]::before {
+  animation: md-save-pulse 1s ease-in-out infinite alternate;
+}
+i.md-save-mark[data-state="error"]::before {
   background: var(--workspace-error);
+}
+svg.md-save-mark {
+  fill: none;
+  stroke: var(--green);
+  stroke-width: 2;
+  stroke-linecap: round;
+  stroke-linejoin: round;
+}
+svg.md-save-mark[data-pop] {
+  animation: ui-pop var(--duration-slow) var(--ease-pop) both;
+}
+@keyframes md-save-pulse {
+  to {
+    opacity: 0.25;
+  }
 }
 .md-header-actions {
   display: flex;
@@ -215,35 +244,16 @@
   background: var(--fill);
   font-size: var(--text-subhead);
 }
-.md-notice div {
+/* A save that failed offers three ways out, in the toast's action row. */
+.md-recovery-actions {
   display: flex;
-  gap: 12px;
   flex-wrap: wrap;
-}
-.md-notice button:not(.md-icon) {
-  border: 0;
-  background: none;
-  text-decoration: underline;
-  color: inherit;
-  padding: 0;
-  font-size: var(--text-footnote);
-  white-space: nowrap;
-}
-.md-notice.md-success {
-  justify-content: flex-start;
-  background: var(--green-soft);
-  border-color: var(--gray-300);
-  color: var(--gray-900);
+  gap: 0 14px;
 }
 .md-notice.md-error {
   background: var(--workspace-error-surface);
   color: var(--workspace-error);
   border-color: var(--workspace-error-line);
-}
-.md-working {
-  font-size: var(--text-subhead);
-  color: var(--gray-900);
-  padding-bottom: 12px;
 }
 .md-inline-error {
   font-size: var(--text-subhead);
@@ -932,10 +942,19 @@
   flex: 1 1 180px;
   min-height: 40px;
   padding: 0 12px;
-  border: 1px solid var(--workspace-line);
+  border: 1px solid var(--workspace-control);
   border-radius: var(--radius-control);
   background: var(--workspace-surface);
   font: inherit;
+  transition:
+    border-color var(--duration-fast) var(--ease),
+    box-shadow var(--duration-fast) var(--ease);
+}
+.md-check-fix input:focus {
+  outline: none;
+  border-color: var(--workspace-focus);
+  box-shadow: 0 0 0 3px
+    color-mix(in srgb, var(--workspace-focus) 22%, transparent);
 }
 .md-check-fix .md-inline-error {
   flex-basis: 100%;
@@ -1156,6 +1175,49 @@
 .md-dialog-wide {
   width: 1140px;
   padding: 28px 32px;
+}
+/* One dialog leading to another (switchDialog in menu-studio.tsx) is a
+   view transition: the panel morphs to the next one's size while the two
+   contents crossfade inside it, unscaled. The transition draws the panel,
+   so the snapshots leave their shadow out, and the arriving dialog and its
+   backdrop skip their own entrance. Only an open dialog carries the name,
+   never one on its way out. */
+.md-dialog[data-state="open"] {
+  view-transition-name: menu-dialog;
+}
+html[data-transition="dialog-swap"] .md-dialog {
+  box-shadow: none;
+}
+.md-dialog[data-swapped][data-state="open"],
+body:has(.md-dialog[data-swapped][data-state="open"])
+  [data-slot="dialog-overlay"][data-state="open"] {
+  animation: none;
+}
+::view-transition-group(menu-dialog) {
+  background: var(--workspace-surface);
+  box-shadow: var(--shadow-panel);
+}
+::view-transition-group(menu-dialog),
+::view-transition-old(menu-dialog),
+::view-transition-new(menu-dialog) {
+  border-radius: var(--radius-card);
+}
+::view-transition-old(menu-dialog),
+::view-transition-new(menu-dialog) {
+  height: 100%;
+  overflow: clip;
+  object-fit: none;
+  object-position: 50% 0;
+}
+/* Fade through: the old contents clear before the new ones settle, so two
+   titles never sit on top of each other. */
+::view-transition-old(menu-dialog) {
+  animation-duration: calc(var(--duration) * 0.4);
+}
+::view-transition-new(menu-dialog) {
+  animation-delay: calc(var(--duration) * 0.2);
+  animation-duration: calc(var(--duration) * 0.8);
+  animation-fill-mode: both;
 }
 .md-dialog-heading {
   display: flex;
@@ -1672,17 +1734,83 @@
   vertical-align: middle;
   margin-right: 4px;
 }
+/* "Live" in Share. Straight after a first publish the soft circle pops in,
+   its check draws itself and one ring spreads out; otherwise it's at rest. */
 .md-share-status {
-  display: inline-flex;
+  display: flex;
   align-items: center;
-  gap: 7px;
-  border: 0;
-  border-radius: var(--radius-pill);
-  padding: 6px 11px;
-  color: var(--gray-900);
-  background: var(--green-soft);
-  font-size: var(--text-footnote);
+  gap: 6px;
   margin-bottom: 21px;
+  color: var(--workspace-muted);
+  font-size: var(--text-subhead);
+}
+.md-share-status strong {
+  color: var(--green);
+  font-weight: 650;
+}
+.md-live-mark {
+  position: relative;
+  display: grid;
+  flex: none;
+  place-items: center;
+  width: 26px;
+  height: 26px;
+  margin-right: 4px;
+  border-radius: 50%;
+  background: var(--green-soft);
+  color: var(--green);
+}
+.md-live-mark svg {
+  width: 100%;
+  height: 100%;
+  fill: none;
+  stroke: currentColor;
+  stroke-width: 2.1;
+  stroke-linecap: round;
+  stroke-linejoin: round;
+}
+.md-live-mark::after {
+  content: "";
+  position: absolute;
+  inset: 0;
+  border-radius: inherit;
+  box-shadow: 0 0 0 1.5px var(--green-bright);
+  opacity: 0;
+  pointer-events: none;
+}
+[data-just-published] .md-live-mark {
+  animation: ui-pop var(--duration-slow) var(--ease-pop) both;
+}
+/* The check is about 13.8 units long; the long gap keeps the round caps of
+   neighbouring dashes off the path until it draws. */
+[data-just-published] .md-live-mark path {
+  stroke-dasharray: 15 40;
+  stroke-dashoffset: 17;
+  animation: md-live-draw var(--duration-slow) var(--ease) 120ms forwards;
+}
+[data-just-published] .md-live-mark::after {
+  animation: md-live-ring calc(var(--duration-slow) * 2) var(--ease) 200ms;
+}
+@keyframes md-live-draw {
+  to {
+    stroke-dashoffset: 0;
+  }
+}
+@keyframes md-live-ring {
+  from {
+    opacity: 0.6;
+  }
+  to {
+    opacity: 0;
+    transform: scale(2.1);
+  }
+}
+@media (prefers-reduced-motion: reduce) {
+  [data-just-published] .md-live-mark,
+  [data-just-published] .md-live-mark path,
+  [data-just-published] .md-live-mark::after {
+    animation: none;
+  }
 }
 .md-share-qr {
   display: flex;
@@ -3238,6 +3366,11 @@
     padding: 23px 20px;
     max-width: calc(100vw - 16px);
     max-height: calc(100dvh - 20px);
+    border-radius: 11px;
+  }
+  ::view-transition-group(menu-dialog),
+  ::view-transition-old(menu-dialog),
+  ::view-transition-new(menu-dialog) {
     border-radius: 11px;
   }
   .md-dialog-heading h2 {
