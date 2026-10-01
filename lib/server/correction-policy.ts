@@ -1,4 +1,5 @@
 import { event, now, one, run, type Row } from "./core";
+import { liveSubscriptionSql } from "./entitlements";
 
 // Restored allowance is spendable in the period in which recovery is granted.
 // This is an image allowance adjustment, never a payment-card refund.
@@ -10,9 +11,8 @@ export async function restoreCorrectionCredit(
   const t = now();
   const changed = await one(
     `UPDATE photo_corrections SET
-    credited_period=COALESCE((SELECT bp.id FROM billing_periods bp JOIN billing_accounts ba
-      ON ba.restaurant_id=bp.restaurant_id AND ba.subscription_id=bp.subscription_id
-      WHERE bp.restaurant_id=photo_corrections.restaurant_id AND ba.status IN ('active','past_due')
+    credited_period=COALESCE((SELECT bp.id FROM billing_periods bp
+      WHERE bp.restaurant_id=photo_corrections.restaurant_id AND ${liveSubscriptionSql("bp")}
         AND bp.starts_at<=? AND bp.ends_at>? ORDER BY bp.starts_at DESC LIMIT 1),'free'),
     credited_at=?,status='credited',updated_at=?,resolution=?
     WHERE original_job_id=? AND credited_at IS NULL

@@ -810,20 +810,26 @@ export async function updateJob(jobId: string) {
     (s) => !["completed", "failed"].includes(s.status),
   );
   const complete = states.filter((s) => s.status === "completed").length;
-  await run(
-    "UPDATE jobs SET status=? WHERE id=?",
-    active
-      ? states.every((s) => s.status === "queued")
-        ? "queued"
-        : "processing"
-      : complete === states.length
-        ? "completed"
-        : complete > 0
-          ? "partial"
-          : "failed",
-    jobId,
-  );
+  const status = active
+    ? states.every((s) => s.status === "queued")
+      ? "queued"
+      : "processing"
+    : complete === states.length
+      ? "completed"
+      : complete > 0
+        ? "partial"
+        : "failed";
+  await run("UPDATE jobs SET status=? WHERE id=?", status, jobId);
   await settleCorrection(jobId);
+  if (!active)
+    try {
+      // The iPhone app hears the photo is ready, even while it's closed.
+      const { queueJobPush } = await import("./push");
+      await queueJobPush(jobId, status);
+    } catch (error) {
+      // A notification must never turn a completed photo into a failed job.
+      await reportError(error, { kind: "job", detail: { task: "push" } });
+    }
   for (const output of states.filter((entry) =>
     ["completed", "failed"].includes(entry.status),
   )) {

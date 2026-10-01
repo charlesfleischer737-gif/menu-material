@@ -254,8 +254,10 @@ export default function PlanDialog({
                   ? new Date(billing.renewsAt).toLocaleDateString()
                   : "at the end of this billing period"}
                 .
-                {!billing.cancelAtPeriodEnd &&
-                  " Cancel anytime in Manage billing; Pro stays until then."}
+                {billing.provider === "app_store"
+                  ? " Bought in the iPhone app: manage it on your iPhone in Settings, under your name, then Subscriptions."
+                  : !billing.cancelAtPeriodEnd &&
+                    " Cancel anytime in Manage billing; Pro stays until then."}
               </p>
             </section>
           ) : (
@@ -328,7 +330,8 @@ export default function PlanDialog({
               {error}
             </p>
           )}
-          {billing.plan === "pro" ? (
+          {billing.plan === "pro" &&
+          billing.provider === "app_store" ? null : billing.plan === "pro" ? (
             <div className="pw-plans-actions">
               <button
                 className="cx-btn"

@@ -11,6 +11,7 @@ import {
   digest,
   event,
   id,
+  nativeClient,
   now,
   one,
   response,
@@ -37,11 +38,18 @@ const keys = createRemoteJWKSet(
   },
 );
 export const GOOGLE_ONLY_PASSWORD = "!google-only";
-function clientId() {
-  const value = config("GOOGLE_CLIENT_ID").trim();
+function validClientId(key: string) {
+  const value = config(key).trim();
   return /^[a-zA-Z0-9_-]+\.apps\.googleusercontent\.com$/.test(value)
     ? value
     : "";
+}
+function clientId() {
+  return validClientId("GOOGLE_CLIENT_ID");
+}
+/** The iPhone app's own Google client, from Google Auth Platform. */
+export function googleIosClientId() {
+  return validClientId("GOOGLE_IOS_CLIENT_ID");
 }
 function cookieName(req: Request) {
   return new URL(req.url).protocol === "https:"
@@ -52,12 +60,15 @@ function cookie(req: Request, value: string, maxAge = flowLifetime / 1000) {
   return `${cookieName(req)}=${value}; Path=/; HttpOnly; SameSite=Lax; Max-Age=${maxAge}${new URL(req.url).protocol === "https:" ? "; Secure" : ""}`;
 }
 async function flow(req: Request) {
-  const raw = req.headers
-    .get("cookie")
-    ?.split(";")
-    .map((s) => s.trim())
-    .find((s) => s.startsWith(cookieName(req) + "="))
-    ?.split("=")[1];
+  // The app keeps its flow token from start and sends it back in a header.
+  const raw = nativeClient(req)
+    ? req.headers.get("x-menu-material-auth-flow")
+    : req.headers
+        .get("cookie")
+        ?.split(";")
+        .map((s) => s.trim())
+        .find((s) => s.startsWith(cookieName(req) + "="))
+        ?.split("=")[1];
   assert(
     raw && /^[\w-]{43}$/.test(raw),
     401,
@@ -87,7 +98,7 @@ async function consume(f: Row) {
 }
 async function signedIn(req: Request, userId: string) {
   const res = await createSession(req, userId);
-  res.headers.append("Set-Cookie", cookie(req, "", 0));
+  if (!nativeClient(req)) res.headers.append("Set-Cookie", cookie(req, "", 0));
   return res;
 }
 function timezone(value: string | undefined) {
@@ -115,15 +126,24 @@ export async function googleAuthRoute(
     return response({ enabled: !!clientId() });
   assert(req.method === "POST", 405, "Method not allowed.");
   // The JS popup callback posts JSON from our page, never a cross-site form.
+  // The app sends no Origin; it names itself instead (nativeClient).
+  const native = nativeClient(req);
   assert(
-    req.headers.get("origin") === new URL(req.url).origin &&
+    (native
+      ? !req.headers.get("origin")
+      : req.headers.get("origin") === new URL(req.url).origin) &&
       req.headers.get("sec-fetch-site") !== "cross-site" &&
       req.headers.get("content-type")?.split(";")[0].trim() ===
         "application/json",
     403,
     "Please submit from this site.",
   );
-  const audience = clientId();
+  // Google signs the app's token for its iOS client, or for the web client
+  // when the app names it as its server client.
+  const audience = native ? googleIosClientId() : clientId();
+  const audiences = native
+    ? [audience, clientId()].filter(Boolean)
+    : [audience];
   assert(
     audience,
     503,
@@ -145,6 +165,7 @@ export async function googleAuthRoute(
       digest(nonce),
       now() + flowLifetime,
     );
+    if (native) return response({ clientId: audience, nonce, flow: raw });
     return response({ clientId: audience, nonce }, 200, {
       "Set-Cookie": cookie(req, raw),
     });
@@ -163,7 +184,7 @@ export async function googleAuthRoute(
     try {
       const { payload } = await jwtVerify(input.credential, keys, {
         algorithms: ["RS256"],
-        audience,
+        audience: audiences,
         issuer: ["https://accounts.google.com", "accounts.google.com"],
         requiredClaims: [
           "sub",

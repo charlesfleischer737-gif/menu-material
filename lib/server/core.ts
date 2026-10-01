@@ -206,36 +206,69 @@ export async function limit(key: string, max = 20, seconds = 900, cost = 1) {
   );
 }
 const sessionDays = 7;
+// The iPhone app stays signed in while it's used at least once a quarter.
+const nativeSessionDays = 90;
 function sessionCookie(req: Request, value: string) {
   return `menu_material_session=${value}; Path=/; HttpOnly; SameSite=Lax; Max-Age=${sessionDays * 86400}${new URL(req.url).protocol === "https:" ? "; Secure" : ""}`;
 }
-// Sessions in use stay signed in: at most once a day, a session is renewed
-// for another seven days and its cookie is sent again with the response.
-const renewedSessions = new WeakMap<Request, string>();
-export async function viewer(req: Request) {
+/**
+ * The iPhone app names itself on every request. A browser can't send this
+ * header to another site without a CORS preflight, which this server never
+ * grants, so it also stands in for the Origin check on native sign-in routes.
+ */
+export function nativeClient(req: Request) {
+  return req.headers.get("x-menu-material-client") === "ios";
+}
+/** The app's version, such as "1.2.0", or "" for browsers. */
+export function nativeVersion(req: Request) {
+  const v = req.headers.get("x-menu-material-version") || "";
+  return nativeClient(req) && /^\d{1,4}(\.\d{1,4}){0,2}$/.test(v) ? v : "";
+}
+/**
+ * The session a request carries: a browser's cookie, or the app's
+ * Authorization header. Each kind is only accepted the way it was issued.
+ */
+export function sessionToken(req: Request) {
+  if (nativeClient(req)) {
+    const raw = req.headers
+      .get("authorization")
+      ?.match(/^Bearer ([\w-]{43})$/)?.[1];
+    return raw ? { raw, client: "ios" as const } : null;
+  }
   const raw = req.headers
     .get("cookie")
     ?.split(";")
     .map((s) => s.trim())
     .find((s) => s.startsWith("menu_material_session="))
     ?.split("=")[1];
-  if (!raw) return null;
+  return raw ? { raw, client: "web" as const } : null;
+}
+// Sessions in use stay signed in: at most once a day, a session is renewed
+// for another seven days (90 in the app) and a browser's cookie is sent again
+// with the response.
+const renewedSessions = new WeakMap<Request, string>();
+export async function viewer(req: Request) {
+  const session = sessionToken(req);
+  if (!session) return null;
+  const { raw, client } = session;
   const found = await one(
-    "SELECT u.id,u.email,u.role,s.expires_at FROM users u JOIN sessions s ON s.user_id=u.id WHERE s.hash=? AND s.expires_at>?",
+    "SELECT u.id,u.email,u.role,s.expires_at FROM users u JOIN sessions s ON s.user_id=u.id WHERE s.hash=? AND s.expires_at>? AND s.client=?",
     digest(raw),
     now(),
+    client,
   );
   if (!found) return null;
   const { expires_at: expiresAt, ...user } = found;
-  const renewBefore = now() + (sessionDays - 1) * 86400000;
+  const days = client === "ios" ? nativeSessionDays : sessionDays;
+  const renewBefore = now() + (days - 1) * 86400000;
   if (expiresAt < renewBefore) {
     const renewed = await run(
       "UPDATE sessions SET expires_at=? WHERE hash=? AND expires_at<?",
-      now() + sessionDays * 86400000,
+      now() + days * 86400000,
       digest(raw),
       renewBefore,
     );
-    if (renewed.meta.changes) renewedSessions.set(req, raw);
+    if (renewed.meta.changes && client === "web") renewedSessions.set(req, raw);
   }
   return user;
 }
@@ -261,10 +294,14 @@ const deviceDays = 365;
 function deviceCookie(req: Request, value: string) {
   return `menu_material_device=${value}; Path=/api/auth; HttpOnly; SameSite=Lax; Max-Age=${deviceDays * 86400}${new URL(req.url).protocol === "https:" ? "; Secure" : ""}`;
 }
+// The app keeps its device token in the Keychain and sends it to sign-in
+// routes in a header.
 const deviceToken = (req: Request) =>
-  req.headers
-    .get("cookie")
-    ?.match(/(?:^|;\s*)menu_material_device=([^;]+)/)?.[1];
+  nativeClient(req)
+    ? req.headers.get("x-menu-material-device")?.match(/^[\w-]{43}$/)?.[0]
+    : req.headers
+        .get("cookie")
+        ?.match(/(?:^|;\s*)menu_material_device=([^;]+)/)?.[1];
 /** Whether this browser has signed in before to the account with this email. */
 export async function signedInBefore(req: Request, email: string) {
   const raw = deviceToken(req);
@@ -281,11 +318,19 @@ export async function signedInBefore(req: Request, email: string) {
 export async function createSession(req: Request, userId: string) {
   const s = token(),
     device = token(),
-    earlier = deviceToken(req);
+    earlier = deviceToken(req),
+    native = nativeClient(req);
   await db().batch([
     db()
-      .prepare("INSERT INTO sessions (hash,user_id,expires_at) VALUES (?,?,?)")
-      .bind(digest(s), userId, now() + sessionDays * 86400000),
+      .prepare(
+        "INSERT INTO sessions (hash,user_id,expires_at,client) VALUES (?,?,?,?)",
+      )
+      .bind(
+        digest(s),
+        userId,
+        now() + (native ? nativeSessionDays : sessionDays) * 86400000,
+        native ? "ios" : "web",
+      ),
     // A fresh device token replaces the one this browser had for the account.
     ...(earlier
       ? [
@@ -300,6 +345,8 @@ export async function createSession(req: Request, userId: string) {
       )
       .bind(digest(device), userId, now() + deviceDays * 86400000, now()),
   ]);
+  // The app receives its tokens in the body and keeps them in the Keychain.
+  if (native) return response({ ok: true, token: s, deviceToken: device });
   const res = response({ ok: true }, 200, {
     "Set-Cookie": sessionCookie(req, s),
   });
@@ -337,6 +384,9 @@ export async function deleteAccount(u: Row, r: Row) {
   // goes (Stripe keeps its invoices) and the billing rows go below.
   const { closeBilling } = await import("./billing");
   await closeBilling(r.id);
+  // App Review requires ending Sign in with Apple's access too.
+  const { revokeAppleAccess } = await import("./apple-auth");
+  await revokeAppleAccess(u.id);
   const rid = r.id,
     keys = new Set<string>();
   const { assetVariantKeys } = await import("./photo-variants");
@@ -412,11 +462,17 @@ export async function deleteAccount(u: Row, r: Row) {
       "dishes",
       "billing_periods",
       "billing_accounts",
+      "app_store_subscriptions",
+      "push_outbox",
+      "live_activities",
     ].map(owned),
     db().prepare("DELETE FROM restaurants WHERE id=?").bind(rid),
     db().prepare("DELETE FROM sessions WHERE user_id=?").bind(u.id),
     db().prepare("DELETE FROM google_identities WHERE user_id=?").bind(u.id),
     db().prepare("DELETE FROM google_auth_flows WHERE email=?").bind(u.email),
+    db().prepare("DELETE FROM apple_identities WHERE user_id=?").bind(u.id),
+    db().prepare("DELETE FROM apple_auth_flows WHERE email=?").bind(u.email),
+    db().prepare("DELETE FROM push_devices WHERE user_id=?").bind(u.id),
     db().prepare("DELETE FROM trusted_devices WHERE user_id=?").bind(u.id),
     rememberFreeGrant(u.email, r),
     db().prepare("DELETE FROM invites WHERE email=?").bind(u.email),
