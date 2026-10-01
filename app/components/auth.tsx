@@ -205,7 +205,7 @@ export default function Auth({
                   ? "Sign in to your restaurant workspace."
                   : resetting
                     ? "Restore access with your secure reset link. Your previous sign-ins will be closed."
-                    : `Start with ${FREE_SIGNUP_IMAGES} free images. Your photo and selected look stay ready. No credit card needed.`}
+                    : `Verify your email to unlock ${FREE_SIGNUP_IMAGES} free images. Your photo and selected look stay ready. No credit card needed.`}
           </DialogDescription>
         </DialogHeader>
         {!googleStep && !resetting && mode !== "forgot" && (

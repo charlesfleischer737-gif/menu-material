@@ -37,6 +37,8 @@ export async function api(
   // A Pro feature the page let through anyway: explain it and offer Pro.
   if (data?.code === "pro_required" && isProFeature(data.feature))
     requestUpgrade(data.feature, true);
+  if (data?.code === "email_verification_required")
+    window.dispatchEvent(new Event("menu-material:verify-email"));
   if (!res.ok)
     throw Object.assign(
       new Error(

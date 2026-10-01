@@ -8,7 +8,6 @@ import {
   ImageDown,
   Package,
   Share2,
-  SlidersHorizontal,
   X,
 } from "lucide-react";
 import {
@@ -22,7 +21,7 @@ import {
   CollapsibleContent,
   CollapsibleTrigger,
 } from "@/components/ui/collapsible";
-import { photoReviewReminder, type PhotoUseAction } from "@/lib/photo-use";
+import { type PhotoUseAction } from "@/lib/photo-use";
 import { downloadBlob } from "@/lib/client";
 import {
   downloadFormats,
@@ -39,12 +38,11 @@ import { destinationChannel, type StyleProfile } from "@/lib/channel-rules";
 import { downloadWarnings } from "@/lib/photo-pack";
 import { CropControls, Field, PhotoFrame, track } from "./creation-shared";
 import { ProBadge } from "./pro-badge";
-import { radioKeys, radioTab } from "./radio-keys";
-import { useImageSave } from "./image-save";
+import { canShareImages } from "@/lib/image-save";
+import { useIPhone } from "./image-save";
 
 type Destination = DownloadFormat | "master";
-// Labeled by use. The photo's own format is the default; the rest are a
-// secondary "Different size" choice.
+// One selector owns the destination and aspect ratio labels.
 export const sizeChoices: { id: Destination; label: string; hint: string }[] = [
   { id: "menu", label: "Menu & website", hint: "Square · 1:1" },
   { id: "feed", label: "Instagram post", hint: "Portrait · 4:5" },
@@ -97,7 +95,7 @@ export function PhotoFinishSheet({
   onBusyChange?: (busy: boolean) => void;
   measurementContext?: { draftId?: string; sourceId?: string };
 }) {
-  const imageSave = useImageSave();
+  const iphone = useIPhone();
   const [destination, setDestination] = useState<Destination>(
     validDestination(initialFormat),
   );
@@ -106,7 +104,7 @@ export function PhotoFinishSheet({
     ...emptyAdjustments,
     fit: !isCatalogDestination(initialFormat),
   });
-  const [sizesOpen, setSizesOpen] = useState(false),
+  const [optionsOpen, setOptionsOpen] = useState(false),
     [busy, setBusy] = useState(false),
     [error, setError] = useState(""),
     [notice, setNotice] = useState(""),
@@ -120,8 +118,31 @@ export function PhotoFinishSheet({
       width: number;
       height: number;
     } | null>(null);
+  const [prepared, setPrepared] = useState<File | null>(null);
+  const [preparedUrl, setPreparedUrl] = useState("");
+  const [shareFailed, setShareFailed] = useState(false);
+  const preparedEvent = useRef<Record<string, unknown>>({});
   const downloadLock = useRef(false);
   const downloadHintId = useId();
+  useEffect(() => {
+    if (open) {
+      setFinished(false);
+      setError("");
+      setNotice("");
+      setPrepared(null);
+      setShareFailed(false);
+      setOptionsOpen(false);
+    }
+  }, [open]);
+  useEffect(() => {
+    if (!prepared) {
+      setPreparedUrl("");
+      return;
+    }
+    const url = URL.createObjectURL(prepared);
+    setPreparedUrl(url);
+    return () => URL.revokeObjectURL(url);
+  }, [prepared]);
   useEffect(() => {
     onBusyChange?.(busy);
     return () => onBusyChange?.(false);
@@ -166,7 +187,6 @@ export function PhotoFinishSheet({
   }, [open, approved, catalog, assetId, originalSize]);
   const eligible = !catalog || fromPhoto;
   const outputName = fileName.trim() || "Dish photo";
-  const choice = sizeChoices.find((entry) => entry.id === destination)!;
   const rule = destinationChannel(destination);
   const warnings = eligible
     ? downloadWarnings(destination, {
@@ -175,13 +195,19 @@ export function PhotoFinishSheet({
         edits,
       })
     : [];
+  const readyToShare = !!prepared && canShareImages([prepared]) && !shareFailed;
+  function resetExport() {
+    setFinished(false);
+    setError("");
+    setNotice("");
+    setPrepared(null);
+    setShareFailed(false);
+  }
   function changeDestination(value: string) {
     const target = validDestination(value);
     setDestination(target);
     setEdits({ ...emptyAdjustments, fit: !isCatalogDestination(target) });
-    setFinished(false);
-    setError("");
-    setNotice("");
+    resetExport();
   }
   async function finish(share: boolean | "photos" = false) {
     if (downloadLock.current || busy || !eligible) return;
@@ -215,37 +241,24 @@ export function PhotoFinishSheet({
       });
       track("export_prepared", assetId, eventDetails, exportKey);
       if (share === "photos") {
-        imageSave.open([file], (result) => {
-          track(
-            result === "shared"
-              ? "native_share_complete"
-              : result === "cancelled"
-                ? "native_share_cancelled"
-                : "export_download_started",
-            assetId,
-            eventDetails,
-            crypto.randomUUID(),
-          );
-        });
+        preparedEvent.current = eventDetails;
+        setPrepared(file);
+        setOptionsOpen(false);
         return;
       }
       if (share && navigator.canShare?.({ files: [file] })) {
         await navigator.share({ files: [file], title: outputName });
         track("native_share_complete", assetId, eventDetails, attemptId);
-        setNotice(
-          "Shared with the app you selected. Your photo is also saved in My Dishes.",
-        );
+        setNotice("Shared.");
       } else {
         downloadBlob(output.blob, filename);
         track("export_download_started", assetId, eventDetails, attemptId);
-        setNotice(
-          `Download started. ${"width" in output ? `${output.width} × ${output.height} pixels. ` : "Full-quality original file. "}Your photo is also saved in My Dishes.`,
-        );
+        setNotice("Download started.");
       }
       setFinished(true);
     } catch (e) {
       if ((e as Error).name === "AbortError") {
-        setNotice("Sharing cancelled. Your photo is still saved.");
+        setNotice("Sharing cancelled.");
         track("native_share_cancelled", assetId, eventDetails, attemptId);
       } else setError((e as Error).message);
     } finally {
@@ -253,6 +266,68 @@ export function PhotoFinishSheet({
       setBusy(false);
     }
   }
+  async function savePrepared() {
+    if (!prepared || downloadLock.current) return;
+    if (!readyToShare) {
+      downloadPrepared();
+      return;
+    }
+    downloadLock.current = true;
+    setBusy(true);
+    setError("");
+    setNotice("");
+    try {
+      // The file is ready before this tap, preserving Safari's user activation.
+      await navigator.share({ files: [prepared] });
+      track(
+        "native_share_complete",
+        assetId,
+        preparedEvent.current,
+        crypto.randomUUID(),
+      );
+      setNotice("Share sheet closed.");
+      setFinished(true);
+    } catch (e) {
+      if ((e as Error).name === "AbortError") {
+        setNotice("Saving cancelled. Try again when you’re ready.");
+        track(
+          "native_share_cancelled",
+          assetId,
+          preparedEvent.current,
+          crypto.randomUUID(),
+        );
+      } else {
+        setShareFailed(true);
+        setNotice("Touch and hold the photo to save it, or download it below.");
+      }
+    } finally {
+      downloadLock.current = false;
+      setBusy(false);
+    }
+  }
+  function downloadPrepared() {
+    if (!prepared || downloadLock.current) return;
+    downloadBlob(prepared, prepared.name);
+    track(
+      "export_download_started",
+      assetId,
+      preparedEvent.current,
+      crypto.randomUUID(),
+    );
+    setNotice("Download started.");
+    setFinished(true);
+    setOptionsOpen(false);
+  }
+  const status =
+    error ||
+    (!eligible
+      ? "Ordering platforms need a photo of your actual dish. Choose another size."
+      : notice ||
+        (prepared && !finished
+          ? readyToShare
+            ? "Choose “Save Image” in the share sheet."
+            : "Touch and hold the photo to save it, or download it below."
+          : "Saved in My Dishes."));
   return (
     <Dialog
       open={open}
@@ -262,6 +337,7 @@ export function PhotoFinishSheet({
     >
       <DialogContent
         onCloseAutoFocus={onCloseAutoFocus}
+        aria-describedby={downloadHintId}
         className="cx-workspace-popover ps2-dialog ps2-finish"
         showCloseButton={false}
         onEscapeKeyDown={(e) => {
@@ -269,22 +345,11 @@ export function PhotoFinishSheet({
         }}
       >
         <header className="ps2-dialog-header">
-          <div>
-            <DialogTitle>
-              {imageSave.iphone ? "Save photo" : "Download photo"}
-            </DialogTitle>
-            <DialogDescription>
-              {master
-                ? "Your saved image at its original size."
-                : `Sized for ${choice.label} · ${choice.hint}`}
-            </DialogDescription>
-          </div>
+          <DialogTitle>{iphone ? "Save photo" : "Download photo"}</DialogTitle>
           <button
             className="ps2-icon-button"
             disabled={busy}
-            aria-label={
-              imageSave.iphone ? "Close save photo" : "Close download"
-            }
+            aria-label="Close"
             onClick={() => onOpenChange(false)}
           >
             <X size={21} />
@@ -292,21 +357,37 @@ export function PhotoFinishSheet({
         </header>
         <div className="ps2-dialog-scroll ps2-finish-scroll">
           <div className="ps2-finish-preview">
-            {master ? (
+            {preparedUrl ? (
+              <img src={preparedUrl} alt={outputName} />
+            ) : master ? (
               <img src={`/api/assets/${assetId}`} alt={outputName} />
             ) : (
               <PhotoFrame
                 src={`/api/assets/${assetId}`}
                 ratio={downloadFormats[destination].ratio}
                 edits={edits}
-                label={`${downloadFormats[destination].label} · download preview`}
+                label={outputName}
+                showCaption={false}
               />
             )}
           </div>
+          <Field label="Size">
+            <select
+              value={destination}
+              disabled={busy}
+              onChange={(e) => changeDestination(e.target.value)}
+            >
+              {sizeChoices.map((entry) => (
+                <option key={entry.id} value={entry.id}>
+                  {entry.label} · {entry.hint}
+                </option>
+              ))}
+            </select>
+          </Field>
           <p className="ps2-control-help ps2-finish-size">
             {master
-              ? `${dimensions ? `${dimensions.width} × ${dimensions.height} pixels · ` : ""}No resizing or recompression`
-              : `Up to ${downloadFormats[destination].width} × ${downloadFormats[destination].height} pixels · JPG · No image used`}
+              ? "Original file · no recompression"
+              : `JPG · up to ${downloadFormats[destination].width} × ${downloadFormats[destination].height} px`}
           </p>
           {warnings.length > 0 && (
             <div className="ps2-finish-warning" role="note">
@@ -328,170 +409,111 @@ export function PhotoFinishSheet({
               </div>
             </div>
           )}
-          <Collapsible
-            open={sizesOpen}
-            onOpenChange={setSizesOpen}
-            className="ps2-finish-more-sizes"
-          >
-            <CollapsibleTrigger className="cx-link" disabled={busy}>
-              Different size <ChevronDown size={14} />
-            </CollapsibleTrigger>
-            <CollapsibleContent>
-              <div
-                className="ps2-size-choices"
-                role="radiogroup"
-                aria-label="Size"
-                onKeyDown={radioKeys}
-              >
-                {sizeChoices.map((entry, index) => (
-                  <button
-                    key={entry.id}
-                    role="radio"
-                    aria-checked={destination === entry.id}
-                    tabIndex={radioTab(
-                      index,
-                      sizeChoices.findIndex((c) => c.id === destination),
-                    )}
-                    disabled={busy}
-                    onClick={() => changeDestination(entry.id)}
-                  >
-                    <b>{entry.label}</b>
-                    <span>{entry.hint}</span>
-                    {destination === entry.id && (
-                      <Check size={15} aria-hidden="true" />
-                    )}
-                  </button>
-                ))}
-              </div>
-            </CollapsibleContent>
-          </Collapsible>
-          {!master && (
-            <Collapsible className="ps2-finish-crop">
-              <CollapsibleTrigger className="cx-link" disabled={busy}>
-                <SlidersHorizontal size={15} />
-                Adjust crop
-                <ChevronDown size={14} />
-              </CollapsibleTrigger>
-              <CollapsibleContent>
-                <fieldset
-                  disabled={busy}
-                  style={{ border: 0, padding: 0, margin: 0 }}
-                >
-                  <CropControls
-                    value={edits}
-                    allowFit={!catalog}
-                    onChange={(next) => {
-                      setEdits(next);
-                      setFinished(false);
-                      setError("");
-                      setNotice("");
-                    }}
-                  />
-                </fieldset>
-              </CollapsibleContent>
-            </Collapsible>
-          )}
-          <Collapsible>
-            <CollapsibleTrigger className="cx-link" disabled={busy}>
-              File name <ChevronDown size={14} />
-            </CollapsibleTrigger>
-            <CollapsibleContent>
-              <Field label="File name (optional)">
-                <input
-                  value={fileName}
-                  maxLength={100}
-                  disabled={busy}
-                  onChange={(e) => setFileName(e.target.value)}
-                  placeholder="Dish photo"
-                />
-              </Field>
-            </CollapsibleContent>
-          </Collapsible>
           {destination === "print" && (
             <p className="ps2-control-help">
               {dimensions
-                ? `The saved image supports about ${(dimensions.width / 300).toFixed(1)} × ${(dimensions.height / 300).toFixed(1)} inches at 300 pixels per inch before cropping. `
+                ? `About ${(dimensions.width / 300).toFixed(1)} × ${(dimensions.height / 300).toFixed(1)} inches at 300 ppi before cropping. `
                 : ""}
-              Resizing doesn’t add original detail. Check a print proof before
-              making a large print.
+              Check a proof before making a large print.
             </p>
+          )}
+          {!finished && (
+            <Collapsible open={optionsOpen} onOpenChange={setOptionsOpen}>
+              <CollapsibleTrigger className="cx-link" disabled={busy}>
+                More options <ChevronDown size={14} />
+              </CollapsibleTrigger>
+              <CollapsibleContent className="ps2-finish-options">
+                {!master && (
+                  <fieldset disabled={busy} className="ps2-finish-crop">
+                    <legend>Crop</legend>
+                    <CropControls
+                      value={edits}
+                      allowFit={!catalog}
+                      onChange={(next) => {
+                        setEdits(next);
+                        resetExport();
+                      }}
+                    />
+                  </fieldset>
+                )}
+                <Field label="File name">
+                  <input
+                    value={fileName}
+                    maxLength={100}
+                    disabled={busy}
+                    onChange={(e) => {
+                      setFileName(e.target.value);
+                      resetExport();
+                    }}
+                    placeholder="Dish photo"
+                  />
+                </Field>
+                {iphone ? (
+                  <button
+                    className="cx-link"
+                    disabled={busy || !eligible}
+                    onClick={() =>
+                      prepared ? downloadPrepared() : void finish()
+                    }
+                  >
+                    <Download size={16} /> Download file
+                  </button>
+                ) : (
+                  canShare && (
+                    <button
+                      className="cx-link"
+                      disabled={busy || !eligible}
+                      onClick={() => void finish(true)}
+                    >
+                      <Share2 size={16} /> Share
+                    </button>
+                  )
+                )}
+                {onPack && approved && (
+                  <button className="cx-link" disabled={busy} onClick={onPack}>
+                    <Package size={16} aria-hidden="true" />
+                    Download all sizes {packPro && <ProBadge />}
+                  </button>
+                )}
+              </CollapsibleContent>
+            </Collapsible>
           )}
         </div>
         <footer className="ps2-dialog-footer">
-          <p className="ps2-download-hint">{photoReviewReminder}</p>
-          <p className="ps2-download-hint" id={downloadHintId} role="status">
-            {!eligible
-              ? "Choose Menu & website. Ordering platforms need a photo of your actual dish."
-              : "Saved privately in My Dishes."}
-          </p>
-          {error && (
-            <p className="ps2-inline-note" role="alert">
-              {error} Your photo is saved.{" "}
-              {imageSave.iphone
-                ? "Try saving again."
-                : "Try downloading again."}
-            </p>
-          )}
-          {notice && (
-            <p className="ps2-inline-note" role="status">
-              {notice}
-            </p>
-          )}
-          <div
-            className={`ps2-finish-actions${imageSave.iphone ? " iphone-save-actions" : ""}`}
+          <DialogDescription
+            className="ps2-download-hint"
+            id={downloadHintId}
+            role={error ? "alert" : "status"}
           >
-            {imageSave.iphone ? (
-              <button
-                className="cx-btn"
-                aria-describedby={downloadHintId}
-                disabled={busy || !eligible}
-                onClick={() => void finish("photos")}
-              >
-                <ImageDown size={17} aria-hidden="true" />
-                {busy ? "Preparing…" : "Save image"}
-              </button>
-            ) : canShare ? (
-              <button
-                className="cx-btn cx-secondary"
-                aria-describedby={downloadHintId}
-                disabled={busy || !eligible}
-                onClick={() => void finish(true)}
-              >
-                <Share2 size={16} />
-                Share
-              </button>
+            {status}
+          </DialogDescription>
+          <button
+            className="cx-btn cx-full"
+            disabled={busy || !eligible}
+            onClick={() => {
+              if (finished) onOpenChange(false);
+              else if (prepared) void savePrepared();
+              else void finish(iphone ? "photos" : false);
+            }}
+          >
+            {finished ? (
+              <Check size={17} />
+            ) : iphone && (!prepared || readyToShare) ? (
+              <ImageDown size={17} />
             ) : (
-              <span />
-            )}
-            <button
-              className={imageSave.iphone ? "cx-btn cx-secondary" : "cx-btn"}
-              aria-describedby={downloadHintId}
-              disabled={busy || !eligible}
-              onClick={() => void finish()}
-            >
               <Download size={17} />
-              {imageSave.iphone
-                ? "Download"
-                : busy
-                  ? "Preparing…"
-                  : finished
-                    ? "Download again"
+            )}
+            {busy
+              ? "Preparing…"
+              : finished
+                ? "Done"
+                : iphone && !prepared
+                  ? "Continue"
+                  : readyToShare
+                    ? "Save to Photos"
                     : "Download"}
-            </button>
-          </div>
-          {onPack && approved && (
-            <button
-              className="cx-link ps2-finish-more"
-              disabled={busy}
-              onClick={onPack}
-            >
-              <Package size={16} aria-hidden="true" />
-              Photo pack · every size in one download
-              {packPro && <ProBadge />}
-            </button>
-          )}
+          </button>
         </footer>
-        {imageSave.dialog}
       </DialogContent>
     </Dialog>
   );

@@ -169,11 +169,17 @@ globalThis.Image = class {
   set src(value) {}
 };
 for (const iphone of [true, false]) {
-  let opened = [],
-    downloads = [],
+  let downloads = [],
     uses = [],
     crop;
-  setNavigator({ userAgent: iphone ? "iPhone" : "Macintosh" });
+  let shareCalls = 0;
+  setNavigator({
+    userAgent: iphone ? "iPhone" : "Macintosh",
+    canShare: () => true,
+    share: async () => {
+      shareCalls++;
+    },
+  });
   const component = mount(
     "photo-finish-sheet.tsx",
     {
@@ -184,7 +190,7 @@ for (const iphone of [true, false]) {
         CollapsibleContent: "CollapsibleContent",
         CollapsibleTrigger: "CollapsibleTrigger",
       },
-      "@/lib/photo-use": { photoReviewReminder: "Check your photo." },
+      "@/lib/image-save": { canShareImages },
       "@/lib/client": { downloadBlob: (...args) => downloads.push(args) },
       "@/lib/photo-export": {
         downloadFormats: {
@@ -213,14 +219,7 @@ for (const iphone of [true, false]) {
         track() {},
       },
       "./pro-badge": { ProBadge: "ProBadge" },
-      "./radio-keys": { radioKeys() {}, radioTab: () => 0 },
-      "./image-save": {
-        useImageSave: () => ({
-          iphone,
-          open: (files) => opened.push(files),
-          dialog: null,
-        }),
-      },
+      "./image-save": { useIPhone: () => iphone },
     },
     "PhotoFinishSheet",
   );
@@ -235,37 +234,78 @@ for (const iphone of [true, false]) {
     style: {},
     onUse: async (use) => uses.push(use),
   });
+  const status = () =>
+    text(component.find((node) => node.type === "DialogDescription")[0]);
+  assert.equal(status(), "Saved in My Dishes.");
+  assert.equal(
+    component.find((node) => node.type === "DialogDescription").length,
+    1,
+  );
+  assert.equal(
+    component.find((node) => node.type === "PhotoFrame")[0].props.showCaption,
+    false,
+  );
+  assert.equal(
+    component.find((node) => node.type === "Collapsible")[0].props.open,
+    false,
+  );
   if (iphone) {
-    assert.equal(
-      button(component, "Download").props.className,
-      "cx-btn cx-secondary",
-    );
-    component.fire(button(component, "Save image").props.onClick);
+    component.fire(button(component, "Continue").props.onClick);
     await component.settle();
     assert.deepEqual(uses, ["share"]);
-    assert.equal(opened[0][0].name, "dish-menu.jpg");
-    assert.equal(await opened[0][0].text(), await files[0].text());
+    assert.equal(downloads.length, 0, "Preparing for Photos does not download");
+    assert.equal(component.find((node) => node.type === "img").length, 1);
+    assert.equal(
+      component.find((node) => node.type === "Dialog").length,
+      1,
+      "No second preview dialog",
+    );
+    assert.equal(status(), "Choose “Save Image” in the share sheet.");
+    const save = button(component, "Save to Photos");
+    component.fire(save.props.onClick);
+    assert.equal(
+      shareCalls,
+      1,
+      "Native sharing starts synchronously from the tap",
+    );
+    await component.settle();
+    assert.equal(status(), "Share sheet closed.");
+    assert(button(component, "Done"));
+
+    // Changing the crop invalidates the prepared file and completion state.
+    component.fire(
+      component.find((node) => node.type === "select")[0].props.onChange,
+      { target: { value: "menu" } },
+    );
+    assert.equal(status(), "Saved in My Dishes.");
+    component.fire(button(component, "Continue").props.onClick);
+    await component.settle();
+    navigator.share = async () => {
+      throw Object.assign(new Error("Cancelled"), { name: "AbortError" });
+    };
+    component.fire(button(component, "Save to Photos").props.onClick);
+    await component.settle();
+    assert.match(status(), /cancelled/);
+    assert.equal(button(component, "Save to Photos").props.disabled, false);
+    navigator.share = async () => {
+      throw new Error("Unavailable");
+    };
+    component.fire(button(component, "Save to Photos").props.onClick);
+    await component.settle();
+    assert.match(status(), /Touch and hold/);
     assert.equal(
       downloads.length,
       0,
-      "iPhone primary action does not download",
-    );
-  } else {
-    assert.equal(button(component, "Download").props.className, "cx-btn");
-    assert.equal(
-      component.find(
-        (node) => node.type === "button" && text(node).includes("Save image"),
-      ).length,
-      0,
+      "Sharing failure never forces a download",
     );
   }
   component.fire(button(component, "Download").props.onClick);
   await component.settle();
-  assert.deepEqual(
-    downloads,
-    [[files[0], "dish-menu.jpg"]],
-    "Ordinary Download works on both devices",
-  );
+  assert.equal(downloads.length, 1);
+  assert.equal(downloads[0][1], "dish-menu.jpg");
+  assert.equal(await downloads[0][0].text(), await files[0].text());
+  assert.equal(status(), "Download started.");
+  assert(button(component, "Done"));
   assert.equal(crop.fit, true, "Saving uses the selected export crop");
   component.unmount();
 }

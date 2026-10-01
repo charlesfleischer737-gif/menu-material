@@ -64,20 +64,20 @@ export async function signupFreeImages(email: string) {
  * Housekeeping runs it every hour, and a waiting owner's workspace when it
  * opens, so the images arrive without the worker too. One run a minute.
  */
-export async function grantHeldImages() {
+export async function grantHeldImages(immediate = false) {
   const claim = await run(
     "INSERT INTO app_settings (key,value) VALUES ('free-grants-last-run',?) ON CONFLICT(key) DO UPDATE SET value=excluded.value WHERE CAST(app_settings.value AS INTEGER)<?",
     String(now()),
     now() - 60000,
   );
-  if (!claim.meta.changes) return 0;
+  if (!claim.meta.changes && !immediate) return 0;
   let granted = 0;
   for (const { id } of await all(
-    "SELECT id FROM restaurants WHERE free_grant='held' ORDER BY created_at,id LIMIT 100",
+    "SELECT r.id FROM restaurants r JOIN users u ON u.id=r.user_id WHERE r.free_grant='held' AND u.email_verification_required=0 ORDER BY r.created_at,r.id LIMIT 100",
   )) {
     if (!(await claimGrant())) break;
     const done = await run(
-      "UPDATE restaurants SET allowance=allowance+?,free_grant=NULL WHERE id=? AND free_grant='held'",
+      "UPDATE restaurants SET allowance=allowance+?,free_grant=NULL WHERE id=? AND free_grant='held' AND EXISTS(SELECT 1 FROM users WHERE users.id=restaurants.user_id AND email_verification_required=0)",
       FREE_SIGNUP_IMAGES,
       id,
     );
@@ -101,6 +101,8 @@ export async function freeImagesStatus(
     );
   let r = await read();
   if (!r?.free_grant) return null;
+  if (r.free_grant === "verification")
+    return { status: "verification", images: FREE_SIGNUP_IMAGES };
   if (r.free_grant === "held" && (await grantHeldImages())) r = await read();
   if (!r?.free_grant || (await imageEntitlement(restaurantId)).plan !== "free")
     return null;
@@ -127,11 +129,13 @@ export async function freeImagesStatus(
 /** Why an image request found no images, when free images explain it. */
 export async function freeImagesRefusal(restaurantId: string) {
   const free = await freeImagesStatus(restaurantId);
-  return free?.status === "held"
-    ? `${freeImagesNote(free)} Your work is saved, so you can create this image then.`
-    : free?.status === "used"
-      ? `${freeImagesNote(free)} Your work is saved; see Plans for more images.`
-      : "";
+  return free?.status === "verification"
+    ? freeImagesNote(free)
+    : free?.status === "held"
+      ? `${freeImagesNote(free)} Your work is saved, so you can create this image then.`
+      : free?.status === "used"
+        ? `${freeImagesNote(free)} Your work is saved; see Plans for more images.`
+        : "";
 }
 
 /**
@@ -144,5 +148,9 @@ export function rememberFreeGrant(email: string, restaurant: Row) {
     .prepare(
       "INSERT OR IGNORE INTO free_grant_emails (hash,created_at) SELECT ?,? WHERE ?",
     )
-    .bind(emailHash(email), now(), restaurant.free_grant === "held" ? 0 : 1);
+    .bind(
+      emailHash(email),
+      now(),
+      ["held", "verification"].includes(restaurant.free_grant) ? 0 : 1,
+    );
 }

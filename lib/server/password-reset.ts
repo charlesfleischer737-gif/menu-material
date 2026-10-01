@@ -17,7 +17,7 @@ import { publicLimit } from "./safeguards";
 
 // Only server configuration may choose the link's origin. Request headers and
 // user-supplied return URLs must never decide where a reset token is sent.
-function settings() {
+export function accountEmailSettings() {
   const key = config("RESEND_API_KEY").trim();
   const from = config("PASSWORD_RESET_FROM").trim();
   try {
@@ -33,7 +33,7 @@ function settings() {
   }
 }
 
-export const passwordResetEnabled = () => !!settings();
+export const passwordResetEnabled = () => !!accountEmailSettings();
 export const RESET_EXPIRY_MS = 30 * 60 * 1000;
 const accepted = {
   ok: true,
@@ -54,7 +54,7 @@ export async function requestPasswordReset(req: Request) {
       website: z.string().max(500).optional(),
     })
     .parse(await body(req));
-  const sender = settings();
+  const sender = accountEmailSettings();
   assert(
     sender,
     503,

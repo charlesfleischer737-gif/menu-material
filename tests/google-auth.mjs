@@ -190,6 +190,8 @@ try {
     "SELECT * FROM users WHERE email='new.person@gmail.com'",
   );
   assert.equal(user.role, "owner");
+  assert.equal(user.email_verification_required, 0);
+  assert(user.email_verified_at);
   assert.equal(checkPassword(password, user.password), false);
   const restaurant = await one(
     "SELECT * FROM restaurants WHERE user_id=?",
@@ -242,6 +244,31 @@ try {
     await one("SELECT id FROM users WHERE email='thirdparty@example.test'"),
     null,
   );
+
+  // A verified Google Workspace claim unlocks an unverified password trial once.
+  env.LOCAL_DEVELOPMENT = "false";
+  await expect("auth/signup", {
+    email: "pending@fixture.test",
+    password,
+    restaurant: "Pending Kitchen",
+  });
+  const pendingOwner = await one(
+    "SELECT * FROM users WHERE email='pending@fixture.test'",
+  );
+  assert.equal(pendingOwner.email_verification_required, 1);
+  const googleProof = await start();
+  await verify(googleProof, {
+    sub: "pending-google",
+    email: pendingOwner.email,
+    hd: "fixture.test",
+  });
+  const verifiedLink = await complete(googleProof, { password });
+  const verifiedState = (
+    await expect("state", undefined, 200, { cookie: verifiedLink.cookie })
+  ).json;
+  assert.equal(verifiedState.emailVerification.required, false);
+  assert.equal(verifiedState.remaining, 5);
+  env.LOCAL_DEVELOPMENT = "true";
 
   // Existing accounts must prove their password; the Google claim alone is insufficient.
   await expect("auth/signup", {
@@ -386,7 +413,17 @@ try {
   );
   assert.equal(repeatedRestaurant.allowance, 0);
   assert.equal(repeatedRestaurant.free_grant, "used");
-  assert.equal(JSON.parse((await one("SELECT details FROM events WHERE restaurant_id=? AND kind='signup_source'", repeatedRestaurant.id)).details).utmSource, "launch-test");
+  assert.equal(
+    JSON.parse(
+      (
+        await one(
+          "SELECT details FROM events WHERE restaurant_id=? AND kind='signup_source'",
+          repeatedRestaurant.id,
+        )
+      ).details,
+    ).utmSource,
+    "launch-test",
+  );
   env.FREE_SIGNUP_GRANTS_PER_DAY = "0";
   const held = await start();
   await verify(held, { sub: "held-person", email: "held.person@gmail.com" });

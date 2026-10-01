@@ -153,3 +153,26 @@ Owners delete their account in Settings → Details, and administrators can from
 - `tests/integration.mjs`: isolated core-flow checks
 
 The inspiration photo is by [Adrian Vieriu on Pexels](https://www.pexels.com/photo/pasta-on-a-plate-11654225/) under the [Pexels license](https://www.pexels.com/license/). It is labeled as a real inspiration photo. The hero burger is [“Burger” by cyclonebill](https://commons.wikimedia.org/wiki/File:Hamburger_(5).jpg) on Wikimedia Commons, under [CC BY-SA 2.0](https://creativecommons.org/licenses/by-sa/2.0/); its studio version is an AI edit of that photo, shared under the same license (`docs/burger-image-provenance.json`). The style gallery's cheesecake is [by Pilauricey](https://commons.wikimedia.org/wiki/File:Carnegie_Deli_Strawberry_Cheesecake.jpg), under [CC BY-SA 3.0](https://creativecommons.org/licenses/by-sa/3.0/). The original and studio-styled comparison is a clearly labeled illustrative AI edit, generated for this design demonstration. It is not a benchmark or a verified result from the live pilot API. Food textures can change, so owner review remains required. See `docs/MENU_MATERIAL_DESIGN.md` for the asset record and prompt.
+
+
+### Email verification for free images
+
+New public email/password accounts start with no usable free images. The account
+screen sends a six-digit code through the existing Resend sender (`RESEND_API_KEY`,
+`PASSWORD_RESET_FROM`, and `APP_ORIGIN`); no additional service is required.
+Codes expire in 15 minutes, are bound to the requesting browser session and email,
+and permit five attempts. Resends have a 60-second cooldown and per-user,
+per-address, and network limits. A mistyped unverified address can be corrected.
+
+Verification moves the trial into the existing daily grant queue, with exactly one
+allowance grant. All image job paths reject accounts still requiring verification.
+Deleting an unverified account does not consume a trial; deleting an account that
+received it does not make it eligible again. Photo setup remains in the guest studio
+until verification completes. Google ownership proofs from Gmail or Google Workspace
+skip the separate email challenge; other Google addresses cannot establish ownership.
+Existing accounts retain access and balances without being falsely marked verified.
+Admin-issued invitations retain their explicit allowances. Local development retains
+fixture signup behavior; `tests/email-verification.mjs` explicitly switches the local
+runtime to production signup behavior and mocks delivery. No test sends real email.
+
+Run `npm run test:email-verification` for the verification and credit-abuse checks.
