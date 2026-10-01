@@ -74,7 +74,7 @@
   min-width: 260px;
   min-height: 48px;
   padding: 0 4px 0 16px;
-  border: 1px solid var(--workspace-line);
+  border: 1px solid var(--workspace-control);
   border-radius: var(--radius-pill);
   background: var(--workspace-surface);
   color: var(--workspace-muted);
@@ -304,23 +304,31 @@
   aspect-ratio: 1;
   overflow: hidden;
   border-radius: var(--radius-card);
-  background: linear-gradient(
-      100deg,
-      var(--gray-200) 40%,
-      var(--gray-100) 50%,
-      var(--gray-200) 60%
-    )
-    0 0 / 300% 100%;
-  animation: ex-shimmer 1.4s linear infinite;
+  background: var(--gray-200);
   isolation: isolate;
+}
+/* The shimmer moves by transform, so dozens of loading tiles don't repaint
+   every frame. */
+.ex-tile-image::after {
+  content: "";
+  position: absolute;
+  inset: 0;
+  background: linear-gradient(
+    100deg,
+    transparent 30%,
+    rgb(255 255 255 / 45%) 50%,
+    transparent 70%
+  );
+  transform: translateX(-100%);
+  animation: ex-shimmer 1.4s linear infinite;
+  pointer-events: none;
 }
 .ex-tile[data-feature] .ex-tile-image {
   flex: 1 1 auto;
   border-radius: var(--radius-media);
 }
-.ex-tile-image[data-loaded] {
-  background: var(--gray-200);
-  animation: none;
+.ex-tile-image[data-loaded]::after {
+  content: none;
 }
 .cx-app .ex-tile-image img {
   position: absolute;
@@ -768,6 +776,23 @@
   max-height: calc(100dvh - 130px);
   object-fit: contain;
   animation: ex-fade var(--duration) var(--ease);
+  /* Shared with the opened tile's photo (explore-gallery.tsx). */
+  view-transition-name: ex-photo;
+}
+/* While a tile's photo grows into the detail (or back), that morph is the
+   whole animation; the dialog's own fade and zoom would fight it. */
+html:is([data-transition="explore-open"], [data-transition="explore-close"])
+  :is([data-slot="dialog-overlay"], .ex-detail, .ex-detail-photo img) {
+  animation: none !important;
+}
+::view-transition-group(ex-photo) {
+  animation-duration: 380ms;
+  animation-timing-function: var(--ease);
+}
+::view-transition-old(ex-photo),
+::view-transition-new(ex-photo) {
+  height: 100%;
+  object-fit: cover;
 }
 .ex-detail-nav {
   position: absolute;
@@ -1037,11 +1062,8 @@
 }
 
 @keyframes ex-shimmer {
-  from {
-    background-position: 100% 0;
-  }
   to {
-    background-position: 0 0;
+    transform: translateX(100%);
   }
 }
 @keyframes ex-fade {
@@ -1056,7 +1078,7 @@
   }
 }
 @media (prefers-reduced-motion: reduce) {
-  .ex-tile-image,
+  .ex-tile-image::after,
   .ex-collection,
   .ex-detail-photo img {
     animation: none;

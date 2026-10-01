@@ -8,6 +8,7 @@ import {
   useState,
 } from "react";
 import Auth from "./auth";
+import { usePresence } from "./motion";
 import Landing from "./menu-material-landing";
 import Brand from "./brand";
 import WorkspacePlaceholder from "./workspace-placeholder";
@@ -78,6 +79,9 @@ export default function HomeClient({ hasSession }: { hasSession: boolean }) {
     [planFeature, setPlanFeature] = useState<ProFeature | null>(null),
     [busy, setBusy] = useState(""),
     [error, setError] = useState("");
+  // Plans and settings stay mounted for a moment after closing, to leave.
+  const plansShown = usePresence(plans),
+    settingsShown = usePresence(settings);
   const actionBusy = useRef(false);
   // For a lapsed session: whether someone was signed in, whether they are
   // signing out on purpose, and whether sign-in has been offered already.
@@ -417,10 +421,10 @@ export default function HomeClient({ hasSession }: { hasSession: boolean }) {
           await refresh();
         }}
       />
-      {plans && state.user && (
+      {plansShown.value && state.user && (
         <Suspense fallback={<p role="status">Opening your plan…</p>}>
           <PlanDialog
-            open={plans}
+            open={plansShown.open}
             close={() => {
               setPlans(false);
               setPlanFeature(null);
@@ -431,10 +435,10 @@ export default function HomeClient({ hasSession }: { hasSession: boolean }) {
           />
         </Suspense>
       )}
-      {settings && (
+      {settingsShown.value && (
         <Suspense fallback={<p role="status">Opening settings…</p>}>
           <SettingsPanel
-            open={settings}
+            open={settingsShown.open}
             close={() => setSettings(false)}
             state={state}
             act={act}

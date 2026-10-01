@@ -1,15 +1,9 @@
 "use client";
 import { useCallback, useEffect, useRef, useState } from "react";
-import {
-  Plus,
-  Download,
-  Check,
-  Copy,
-  Sparkles,
-  ExternalLink,
-} from "lucide-react";
+import { Plus, Download, Check, Sparkles, ExternalLink } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import CreativeHeader from "./creative-header";
+import { CopyButton } from "./copy-button";
 import { ProBadge, ProNote } from "./pro-badge";
 import { proFeatures } from "@/lib/plans";
 import { hasProFeatures, requestUpgrade } from "@/lib/upgrade";
@@ -1455,22 +1449,29 @@ export default function PromotionWorkspace({
                           ? "photo"
                           : format}
                     </Button>
-                    <Button
-                      variant="outline"
+                    <CopyButton
+                      data-ui-button=""
+                      data-variant="outline"
+                      className=""
                       disabled={!!busy || !isApproved}
-                      onClick={() =>
-                        action("Copying caption", async () => {
+                      text={form.caption || ""}
+                      label="Copy caption"
+                      copiedLabel="Caption copied"
+                      // action() shows its own errors; only a finished copy
+                      // turns into the check.
+                      copy={async () => {
+                        let copied = false;
+                        await action("Copying caption", async () => {
                           const p = await persist();
                           await navigator.clipboard.writeText(p.draft.caption);
                           await api("promotions/" + p.id + "/copy-caption", {
                             revision: p.revision,
                           });
-                          setNotice("Caption copied.");
-                        })
-                      }
-                    >
-                      <Copy /> Copy caption
-                    </Button>
+                          copied = true;
+                        });
+                        if (!copied) throw new Error("Not copied");
+                      }}
+                    />
                   </div>
                   <Button
                     className="wide"

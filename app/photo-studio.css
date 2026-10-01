@@ -78,7 +78,21 @@
   box-shadow:
     0 30px 60px -30px rgb(0 0 0 / 45%),
     0 2px 6px rgb(0 0 0 / 8%);
-  animation: st-rise var(--duration-slow) var(--ease);
+}
+/* A photo settles in once it has loaded (StudioPhoto in
+   studio-onboarding.tsx), never as an empty frame. A photo that was just
+   made stays hidden until it has decoded and its reveal starts. */
+.st-photo[data-settle] {
+  transition:
+    opacity 320ms var(--ease),
+    scale 320ms var(--ease);
+}
+.st-photo[data-settle]:not([data-loaded]) {
+  opacity: 0;
+  scale: 0.96;
+}
+.st-photo[data-reveal] {
+  opacity: 0;
 }
 .st-canvas-label,
 :is(.st-studio, .st-sheet, .st-paused, .st-header) .st-glass-button {
@@ -127,7 +141,7 @@
   width: 100%;
   height: 100%;
   padding: 32px;
-  border: 1.5px dashed var(--gray-400);
+  border: 1.5px dashed var(--workspace-control);
   border-radius: 20px;
   background: var(--st-surface);
   color: var(--st-ink);
@@ -499,17 +513,19 @@
 .st-tile-media[data-loaded] > img {
   opacity: 1;
 }
+/* A strip of light, twice the tile's width, slides across it: a transform
+   the compositor runs alone, where a moving background repaints. */
 .st-tile-media:not([data-loaded])::after {
   content: "";
   position: absolute;
-  inset: 0;
+  inset: 0 auto 0 0;
+  width: 200%;
   background: linear-gradient(
     100deg,
     transparent 20%,
     rgb(255 255 255 / 55%) 50%,
     transparent 80%
   );
-  background-size: 220% 100%;
   animation: st-shimmer 1.4s linear infinite;
 }
 .st-tile .st-tile-button:hover:not(:disabled) .st-tile-media > img {
@@ -685,7 +701,7 @@
   width: 100%;
   min-height: 44px;
   padding: 11px 14px;
-  border: 1px solid rgb(0 0 0 / 12%);
+  border: 1px solid var(--workspace-control);
   border-radius: 14px;
   background: var(--st-surface);
   color: var(--st-ink);
@@ -700,13 +716,17 @@ textarea.st-input {
   resize: vertical;
 }
 .st-input::placeholder {
-  color: var(--gray-500);
+  color: var(--workspace-muted);
+}
+.st-input:hover:not(:focus) {
+  border-color: var(--gray-600);
 }
 .st-input:focus,
 .st-input:focus-visible {
-  border-color: rgb(0 0 0 / 30%);
+  border-color: var(--workspace-focus);
   outline: none;
-  box-shadow: 0 0 0 4px rgb(30 122 76 / 16%);
+  box-shadow: 0 0 0 3px
+    color-mix(in srgb, var(--workspace-focus) 22%, transparent);
 }
 .st-details {
   min-height: 84px;
@@ -748,8 +768,12 @@ textarea.st-input {
   outline: 2px solid var(--st-accent);
   outline-offset: 4px;
 }
-.st-details-content {
-  padding-top: 12px;
+/* The gap above the fields is part of what grows open (motion.css), so the
+   section doesn't jump by it at the start and end. */
+.st-details-content::before {
+  content: "";
+  display: block;
+  height: 12px;
 }
 .st-details-content[hidden] {
   display: none;
@@ -911,6 +935,37 @@ textarea.st-input {
 .st-canvas.st-result.has-label {
   padding-top: 56px;
 }
+/* Result, Original and Compare are stacked in that frame (ResultPhotos). The
+   view coming in fades in on top while the one leaving fades out beneath it,
+   quickly then slowly, so the frame never dips to the canvas between them.
+   Once faded out a view leaves the layout, so on phones, where the photo
+   sets the frame's height, a taller original never pads the result. */
+.st-result > .st-layer {
+  display: grid;
+  grid-area: 1 / 1;
+  grid-template: minmax(0, 1fr) / minmax(0, 1fr);
+  place-items: center;
+  place-self: stretch;
+  min-width: 0;
+  min-height: 0;
+  transition:
+    opacity var(--duration-fast) var(--ease-exit),
+    display var(--duration-fast) allow-discrete;
+}
+.st-result > .st-layer[data-shown] {
+  z-index: 1;
+  transition-timing-function: var(--ease);
+}
+.st-result > .st-layer:not([data-shown]) {
+  display: none;
+  opacity: 0;
+  pointer-events: none;
+}
+@starting-style {
+  .st-result > .st-layer[data-shown] {
+    opacity: 0;
+  }
+}
 .st-result .cx-photo-comparison {
   width: min(100%, calc(var(--st-photo-height) * var(--st-ratio, 1)));
 }
@@ -925,6 +980,10 @@ textarea.st-input {
 }
 .st-result .cx-comparison-original {
   background: var(--st-surface);
+}
+/* What frames a photo that was just made follows it in as it is revealed. */
+.st-review[data-reveal] :is(.st-stage-bar, .st-inspector > *) {
+  animation: st-fade var(--duration-slow) var(--ease) both;
 }
 .st-versions {
   color: var(--st-muted);
@@ -1103,30 +1162,50 @@ textarea.st-input {
 }
 
 /* Creating: the original waits on the canvas while the new photo develops.
-   The motion is decorative; status comes only from the saved job. */
-.st-developing .st-photo {
-  animation: st-breathe 3.6s var(--ease) infinite alternate;
+   The motion is decorative; status comes only from the saved job. Every
+   loop moves only opacity and transforms, which the compositor runs without
+   repainting the photo or the glass above it. */
+.st-developing .st-photo[data-loaded] {
+  /* Breathes once it has settled in. */
+  animation: st-breathe 3.6s var(--ease) 320ms infinite alternate;
 }
 .st-develop {
   position: absolute;
   inset: 0;
   z-index: 1;
-  background: linear-gradient(
-    110deg,
-    transparent 35%,
-    rgb(255 255 255 / 42%) 50%,
-    transparent 65%
-  );
-  background-size: 260% 100%;
+  overflow: hidden;
   pointer-events: none;
+}
+/* A soft band of light, slanted like the light across a plate, crossing
+   the canvas. */
+.st-develop::before {
+  content: "";
+  position: absolute;
+  inset: 0 auto 0 0;
+  width: 90%;
+  background: linear-gradient(
+    90deg,
+    transparent,
+    rgb(255 255 255 / 42%) 50%,
+    transparent
+  );
+  transform: translateX(-160%) skewX(-20deg);
   animation: st-sweep 2.8s linear infinite;
 }
 .st-pulse {
+  position: relative;
   width: 7px;
   height: 7px;
   border-radius: 50%;
   background: var(--green-bright);
-  box-shadow: 0 0 0 0 rgb(63 191 127 / 55%);
+}
+/* A ring that grows from the dot and fades. */
+.st-pulse::after {
+  content: "";
+  position: absolute;
+  inset: 0;
+  border-radius: inherit;
+  background: rgb(63 191 127 / 55%);
   animation: st-pulse 1.8s var(--ease) infinite;
 }
 .st-creating-look {
@@ -1213,6 +1292,11 @@ textarea.st-input {
   background: var(--workspace-action);
   transform: translateX(calc((var(--progress, 0) - 1) * 100%));
   transition: transform 1s linear;
+}
+/* When the photo is ready the bar runs to the end, quickly, before the
+   photo is revealed (StudioCreating waits for it). */
+.st-progress-card[data-done] .st-progress span {
+  transition: transform var(--duration) var(--ease);
 }
 .st-creating .st-inspector,
 .st-attention .st-inspector {
@@ -1376,7 +1460,7 @@ textarea.st-input {
   display: none;
 }
 .st-search input::placeholder {
-  color: var(--gray-500);
+  color: var(--workspace-muted);
 }
 .st-search-clear {
   display: grid;
@@ -2111,12 +2195,6 @@ textarea.st-input {
 }
 
 /* Motion ------------------------------------------------------------------ */
-@keyframes st-rise {
-  from {
-    opacity: 0;
-    transform: translateY(10px) scale(0.985);
-  }
-}
 @keyframes st-fade {
   from {
     opacity: 0;
@@ -2130,38 +2208,40 @@ textarea.st-input {
 }
 @keyframes st-shimmer {
   from {
-    background-position: 160% 0;
+    transform: translateX(-91%);
   }
   to {
-    background-position: -60% 0;
+    transform: translateX(41%);
   }
 }
 @keyframes st-breathe {
-  from {
-    filter: saturate(0.7) brightness(1);
-  }
   to {
-    filter: saturate(1) brightness(1.04);
+    opacity: 0.8;
+    scale: 1.008;
   }
 }
 @keyframes st-sweep {
   from {
-    background-position: 140% 0;
+    transform: translateX(-160%) skewX(-20deg);
   }
   to {
-    background-position: -40% 0;
+    transform: translateX(190%) skewX(-20deg);
   }
 }
 @keyframes st-pulse {
-  70% {
-    box-shadow: 0 0 0 7px rgb(63 191 127 / 0%);
-  }
+  70%,
   100% {
-    box-shadow: 0 0 0 0 rgb(63 191 127 / 0%);
+    opacity: 0;
+    transform: scale(3);
   }
 }
 @keyframes st-sheet-up {
   from {
+    transform: translateY(100%);
+  }
+}
+@keyframes st-sheet-down {
+  to {
     transform: translateY(100%);
   }
 }
@@ -2380,7 +2460,11 @@ textarea.st-input {
     box-shadow: none;
   }
   .st-library.st-sheet[data-state="open"] {
-    animation: st-sheet-up var(--duration-slow) var(--ease);
+    animation: st-sheet-up 320ms var(--ease);
+  }
+  /* It leaves the way it came, quicker. */
+  .st-library.st-sheet[data-state="closed"] {
+    animation: st-sheet-down var(--duration-exit) var(--ease-exit) both;
   }
   .st-library-header {
     grid-template-columns: minmax(0, 1fr) auto;

@@ -2,7 +2,8 @@
 import { useEffect, useId, useState } from "react";
 import { ArrowDownRight, ArrowUpRight } from "lucide-react";
 import { api } from "@/lib/client";
-import { MenuDialog } from "./menu-studio-controls";
+import { MenuDialog, MenuDialogOpen } from "./menu-studio-controls";
+import { usePresence } from "./motion";
 import { ProNote } from "./pro-badge";
 
 type FullStats = {
@@ -108,6 +109,8 @@ export default function MenuStats({
   onShare?: () => void;
 }) {
   const titleId = useId();
+  // Details stay mounted while they close, so the dialog can leave.
+  const details = usePresence(open);
   if (!stats?.published) return null;
   const quiet = !stats.views && !stats.previousViews;
   return (
@@ -163,77 +166,79 @@ export default function MenuStats({
           </button>
         </>
       )}
-      {open && stats.orders !== undefined && (
-        <MenuDialog
-          title="Menu visits"
-          description="All your menus, over the last 7 days. Each guest counts once per menu, however often they look."
-          close={() => setOpen(false)}
-        >
-          <div className="md-stat-grid">
-            <div className="md-stat">
-              <span>Menu views</span>
-              <strong>{count(stats.views)}</strong>
-              <Delta current={stats.views} previous={stats.previousViews} />
-            </div>
-            {(
-              [
-                ["Order clicks", stats.orders],
-                ["Reservation clicks", stats.reservations],
-                ["Calls", stats.calls],
-                ["Directions", stats.directions],
-              ] as const
-            ).map(([label, value]) => (
-              <div className="md-stat" key={label}>
-                <span>{label}</span>
-                <strong>{count(value)}</strong>
+      {details.value && stats.orders !== undefined && (
+        <MenuDialogOpen.Provider value={details.open}>
+          <MenuDialog
+            title="Menu visits"
+            description="All your menus, over the last 7 days. Each guest counts once per menu, however often they look."
+            close={() => setOpen(false)}
+          >
+            <div className="md-stat-grid">
+              <div className="md-stat">
+                <span>Menu views</span>
+                <strong>{count(stats.views)}</strong>
+                <Delta current={stats.views} previous={stats.previousViews} />
               </div>
-            ))}
-          </div>
-          <h3 className="md-stats-heading">Where guests found your menu</h3>
-          {stats.placements.length ? (
-            <ul className="md-stat-list">
-              {stats.placements.map((p) => (
-                <li key={p.id}>
-                  <span>{p.label}</span>
-                  <strong>{count(p.views)}</strong>
-                </li>
+              {(
+                [
+                  ["Order clicks", stats.orders],
+                  ["Reservation clicks", stats.reservations],
+                  ["Calls", stats.calls],
+                  ["Directions", stats.directions],
+                ] as const
+              ).map(([label, value]) => (
+                <div className="md-stat" key={label}>
+                  <span>{label}</span>
+                  <strong>{count(value)}</strong>
+                </div>
               ))}
-            </ul>
-          ) : (
-            <p className="md-help">No visits in the last 7 days.</p>
-          )}
-          <p className="md-help">
-            Give each spot its own QR code or link in Share to see which one
-            brings guests in. Older codes count as Other links.
-          </p>
-          {stats.menus.length > 1 && (
-            <>
-              <h3 className="md-stats-heading">By menu</h3>
+            </div>
+            <h3 className="md-stats-heading">Where guests found your menu</h3>
+            {stats.placements.length ? (
               <ul className="md-stat-list">
-                {stats.menus.map((m) => (
-                  <li key={m.id}>
-                    <span>{m.name}</span>
-                    <strong>{count(m.views)}</strong>
+                {stats.placements.map((p) => (
+                  <li key={p.id}>
+                    <span>{p.label}</span>
+                    <strong>{count(p.views)}</strong>
                   </li>
                 ))}
               </ul>
-            </>
-          )}
-          {stats.mostSeen && (
-            <>
-              <h3 className="md-stats-heading">Most seen dish</h3>
-              <p className="md-stats-seen">
-                <strong>{stats.mostSeen.name}</strong> · on screen for{" "}
-                {count(stats.mostSeen.guests)}{" "}
-                {stats.mostSeen.guests === 1 ? "guest" : "guests"}.
-              </p>
-              <p className="md-help">
-                Dishes near the top of your menu are seen most, so this shows
-                where a dish sits more than how popular it is.
-              </p>
-            </>
-          )}
-        </MenuDialog>
+            ) : (
+              <p className="md-help">No visits in the last 7 days.</p>
+            )}
+            <p className="md-help">
+              Give each spot its own QR code or link in Share to see which one
+              brings guests in. Older codes count as Other links.
+            </p>
+            {stats.menus.length > 1 && (
+              <>
+                <h3 className="md-stats-heading">By menu</h3>
+                <ul className="md-stat-list">
+                  {stats.menus.map((m) => (
+                    <li key={m.id}>
+                      <span>{m.name}</span>
+                      <strong>{count(m.views)}</strong>
+                    </li>
+                  ))}
+                </ul>
+              </>
+            )}
+            {stats.mostSeen && (
+              <>
+                <h3 className="md-stats-heading">Most seen dish</h3>
+                <p className="md-stats-seen">
+                  <strong>{stats.mostSeen.name}</strong> · on screen for{" "}
+                  {count(stats.mostSeen.guests)}{" "}
+                  {stats.mostSeen.guests === 1 ? "guest" : "guests"}.
+                </p>
+                <p className="md-help">
+                  Dishes near the top of your menu are seen most, so this shows
+                  where a dish sits more than how popular it is.
+                </p>
+              </>
+            )}
+          </MenuDialog>
+        </MenuDialogOpen.Provider>
       )}
     </section>
   );

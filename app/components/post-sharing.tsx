@@ -1,6 +1,6 @@
 "use client";
 import { useEffect, useRef, useState } from "react";
-import { Check, Copy, Download, Share2 } from "lucide-react";
+import { Download, Share2 } from "lucide-react";
 import { canvasBlob, renderPost } from "@/lib/creation-export";
 import { downloadBlob, type Row } from "@/lib/client";
 import {
@@ -11,6 +11,7 @@ import {
   postVisualState,
 } from "@/lib/sharing";
 import { track } from "./creation-shared";
+import { CopyButton } from "./copy-button";
 import { postSlideCount } from "@/lib/post-composition";
 import { release } from "@/lib/post-kit";
 
@@ -41,7 +42,6 @@ export default function PostSharing({
   const [sharing, setSharing] = useState(false);
   const [attempt, setAttempt] = useState(0);
 
-  const [copiedCaption, setCopiedCaption] = useState<string | null>(null);
   const [manualCopy, setManualCopy] = useState(false);
   const [saved, setSaved] = useState<Record<string, boolean>>({});
   const [handedOff, setHandedOff] = useState("");
@@ -56,7 +56,6 @@ export default function PostSharing({
     prepared?.key === imageKey && draft.reviewed ? prepared.files : [];
   const ready = draft.reviewed && files.length > 0 && !busy && !sharing;
   const caption = draft.caption || "";
-  const copied = copiedCaption === caption && !!caption;
   const count = postSlideCount(draft, selected);
   // Shares count against the dish photo, so they reach the owner's report.
   const measure = (method: "share" | "download") =>
@@ -221,26 +220,15 @@ export default function PostSharing({
         </p>
       )}
       {!!caption && (
-        <button
+        <CopyButton
           className="cx-btn cx-secondary"
           disabled={!draft.reviewed || busy || sharing}
-          onClick={() => {
-            if (!navigator.clipboard?.writeText) {
-              setManualCopy(true);
-              return;
-            }
-            void navigator.clipboard
-              .writeText(caption)
-              .then(() => {
-                setCopiedCaption(caption);
-                setManualCopy(false);
-              })
-              .catch(() => setManualCopy(true));
-          }}
-        >
-          {copied ? <Check size={16} /> : <Copy size={16} />}{" "}
-          {copied ? "Caption copied" : "Copy caption"}
-        </button>
+          text={caption}
+          label="Copy caption"
+          copiedLabel="Caption copied"
+          onCopied={() => setManualCopy(false)}
+          onError={() => setManualCopy(true)}
+        />
       )}
       {manualCopy && (
         <label className="cx-manual-caption">

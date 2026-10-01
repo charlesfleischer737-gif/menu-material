@@ -5,7 +5,6 @@ import {
   BookOpen,
   Check,
   CheckCircle2,
-  Copy,
   Download,
   ExternalLink,
   FileText,
@@ -65,6 +64,7 @@ import {
 import MenuProof from "./menu-proof";
 import MenuDocumentView from "./menu-document-view";
 import { ProBadge, ProNote } from "./pro-badge";
+import { CopyButton } from "./copy-button";
 import { FREE_MENU_DESIGN, freeCanPublish } from "@/lib/plans";
 import { requestUpgrade } from "@/lib/upgrade";
 import type { MenuContact } from "@/lib/restaurant-contact";
@@ -159,8 +159,7 @@ export function MenuDesignPicker({
                 </div>
                 <div className="md-design-card-copy">
                   <span>
-                    {d.category}{" "}
-                    {proOnly(d.id) && <ProBadge />}
+                    {d.category} {proOnly(d.id) && <ProBadge />}
                   </span>
                   <h3>{d.name}</h3>
                   <p>{d.description}</p>
@@ -1527,6 +1526,7 @@ export function MenuShareDialog({
   action,
   fallbackName,
   pro = true,
+  justPublished = false,
 }: {
   record: SavedMenu;
   restaurant: Row;
@@ -1537,12 +1537,13 @@ export function MenuShareDialog({
   /** The live menu the main QR code shows while this one is offline. */
   fallbackName?: string;
   pro?: boolean;
+  /** Opened by the menu's first publish: "Live" arrives with a moment. */
+  justPublished?: boolean;
 }) {
   const [qr, setQr] = useState(""),
     [url, setUrl] = useState(""),
     [error, setError] = useState(""),
     [busy, setBusy] = useState(false),
-    [copied, setCopied] = useState(false),
     [checked, setChecked] = useState(false),
     [offline, setOffline] = useState(false),
     [main, setMain] = useState(record.isPrimary),
@@ -1614,12 +1615,24 @@ export function MenuShareDialog({
   return (
     <MenuDialog
       title="Share your menu"
-      description="Share your live menu. Your draft edits stay private."
+      description={
+        justPublished
+          ? "Share it with guests. Future edits stay private until you publish again."
+          : "Share your live menu. Your draft edits stay private."
+      }
       close={close}
     >
-      <div className="md-share-status">
-        <CheckCircle2 size={17} /> Published
-        {checked && " · Guest access checked"}
+      <div
+        className="md-share-status"
+        data-just-published={justPublished || undefined}
+      >
+        <span className="md-live-mark" aria-hidden="true">
+          <svg viewBox="0 0 24 24">
+            <path d="M7.2 12.5 10.5 15.8 16.8 9.2" />
+          </svg>
+        </span>
+        <strong>Live</strong>
+        {checked && <span>· Guest access checked</span>}
       </div>
       {!pro && (
         <ProNote feature="menuCredit">
@@ -1633,7 +1646,6 @@ export function MenuShareDialog({
             setQr("");
             setUrl("");
             setChecked(false);
-            setCopied(false);
             setMain(e.target.value === "main");
           }}
         >
@@ -1650,7 +1662,6 @@ export function MenuShareDialog({
           onChange={(e) => {
             setQr("");
             setUrl("");
-            setCopied(false);
             setPlacement(e.target.value as MenuPlacement);
           }}
         >
@@ -1665,19 +1676,19 @@ export function MenuShareDialog({
         <input readOnly value={url} onFocus={(e) => e.target.select()} />
       </Field>
       <div className="md-dialog-actions">
-        <button
+        {/* A new destination or spot is a new link, not copied yet. */}
+        <CopyButton
           className="md-button"
+          text={url}
+          label="Copy link"
           disabled={busy || !url}
-          onClick={() =>
-            void run(async () => {
-              await navigator.clipboard.writeText(url);
-              setCopied(true);
-            })
+          onCopied={() => setError("")}
+          onError={() =>
+            setError(
+              "Your browser didn’t allow copying. Select the link above and copy it.",
+            )
           }
-        >
-          {copied ? <Check size={16} /> : <Copy size={16} />}
-          {copied ? "Copied" : "Copy link"}
-        </button>
+        />
         <a
           className="md-button md-secondary"
           href={url || undefined}

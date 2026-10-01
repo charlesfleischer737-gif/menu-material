@@ -16,12 +16,15 @@ export function SavePhotoLookSheet({
   assetId,
   onClose,
   onCloseAutoFocus,
+  open = true,
 }: {
   state: Row;
   draft: Row;
   assetId: string;
   onClose: () => void;
   onCloseAutoFocus: (event: Event) => void;
+  /** False while the sheet plays its exit, still mounted. */
+  open?: boolean;
 }) {
   const formId = useId();
   const store = useStudioLibrary(state.restaurant.id),
@@ -52,7 +55,7 @@ export function SavePhotoLookSheet({
   }
   return (
     <Dialog
-      open
+      open={open}
       onOpenChange={(open) => {
         if (!open && !store.busy) onClose();
       }}

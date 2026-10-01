@@ -16,12 +16,15 @@ export function PhotoCorrectionSheet({
   onOpenCorrection,
   refresh,
   onCloseAutoFocus,
+  open = true,
 }: {
   assetId: string;
   onClose: () => void;
   onOpenCorrection: (jobId: string, resultId?: string) => void;
   refresh: () => Promise<void>;
   onCloseAutoFocus: (event: Event) => void;
+  /** False while the sheet plays its exit, still mounted. */
+  open?: boolean;
 }) {
   const [report, setReport] = useState<Row | null>(null),
     [reason, setReason] = useState("ingredients"),
@@ -93,7 +96,7 @@ export function PhotoCorrectionSheet({
       (report.status === "ready" && report.isCorrection));
   return (
     <Dialog
-      open
+      open={open}
       onOpenChange={(open) => {
         if (!open && !busy) onClose();
       }}

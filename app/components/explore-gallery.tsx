@@ -42,6 +42,18 @@ import Kitty from "./kitty";
 import { ProBadge } from "./pro-badge";
 import { requestUpgrade } from "@/lib/upgrade";
 import { radioKeys, radioTab } from "./radio-keys";
+import { canViewTransition, viewTransition } from "./motion";
+
+// Starts fetching a look's full-size photo, and resolves once it's decoded
+// or after `wait` ms, whichever comes first.
+function warmPhoto(src: string, wait = 0) {
+  const image = new Image();
+  image.src = src;
+  return Promise.race([
+    image.decode().catch(() => {}),
+    new Promise((resolve) => setTimeout(resolve, wait)),
+  ]);
+}
 
 // Ends the placeholder shimmer and fades the photo in once it has arrived.
 function showPhoto(img: HTMLImageElement) {
@@ -253,13 +265,46 @@ export default function ExploreGallery({
     searchInput.current?.focus({ preventScroll: true });
     window.scrollTo({ top: 0, behavior: "instant" });
   }
+  // The tile's photo grows into the detail photo (and shrinks back on
+  // close): both carry the view-transition name "ex-photo" in turn.
   function open(style: PhotoStyle, from: HTMLButtonElement) {
     trigger.current = from;
     opened.current = style.id;
     trying.current = false;
     setAnnouncement("");
-    setDetail(style);
-    setDetailOpen(true);
+    const reveal = () => {
+      setDetail(style);
+      setDetailOpen(true);
+    };
+    const photo = from.querySelector<HTMLElement>(".ex-tile-image");
+    if (!photo || !canViewTransition()) return reveal();
+    // A moment for the full-size photo, so it grows in rather than blank.
+    void warmPhoto(style.image, 180).then(() => {
+      photo.style.viewTransitionName = "ex-photo";
+      void viewTransition(() => {
+        photo.style.viewTransitionName = "";
+        reveal();
+      }, "explore-open");
+    });
+  }
+  function close() {
+    const photo =
+      detail &&
+      grid.current?.querySelector<HTMLElement>(
+        `[data-explore-style="${CSS.escape(detail.id)}"] .ex-tile-image`,
+      );
+    const box = photo?.getBoundingClientRect();
+    const onScreen = !!box && box.bottom > 0 && box.top < innerHeight;
+    if (!photo || !onScreen || !canViewTransition()) {
+      setDetailOpen(false);
+      return;
+    }
+    void viewTransition(() => {
+      setDetailOpen(false);
+      photo.style.viewTransitionName = "ex-photo";
+    }, "explore-close").then(() => {
+      photo.style.viewTransitionName = "";
+    });
   }
   // Arrows keep focus in place and announce the new look; choosing from the
   // collection row moves focus to the new title.
@@ -320,6 +365,8 @@ export default function ExploreGallery({
       aria-label={`${style.name} — ${style.group}${style.pro ? " · Pro creative food art" : ""}`}
       aria-haspopup="dialog"
       onClick={(event) => open(style, event.currentTarget)}
+      onPointerEnter={() => void warmPhoto(style.image)}
+      onFocus={() => void warmPhoto(style.image)}
     >
       <span className="ex-tile-image">
         {style.pro && <ProBadge className="ex-style-pro" />}
@@ -556,7 +603,7 @@ export default function ExploreGallery({
 
       <Dialog
         open={active && detailOpen}
-        onOpenChange={(open) => !open && setDetailOpen(false)}
+        onOpenChange={(open) => !open && close()}
       >
         <DialogContent
           className="ex-detail"

@@ -250,7 +250,7 @@
   border-left-color: var(--workspace-error);
 }
 .cx-spin {
-  animation: cx-spin 3s linear infinite;
+  animation: cx-spin 0.8s linear infinite;
 }
 .cx-panel {
   background: white;

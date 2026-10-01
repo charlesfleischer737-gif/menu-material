@@ -1,6 +1,7 @@
 import type { Metadata } from "next";
 import ErrorReporter from "./components/error-reporter";
 import ScrollMemory from "./components/scroll-memory";
+import SegmentGlide from "./components/segment-glide";
 import VisitSource from "./components/visit-source";
 import { SiteContactProvider } from "./components/site-contact";
 import { shareImage, siteName, siteOrigin } from "./site-metadata";
@@ -29,8 +30,10 @@ import "./workspace-patterns.css";
 import "./workspace-shell.css";
 import "./photo-studio.css";
 import "./kitties.css";
-// One control family (buttons, segmented choices); loaded last.
+// One control family (buttons, segmented choices).
 import "./controls.css";
+// Shared motion (leaving, pressing, sliding choices, toasts); loaded last.
+import "./motion.css";
 import { FREE_SIGNUP_IMAGES } from "@/lib/plans";
 // Defaults for every page. Public pages add their own canonical address and
 // link-preview text with pageMetadata() from ./site-metadata.
@@ -71,6 +74,7 @@ export default function RootLayout({
       <body>
         <ErrorReporter />
         <ScrollMemory />
+        <SegmentGlide />
         <VisitSource />
         {/* The support address and Terms, for the footer, sign-in, plans
             and error pages. */}

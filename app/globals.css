@@ -55,6 +55,7 @@
   --on-dark-selected: rgb(255 255 255 / 11%);
   --on-dark-line: rgb(255 255 255 / 12%);
   --on-dark-warning: #f2c57c;
+  --on-dark-error: #ff9d92;
   /* Posts and menus are previewed on a dark stage, a step lighter than the
      navigation, so light artwork stands out; a hairline keeps dark artwork
      apart from it. */
@@ -108,9 +109,14 @@
     0 8px 24px -8px rgb(40 30 10 / 10%);
   --shadow-panel: 0 2px 8px rgb(0 0 0 / 6%), 0 24px 60px -12px rgb(0 0 0 / 22%);
   --ease: cubic-bezier(0.25, 1, 0.5, 1);
+  /* Leaving is quicker than arriving and accelerates away. */
+  --ease-exit: cubic-bezier(0.4, 0, 1, 1);
+  /* A small overshoot for confirmations (a check, a badge). */
+  --ease-pop: cubic-bezier(0.34, 1.56, 0.64, 1);
   --duration-fast: 150ms;
   --duration: 240ms;
   --duration-slow: 420ms;
+  --duration-exit: 160ms;
   --glass: rgb(255 255 255 / 72%);
   /* Sticky bars over the stone canvas. */
   --canvas-glass: rgb(239 237 232 / 86%);
@@ -162,6 +168,13 @@
 }
 * {
   box-sizing: border-box;
+}
+/* Tailwind's base fades placeholders to half the text color (about 3:1).
+   Fields in dialogs portalled outside .cx-app fell back to it; every field
+   gets the muted text color instead (6.3:1 on white). */
+::placeholder {
+  color: var(--workspace-muted);
+  opacity: 1;
 }
 body {
   margin: 0;

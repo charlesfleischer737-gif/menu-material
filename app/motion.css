@@ -1,0 +1,582 @@
+/*
+ * Shared motion: how things leave, press, slide, open and announce
+ * themselves. Durations and curves come from the tokens in globals.css
+ * (--ease for arriving, --ease-exit for leaving, --ease-pop for small
+ * confirmations). Everything here stops under reduced motion through the
+ * catch-all in workspace.css; JavaScript-driven motion checks
+ * prefersReducedMotion() in components/motion.ts.
+ *
+ * Loaded after controls.css.
+ */
+
+/* ---------- Leaving ---------- */
+/* Dialogs, sheets and menus leave quicker than they arrive, accelerating
+   away, so closing never feels like it lags behind the click. */
+:is(
+  [data-slot="dialog-content"],
+  [data-slot="alert-dialog-content"],
+  [data-slot="dialog-overlay"],
+  [data-slot="alert-dialog-overlay"],
+  [data-slot="sheet-content"],
+  [data-slot="sheet-overlay"],
+  [data-slot="dropdown-menu-content"],
+  [data-slot="dropdown-menu-sub-content"]
+)[data-state="closed"] {
+  --tw-duration: var(--duration-exit);
+  --tw-ease: var(--ease-exit);
+}
+
+/* ---------- Press feedback ---------- */
+/* Every control settles slightly under a finger or click, not only the
+   primary button. `scale` composes with any hover transform. */
+:is(button, a, label, summary, span):is(
+    .cx-btn,
+    .md-button,
+    .st-pill,
+    .st-create,
+    [data-ui-button]
+  ):not(:disabled, [aria-disabled="true"]):active {
+  transform: scale(0.98);
+}
+:is(button, a):is([data-ui-button][data-variant="link"]):active {
+  transform: none;
+}
+:is(.st-studio, .st-sheet, .st-paused, .st-header) .st-icon-button {
+  transition:
+    background-color var(--duration-fast) var(--ease),
+    scale var(--duration-fast) var(--ease);
+}
+:is(.st-studio, .st-sheet, .st-paused, .st-header) .st-glass-button {
+  transition:
+    background-color var(--duration-fast) var(--ease),
+    scale var(--duration-fast) var(--ease);
+}
+:is(.st-studio) .st-row,
+.st-moods button {
+  transition:
+    background-color var(--duration-fast) var(--ease),
+    scale var(--duration-fast) var(--ease);
+}
+.cx-app .cx-nav button {
+  transition:
+    background-color var(--duration-fast) var(--ease),
+    color var(--duration-fast) var(--ease),
+    scale var(--duration-fast) var(--ease);
+}
+.md-icon {
+  transition:
+    background-color var(--duration-fast) var(--ease),
+    color var(--duration-fast) var(--ease),
+    scale var(--duration-fast) var(--ease);
+}
+.md-design-card {
+  transition:
+    border-color var(--duration) var(--ease),
+    transform var(--duration) var(--ease),
+    scale var(--duration-fast) var(--ease);
+}
+.cx-app .ex-chips button,
+.ui-chips > button {
+  transition:
+    background-color var(--duration-fast) var(--ease),
+    box-shadow var(--duration-fast) var(--ease),
+    color var(--duration-fast) var(--ease),
+    scale var(--duration-fast) var(--ease);
+}
+:is(
+    .cx-segment,
+    .md-segment,
+    .mm-segments,
+    .workspace-segments,
+    .st-segmented,
+    .cx-look-preview-tabs,
+    .rs-tab-list,
+    .md-mobile-nav
+  )
+  > :is(button, a, label) {
+  transition:
+    background-color var(--duration-fast) var(--ease),
+    color var(--duration-fast) var(--ease),
+    scale var(--duration-fast) var(--ease);
+}
+.st-canvas .st-dropzone {
+  transition:
+    background-color var(--duration) var(--ease),
+    border-color var(--duration) var(--ease),
+    scale var(--duration-fast) var(--ease);
+}
+:is(.st-studio, .st-sheet, .st-paused, .st-header)
+  :is(.st-icon-button, .st-glass-button):not(:disabled):active,
+.md-icon:not(:disabled):active {
+  scale: 0.92;
+}
+.cx-app .ex-chips button:active,
+.ui-chips > button:not(:disabled):active,
+.st-moods button:active {
+  scale: 0.96;
+}
+:is(
+    .cx-segment,
+    .md-segment,
+    .mm-segments,
+    .workspace-segments,
+    .st-segmented,
+    .cx-look-preview-tabs,
+    .rs-tab-list,
+    .md-mobile-nav
+  )
+  > :is(button, a, label):not(:disabled):active,
+.cx-app .cx-nav button:active,
+.md-design-card:not(:disabled):active {
+  scale: 0.97;
+}
+:is(.st-studio) .st-row:active {
+  scale: 0.99;
+}
+.st-canvas .st-dropzone:not(:disabled):active {
+  scale: 0.995;
+}
+
+/* Hover lifts and zooms are for pointers. On touch screens they'd stick
+   after a tap, so the press above is the only feedback there. */
+@media (hover: none) {
+  .st-canvas .st-dropzone:hover:not(:disabled) .st-dropzone-icon,
+  .st-tile .st-tile-button:hover:not(:disabled) .st-tile-media > img,
+  .st-tile-action:hover:not(:disabled),
+  .md-design-card:hover,
+  .pw-style-option:hover > img {
+    transform: none;
+  }
+}
+
+/* ---------- Sliding choice ---------- */
+/* components/segment-glide.tsx measures the chosen option and sets
+   --glide-x/y/w/h/r on its track. One highlight then slides between
+   options instead of each option lighting up on its own. */
+:where(
+  .cx-segment,
+  .md-segment,
+  .mm-segments,
+  .workspace-segments,
+  .st-segmented,
+  .cx-look-preview-tabs,
+  .rs-tab-list,
+  .md-mobile-nav,
+  .workspace-tab-list,
+  .mm-tool-tabs
+) {
+  position: relative;
+}
+:is(
+  .cx-segment,
+  .md-segment,
+  .mm-segments,
+  .workspace-segments,
+  .st-segmented,
+  .cx-look-preview-tabs,
+  .rs-tab-list,
+  .md-mobile-nav,
+  .workspace-tab-list,
+  .mm-tool-tabs
+)[data-glide] {
+  isolation: isolate;
+}
+:is(
+    .cx-segment,
+    .md-segment,
+    .mm-segments,
+    .workspace-segments,
+    .st-segmented,
+    .cx-look-preview-tabs,
+    .rs-tab-list,
+    .md-mobile-nav,
+    .workspace-tab-list,
+    .mm-tool-tabs
+  )[data-glide]
+  > * {
+  position: relative;
+  z-index: 1;
+}
+:is(
+    .cx-segment,
+    .md-segment,
+    .mm-segments,
+    .workspace-segments,
+    .st-segmented,
+    .cx-look-preview-tabs,
+    .rs-tab-list,
+    .md-mobile-nav,
+    .workspace-tab-list,
+    .mm-tool-tabs
+  )[data-glide]::before {
+  content: "";
+  position: absolute;
+  top: 0;
+  left: 0;
+  z-index: 0;
+  width: var(--glide-w);
+  height: var(--glide-h);
+  border-radius: var(--glide-r, var(--radius-pill));
+  background: var(--workspace-surface);
+  box-shadow:
+    0 1px 2px rgb(0 0 0 / 8%),
+    0 1px 6px rgb(0 0 0 / 4%);
+  transform: translate(var(--glide-x), var(--glide-y));
+  pointer-events: none;
+}
+/* Underline tabs slide a 2px rule instead of a raised segment. */
+:is(.workspace-tab-list, .mm-tool-tabs)[data-glide]::before {
+  height: 2px;
+  border-radius: 2px;
+  background: var(--workspace-ink);
+  box-shadow: none;
+  transform: translate(
+    var(--glide-x),
+    calc(var(--glide-y) + var(--glide-h) - 2px)
+  );
+}
+:is(
+    .cx-segment,
+    .md-segment,
+    .mm-segments,
+    .workspace-segments,
+    .st-segmented,
+    .cx-look-preview-tabs,
+    .rs-tab-list,
+    .md-mobile-nav,
+    .workspace-tab-list,
+    .mm-tool-tabs
+  )[data-glide="ready"]::before {
+  transition:
+    transform var(--duration) var(--ease),
+    width var(--duration) var(--ease),
+    height var(--duration) var(--ease);
+}
+:is(
+    .cx-segment,
+    .md-segment,
+    .mm-segments,
+    .workspace-segments,
+    .st-segmented,
+    .cx-look-preview-tabs,
+    .rs-tab-list,
+    .md-mobile-nav
+  )[data-glide]
+  > :is(button, a, label):is(
+    [aria-pressed="true"],
+    [aria-checked="true"],
+    [aria-selected="true"],
+    [aria-current="page"],
+    [data-state="active"],
+    .is-selected
+  ) {
+  background: transparent;
+  box-shadow: none;
+}
+:is(.workspace-tab-list, .mm-tool-tabs)[data-glide]
+  > [data-slot="tabs-trigger"]::after {
+  opacity: 0;
+}
+
+/* ---------- Opening and closing ---------- */
+/* Disclosures grow to their height instead of snapping open. A few pixels
+   of padding inside the clip keep focus rings on the first and last field
+   whole. */
+@supports (interpolate-size: allow-keywords) {
+  details {
+    interpolate-size: allow-keywords;
+  }
+  details::details-content {
+    block-size: 0;
+    margin-block: -4px;
+    padding-block: 4px;
+    overflow-y: clip;
+    opacity: 0;
+    transition:
+      block-size var(--duration) var(--ease),
+      opacity var(--duration) var(--ease),
+      content-visibility var(--duration) allow-discrete;
+  }
+  details[open]::details-content {
+    block-size: auto;
+    opacity: 1;
+  }
+}
+[data-slot="collapsible-content"] {
+  overflow: clip;
+  overflow-clip-margin: 4px;
+}
+[data-slot="collapsible-content"][data-state="open"] {
+  animation: ui-collapsible-open var(--duration) var(--ease);
+}
+[data-slot="collapsible-content"][data-state="closed"] {
+  animation: ui-collapsible-close var(--duration-exit) var(--ease-exit);
+}
+@keyframes ui-collapsible-open {
+  from {
+    height: 0;
+    opacity: 0;
+  }
+  to {
+    height: var(--radix-collapsible-content-height);
+    opacity: 1;
+  }
+}
+@keyframes ui-collapsible-close {
+  from {
+    height: var(--radix-collapsible-content-height);
+    opacity: 1;
+  }
+  to {
+    height: 0;
+    opacity: 0;
+  }
+}
+
+/* ---------- Toasts ---------- */
+/* components/toast.tsx. Notices float on the dark navigation surface:
+   centered under the work on wide screens, dropping in from the top on
+   phones, clear of the tab bar and the sticky Create bar. */
+.mm-toasts {
+  position: fixed;
+  left: 50%;
+  bottom: max(24px, env(safe-area-inset-bottom));
+  z-index: 70;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 8px;
+  width: min(460px, calc(100vw - 32px));
+  transform: translateX(-50%);
+  pointer-events: none;
+}
+.mm-toasts:empty {
+  display: none;
+}
+.mm-toasts {
+  transition:
+    opacity var(--duration) var(--ease),
+    visibility var(--duration);
+}
+/* A modal dialog shows its own messages; the page's wait behind it and
+   appear once it closes. */
+body:has(
+    :is(
+      [data-slot="dialog-content"],
+      [data-slot="alert-dialog-content"],
+      [data-slot="sheet-content"]
+    )[data-state="open"]
+  )
+  .mm-toasts {
+  opacity: 0;
+  visibility: hidden;
+}
+@media (min-width: 761px) {
+  /* Centered on the workspace, not under the sidebar. */
+  body:has(.cx-sidebar) .mm-toasts {
+    left: calc(50% + 116px);
+  }
+}
+.mm-toast {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  max-width: 100%;
+  min-height: 48px;
+  padding: 10px 16px 10px 14px;
+  border-radius: 16px;
+  background: var(--nav-surface);
+  -webkit-backdrop-filter: var(--glass-blur);
+  backdrop-filter: var(--glass-blur);
+  box-shadow:
+    inset 0 0 0 1px var(--on-dark-line),
+    0 2px 6px rgb(0 0 0 / 12%),
+    0 16px 36px -10px rgb(0 0 0 / 38%);
+  color: var(--on-dark);
+  font-size: var(--text-subhead);
+  line-height: 1.4;
+  pointer-events: auto;
+  animation: mm-toast-in var(--duration) var(--ease) both;
+}
+.mm-toast[data-state="closed"] {
+  animation: mm-toast-out var(--duration-exit) var(--ease-exit) both;
+}
+.mm-toast:has(.mm-toast-dismiss) {
+  padding-right: 4px;
+}
+.mm-toast-icon {
+  display: grid;
+  flex: none;
+  place-items: center;
+  width: 22px;
+  height: 22px;
+  border-radius: 50%;
+}
+.mm-toast[data-tone="success"] .mm-toast-icon {
+  background: var(--green-bright);
+  color: var(--green-ink);
+  animation: ui-pop var(--duration-slow) var(--ease-pop) 80ms both;
+}
+.mm-toast[data-tone="error"] .mm-toast-icon {
+  color: var(--on-dark-error);
+}
+.mm-toast[data-tone="busy"] .mm-toast-icon {
+  color: var(--on-dark-muted);
+}
+.mm-toast-message {
+  flex: 1;
+  min-width: 0;
+  text-wrap: pretty;
+}
+/* Actions get a row of their own under the message, lined up with its
+   text, so a message with several never gets squeezed. */
+.mm-toast:has(.mm-toast-actions) {
+  flex-wrap: wrap;
+  row-gap: 2px;
+}
+.mm-toast-actions {
+  display: flex;
+  flex-wrap: wrap;
+  order: 1;
+  flex-basis: 100%;
+  gap: 4px 14px;
+  padding-left: 34px;
+}
+.mm-toast-actions button {
+  min-height: 32px;
+  padding: 0;
+  border: 0;
+  background: none;
+  color: var(--on-dark);
+  font: inherit;
+  font-weight: 600;
+  text-decoration: underline;
+  text-underline-offset: 3px;
+  white-space: nowrap;
+  cursor: pointer;
+}
+.mm-toast-dismiss {
+  display: grid;
+  flex: none;
+  place-items: center;
+  width: 40px;
+  height: 40px;
+  border: 0;
+  border-radius: 50%;
+  background: none;
+  color: var(--on-dark-muted);
+  cursor: pointer;
+  transition:
+    background-color var(--duration-fast) var(--ease),
+    color var(--duration-fast) var(--ease);
+}
+.mm-toast-dismiss:hover {
+  background: var(--on-dark-hover);
+  color: var(--on-dark);
+}
+.mm-toast :focus-visible {
+  outline: 2px solid var(--green-bright);
+  outline-offset: 2px;
+}
+@keyframes mm-toast-in {
+  from {
+    opacity: 0;
+    transform: translateY(12px) scale(0.97);
+  }
+}
+@keyframes mm-toast-out {
+  to {
+    opacity: 0;
+    transform: translateY(8px) scale(0.98);
+  }
+}
+@media (max-width: 760px) {
+  .mm-toasts {
+    top: max(12px, env(safe-area-inset-top));
+    bottom: auto;
+  }
+  @keyframes mm-toast-in {
+    from {
+      opacity: 0;
+      transform: translateY(-14px) scale(0.97);
+    }
+  }
+  @keyframes mm-toast-out {
+    to {
+      opacity: 0;
+      transform: translateY(-10px) scale(0.98);
+    }
+  }
+}
+
+/* A confirmation that lands with a small overshoot. */
+@keyframes ui-pop {
+  from {
+    opacity: 0;
+    transform: scale(0.4);
+  }
+}
+
+/* ---------- Copy ---------- */
+/* components/copy-button.tsx: "Copy" gives way to a check that draws
+   itself. Both faces share one grid cell sized for the longer, so the
+   button keeps its width and each face sits centered. */
+.ui-copy-face {
+  display: inline-grid;
+}
+.ui-copy-face > * {
+  display: inline-flex;
+  grid-area: 1 / 1;
+  align-items: center;
+  justify-content: center;
+  gap: 8px;
+  transition:
+    opacity var(--duration-fast) var(--ease),
+    scale var(--duration) var(--ease);
+}
+.ui-copy-face > :last-child {
+  opacity: 0;
+  scale: 0.96;
+}
+.ui-copy-face > :last-child svg {
+  scale: 0.6;
+  transition: scale var(--duration) var(--ease-pop) 40ms;
+}
+.ui-copy-face > :last-child svg path {
+  stroke-dasharray: 24;
+  stroke-dashoffset: 24;
+  transition: stroke-dashoffset var(--duration-slow) var(--ease) 60ms;
+}
+.ui-copy[data-copied] .ui-copy-face > :first-child {
+  opacity: 0;
+  scale: 0.96;
+}
+.ui-copy[data-copied] .ui-copy-face > :last-child {
+  opacity: 1;
+  scale: 1;
+}
+.ui-copy[data-copied] .ui-copy-face > :last-child svg {
+  scale: 1;
+}
+.ui-copy[data-copied] .ui-copy-face > :last-child svg path {
+  stroke-dashoffset: 0;
+}
+
+/* ---------- View transitions ---------- */
+/* components/motion.ts viewTransition(). The page crossfades quickly;
+   named elements morph between their old and new boxes. */
+::view-transition-group(*) {
+  animation-duration: var(--duration);
+  animation-timing-function: var(--ease);
+}
+::view-transition-old(root),
+::view-transition-new(root) {
+  animation-duration: var(--duration-fast);
+}
+@media (prefers-reduced-motion: reduce) {
+  ::view-transition-group(*),
+  ::view-transition-old(*),
+  ::view-transition-new(*) {
+    animation: none !important;
+  }
+}

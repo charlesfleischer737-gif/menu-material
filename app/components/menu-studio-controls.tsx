@@ -40,6 +40,14 @@ import { freeCanPublish } from "@/lib/plans";
 import { ProNote } from "./pro-badge";
 import DietaryPicker from "./dietary-picker";
 export const MenuActionContext = createContext({ busy: "", error: "" });
+/**
+ * Whether the surrounding Menus dialog is open. Menu Studio keeps a dialog
+ * mounted with this false for a moment after it closes, so it can leave
+ * with an animation instead of vanishing.
+ */
+export const MenuDialogOpen = createContext(true);
+// What opened the first of a run of dialogs that replaced one another.
+let replacedOpener: HTMLElement | null = null;
 
 export function MenuDialog({
   title,
@@ -54,15 +62,40 @@ export function MenuDialog({
   close: () => void;
   wide?: boolean;
 }) {
-  const action = useContext(MenuActionContext);
+  const action = useContext(MenuActionContext),
+    open = useContext(MenuDialogOpen);
+  // Opened in place of another dialog: it arrives through the view
+  // transition (menu-studio.css, "dialog-swap") instead of its own entrance.
+  // The one it replaces is still on the page while this one first renders.
+  const [swapped] = useState(
+    () =>
+      typeof document !== "undefined" &&
+      !!document.querySelector('.md-dialog[data-state="open"]'),
+  );
+  const [opener] = useState(() =>
+    !swapped &&
+    typeof document !== "undefined" &&
+    document.activeElement instanceof HTMLElement
+      ? document.activeElement
+      : null,
+  );
   // The same dialog system as the rest of the workspace (focus trap,
   // Escape, outside click and focus return come from Radix).
   return (
-    <Dialog open onOpenChange={(open) => !open && close()}>
+    <Dialog open={open} onOpenChange={(next) => !next && close()}>
       <DialogContent
         className={`md-dialog ${wide ? "md-dialog-wide" : ""}`}
+        data-swapped={swapped || undefined}
         showCloseButton={false}
         {...(description ? {} : { "aria-describedby": undefined })}
+        // Replaced by the next dialog: focus stays there, and when the last
+        // of them closes it goes back to whatever opened the first.
+        fallbackFocus={swapped ? () => replacedOpener : undefined}
+        onCloseAutoFocus={(event) => {
+          if (!document.querySelector('.md-dialog[data-state="open"]')) return;
+          event.preventDefault();
+          if (!swapped) replacedOpener = opener;
+        }}
       >
         <div className="md-dialog-heading">
           <div>

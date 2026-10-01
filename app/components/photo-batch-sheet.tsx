@@ -28,6 +28,7 @@ export function PhotoBatchSheet({
   onReview,
   refresh,
   onCloseAutoFocus,
+  open = true,
 }: {
   state: Row;
   draft: Row;
@@ -36,6 +37,8 @@ export function PhotoBatchSheet({
   onReview: (item: Row, jobId: string, assetId: string) => void;
   refresh: () => Promise<void>;
   onCloseAutoFocus: (event: Event) => void;
+  /** False while the sheet plays its exit, still mounted. */
+  open?: boolean;
 }) {
   const [selected, setSelected] = useState<string[]>([]),
     [batch, setBatch] = useState<Row | null>(null),
@@ -192,7 +195,7 @@ export function PhotoBatchSheet({
   }
   return (
     <Dialog
-      open
+      open={open}
       onOpenChange={(open) => {
         if (!open && !busy) onClose();
       }}
