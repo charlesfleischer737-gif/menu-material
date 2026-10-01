@@ -126,7 +126,7 @@
 }
 .field input::placeholder,
 .field textarea::placeholder {
-  color: var(--gray-500);
+  color: var(--workspace-muted);
 }
 .field input:focus,
 .field textarea:focus,

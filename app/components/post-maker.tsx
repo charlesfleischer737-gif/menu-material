@@ -420,7 +420,7 @@ export default function PostMaker({
         </button>
       </CreativeHeader>
       <DraftRecovery store={store} />
-      <Feedback {...action} />
+      <Feedback {...action} floating />
       {stale.length > 0 && (
         <div className="mm-fact-notice">
           <strong>

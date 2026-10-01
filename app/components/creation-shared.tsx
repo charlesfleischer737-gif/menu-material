@@ -11,6 +11,7 @@ import {
 import { ArrowRight, Check, LoaderCircle, RotateCw } from "lucide-react";
 import { api, dishCount, type Row } from "@/lib/client";
 import WorkspacePlaceholder from "./workspace-placeholder";
+import { Toast } from "./toast";
 import CreativeHeader from "./creative-header";
 import { createPhotoPreviewRenderer, imageBitmap } from "@/lib/photo-export";
 import { latestFrame } from "@/lib/latest-frame";
@@ -738,11 +739,38 @@ export function Feedback({
   busy,
   error,
   notice,
+  setError,
+  setNotice,
+  floating = false,
 }: {
   busy: string;
   error: string;
   notice?: string;
+  setError?: (message: string) => void;
+  setNotice?: (message: string) => void;
+  /** Page-level feedback floats as toasts so the page doesn't jump. Inside
+   * a dialog it stays in place, where the dialog's focus trap can reach it. */
+  floating?: boolean;
 }) {
+  if (floating)
+    return (
+      <>
+        <Toast open={!!busy} tone="busy" delay={400}>
+          {busy}
+        </Toast>
+        <Toast open={!!error} tone="error" onDismiss={() => setError?.("")}>
+          {error}
+        </Toast>
+        <Toast
+          open={!!notice}
+          tone="success"
+          duration={5000}
+          onDismiss={() => setNotice?.("")}
+        >
+          {notice}
+        </Toast>
+      </>
+    );
   return (
     <>
       {busy && (

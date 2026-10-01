@@ -1,8 +1,8 @@
 "use client";
 import { useCallback, useEffect, useRef, useState } from "react";
-import { Copy } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { StudioReleasePanel } from "./studio-release-panel";
+import { CopyButton } from "./copy-button";
 import { StudioProgressPanel } from "./studio-progress-panel";
 import { LaunchFunnelPanel } from "./launch-funnel-panel";
 import { api, type Row } from "@/lib/client";
@@ -238,18 +238,25 @@ export function Admin({ act, refresh, busy }: AdminProps) {
                 readOnly
                 value={link}
               />
-              <Button
-                variant="outline"
+              <CopyButton
+                data-ui-button=""
+                data-variant="outline"
+                className=""
                 disabled={!!busy}
-                onClick={() =>
-                  invite.run("Copying link", "Link copied.", async () =>
-                    navigator.clipboard.writeText(link),
-                  )
-                }
-              >
-                <Copy />
-                {reset ? "Copy reset link" : "Copy invitation"}
-              </Button>
+                text={link}
+                label={reset ? "Copy reset link" : "Copy invitation"}
+                copiedLabel="Link copied"
+                // run() reports its own errors; only a finished copy turns
+                // into the check.
+                copy={async () => {
+                  let copied = false;
+                  await invite.run("Copying link", "Link copied.", async () => {
+                    await navigator.clipboard.writeText(link);
+                    copied = true;
+                  });
+                  if (!copied) throw new Error("Not copied");
+                }}
+              />
             </div>
           )}
         </section>
@@ -961,8 +968,7 @@ function readinessDetail(name: string, check: Row) {
 }
 function ReadinessStatus({ readiness }: { readiness: Row }) {
   const failed = readiness.failed?.length || 0;
-  const unset = (readiness.launch || []).filter((item: Row) => !item.ok)
-    .length;
+  const unset = (readiness.launch || []).filter((item: Row) => !item.ok).length;
   return (
     <details className="admin-explanation" open={failed > 0 || unset > 0}>
       <summary>

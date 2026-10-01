@@ -39,7 +39,7 @@ export default function PlanDialog({
   close,
   state,
   refresh,
-  feature = null,
+  feature: requested = null,
 }: {
   open: boolean;
   close: () => void;
@@ -48,6 +48,10 @@ export default function PlanDialog({
   /** The Pro feature someone reached for, which the dialog leads with. */
   feature?: ProFeature | null;
 }) {
+  // Keeps leading with the feature while the dialog closes, after the
+  // caller has cleared it.
+  const [feature, setFeature] = useState(requested);
+  if (open && feature !== requested) setFeature(requested);
   const [billing, setBilling] = useState<Row>(state.billing || {}),
     [busy, setBusy] = useState(false),
     [error, setError] = useState(""),
