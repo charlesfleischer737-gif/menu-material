@@ -52,7 +52,7 @@ const stop = watchJobs({
     unscheduled = timer;
   },
 });
-assert.equal(every, 2000, "Progress is checked every two seconds");
+assert.equal(every, 1000, "Finished images are checked for every second");
 
 assert.equal(
   advances,
@@ -113,7 +113,7 @@ assert.deepEqual(
 );
 while (held.length) await finish();
 const hiddenStart = { advances, statusCalls };
-for (let n = 0; n < 3; n++) await step();
+for (let n = 0; n < 7; n++) await step();
 assert.deepEqual(
   { advances, statusCalls },
   hiddenStart,
@@ -123,7 +123,7 @@ await step();
 assert.equal(advances, hiddenStart.advances + 1, "…every 8 seconds");
 await finish();
 assert.equal(statusCalls, hiddenStart.statusCalls, "…and checks no status");
-for (let n = 0; n < 3; n++) await step();
+for (let n = 0; n < 7; n++) await step();
 assert.equal(advances, hiddenStart.advances + 1);
 await step();
 assert.equal(advances, hiddenStart.advances + 2);
@@ -148,6 +148,7 @@ pageHidden = true;
 await step();
 assert.equal(statusCalls, watching.statusCalls + 2, "…while the page is seen");
 pageHidden = false;
+for (let n = 0; n < 4; n++) await step();
 assert.equal(reloads, watching.reloads);
 await step();
 assert.equal(
