@@ -1,7 +1,7 @@
 import { photoStyles, type PhotoStyle } from "./photo-styles";
 import { channelRules, type ChannelRule } from "./channel-rules";
 export { photoStyles, styleCategories } from "./photo-styles";
-export const PIPELINE_VERSION = "studio-2026-09-24-direct-v8";
+export const PIPELINE_VERSION = "studio-2026-10-01-direct-v9";
 const legacyLooks = [
   {
     id: "keep",

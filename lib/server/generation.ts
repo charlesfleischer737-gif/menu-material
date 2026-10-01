@@ -83,12 +83,12 @@ export function imagePrompt(
   // Legacy "As shown" means the selected style card, never the source photo.
   const styled = (value: string | undefined) =>
     !value || ["As shown", "Match the style"].includes(value);
-  const servingWare =
-    c.plate === "keep"
-      ? "Keep the original plate or serving vessel, including its shape, material and color. Restyle the surrounding scene fully."
-      : c.plate === "white"
-        ? "For food, replace the original plate with a simple white ceramic plate or an appropriate white bowl for liquid food. Preserve the food and serving size. For drinks, keep the original drinking vessel and its visible branding as specified under DRINK IDENTITY."
-        : "Match the serving ware to the selected style. For food styles with explicit serving ware, replace the original food vessel with the specified plate, bowl, takeout box, paper-lined tray, metal tray or board. The vessel type may change: a plated meal must move directly into the requested takeout box, not stay on a plate inside or beneath it. Retain existing food packaging only when it already matches the requested style. Match the original serving capacity and preserve the food arrangement relative to itself; never shrink, enlarge, cut, stack or rearrange the meal to fit. Keep liquid food in a suitable leakproof food container. When the style specifies no food serving ware, keep the original. Beverage and bar styles applied to food keep the original food vessel and change only the setting and lighting. For drinks, keep the original drinking vessel and its visible branding as specified under DRINK IDENTITY.";
+  const keepServingWare = c.plate === "keep";
+  const servingWare = keepServingWare
+    ? "Keep the original plate or serving vessel, including its shape, material and color. Restyle the surrounding scene fully."
+    : c.plate === "white"
+      ? "For food, replace the original plate with a simple white ceramic plate or an appropriate white bowl for liquid food. Preserve the food and serving size. For drinks, keep the original drinking vessel and its visible branding as specified under DRINK IDENTITY."
+      : "Match the serving ware to the selected style. This is a required food-vessel replacement, not an optional suggestion. Remove the original food plate, bowl, tray, board or packaging and serve the same food directly in the selected style's serving ware. Match its material, color, shape and rim, not just its color. Use the food serving ware explicitly described in the selected style; if none is described, use suitable food serving ware from a supplied style reference; otherwise choose new food serving ware consistent with the style's palette and materials. Do not fall back to the original vessel just because the style names only a setting or lighting. The vessel type may change: a plated meal must move directly into the requested takeout box, not stay on a plate inside or beneath it. Never nest the original vessel inside or under the replacement. Size the new vessel for the complete original portion; preserve the food arrangement relative to itself and never shrink, enlarge, cut, stack or rearrange the meal to fit. Keep liquid food in a suitable leakproof food container. For drinks, keep the original drinking vessel and its visible branding as specified under DRINK IDENTITY.";
   const food = {
     name: d.name,
     description: d.description,
@@ -129,11 +129,15 @@ FINISH
 Appetizing editorial food photography with believable texture, natural highlights and realistic depth. No plastic textures, excessive gloss, impossible geometry or illustration. Do not add text, prices, watermarks, logos or branded packaging. Before finishing, ensure the setting and light clearly express the chosen style and the food matches its description. Produce the image only.`;
   return `Create exactly one photorealistic, professionally art-directed restaurant photograph of this same dish in the SELECTED STYLE.
 
+REQUIRED SERVING-DISH EDIT
+Serving ware: ${servingWare}
+${keepServingWare ? "The original food vessel is part of what must be preserved." : "The food itself is protected; its serving vessel is being deliberately replaced. Keeping the source food vessel when it differs from the requested one is an unsuccessful edit, even if the background and lighting change. Plate descriptions in dish details or a previous result do not override this choice."}
+
 FOOD IDENTITY
 Use the original upload as the source of truth for the food: retain its ingredients, counts, portion size, doneness, toppings, sauce and recognizable arrangement. Never add or remove ingredients, garnish, sides or extra servings. Preserve natural food color while relighting it. Food fidelity does not require preserving the original plate, tabletop, room, exposure, shadows or white balance.
 
 FOOD AND STYLE COMPATIBILITY
-Identify food versus drinks from the original subject, never from the selected style or reference image. When a Beverage or Bar & Lounge style is applied to food, retain the original plate, bowl, board or food container and apply only the background, surface and lighting. Never put solid food in a drinking glass, cup, mug, bottle or can to imitate a beverage style, and never turn the food into a drink. This compatibility rule overrides conflicting serving-ware directions. A food style that explicitly calls for different food serving ware may change that vessel under OWNER CONTROLS without changing the food itself.
+Identify food versus drinks from the original subject, never from the selected style or reference image. ${keepServingWare ? "When a Beverage or Bar & Lounge style is applied to food, retain the original plate, bowl, board or food container and apply only the background, surface and lighting." : "When a Beverage or Bar & Lounge style is applied to food, follow the requested food serving-dish edit using a suitable food plate, bowl, board or container in that style's palette and materials."} Never put solid food in a drinking glass, cup, mug, bottle or can to imitate a beverage style, and never turn the food into a drink. Protecting the food means preserving the edible ingredients and their arrangement, not preserving a food vessel the owner asked to replace.
 
 DRINK IDENTITY
 Whenever an uploaded subject includes a drink, preserve the exact original glass, cup, mug, bottle or can: silhouette, proportions, rim, base, stem or handle, material and color. Retain its existing visible logos, brand marks, printed lettering, labels and embossing as photographed, including their design, wording, color, size and position on the vessel. Keep the logo-facing orientation recognizable. Do not erase, replace, simplify, redesign or invent this branding; preserve only what is actually visible in the original, without completing obscured text from the drink name. Existing product branding is part of the photographed subject, not added promotional text.
@@ -145,7 +149,7 @@ Selected style: ${JSON.stringify(style)}
 ${slot === 0 ? "Fully realize this art direction in the final photograph." : "Create a distinct lighting interpretation within this same art direction, with equally complete scene styling."}
 
 OWNER CONTROLS
-Serving ware: ${servingWare}
+Serving ware: Follow the REQUIRED SERVING-DISH EDIT above.
 Surface: ${styled(c.surface) ? "Use the surface specified by the selected style; replace the original surface accordingly." : `Use the owner's chosen ${JSON.stringify(c.surface)} surface, replacing the source surface.`}
 Lighting: ${styled(c.lighting) ? "Use the lighting specified by the selected style; relight the entire scene accordingly." : `Use the owner's chosen ${JSON.stringify(c.lighting)} lighting throughout the new scene.`}
 Camera: ${c.angle && c.angle !== "keep" ? `Use the requested ${c.angle} camera angle, reconstructing only what is necessary to preserve food identity.` : "Keep the original camera angle while rebuilding the scene around the dish."}
@@ -158,7 +162,7 @@ Confirmed dish: ${JSON.stringify(food)}
 Requested adjustment: ${JSON.stringify(revision)}
 
 FINISH
-Appetizing editorial food photography with believable texture, natural highlights and realistic depth. No plastic textures, excessive gloss, impossible geometry or illustration. Do not add promotional text, prices, watermarks, new logos or invented branded packaging. Preserve existing branding visible on the original drink vessel as required above. Before finishing, ensure the setting and light clearly express the chosen style, the food is still the same serving, explicit food serving ware is realized unless an owner control or subject compatibility requires retaining it, and any drink retains its original vessel and visible branding. Produce the image only.`;
+Appetizing editorial food photography with believable texture, natural highlights and realistic depth. No plastic textures, excessive gloss, impossible geometry or illustration. Do not add promotional text, prices, watermarks, new logos or invented branded packaging. Preserve existing branding visible on the original drink vessel as required above. Before finishing, verify the requested serving-dish edit: ${keepServingWare ? "the original food vessel is unchanged" : "the food sits directly in the requested replacement vessel, with none of the old vessel left visible"}. Also ensure the setting and light clearly express the chosen style, the food is still the same serving, and any drink retains its original vessel and visible branding. Produce the image only.`;
 }
 // A saved style can name a photo style since removed from the catalog. Values
 // that no longer validate fall back to their defaults instead of failing.
@@ -781,8 +785,8 @@ async function inputImages(job: Row) {
             : assetId === job.parent_id
               ? details.creativeStyleId
                 ? "PREVIOUS CREATIVE RESULT: keep the successful food-art direction while applying the requested change."
-                : "PREVIOUS RESULT: change only the requested styling. Restore food from the original when needed."
-              : "STYLE INSPIRATION ONLY: use setting, light and color. Never copy this image's food, text, branding or people.",
+                : "PREVIOUS RESULT: apply the selected style, serving-dish choice and requested adjustment. Preserve successful styling only where it agrees with those choices. Restore food from the original when needed."
+              : `STYLE INSPIRATION ONLY: use setting, light and color.${details.controls?.plate === "style" ? " Also use its food serving ware as the replacement when the selected style does not specify one; never copy drinking vessels onto food." : " The owner's serving-dish choice takes priority over this reference's serving ware."} Never copy this image's food, text, branding or people.`,
         blob: new Blob([bytes], { type: mime }),
         name: `${assetId}.${mime === "image/png" ? "png" : mime === "image/webp" ? "webp" : "jpg"}`,
       };
