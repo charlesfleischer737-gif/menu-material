@@ -1,6 +1,6 @@
 "use client";
 import { useEffect, useRef, useState } from "react";
-import { Download, Share2 } from "lucide-react";
+import { Download, ImageDown, Share2 } from "lucide-react";
 import { canvasBlob, renderPost } from "@/lib/creation-export";
 import { downloadBlob, type Row } from "@/lib/client";
 import {
@@ -14,6 +14,7 @@ import { track } from "./creation-shared";
 import { CopyButton } from "./copy-button";
 import { postSlideCount } from "@/lib/post-composition";
 import { release } from "@/lib/post-kit";
+import { useImageSave } from "./image-save";
 
 export default function PostSharing({
   draft,
@@ -28,6 +29,7 @@ export default function PostSharing({
   notice: (message: string) => void;
   draftId?: string;
 }) {
+  const imageSave = useImageSave();
   const [desiredFormat, setSelected] = useState(draft.channels[0] || "feed");
   const [prepared, setPrepared] = useState<{
     key: string;
@@ -243,15 +245,44 @@ export default function PostSharing({
       <button
         className="cx-btn"
         disabled={!ready}
-        onClick={() => (canShare ? share() : void saveSelected())}
+        onClick={() => {
+          if (imageSave.iphone) {
+            imageSave.open(files, (result) => {
+              if (result === "shared") measure("share");
+              if (result === "downloaded") measure("download");
+            });
+          } else if (canShare) share();
+          else void saveSelected();
+        }}
       >
-        {canShare ? <Share2 size={17} /> : <Download size={17} />}{" "}
+        {imageSave.iphone ? (
+          <ImageDown size={17} />
+        ) : canShare ? (
+          <Share2 size={17} />
+        ) : (
+          <Download size={17} />
+        )}{" "}
         {sharing
           ? "Preparing…"
-          : canShare
-            ? `Share ${selected === "carousel" ? "carousel" : selected === "story" ? "Story" : "post"}`
-            : `Save ${selected === "carousel" ? "carousel ZIP" : selected === "story" ? "Story" : "post"}`}
+          : imageSave.iphone
+            ? files.length > 1
+              ? "Save images"
+              : "Save image"
+            : canShare
+              ? `Share ${selected === "carousel" ? "carousel" : selected === "story" ? "Story" : "post"}`
+              : `Save ${selected === "carousel" ? "carousel ZIP" : selected === "story" ? "Story" : "post"}`}
       </button>
+      {imageSave.iphone && (
+        <button
+          className="cx-btn cx-secondary"
+          disabled={!ready}
+          onClick={() => void saveSelected()}
+        >
+          <Download size={17} /> Download
+          {files.length > 1 ? " carousel ZIP" : ""}
+        </button>
+      )}
+      {imageSave.dialog}
       {exported && (
         <p role="status" className="mm-muted">
           {handedOff === imageKey

@@ -5,6 +5,7 @@ import {
   Check,
   CircleAlert,
   Download,
+  ImageDown,
   Megaphone,
 } from "lucide-react";
 import { photoReviewReminder } from "@/lib/photo-use";
@@ -34,6 +35,7 @@ import {
 import { destinationChannel, type StyleProfile } from "@/lib/channel-rules";
 import { downloadWarnings } from "@/lib/photo-pack";
 import { photoExportEventKey } from "@/lib/photo-export-identity";
+import { useImageSave } from "./image-save";
 import {
   CropControls,
   Feedback,
@@ -68,6 +70,8 @@ export default function PhotoDownloads({
   onPromote?: (item: DownloadPhoto) => void;
   onUse: (assetId: string) => Promise<void>;
 }) {
+  const imageSave = useImageSave();
+  const saveOnIPhone = imageSave.iphone && items.length === 1;
   const [destination, setDestination] = useState<Destination>(
     photoDestination(initialFormat),
   );
@@ -138,7 +142,7 @@ export default function PhotoDownloads({
       destination: eventDestination(value),
     });
   }
-  async function download() {
+  async function download(saveToPhotos = false) {
     const attemptId = crypto.randomUUID();
     if (!photoOnly)
       throw Error("Use a photo of your actual dish for ordering platforms.");
@@ -194,6 +198,24 @@ export default function PhotoDownloads({
             ),
           )
           .catch(() => {});
+        if (items.length === 1 && saveToPhotos) {
+          imageSave.open(
+            [new File([output.blob], filename, { type: output.blob.type })],
+            (result) => {
+              track(
+                result === "shared"
+                  ? "native_share_complete"
+                  : result === "cancelled"
+                    ? "native_share_cancelled"
+                    : "export_download_started",
+                photo.assetId,
+                { destination: eventDestination(destination) },
+                crypto.randomUUID(),
+              );
+            },
+          );
+          return;
+        }
         if (items.length === 1) downloadBlob(output.blob, filename);
         else files[filename] = new Uint8Array(await output.blob.arrayBuffer());
         completed.push({
@@ -391,17 +413,37 @@ export default function PhotoDownloads({
             <button
               className="cx-btn cx-full"
               disabled={!!action.busy || !photoOnly}
-              onClick={() => action.act("Preparing your download", download)}
+              onClick={() =>
+                action.act(
+                  saveOnIPhone
+                    ? "Preparing your image"
+                    : "Preparing your download",
+                  () => download(saveOnIPhone),
+                )
+              }
             >
-              <Download size={18} />
+              {saveOnIPhone ? <ImageDown size={18} /> : <Download size={18} />}
               {action.busy
                 ? progress || "Preparing…"
-                : items.length > 1
-                  ? `Download ${items.length} photos`
-                  : master
-                    ? "Download full-quality image"
-                    : `Download for ${sizeLabel}`}
+                : saveOnIPhone
+                  ? "Save image"
+                  : items.length > 1
+                    ? `Download ${items.length} photos`
+                    : master
+                      ? "Download full-quality image"
+                      : `Download for ${sizeLabel}`}
             </button>
+            {saveOnIPhone && (
+              <button
+                className="cx-btn cx-secondary cx-full"
+                disabled={!!action.busy || !photoOnly}
+                onClick={() =>
+                  action.act("Preparing your download", () => download())
+                }
+              >
+                <Download size={18} /> Download
+              </button>
+            )}
             <p className="cx-hint">
               Your saved photo stays unchanged. Full-quality image keeps the
               original resolution and file.
@@ -435,6 +477,7 @@ export default function PhotoDownloads({
         </div>
       </fieldset>
       <Feedback {...action} />
+      {imageSave.dialog}
       {leftOut.length > 0 && (
         <div className="ps2-finish-warning" role="status">
           <CircleAlert size={18} aria-hidden="true" />

@@ -169,3 +169,34 @@
     background: var(--workspace-surface);
   }
 }
+/* Prepared images stay available for iPhone's native touch-and-hold save menu. */
+.image-save-dialog {
+  max-height: calc(100dvh - 2rem);
+  overflow-y: auto;
+}
+.image-save-dialog > h2 {
+  padding-right: 1.5rem;
+}
+.image-save-previews {
+  display: grid;
+  gap: 1rem;
+  min-width: 0;
+}
+.image-save-previews figure {
+  display: grid;
+  gap: 0.75rem;
+  margin: 0;
+  min-width: 0;
+}
+.image-save-previews img {
+  display: block;
+  width: 100%;
+  max-height: 45dvh;
+  object-fit: contain;
+  -webkit-touch-callout: default;
+  user-select: auto;
+}
+.ps2-finish-actions.iphone-save-actions {
+  flex-direction: column;
+  align-items: stretch;
+}

@@ -8,7 +8,7 @@ import ts from "typescript";
  * run; `modules` stands in for the component's imports (or builds them from
  * the hooks, for stubs that are hooks themselves).
  */
-export function mount(file, modules) {
+export function mount(file, modules, exportName) {
   const source = readFileSync(
     new URL(`../app/components/${file}`, import.meta.url),
     "utf8",
@@ -87,6 +87,7 @@ export function mount(file, modules) {
     compiled.exports,
   );
   const Component =
+    (exportName && compiled.exports[exportName]) ||
     compiled.exports.default ||
     compiled.exports[Object.keys(compiled.exports)[0]];
   function render(next = props) {
