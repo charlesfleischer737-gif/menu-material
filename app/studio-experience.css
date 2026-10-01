@@ -494,15 +494,41 @@
   min-height: 46px;
 }
 .ps2-finish-crop {
-  margin: 14px 0;
+  min-width: 0;
+  margin: 0;
+  padding: 0;
+  border: 0;
 }
-.ps2-finish-crop > .cx-link {
-  min-height: 44px;
+.ps2-finish-crop legend {
+  margin-bottom: 8px;
   font-size: var(--text-subhead);
+  font-weight: 500;
 }
-/* One column at every width: Share and Download always get the whole row, so
-   their labels never spill out of the buttons, and Photo pack sits centered
-   below. A definite track also keeps a long row from widening the footer. */
+.ps2-finish-options {
+  display: grid;
+  gap: 16px;
+  padding-top: 8px;
+}
+.ps2-finish-options .cx-link {
+  justify-content: flex-start;
+}
+.ps2-finish .ps2-dialog-header {
+  align-items: center;
+  gap: 16px;
+}
+.ps2-finish .ps2-dialog-header [data-slot="dialog-title"] {
+  margin: 0;
+}
+.ps2-finish .ps2-finish-size {
+  margin: 8px 0;
+}
+.ps2-finish .ps2-download-hint {
+  margin: 0;
+}
+.ps2-finish .ps2-dialog-footer > .cx-btn {
+  width: 100%;
+}
+/* One status and one primary action stay visible at every width. */
 .ps2-finish .ps2-dialog-footer {
   display: grid;
   grid-template-columns: minmax(0, 1fr);
@@ -969,10 +995,6 @@
   }
 }
 
-/* Download: the photo's own size first; other sizes are one disclosure away. */
-.ps2-finish .ps2-finish-size {
-  margin: 0 0 12px;
-}
 .ps2-finish-warning {
   display: flex;
   gap: 10px;
@@ -1000,7 +1022,7 @@
   padding: 0;
   font-size: var(--text-subhead);
 }
-/* Different size, Adjust crop and File name sit together as quiet links. */
+/* Keep optional controls behind a single disclosure. */
 .ps2-finish-scroll > [data-slot="collapsible"] {
   margin: 0;
 }

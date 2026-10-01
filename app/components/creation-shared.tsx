@@ -816,6 +816,7 @@ export function PhotoFrame({
   edits = emptyAdjustments,
   onChange,
   label = "Your photo · layout preview",
+  showCaption = true,
   onReadyChange,
 }: {
   src: string;
@@ -823,6 +824,7 @@ export function PhotoFrame({
   edits?: Adjustments;
   onChange?: (e: Adjustments) => void;
   label?: string;
+  showCaption?: boolean;
   onReadyChange?: (ready: boolean) => void;
 }) {
   const readyCallback = useRef(onReadyChange);
@@ -987,10 +989,12 @@ export function PhotoFrame({
           </div>
         )}
       </div>
-      <figcaption>
-        {label}
-        {onChange && ready && <span>Drag to position</span>}
-      </figcaption>
+      {showCaption && (
+        <figcaption>
+          {label}
+          {onChange && ready && <span>Drag to position</span>}
+        </figcaption>
+      )}
     </figure>
   );
 }
