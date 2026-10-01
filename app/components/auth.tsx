@@ -12,7 +12,7 @@ import { api } from "@/lib/client";
 import { forgetAttribution, savedAttribution } from "@/lib/attribution";
 import { isPlaceholderRestaurantName } from "@/lib/restaurant-identity";
 import Brand from "./brand";
-import GoogleSignIn from "./google-sign-in";
+import GoogleSignIn, { preloadGoogleSignIn } from "./google-sign-in";
 import { useSiteContact } from "./site-contact";
 import { FREE_SIGNUP_IMAGES, PRO_PRICE_LABEL } from "@/lib/plans";
 export default function Auth({
@@ -50,6 +50,9 @@ export default function Auth({
   const linkLoaded = useRef(false);
   const [googleStep, setGoogleStep] = useState<"link" | "signup" | null>(null);
   const { termsUrl } = useSiteContact();
+  useEffect(() => {
+    preloadGoogleSignIn();
+  }, []);
   useEffect(() => {
     if (!open) {
       setGoogleStep(null);

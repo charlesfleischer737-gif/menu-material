@@ -26,6 +26,16 @@ type GoogleId = {
   ) => void;
 };
 type GoogleWindow = Window & { google?: { accounts: { id: GoogleId } } };
+let enabledValue: boolean | undefined;
+let enabledPromise: Promise<boolean> | undefined;
+function googleEnabled() {
+  return (enabledPromise ??= api("auth/google/config")
+    .then((config) => (enabledValue = config.enabled === true))
+    .catch((error) => {
+      enabledPromise = undefined;
+      throw error;
+    }));
+}
 let scriptPromise: Promise<GoogleId> | undefined;
 function googleLibrary() {
   const ready = (window as GoogleWindow).google?.accounts.id;
@@ -58,6 +68,14 @@ function googleLibrary() {
   return scriptPromise;
 }
 
+// Warm only public configuration and Google's library. Each opened dialog
+// still creates its own fresh, browser-bound sign-in proof.
+export function preloadGoogleSignIn() {
+  void googleEnabled()
+    .then((enabled) => (enabled ? googleLibrary() : undefined))
+    .catch(() => {}); // Opening the dialog retries a failed preload.
+}
+
 export default function GoogleSignIn(props: {
   busy: boolean;
   restaurant: string;
@@ -66,8 +84,7 @@ export default function GoogleSignIn(props: {
   onDone: () => Promise<void>;
   onForgot: (email: string) => void;
 }) {
-  const [enabled, setEnabled] = useState(false);
-  const [loading, setLoading] = useState(true);
+  const [enabled, setEnabled] = useState(enabledValue);
   const [attempt, setAttempt] = useState(0);
   const [error, setError] = useState("");
   const [step, setStep] = useState<"link" | "signup" | null>(null);
@@ -81,28 +98,27 @@ export default function GoogleSignIn(props: {
   const running = useRef(false);
   const alive = useRef(true);
   useEffect(() => {
+    let active = true;
+    void googleEnabled()
+      .then((enabled) => {
+        if (active) setEnabled(enabled);
+      })
+      .catch(() => {});
+    return () => {
+      active = false;
+    };
+  }, [attempt]);
+  useEffect(() => {
+    if (!enabled) return;
     alive.current = true;
     let active = true;
     const abort = new AbortController();
     async function start() {
       try {
-        const config = await api(
-          "auth/google/config",
-          undefined,
-          undefined,
-          abort.signal,
-        );
-        if (!active) return;
-        setEnabled(config.enabled === true);
-        if (!config.enabled) return;
-        const google = await googleLibrary();
-        if (!active) return;
-        const session = await api(
-          "auth/google/start",
-          {},
-          undefined,
-          abort.signal,
-        );
+        const [google, session] = await Promise.all([
+          googleLibrary(),
+          api("auth/google/start", {}, undefined, abort.signal),
+        ]);
         if (!active || !target.current) return;
         google.initialize({
           client_id: session.clientId,
@@ -144,8 +160,6 @@ export default function GoogleSignIn(props: {
         });
       } catch (e) {
         if (active) setError((e as Error).message);
-      } finally {
-        if (active) setLoading(false);
       }
     }
     void start();
@@ -154,12 +168,11 @@ export default function GoogleSignIn(props: {
       alive.current = false;
       abort.abort();
     };
-  }, [attempt]);
+  }, [enabled, attempt]);
   function restart() {
     setStep(null);
     setPassword("");
     setError("");
-    setLoading(true);
     latest.current.onStep(null);
     setAttempt((n) => n + 1);
   }
@@ -195,11 +208,6 @@ export default function GoogleSignIn(props: {
   return (
     <div className="google-sign-in">
       <div hidden={!!step || !!error} inert={props.busy || !!step || !!error}>
-        {loading && (
-          <p className="fine" role="status">
-            Loading Google sign-in…
-          </p>
-        )}
         <div
           ref={target}
           className="google-sign-in-button"
