@@ -91,7 +91,7 @@ export default function DishLibrary({
     [selected, setSelected] = useState<string[]>([]),
     [downloadIds, setDownloadIds] = useState<string[]>([]),
     [photoUse, setPhotoUse] = useState<{
-      kind: "download" | "pack";
+      kind: "download" | "pack" | "closed";
       dish: Row;
       photo: Row;
     } | null>(null);
@@ -382,7 +382,7 @@ export default function DishLibrary({
           </DropdownMenu>
         }
       />
-      <Feedback {...action} />
+      <Feedback {...action} floating />
       {undo && (
         <div className="mm-inline mm-muted">
           <button
@@ -1005,9 +1005,7 @@ export default function DishLibrary({
                       [
                         menus.length
                           ? `Dish details saved and updated on ${menus
-                              .map(
-                                (m) => `${m.name}${m.live ? " (live)" : ""}`,
-                              )
+                              .map((m) => `${m.name}${m.live ? " (live)" : ""}`)
                               .join(", ")}.`
                           : "Dish details saved.",
                         keptNotice(kept),
@@ -1199,12 +1197,14 @@ export default function DishLibrary({
           />
         </DialogContent>
       </Dialog>
-      {photoUse?.kind === "download" && usedPhoto && (
+      {/* Closing keeps the photo, so its sheets stay mounted (as in Photo
+          Studio) and play their exit; the next photo replaces them. */}
+      {photoUse && usedPhoto && (
         <PhotoFinishSheet
           key={`download-${usedPhoto.id}`}
-          open
+          open={photoUse.kind === "download"}
           onOpenChange={(value) => {
-            if (!value) setPhotoUse(null);
+            if (!value) setPhotoUse({ ...photoUse, kind: "closed" });
           }}
           assetId={usedPhoto.id}
           dishId={photoUse.dish.id}
@@ -1222,12 +1222,12 @@ export default function DishLibrary({
           }
         />
       )}
-      {photoUse?.kind === "pack" && usedPhoto?.approved_at && (
+      {photoUse && usedPhoto?.approved_at && (
         <PhotoPackSheet
           key={`pack-${usedPhoto.id}`}
-          open
+          open={photoUse.kind === "pack"}
           onOpenChange={(value) => {
-            if (!value) setPhotoUse(null);
+            if (!value) setPhotoUse({ ...photoUse, kind: "closed" });
           }}
           assetId={usedPhoto.id}
           name={usedName}

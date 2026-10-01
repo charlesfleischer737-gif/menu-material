@@ -169,6 +169,14 @@
   height: 40px;
 }
 
+/* Pleased when the photo is ready. */
+.st-progress-card[data-done] .st-progress-kitty .kitty-eyes {
+  opacity: 0;
+}
+.st-progress-card[data-done] .st-progress-kitty .kitty-happy-eyes {
+  opacity: 1;
+}
+
 /* My Dishes before the first dish, and Explore when a search finds nothing. */
 .mm-empty:has(> .mm-empty-kitty) {
   justify-items: center;
@@ -241,6 +249,10 @@
     animation: none;
     transform: translateX(calc(var(--progress, 0) * 3.2px - 2px));
     transition: transform 1s linear;
+  }
+  /* Following the bar's quick last stretch (photo-studio.css). */
+  .st-progress-card[data-done] .st-progress-kitty .kitty-pupils {
+    transition: transform var(--duration) var(--ease);
   }
 }
 @media (hover: hover) and (prefers-reduced-motion: no-preference) {

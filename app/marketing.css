@@ -92,7 +92,9 @@
   font: inherit;
   transition: color var(--duration-fast) var(--ease);
 }
-.pw-nav > a:hover,
+/* Text links only: the header CTA is also a link in .pw-nav, and keeps its
+   own white-on-green hover from the shared button. */
+.pw-nav > a:not([data-ui-button]):hover,
 .pw-nav > .pw-login:hover {
   color: var(--pw-ink);
 }
@@ -192,6 +194,9 @@
   margin: 0 auto;
   aspect-ratio: 16 / 10;
   overflow: hidden;
+  /* Clipped without scrolling: the handle reaches past the frame, and a
+     focused handle must never scroll the photos within it. */
+  overflow: clip;
   border-radius: var(--radius-media);
   background: var(--gray-200);
   box-shadow: 0 30px 60px -30px rgb(0 0 0 / 30%);
@@ -263,31 +268,40 @@
 .pw-compare-tag.is-right {
   right: 16px;
 }
+/* As wide as the frame, with the line on its left edge: translated by the
+   position, it moves without laying out the page each frame. Only the 44px
+   strip around the line takes the pointer, as the handle always has. */
 .pw-compare-handle {
   position: absolute;
-  top: 0;
-  bottom: 0;
-  left: var(--pos);
+  inset: 0;
   z-index: 4;
   display: flex;
   align-items: center;
-  justify-content: center;
-  width: 44px;
-  margin-left: -22px;
+  transform: translateX(var(--pos));
+  pointer-events: none;
 }
 .pw-compare-handle::before {
   content: "";
   position: absolute;
   top: 0;
   bottom: 0;
-  left: 50%;
+  left: -1px;
   width: 2px;
-  margin-left: -1px;
   background: rgb(255 255 255 / 92%);
   box-shadow: 0 0 14px rgb(0 0 0 / 28%);
 }
+.pw-compare-handle::after {
+  content: "";
+  position: absolute;
+  top: 0;
+  bottom: 0;
+  left: -22px;
+  width: 44px;
+  pointer-events: auto;
+}
 .pw-compare-knob {
   position: relative;
+  margin-left: -22px;
   display: grid;
   place-items: center;
   width: 44px;

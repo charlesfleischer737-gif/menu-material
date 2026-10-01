@@ -75,6 +75,7 @@ import {
 import { PhotoCorrectionSheet } from "./photo-correction-sheet";
 import { PhotoBatchSheet } from "./photo-batch-sheet";
 import { SavePhotoLookSheet } from "./save-photo-look-sheet";
+import { Presence } from "./presence";
 import { useStudioNavigation } from "./use-studio-navigation";
 import { useStudioTiming } from "./use-studio-timing";
 import { recipeFromDraft } from "@/lib/studio-library";
@@ -96,7 +97,7 @@ import {
   inspirationStatusMessage,
 } from "@/lib/studio-reference";
 import { useInspirationAvailability } from "./use-inspiration-availability";
-import { PhotoComparison, StudioCreating } from "./studio-onboarding";
+import { ResultPhotos, StudioCreating, StudioPhoto } from "./studio-onboarding";
 import { cancelledError, heldImageMessage } from "@/lib/creation-progress";
 import { freeImagesNote } from "@/lib/free-images";
 import { StudioWorkbench } from "./studio-workbench";
@@ -110,6 +111,7 @@ import {
   useCreationDraft,
   useStepFocus,
 } from "./creation-shared";
+const noArrival = { job: "", filled: false, ready: false };
 // A file dragged over or dropped on the page must not open in the tab.
 function keepPage(event: DragEvent<HTMLElement>) {
   if (event.dataTransfer.types.includes("Files")) event.preventDefault();
@@ -156,6 +158,9 @@ export default function PhotoStudio({
     [finishOpen, setFinishOpen] = useState(false),
     [packOpen, setPackOpen] = useState(false);
   const [correctionOpen, setCorrectionOpen] = useState(false);
+  // The job whose wait screen is on screen and, once its photo is here,
+  // whether the bar has filled and the photo has decoded.
+  const [arrival, setArrival] = useState(noArrival);
   const [exporting, setExporting] = useState(false);
   const [referenceBusy, setReferenceBusy] = useState(false);
   const [localPhoto, setLocalPhoto] = useState<{
@@ -307,6 +312,29 @@ export default function PhotoStudio({
       !!running ||
       ["Creating your photo", "Applying your changes"].includes(busy),
     format = formats[resultFormat];
+  const waiting = b.step >= 4 && !resultId && creating;
+  // A photo that finished while its wait screen was watched is revealed
+  // whole: the wait screen stays while its bar fills and the photo loads and
+  // decodes out of sight, then the photo is revealed. Never for a photo
+  // reopened later, or one that finished while the owner was elsewhere.
+  const arrived =
+      active &&
+      b.step >= 4 &&
+      !!b.jobId &&
+      arrival.job === b.jobId &&
+      !!output?.asset_id &&
+      resultId === output.asset_id,
+    finishing = arrived && !(arrival.filled && arrival.ready),
+    revealing = arrived && !finishing;
+  if (waiting && arrival.job !== b.jobId)
+    setArrival({ ...noArrival, job: b.jobId });
+  else if (!waiting && !arrived && arrival.job) setArrival(noArrival);
+  const arrivalStep = (step: "filled" | "ready") => {
+    const job = b.jobId;
+    setArrival((current) =>
+      current.job === job ? { ...current, [step]: true } : current,
+    );
+  };
   const inspirationIds = activeInspirationIds(b, state.restaurant);
   const inspirationId = inspirationIds[0] || "";
   const inspirationAvailability = useInspirationAvailability(
@@ -572,7 +600,8 @@ export default function PhotoStudio({
   }, [ready, active, missingPhotos]);
   // When the photo being made is ready or stops, say so to screen readers
   // and move focus to what replaced the waiting screen.
-  const watchedJob = useRef({ id: "", running: false });
+  const watchedJob = useRef({ id: "", running: false }),
+    focusOutcome = useRef(false);
   useEffect(() => {
     const was = watchedJob.current;
     watchedJob.current = { id: b.jobId, running: !!running };
@@ -592,6 +621,13 @@ export default function PhotoStudio({
         region.textContent = message;
       });
     }
+    focusOutcome.current = true;
+  }, [ready, job, running, b.jobId, state.outputs]);
+  // Focus follows once the outcome is on screen: for a finished photo, when
+  // it is revealed.
+  useEffect(() => {
+    if (!focusOutcome.current || finishing) return;
+    focusOutcome.current = false;
     requestAnimationFrame(() => {
       const current = document.activeElement;
       // Never take focus from somewhere else the owner has moved to.
@@ -608,7 +644,7 @@ export default function PhotoStudio({
         resultAction.current
       )?.focus({ preventScroll: true });
     });
-  }, [ready, job, running, b.jobId, state.outputs, active, root]);
+  });
   useEffect(() => {
     if (
       !ready ||
@@ -1102,16 +1138,14 @@ export default function PhotoStudio({
   // The result can be the untouched original, for example a dish opened from
   // My Dishes before it has a finished photo.
   const resultIsOriginal = asset?.kind === "source";
-  const shown = before && source ? source : `/api/assets/${resultId}`;
   const illustration = "Illustration · check it against your dish";
-  const shownLabel =
-    before || resultIsOriginal
-      ? "Your original"
-      : illustrated
-        ? illustration
-        : asset?.kind === "edited"
-          ? "Adjusted version"
-          : "Your result";
+  const resultLabel = resultIsOriginal
+    ? "Your original"
+    : illustrated
+      ? illustration
+      : asset?.kind === "edited"
+        ? "Adjusted version"
+        : "Your result";
   const views = [
     { id: "result", label: "Result", show: true },
     { id: "compare", label: "Compare", show: canCompare && adjust !== "quick" },
@@ -1213,7 +1247,20 @@ export default function PhotoStudio({
         aria-atomic="true"
         ref={announcer}
       />
-      <Feedback {...action} />
+      <Feedback
+        {...action}
+        // The canvas already shows this work in progress.
+        busy={
+          (b.step <= 3 &&
+            !photoUploading &&
+            state.studioAvailability?.creationEnabled !== false) ||
+          ((waiting || finishing) &&
+            ["Creating your photo", "Applying your changes"].includes(busy))
+            ? ""
+            : busy
+        }
+        floating
+      />
       {b.step <= 3 && (
         <StudioWorkbench
           draft={
@@ -1294,125 +1341,129 @@ export default function PhotoStudio({
           refreshAvailability={() => void act("Checking availability", refresh)}
         />
       )}
-      {b.step >= 4 &&
-        (!resultId ? (
-          creating ? (
-            <StudioCreating
-              key={b.jobId}
-              source={source}
-              style={{ ...selected, image: styleImage }}
-              queued={!job || job.status === "queued"}
-              requestedAt={b.generationStartedAt}
-              createdAt={job?.created_at}
-              sentAt={sentTimes.length ? Math.min(...sentTimes) : undefined}
-              typicalMs={job?.estimate_ms}
-              jobId={b.jobId}
-              held={heldImageMessage(
-                state.outputs.filter((o: Row) => o.job_id === b.jobId),
-              )}
+      {(waiting || finishing) && (
+        <StudioCreating
+          key={b.jobId}
+          source={source}
+          style={{ ...selected, image: styleImage }}
+          queued={!job || job.status === "queued"}
+          requestedAt={b.generationStartedAt}
+          createdAt={job?.created_at}
+          sentAt={sentTimes.length ? Math.min(...sentTimes) : undefined}
+          typicalMs={job?.estimate_ms}
+          jobId={b.jobId}
+          held={heldImageMessage(
+            state.outputs.filter((o: Row) => o.job_id === b.jobId),
+          )}
+          done={finishing}
+          onDone={() => arrivalStep("filled")}
+        >
+          {state.outputs
+            .filter(
+              (o: Row) =>
+                o.job_id === b.jobId && o.error && o.status !== "queued",
+            )
+            .map((o: Row) => (
+              <p className="st-alert" role="status" key={o.id}>
+                {o.error}
+              </p>
+            ))}
+          {job?.status === "queued" && (
+            <button
+              className="st-text-button"
+              disabled={!!busy}
+              onClick={() =>
+                void act("Cancelling queued image", async () => {
+                  await api(`jobs/${job.id}/cancel`, {});
+                  await refresh();
+                })
+              }
             >
-              {state.outputs
-                .filter(
-                  (o: Row) =>
-                    o.job_id === b.jobId && o.error && o.status !== "queued",
-                )
-                .map((o: Row) => (
-                  <p className="st-alert" role="status" key={o.id}>
-                    {o.error}
-                  </p>
-                ))}
-              {job?.status === "queued" && (
-                <button
-                  className="st-text-button"
-                  disabled={!!busy}
-                  onClick={() =>
-                    void act("Cancelling queued image", async () => {
-                      await api(`jobs/${job.id}/cancel`, {});
-                      await refresh();
-                    })
+              Cancel queued image
+            </button>
+          )}
+        </StudioCreating>
+      )}
+      {b.step >= 4 &&
+        !waiting &&
+        (!resultId ? (
+          <div className="st-studio st-attention">
+            <section className="st-stage" aria-label="Your photo">
+              <div className="st-canvas has-photo">
+                {source ? (
+                  <>
+                    <StudioPhoto src={source} alt="Your saved original" />
+                    <span className="st-canvas-label">Your original</span>
+                  </>
+                ) : (
+                  <Camera size={32} aria-hidden="true" />
+                )}
+              </div>
+            </section>
+            <aside className="st-inspector" aria-label="Image creation">
+              <div className="st-section">
+                <span
+                  className={
+                    cancelled ? "st-badge" : "st-badge st-badge-warning"
                   }
                 >
-                  Cancel queued image
-                </button>
-              )}
-            </StudioCreating>
-          ) : (
-            <div className="st-studio st-attention">
-              <section className="st-stage" aria-label="Your photo">
-                <div className="st-canvas has-photo">
-                  {source ? (
-                    <>
-                      <img
-                        className="st-photo"
-                        src={source}
-                        alt="Your saved original"
-                      />
-                      <span className="st-canvas-label">Your original</span>
-                    </>
-                  ) : (
-                    <Camera size={32} aria-hidden="true" />
-                  )}
-                </div>
-              </section>
-              <aside className="st-inspector" aria-label="Image creation">
-                <div className="st-section">
-                  <span
-                    className={
-                      cancelled ? "st-badge" : "st-badge st-badge-warning"
-                    }
-                  >
-                    {cancelled ? "Cancelled" : "Needs attention"}
-                  </span>
-                  <h2
-                    className="st-result-title"
-                    ref={failureHeading}
-                    tabIndex={-1}
-                  >
-                    {cancelled
-                      ? "You cancelled this image."
-                      : "This photo couldn’t be created."}
-                  </h2>
-                  <p className="st-result-copy">
-                    {cancelled
-                      ? "No images were used."
-                      : failureText ||
-                        "Try again, or change your photo settings."}
-                  </p>
-                </div>
-                <div className="st-action st-action-inline">
-                  {!failedCorrection && (
-                    <button
-                      className="st-create"
-                      disabled={!!busy || !!failedRetry}
-                      onClick={() => void act("Creating your photo", retry)}
-                    >
-                      {cancelled ? (
-                        <Sparkles size={18} aria-hidden="true" />
-                      ) : (
-                        <RotateCcw size={18} aria-hidden="true" />
-                      )}
-                      {cancelled ? "Create photo" : "Try again"}
-                    </button>
-                  )}
+                  {cancelled ? "Cancelled" : "Needs attention"}
+                </span>
+                <h2
+                  className="st-result-title"
+                  ref={failureHeading}
+                  tabIndex={-1}
+                >
+                  {cancelled
+                    ? "You cancelled this image."
+                    : "This photo couldn’t be created."}
+                </h2>
+                <p className="st-result-copy">
+                  {cancelled
+                    ? "No images were used."
+                    : failureText ||
+                      "Try again, or change your photo settings."}
+                </p>
+              </div>
+              <div className="st-action st-action-inline">
+                {!failedCorrection && (
                   <button
-                    className="st-pill st-pill-quiet st-pill-wide"
-                    disabled={!!busy}
-                    onClick={() => update({ step: 2, requestKey: "" })}
+                    className="st-create"
+                    disabled={!!busy || !!failedRetry}
+                    onClick={() => void act("Creating your photo", retry)}
                   >
-                    Back to my styles
+                    {cancelled ? (
+                      <Sparkles size={18} aria-hidden="true" />
+                    ) : (
+                      <RotateCcw size={18} aria-hidden="true" />
+                    )}
+                    {cancelled ? "Create photo" : "Try again"}
                   </button>
-                  <p className="st-action-note">
-                    {failedCorrection
-                      ? "Complimentary corrections aren’t sent again as new images. Open the photo from My Dishes to see its correction report."
-                      : failedRetry ||
-                        "Same photo and choices · Uses 1 image only if it works"}
-                  </p>
-                </div>
-              </aside>
-            </div>
-          )
+                )}
+                <button
+                  className="st-pill st-pill-quiet st-pill-wide"
+                  disabled={!!busy}
+                  onClick={() => update({ step: 2, requestKey: "" })}
+                >
+                  Back to my styles
+                </button>
+                <p className="st-action-note">
+                  {failedCorrection
+                    ? "Complimentary corrections aren’t sent again as new images. Open the photo from My Dishes to see its correction report."
+                    : failedRetry ||
+                      "Same photo and choices · Uses 1 image only if it works"}
+                </p>
+              </div>
+            </aside>
+          </div>
         ) : (
-          <div className="st-studio st-review">
+          // A photo that was just made loads and decodes here, out of sight,
+          // while the wait screen finishes.
+          <div
+            className="st-studio st-review"
+            hidden={finishing}
+            data-reveal={revealing || undefined}
+          >
             <section className="st-stage" aria-label="Your photo">
               <div className="st-stage-bar">
                 {views.length > 1 && (
@@ -1454,29 +1505,25 @@ export default function PhotoStudio({
                 className={`st-canvas has-photo st-result${canvasLabel ? " has-label" : ""}`}
                 style={{ "--st-ratio": format.ratio } as CSSProperties}
               >
-                {comparing ? (
-                  <PhotoComparison
-                    key={resultId}
-                    original={source}
-                    result={`/api/assets/${resultId}`}
-                    ratio={format.ratio}
-                  />
-                ) : (
-                  <>
-                    <img
-                      key={shown}
-                      className="st-photo"
-                      src={shown}
-                      alt={
-                        before
-                          ? "Original photo"
-                          : `${shownLabel} of ${dishName || "your dish"}`
-                      }
-                    />
-                    {canvasLabel && (
-                      <span className="st-canvas-label">{canvasLabel}</span>
-                    )}
-                  </>
+                <ResultPhotos
+                  key={resultId}
+                  result={`/api/assets/${resultId}`}
+                  original={source}
+                  view={view}
+                  comparable={canCompare && adjust !== "quick"}
+                  ratio={format.ratio}
+                  resultAlt={`${resultLabel} of ${dishName || "your dish"}`}
+                  reveal={arrived}
+                  hold={finishing}
+                  onReady={() => arrivalStep("ready")}
+                  onRevealed={() => setArrival(noArrival)}
+                  onCompare={() => {
+                    setBefore(false);
+                    setCompare(true);
+                  }}
+                />
+                {canvasLabel && (
+                  <span className="st-canvas-label">{canvasLabel}</span>
                 )}
               </div>
               {versions.length > 1 && (
@@ -1781,68 +1828,78 @@ export default function PhotoStudio({
             </aside>
           </div>
         ))}
-      {saveLookOpen && resultId && asset?.approved_at && (
-        <SavePhotoLookSheet
-          onCloseAutoFocus={returnToResult}
-          state={state}
-          draft={{ ...b, ...resultRecipe }}
-          assetId={resultId}
-          onClose={() => setSaveLookOpen(false)}
-        />
-      )}
-      {batchOpen && (
-        <PhotoBatchSheet
-          onCloseAutoFocus={returnToResult}
-          state={state}
-          draft={{ ...b, ...resultRecipe, format: resultFormat }}
-          onClose={() => setBatchOpen(false)}
-          refresh={refresh}
-          remember={async (id) => {
-            change({ photoBatchId: id });
-            await save();
-          }}
-          onReview={(item, jobId, photoId) => {
-            const dish = state.dishes.find(
-              (entry: Row) => entry.id === item.dishId,
-            );
-            change({
-              dishId: item.dishId,
-              sourceId: item.sourceId,
-              name: dish?.name || "",
-              description: dish?.description || "",
-              jobId,
-              resultId: photoId,
-              mode: "photo",
-              step: 4,
-              adjustments: { ...emptyAdjustments },
-            });
-            setBatchOpen(false);
-            setBefore(false);
-            setCompare(false);
-            setAdjust("");
-          }}
-        />
-      )}
-      {correctionOpen && resultId && (
-        <PhotoCorrectionSheet
-          onCloseAutoFocus={returnToResult}
-          assetId={resultId}
-          onClose={() => setCorrectionOpen(false)}
-          refresh={refresh}
-          onOpenCorrection={(jobId, photoId) => {
-            change({
-              jobId,
-              resultId: photoId || "",
-              step: 4,
-              adjustments: { ...emptyAdjustments },
-            });
-            setCompare(false);
-            setBefore(false);
-            setAdjust("");
-            setCorrectionOpen(false);
-          }}
-        />
-      )}
+      {/* Sheets mounted only while they're needed stay for their exit. */}
+      <Presence when={saveLookOpen && asset?.approved_at ? resultId : ""}>
+        {(assetId, open) => (
+          <SavePhotoLookSheet
+            open={open}
+            onCloseAutoFocus={returnToResult}
+            state={state}
+            draft={{ ...b, ...resultRecipe }}
+            assetId={assetId}
+            onClose={() => setSaveLookOpen(false)}
+          />
+        )}
+      </Presence>
+      <Presence when={batchOpen}>
+        {(_, open) => (
+          <PhotoBatchSheet
+            open={open}
+            onCloseAutoFocus={returnToResult}
+            state={state}
+            draft={{ ...b, ...resultRecipe, format: resultFormat }}
+            onClose={() => setBatchOpen(false)}
+            refresh={refresh}
+            remember={async (id) => {
+              change({ photoBatchId: id });
+              await save();
+            }}
+            onReview={(item, jobId, photoId) => {
+              const dish = state.dishes.find(
+                (entry: Row) => entry.id === item.dishId,
+              );
+              change({
+                dishId: item.dishId,
+                sourceId: item.sourceId,
+                name: dish?.name || "",
+                description: dish?.description || "",
+                jobId,
+                resultId: photoId,
+                mode: "photo",
+                step: 4,
+                adjustments: { ...emptyAdjustments },
+              });
+              setBatchOpen(false);
+              setBefore(false);
+              setCompare(false);
+              setAdjust("");
+            }}
+          />
+        )}
+      </Presence>
+      <Presence when={correctionOpen && resultId}>
+        {(assetId, open) => (
+          <PhotoCorrectionSheet
+            open={open}
+            onCloseAutoFocus={returnToResult}
+            assetId={assetId}
+            onClose={() => setCorrectionOpen(false)}
+            refresh={refresh}
+            onOpenCorrection={(jobId, photoId) => {
+              change({
+                jobId,
+                resultId: photoId || "",
+                step: 4,
+                adjustments: { ...emptyAdjustments },
+              });
+              setCompare(false);
+              setBefore(false);
+              setAdjust("");
+              setCorrectionOpen(false);
+            }}
+          />
+        )}
+      </Presence>
       {quickSession && (
         <PhotoAdjustmentSheet
           key={quickSession.id}

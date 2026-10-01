@@ -84,6 +84,7 @@ import WorkspaceActionBar from "./workspace-action-bar";
 import { StudioStyleLibrary, type LibraryOrigin } from "./studio-style-library";
 import { StudioCustomizeSheet } from "./studio-customize-sheet";
 import { StyleMosaic, StyleTile } from "./studio-style-tile";
+import { StudioPhoto } from "./studio-onboarding";
 import { radioKeys, radioTab } from "./radio-keys";
 import type {
   InspirationPhoto,
@@ -999,9 +1000,8 @@ export function StudioWorkbench({
             >
               {source && b.mode === "photo" ? (
                 <>
-                  <img
+                  <StudioPhoto
                     key={source}
-                    className="st-photo"
                     src={source}
                     alt={
                       b.sample
