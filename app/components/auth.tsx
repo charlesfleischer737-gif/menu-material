@@ -1,18 +1,12 @@
 "use client";
-import { useEffect, useRef, useState } from "react";
+import { useEffect, useId, useLayoutEffect, useRef, useState } from "react";
 import { Button } from "@/components/ui/button";
-import {
-  Dialog,
-  DialogContent,
-  DialogHeader,
-  DialogTitle,
-  DialogDescription,
-} from "@/components/ui/dialog";
+import AuthDialog from "./auth-dialog";
 import { api } from "@/lib/client";
 import { forgetAttribution, savedAttribution } from "@/lib/attribution";
 import { isPlaceholderRestaurantName } from "@/lib/restaurant-identity";
 import Brand from "./brand";
-import GoogleSignIn, { preloadGoogleSignIn } from "./google-sign-in";
+import GoogleSignIn from "./google-sign-in";
 import { useSiteContact } from "./site-contact";
 import { FREE_SIGNUP_IMAGES, PRO_PRICE_LABEL } from "@/lib/plans";
 export default function Auth({
@@ -32,7 +26,9 @@ export default function Auth({
   initialMode?: "login" | "signup";
   billingEnabled?: boolean;
 }) {
-  const [mode, setMode] = useState("login"),
+  const titleId = useId(),
+    descriptionId = useId();
+  const [mode, setMode] = useState<string>(initialMode),
     [email, setEmail] = useState(""),
     [password, setPassword] = useState(""),
     [invite, setInvite] = useState(""),
@@ -51,15 +47,12 @@ export default function Auth({
   const [googleStep, setGoogleStep] = useState<"link" | "signup" | null>(null);
   const { termsUrl } = useSiteContact();
   useEffect(() => {
-    preloadGoogleSignIn();
-  }, []);
-  useEffect(() => {
     if (!open) {
       setGoogleStep(null);
       setBusy(false);
     }
   }, [open]);
-  useEffect(() => {
+  useLayoutEffect(() => {
     if (
       open &&
       !linkLoaded.current &&
@@ -159,128 +152,117 @@ export default function Auth({
     }
   }
   return (
-    <Dialog
+    <AuthDialog
       open={open}
-      onOpenChange={(v) => {
-        if (!busy) setOpen(v);
-      }}
+      busy={busy}
+      onClose={() => setOpen(false)}
+      titleId={titleId}
+      descriptionId={descriptionId}
     >
-      <DialogContent
-        className="auth-dialog"
-        closeDisabled={busy}
-        fallbackFocus={() =>
-          // A menu item can disappear, or its phone trigger can be hidden
-          // after resizing. Return to the available sign-in navigation.
-          [
-            ...document.querySelectorAll<HTMLElement>(
-              ".pw-homepage .pw-login, .pw-homepage .pw-mobile-menu-trigger",
-            ),
-          ].find((element) => element.getClientRects().length) || null
-        }
-      >
-        <Brand />
-        <DialogHeader>
-          <DialogTitle>
-            {googleStep
-              ? googleStep === "link"
-                ? "Connect your Google account"
-                : "Finish creating your account"
-              : mode === "forgot"
-                ? resetSent
-                  ? "Check your email"
-                  : "Reset your password"
-                : mode === "login"
-                  ? "Sign in"
-                  : resetting
-                    ? "Choose a new password"
-                    : "Create your free account"}
-          </DialogTitle>
-          <DialogDescription>
-            {googleStep
-              ? googleStep === "link"
-                ? "Keep your restaurant, photos, and credits together."
-                : `Start with ${FREE_SIGNUP_IMAGES} free images. No credit card needed.`
-              : mode === "forgot"
-                ? resetSent
-                  ? "If an account matches that email, you'll receive a reset link shortly. Check your spam folder too."
-                  : "Enter your account email to request a secure reset link."
-                : mode === "login"
-                  ? "Sign in to your restaurant workspace."
-                  : resetting
-                    ? "Restore access with your secure reset link. Your previous sign-ins will be closed."
-                    : `Verify your email to unlock ${FREE_SIGNUP_IMAGES} free images. Your photo and selected look stay ready. No credit card needed.`}
-          </DialogDescription>
-        </DialogHeader>
-        {!googleStep && !resetting && mode !== "forgot" && (
-          <div
-            className="workspace-segments auth-mode-choice"
-            role="group"
-            aria-label="Account access"
-          >
-            {[
-              { value: "signup", label: "Create account" },
-              { value: "login", label: "Sign in" },
-            ].map((option) => (
-              <button
-                key={option.value}
-                type="button"
-                disabled={busy}
-                aria-pressed={mode === option.value}
-                onClick={() => {
-                  setMode(option.value);
-                  setError("");
-                  setSignInInstead(false);
-                }}
-              >
-                {option.label}
-              </button>
-            ))}
-          </div>
-        )}
-        {!googleStep && ownerSetup && !invite && mode !== "forgot" && (
-          <Button
-            variant="outline"
-            disabled={busy}
-            onClick={async () => {
-              setBusy(true);
-              try {
-                const d = await api("auth/owner-invite", {});
-                setInvite(d.invite);
-                setEmail(d.email);
-                setMode("signup");
-              } catch (e) {
-                setError((e as Error).message);
-              } finally {
-                setBusy(false);
-              }
-            }}
-          >
-            Set up your administrator account
-          </Button>
-        )}
-        {mode === "forgot" && recovery !== "ready" && (
-          <p role={recovery === "loading" ? "status" : "alert"}>
-            {recovery === "loading"
-              ? "Checking password recovery…"
-              : recovery === "unavailable"
-                ? "Email reset is temporarily unavailable. Contact your administrator for a secure reset link."
-                : "We couldn't check password recovery. Please try again."}
-          </p>
-        )}
-        {mode === "forgot" && recovery === "failed" && (
-          <Button variant="outline" onClick={forgotPassword}>
-            Try again
-          </Button>
-        )}
-        {mode === "forgot" && resetSent && (
-          <p role="status">
-            Reset links expire in 30 minutes. Your password stays the same until
-            you choose a new one.
-          </p>
-        )}
-        {open && !invite && !resetting && mode !== "forgot" && (
+      <Brand />
+      <div data-slot="dialog-header" className="grid gap-2">
+        <h2 data-slot="dialog-title" id={titleId}>
+          {googleStep
+            ? googleStep === "link"
+              ? "Connect your Google account"
+              : "Finish creating your account"
+            : mode === "forgot"
+              ? resetSent
+                ? "Check your email"
+                : "Reset your password"
+              : mode === "login"
+                ? "Sign in"
+                : resetting
+                  ? "Choose a new password"
+                  : "Create your free account"}
+        </h2>
+        <p data-slot="dialog-description" id={descriptionId}>
+          {googleStep
+            ? googleStep === "link"
+              ? "Keep your restaurant, photos, and credits together."
+              : `Start with ${FREE_SIGNUP_IMAGES} free images. No credit card needed.`
+            : mode === "forgot"
+              ? resetSent
+                ? "If an account matches that email, you'll receive a reset link shortly. Check your spam folder too."
+                : "Enter your account email to request a secure reset link."
+              : mode === "login"
+                ? "Sign in to your restaurant workspace."
+                : resetting
+                  ? "Restore access with your secure reset link. Your previous sign-ins will be closed."
+                  : `Verify your email to unlock ${FREE_SIGNUP_IMAGES} free images. Your photo and selected look stay ready. No credit card needed.`}
+        </p>
+      </div>
+      {!googleStep && !resetting && mode !== "forgot" && (
+        <div
+          className="workspace-segments auth-mode-choice"
+          role="group"
+          aria-label="Account access"
+        >
+          {[
+            { value: "signup", label: "Create account" },
+            { value: "login", label: "Sign in" },
+          ].map((option) => (
+            <button
+              key={option.value}
+              type="button"
+              disabled={busy}
+              aria-pressed={mode === option.value}
+              onClick={() => {
+                setMode(option.value);
+                setError("");
+                setSignInInstead(false);
+              }}
+            >
+              {option.label}
+            </button>
+          ))}
+        </div>
+      )}
+      {!googleStep && ownerSetup && !invite && mode !== "forgot" && (
+        <Button
+          variant="outline"
+          disabled={busy}
+          onClick={async () => {
+            setBusy(true);
+            try {
+              const d = await api("auth/owner-invite", {});
+              setInvite(d.invite);
+              setEmail(d.email);
+              setMode("signup");
+            } catch (e) {
+              setError((e as Error).message);
+            } finally {
+              setBusy(false);
+            }
+          }}
+        >
+          Set up your administrator account
+        </Button>
+      )}
+      {mode === "forgot" && recovery !== "ready" && (
+        <p role={recovery === "loading" ? "status" : "alert"}>
+          {recovery === "loading"
+            ? "Checking password recovery…"
+            : recovery === "unavailable"
+              ? "Email reset is temporarily unavailable. Contact your administrator for a secure reset link."
+              : "We couldn't check password recovery. Please try again."}
+        </p>
+      )}
+      {mode === "forgot" && recovery === "failed" && (
+        <Button variant="outline" onClick={forgotPassword}>
+          Try again
+        </Button>
+      )}
+      {mode === "forgot" && resetSent && (
+        <p role="status">
+          Reset links expire in 30 minutes. Your password stays the same until
+          you choose a new one.
+        </p>
+      )}
+      {!invite && !resetting && (
+        <div hidden={mode === "forgot"}>
           <GoogleSignIn
-            key={mode}
+            open={open && mode !== "forgot"}
             busy={busy}
             restaurant={restaurant}
             onBusy={setBusy}
@@ -296,173 +278,173 @@ export default function Auth({
               void forgotPassword();
             }}
           />
-        )}
-        {!googleStep &&
-          (mode !== "forgot" || (recovery === "ready" && !resetSent)) && (
-            <form onSubmit={submit}>
+        </div>
+      )}
+      {!googleStep &&
+        (mode !== "forgot" || (recovery === "ready" && !resetSent)) && (
+          <form onSubmit={submit}>
+            <label className="field">
+              Email address
+              <input
+                required
+                type="email"
+                disabled={busy}
+                maxLength={254}
+                value={email}
+                onChange={(e) => setEmail(e.target.value)}
+                autoComplete="email"
+              />
+            </label>
+            {mode !== "forgot" && (
               <label className="field">
-                Email address
+                {resetting ? "New password" : "Password"}
+                {mode === "signup" && <small>At least 12 characters.</small>}
+                <input
+                  ref={passwordInput}
+                  required
+                  minLength={mode === "signup" ? 12 : 1}
+                  disabled={busy}
+                  maxLength={128}
+                  type="password"
+                  value={password}
+                  onChange={(e) => setPassword(e.target.value)}
+                  autoComplete={
+                    mode === "signup" ? "new-password" : "current-password"
+                  }
+                />
+              </label>
+            )}
+            {mode === "signup" && !resetting && (
+              <label className="field">
+                Restaurant name
+                <small>Shown on your menus and posts.</small>
                 <input
                   required
-                  type="email"
                   disabled={busy}
-                  maxLength={254}
-                  value={email}
-                  onChange={(e) => setEmail(e.target.value)}
-                  autoComplete="email"
+                  minLength={2}
+                  maxLength={100}
+                  value={restaurant}
+                  onChange={(e) => setRestaurant(e.target.value)}
+                  autoComplete="organization"
+                  placeholder="Corner House Kitchen"
                 />
               </label>
-              {mode !== "forgot" && (
-                <label className="field">
-                  {resetting ? "New password" : "Password"}
-                  {mode === "signup" && <small>At least 12 characters.</small>}
-                  <input
-                    ref={passwordInput}
-                    required
-                    minLength={mode === "signup" ? 12 : 1}
-                    disabled={busy}
-                    maxLength={128}
-                    type="password"
-                    value={password}
-                    onChange={(e) => setPassword(e.target.value)}
-                    autoComplete={
-                      mode === "signup" ? "new-password" : "current-password"
-                    }
-                  />
-                </label>
-              )}
-              {mode === "signup" && !resetting && (
-                <label className="field">
-                  Restaurant name
-                  <small>Shown on your menus and posts.</small>
-                  <input
-                    required
-                    disabled={busy}
-                    minLength={2}
-                    maxLength={100}
-                    value={restaurant}
-                    onChange={(e) => setRestaurant(e.target.value)}
-                    autoComplete="organization"
-                    placeholder="Corner House Kitchen"
-                  />
-                </label>
-              )}
-              <label className="pw-honeypot" aria-hidden="true">
-                Website
-                <input
-                  value={website}
-                  onChange={(e) => setWebsite(e.target.value)}
-                  tabIndex={-1}
-                  autoComplete="off"
-                />
-              </label>
-              {error && (
-                <p className="error" role="alert">
-                  {error}
-                </p>
-              )}
-              {error && signInInstead && mode === "signup" && !resetting && (
-                <Button
-                  type="button"
-                  variant="outline"
-                  className="wide"
-                  disabled={busy}
-                  onClick={() => {
-                    // The typed email stays; only the mode changes.
-                    setMode("login");
-                    setError("");
-                    passwordInput.current?.focus();
-                  }}
-                >
-                  Sign in instead
-                </Button>
-              )}
-              <Button className="wide auth-submit" disabled={busy}>
-                {busy
-                  ? mode === "forgot"
-                    ? "Requesting reset link…"
-                    : resetting
-                      ? "Saving new password…"
-                      : "Opening your workspace…"
-                  : mode === "forgot"
-                    ? "Send reset link"
-                    : mode === "login"
-                      ? "Sign in"
-                      : resetting
-                        ? "Save new password"
-                        : "Create free account"}
+            )}
+            <label className="pw-honeypot" aria-hidden="true">
+              Website
+              <input
+                value={website}
+                onChange={(e) => setWebsite(e.target.value)}
+                tabIndex={-1}
+                autoComplete="off"
+              />
+            </label>
+            {error && (
+              <p className="error" role="alert">
+                {error}
+              </p>
+            )}
+            {error && signInInstead && mode === "signup" && !resetting && (
+              <Button
+                type="button"
+                variant="outline"
+                className="wide"
+                disabled={busy}
+                onClick={() => {
+                  // The typed email stays; only the mode changes.
+                  setMode("login");
+                  setError("");
+                  passwordInput.current?.focus();
+                }}
+              >
+                Sign in instead
               </Button>
-            </form>
-          )}
-        {mode === "forgot" && (
-          <Button
-            variant="outline"
-            disabled={busy}
-            onClick={() => {
-              setMode("login");
-              setError("");
-              setResetSent(false);
-            }}
-          >
-            Back to sign in
-          </Button>
+            )}
+            <Button className="wide auth-submit" disabled={busy}>
+              {busy
+                ? mode === "forgot"
+                  ? "Requesting reset link…"
+                  : resetting
+                    ? "Saving new password…"
+                    : "Opening your workspace…"
+                : mode === "forgot"
+                  ? "Send reset link"
+                  : mode === "login"
+                    ? "Sign in"
+                    : resetting
+                      ? "Save new password"
+                      : "Create free account"}
+            </Button>
+          </form>
         )}
-        {resetting && error && (
-          <Button variant="outline" disabled={busy} onClick={forgotPassword}>
-            Request a new reset link
-          </Button>
-        )}
-        {mode === "signup" && !resetting && termsUrl && (
-          <p className="fine">
-            By creating an account you agree to the{" "}
-            <a href="/terms" target="_blank" rel="noreferrer">
-              Terms
-            </a>{" "}
-            and the{" "}
-            <a href="/privacy" target="_blank" rel="noreferrer">
-              Privacy policy
-            </a>
-            .
-          </p>
-        )}
-        {mode === "signup" && !resetting && (
-          <p className="fine">
-            {FREE_SIGNUP_IMAGES} free images, once per account.{" "}
-            {billingEnabled
-              ? `Pro: ${PRO_PRICE_LABEL}/month.`
-              : "Pro is coming soon."}{" "}
-            <a href="/pricing" target="_blank" rel="noreferrer">
-              See plans
-            </a>
-            .
-          </p>
-        )}
-        {!googleStep && mode === "login" && (
-          <Button variant="link" disabled={busy} onClick={forgotPassword}>
-            Forgot password?
-          </Button>
-        )}
-        {local && mode !== "forgot" && (
-          <Button
-            variant="outline"
-            disabled={busy}
-            onClick={async () => {
-              setBusy(true);
-              try {
-                await api("auth/dev", {});
-                await onDone();
-                setOpen(false);
-              } catch (e) {
-                setError((e as Error).message);
-              } finally {
-                setBusy(false);
-              }
-            }}
-          >
-            Open local workspace
-          </Button>
-        )}
-      </DialogContent>
-    </Dialog>
+      {mode === "forgot" && (
+        <Button
+          variant="outline"
+          disabled={busy}
+          onClick={() => {
+            setMode("login");
+            setError("");
+            setResetSent(false);
+          }}
+        >
+          Back to sign in
+        </Button>
+      )}
+      {resetting && error && (
+        <Button variant="outline" disabled={busy} onClick={forgotPassword}>
+          Request a new reset link
+        </Button>
+      )}
+      {mode === "signup" && !resetting && termsUrl && (
+        <p className="fine">
+          By creating an account you agree to the{" "}
+          <a href="/terms" target="_blank" rel="noreferrer">
+            Terms
+          </a>{" "}
+          and the{" "}
+          <a href="/privacy" target="_blank" rel="noreferrer">
+            Privacy policy
+          </a>
+          .
+        </p>
+      )}
+      {mode === "signup" && !resetting && (
+        <p className="fine">
+          {FREE_SIGNUP_IMAGES} free images, once per account.{" "}
+          {billingEnabled
+            ? `Pro: ${PRO_PRICE_LABEL}/month.`
+            : "Pro is coming soon."}{" "}
+          <a href="/pricing" target="_blank" rel="noreferrer">
+            See plans
+          </a>
+          .
+        </p>
+      )}
+      {!googleStep && mode === "login" && (
+        <Button variant="link" disabled={busy} onClick={forgotPassword}>
+          Forgot password?
+        </Button>
+      )}
+      {local && mode !== "forgot" && (
+        <Button
+          variant="outline"
+          disabled={busy}
+          onClick={async () => {
+            setBusy(true);
+            try {
+              await api("auth/dev", {});
+              await onDone();
+              setOpen(false);
+            } catch (e) {
+              setError((e as Error).message);
+            } finally {
+              setBusy(false);
+            }
+          }}
+        >
+          Open local workspace
+        </Button>
+      )}
+    </AuthDialog>
   );
 }

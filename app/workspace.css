@@ -237,6 +237,53 @@
   max-height: 92dvh;
   overflow-y: auto;
 }
+/* The native modal keeps Google's iframe connected while closed. Only
+   opacity changes on opening; late iframe content cannot recenter it. */
+.auth-dialog-persistent {
+  position: fixed;
+  inset: 50% auto auto 50%;
+  margin: 0;
+  transform: translate(-50%, -50%);
+  display: grid;
+  width: min(512px, calc(100% - 32px));
+  max-width: none;
+  min-width: 0;
+  border: 1px solid var(--border);
+  box-shadow: 0 20px 60px rgb(0 0 0 / 20%);
+  outline: none;
+  overscroll-behavior: contain;
+}
+.auth-dialog-persistent:not([open]) {
+  visibility: hidden;
+  opacity: 0;
+  pointer-events: none;
+}
+.auth-dialog-persistent[open] {
+  animation: auth-appear 120ms ease-out;
+}
+.auth-dialog-persistent::backdrop {
+  background: rgb(0 0 0 / 50%);
+}
+.auth-dialog-close {
+  position: absolute;
+  top: 12px;
+  right: 12px;
+  display: grid;
+  place-items: center;
+  width: 36px;
+  height: 36px;
+  border: 0;
+  border-radius: 50%;
+  background: transparent;
+  color: var(--muted-foreground);
+  cursor: pointer;
+}
+.auth-dialog-close:hover {
+  background: var(--muted);
+  color: var(--foreground);
+}
+.auth-dialog-close:disabled { pointer-events: none; }
+@keyframes auth-appear { from { opacity: 0; } to { opacity: 1; } }
 .auth-dialog > .menu-material-wordmark {
   margin: 0;
   display: block;
@@ -257,6 +304,7 @@
   letter-spacing: var(--tracking-display);
 }
 .auth-dialog [data-slot="dialog-description"] {
+  color: var(--muted-foreground);
   font-size: var(--text-subhead);
   line-height: 1.5;
 }

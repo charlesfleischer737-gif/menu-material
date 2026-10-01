@@ -68,15 +68,8 @@ function googleLibrary() {
   return scriptPromise;
 }
 
-// Warm only public configuration and Google's library. Each opened dialog
-// still creates its own fresh, browser-bound sign-in proof.
-export function preloadGoogleSignIn() {
-  void googleEnabled()
-    .then((enabled) => (enabled ? googleLibrary() : undefined))
-    .catch(() => {}); // Opening the dialog retries a failed preload.
-}
-
 export default function GoogleSignIn(props: {
+  open: boolean;
   busy: boolean;
   restaurant: string;
   onBusy: (busy: boolean) => void;
@@ -85,6 +78,7 @@ export default function GoogleSignIn(props: {
   onForgot: (email: string) => void;
 }) {
   const [enabled, setEnabled] = useState(enabledValue);
+  const [ready, setReady] = useState(false);
   const [attempt, setAttempt] = useState(0);
   const [error, setError] = useState("");
   const [step, setStep] = useState<"link" | "signup" | null>(null);
@@ -97,13 +91,18 @@ export default function GoogleSignIn(props: {
   latest.current = props;
   const running = useRef(false);
   const alive = useRef(true);
+  const expiresAt = useRef(0);
+  const used = useRef(false);
   useEffect(() => {
     let active = true;
     void googleEnabled()
       .then((enabled) => {
         if (active) setEnabled(enabled);
       })
-      .catch(() => {});
+      .catch(() => {
+        if (active)
+          setError("Google sign-in couldn't load. Try again or use email.");
+      });
     return () => {
       active = false;
     };
@@ -113,6 +112,11 @@ export default function GoogleSignIn(props: {
     alive.current = true;
     let active = true;
     const abort = new AbortController();
+    let resize: ResizeObserver | undefined;
+    setReady(false);
+    // The server proof lasts ten minutes. Keep a safety margin and never
+    // reuse a consumed proof when reopening this persistent dialog.
+    const startedAt = Date.now();
     async function start() {
       try {
         const [google, session] = await Promise.all([
@@ -120,13 +124,22 @@ export default function GoogleSignIn(props: {
           api("auth/google/start", {}, undefined, abort.signal),
         ]);
         if (!active || !target.current) return;
+        expiresAt.current = startedAt + 9 * 60 * 1000;
+        used.current = false;
         google.initialize({
           client_id: session.clientId,
           nonce: session.nonce,
           auto_select: false,
           ux_mode: "popup",
           callback: async ({ credential }) => {
-            if (!active || running.current || latest.current.busy) return;
+            if (
+              !active ||
+              !latest.current.open ||
+              running.current ||
+              latest.current.busy
+            )
+              return;
+            used.current = true;
             running.current = true;
             latest.current.onBusy(true);
             setError("");
@@ -150,14 +163,30 @@ export default function GoogleSignIn(props: {
             }
           },
         });
-        google.renderButton(target.current, {
-          type: "standard",
-          theme: "outline",
-          size: "large",
-          text: "continue_with",
-          shape: "pill",
-          width: Math.min(400, Math.max(200, target.current.clientWidth)),
-        });
+        const element = target.current;
+        let renderedWidth = 0;
+        function render() {
+          if (!element.clientWidth) return;
+          const width = Math.min(400, Math.max(200, element.clientWidth));
+          if (width === renderedWidth) return;
+          renderedWidth = width;
+          setReady(false);
+          element.replaceChildren();
+          // Keep Google's functional inline fallback when its personalized
+          // iframe is blocked. Both occupy the same fixed-height slot.
+          google.renderButton(element, {
+            type: "standard",
+            theme: "outline",
+            size: "large",
+            text: "continue_with",
+            shape: "pill",
+            width,
+          });
+          setReady(true);
+        }
+        render();
+        resize = new ResizeObserver(render);
+        resize.observe(element);
       } catch (e) {
         if (active) setError((e as Error).message);
       }
@@ -167,12 +196,24 @@ export default function GoogleSignIn(props: {
       active = false;
       alive.current = false;
       abort.abort();
+      resize?.disconnect();
     };
   }, [enabled, attempt]);
+  useEffect(() => {
+    if (
+      (!props.open && used.current) ||
+      (props.open && expiresAt.current > 0 && Date.now() >= expiresAt.current)
+    ) {
+      restart();
+    }
+  }, [props.open]);
   function restart() {
     setStep(null);
     setPassword("");
     setError("");
+    setReady(false);
+    expiresAt.current = 0;
+    used.current = false;
     latest.current.onStep(null);
     setAttempt((n) => n + 1);
   }
@@ -204,15 +245,51 @@ export default function GoogleSignIn(props: {
     }
   }
   // Missing configuration never leaves a dead Google button on the live site.
-  if (!enabled) return null;
+  if (enabled === false) return null;
   return (
     <div className="google-sign-in">
       <div hidden={!!step || !!error} inert={props.busy || !!step || !!error}>
-        <div
-          ref={target}
-          className="google-sign-in-button"
-          aria-label="Continue with Google"
-        />
+        <div className="google-sign-in-slot" aria-busy={!ready}>
+          {!ready && (
+            <button
+              type="button"
+              disabled
+              className="google-sign-in-placeholder"
+            >
+              <svg
+                aria-hidden="true"
+                viewBox="0 0 48 48"
+                width="20"
+                height="20"
+              >
+                <path
+                  fill="#EA4335"
+                  d="M24 9.5c3.54 0 6.71 1.22 9.21 3.6l6.85-6.85C35.9 2.38 30.47 0 24 0 14.62 0 6.51 5.38 2.56 13.22l7.98 6.19C12.43 13.72 17.74 9.5 24 9.5Z"
+                />
+                <path
+                  fill="#4285F4"
+                  d="M46.98 24.55c0-1.57-.15-3.09-.38-4.55H24v9.02h12.94c-.58 2.96-2.26 5.48-4.78 7.18l7.73 6c4.51-4.18 7.09-10.36 7.09-17.65Z"
+                />
+                <path
+                  fill="#FBBC05"
+                  d="M10.53 28.59a14.41 14.41 0 0 1 0-9.18l-7.98-6.19a23.87 23.87 0 0 0 0 21.56l7.98-6.19Z"
+                />
+                <path
+                  fill="#34A853"
+                  d="M24 48c6.48 0 11.93-2.13 15.91-5.8l-7.73-6c-2.15 1.45-4.92 2.3-8.18 2.3-6.26 0-11.57-4.22-13.47-9.91l-7.98 6.19C6.51 42.62 14.62 48 24 48Z"
+                />
+              </svg>
+              <span>Continue with Google</span>
+            </button>
+          )}
+          <div
+            ref={target}
+            className="google-sign-in-button"
+            data-ready={ready}
+            aria-hidden={!ready}
+            inert={!ready}
+          />
+        </div>
       </div>
       {step && (
         <form onSubmit={complete}>
