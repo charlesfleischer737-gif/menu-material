@@ -5,6 +5,7 @@ import {
   ChevronDown,
   CircleAlert,
   Download,
+  ImageDown,
   Package,
   Share2,
   SlidersHorizontal,
@@ -39,6 +40,7 @@ import { downloadWarnings } from "@/lib/photo-pack";
 import { CropControls, Field, PhotoFrame, track } from "./creation-shared";
 import { ProBadge } from "./pro-badge";
 import { radioKeys, radioTab } from "./radio-keys";
+import { useImageSave } from "./image-save";
 
 type Destination = DownloadFormat | "master";
 // Labeled by use. The photo's own format is the default; the rest are a
@@ -95,6 +97,7 @@ export function PhotoFinishSheet({
   onBusyChange?: (busy: boolean) => void;
   measurementContext?: { draftId?: string; sourceId?: string };
 }) {
+  const imageSave = useImageSave();
   const [destination, setDestination] = useState<Destination>(
     validDestination(initialFormat),
   );
@@ -180,7 +183,7 @@ export function PhotoFinishSheet({
     setError("");
     setNotice("");
   }
-  async function finish(share = false) {
+  async function finish(share: boolean | "photos" = false) {
     if (downloadLock.current || busy || !eligible) return;
     downloadLock.current = true;
     setBusy(true);
@@ -211,6 +214,21 @@ export function PhotoFinishSheet({
         type: output.blob.type,
       });
       track("export_prepared", assetId, eventDetails, exportKey);
+      if (share === "photos") {
+        imageSave.open([file], (result) => {
+          track(
+            result === "shared"
+              ? "native_share_complete"
+              : result === "cancelled"
+                ? "native_share_cancelled"
+                : "export_download_started",
+            assetId,
+            eventDetails,
+            crypto.randomUUID(),
+          );
+        });
+        return;
+      }
       if (share && navigator.canShare?.({ files: [file] })) {
         await navigator.share({ files: [file], title: outputName });
         track("native_share_complete", assetId, eventDetails, attemptId);
@@ -252,7 +270,9 @@ export function PhotoFinishSheet({
       >
         <header className="ps2-dialog-header">
           <div>
-            <DialogTitle>Download photo</DialogTitle>
+            <DialogTitle>
+              {imageSave.iphone ? "Save photo" : "Download photo"}
+            </DialogTitle>
             <DialogDescription>
               {master
                 ? "Your saved image at its original size."
@@ -262,7 +282,9 @@ export function PhotoFinishSheet({
           <button
             className="ps2-icon-button"
             disabled={busy}
-            aria-label="Close download"
+            aria-label={
+              imageSave.iphone ? "Close save photo" : "Close download"
+            }
             onClick={() => onOpenChange(false)}
           >
             <X size={21} />
@@ -404,7 +426,10 @@ export function PhotoFinishSheet({
           </p>
           {error && (
             <p className="ps2-inline-note" role="alert">
-              {error} Your photo is saved. Try downloading again.
+              {error} Your photo is saved.{" "}
+              {imageSave.iphone
+                ? "Try saving again."
+                : "Try downloading again."}
             </p>
           )}
           {notice && (
@@ -412,8 +437,20 @@ export function PhotoFinishSheet({
               {notice}
             </p>
           )}
-          <div className="ps2-finish-actions">
-            {canShare ? (
+          <div
+            className={`ps2-finish-actions${imageSave.iphone ? " iphone-save-actions" : ""}`}
+          >
+            {imageSave.iphone ? (
+              <button
+                className="cx-btn"
+                aria-describedby={downloadHintId}
+                disabled={busy || !eligible}
+                onClick={() => void finish("photos")}
+              >
+                <ImageDown size={17} aria-hidden="true" />
+                {busy ? "Preparing…" : "Save image"}
+              </button>
+            ) : canShare ? (
               <button
                 className="cx-btn cx-secondary"
                 aria-describedby={downloadHintId}
@@ -427,13 +464,19 @@ export function PhotoFinishSheet({
               <span />
             )}
             <button
-              className="cx-btn"
+              className={imageSave.iphone ? "cx-btn cx-secondary" : "cx-btn"}
               aria-describedby={downloadHintId}
               disabled={busy || !eligible}
               onClick={() => void finish()}
             >
               <Download size={17} />
-              {busy ? "Preparing…" : finished ? "Download again" : "Download"}
+              {imageSave.iphone
+                ? "Download"
+                : busy
+                  ? "Preparing…"
+                  : finished
+                    ? "Download again"
+                    : "Download"}
             </button>
           </div>
           {onPack && approved && (
@@ -448,6 +491,7 @@ export function PhotoFinishSheet({
             </button>
           )}
         </footer>
+        {imageSave.dialog}
       </DialogContent>
     </Dialog>
   );

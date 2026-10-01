@@ -11,6 +11,7 @@ import {
   CircleAlert,
   SlidersHorizontal,
   Download,
+  ImageDown,
   Package,
   Megaphone,
   BookOpen,
@@ -50,6 +51,7 @@ import DietaryPicker from "./dietary-picker";
 import { ConfirmDelete } from "./controls";
 import CreativeHeader from "./creative-header";
 import PhotoDownloads from "./photo-downloads";
+import { useIPhone } from "./image-save";
 import { hasProFeatures, requestUpgrade } from "@/lib/upgrade";
 import Kitty from "./kitty";
 
@@ -81,6 +83,7 @@ export default function DishLibrary({
   onImports: () => void;
   onOpenWork: (kind: string, id: string) => void;
 }) {
+  const iphone = useIPhone();
   const action = useAction();
   const [search, setSearch] = useState(""),
     [section, setSection] = useState(""),
@@ -222,8 +225,12 @@ export default function DishLibrary({
           <DropdownMenuItem
             onSelect={() => setPhotoUse({ kind: "download", dish, photo })}
           >
-            <Download size={16} aria-hidden="true" />
-            {photoActionLabels.download}
+            {iphone ? (
+              <ImageDown size={16} aria-hidden="true" />
+            ) : (
+              <Download size={16} aria-hidden="true" />
+            )}
+            {iphone ? "Save image" : photoActionLabels.download}
           </DropdownMenuItem>
           <DropdownMenuItem
             onSelect={() =>

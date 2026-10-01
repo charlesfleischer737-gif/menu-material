@@ -356,6 +356,7 @@ function myDishes(dishes, clientOverrides = {}) {
     "./photo-finish-sheet": { PhotoFinishSheet: Stub },
     "./photo-pack-sheet": { PhotoPackSheet: Stub },
     "./photo-hub-actions": { photoActionLabels: {} },
+    "./image-save": { useIPhone: () => false },
     "@/lib/workspace-navigation": { workspacePreferenceKey: () => "key" },
     "@/components/ui/sheet": {
       Sheet: Stub,
@@ -577,6 +578,7 @@ function bulkDownload(items, initialFormat, failWith) {
     used = [];
   const sizeOf = (id) => items.find((i) => i.assetId === id).size;
   const page = mount("photo-downloads.tsx", (hooks) => ({
+    "./image-save": { useImageSave: () => ({ iphone: false, dialog: null }) },
     "lucide-react": new Proxy({}, { get: () => Stub }),
     "@/lib/client": {
       downloadBlob: (blob, name) => saved.push({ blob, name }),

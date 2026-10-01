@@ -1,6 +1,14 @@
 "use client";
+import { useImageSave } from "./image-save";
 import { useCallback, useEffect, useRef, useState } from "react";
-import { Plus, Download, Check, Sparkles, ExternalLink } from "lucide-react";
+import {
+  Plus,
+  Download,
+  ImageDown,
+  Check,
+  Sparkles,
+  ExternalLink,
+} from "lucide-react";
 import { Button } from "@/components/ui/button";
 import CreativeHeader from "./creative-header";
 import { CopyButton } from "./copy-button";
@@ -239,6 +247,7 @@ export default function PromotionWorkspace({
   seed?: Row | null;
   onSeedUsed?: () => void;
 }) {
+  const imageSave = useImageSave();
   const [selected, setSelected] = useState<Row | null>(null),
     [form, setForm] = useState<Row | null>(null),
     [status, setStatus] = useState(""),
@@ -501,12 +510,36 @@ export default function PromotionWorkspace({
     await persist();
     await refresh();
   }
+  function exportImage(saveToPhotos = false) {
+    return action(
+      saveToPhotos ? "Preparing your image" : "Preparing download",
+      async () => {
+        const savedOffer = await persist();
+        const p = (await api("promotions/" + savedOffer.id)).promotion;
+        if (!p.approved_hash) throw Error("Approve the updated package first.");
+        const c = document.createElement("canvas");
+        await renderOffer(c, p.draft, r, dishes, format);
+        const blob = await offerBlob(c, format);
+        const filename = `${p.draft.title.replace(/[^a-z0-9]/gi, "-").slice(0, 50)}-${format}.${blob.type === "image/png" ? "png" : "jpg"}`;
+        if (saveToPhotos)
+          imageSave.open([new File([blob], filename, { type: blob.type })]);
+        else downloadBlob(blob, filename);
+        await api("promotions/" + p.id + "/export", {
+          revision: p.revision,
+          format,
+        });
+        if (!saveToPhotos)
+          setNotice("Download started. This does not publish your campaign.");
+      },
+    );
+  }
   const isApproved =
     !!selected?.approved_hash &&
     comparable({ ...form, activeMs: 0 }) ===
       comparable({ ...selected?.draft, activeMs: 0 });
   return (
     <section className="promotion-workspace">
+      {imageSave.dialog}
       <CreativeHeader
         title="Campaigns"
         status={busy ? `${busy}…` : form ? status : undefined}
@@ -1416,39 +1449,33 @@ export default function PromotionWorkspace({
                   </Button>
                   <div className="button-row package-actions">
                     <Button
-                      variant="outline"
+                      variant={imageSave.iphone ? "default" : "outline"}
                       disabled={!!busy || !isApproved}
-                      onClick={() =>
-                        action("Preparing download", async () => {
-                          const savedOffer = await persist();
-                          const p = (await api("promotions/" + savedOffer.id))
-                            .promotion;
-                          if (!p.approved_hash)
-                            throw Error("Approve the updated package first.");
-                          const c = document.createElement("canvas");
-                          await renderOffer(c, p.draft, r, dishes, format);
-                          const blob = await offerBlob(c, format);
-                          downloadBlob(
-                            blob,
-                            `${p.draft.title.replace(/[^a-z0-9]/gi, "-").slice(0, 50)}-${format}.${blob.type === "image/png" ? "png" : "jpg"}`,
-                          );
-                          await api("promotions/" + p.id + "/export", {
-                            revision: p.revision,
-                            format,
-                          });
-                          setNotice(
-                            "Download started. This does not publish your campaign.",
-                          );
-                        })
-                      }
+                      onClick={() => void exportImage(imageSave.iphone)}
                     >
-                      <Download /> Download{" "}
-                      {format === "sign"
-                        ? "sign"
-                        : format === "clean"
-                          ? "photo"
-                          : format}
+                      {imageSave.iphone ? <ImageDown /> : <Download />}
+                      {imageSave.iphone ? (
+                        "Save image"
+                      ) : (
+                        <>
+                          Download{" "}
+                          {format === "sign"
+                            ? "sign"
+                            : format === "clean"
+                              ? "photo"
+                              : format}
+                        </>
+                      )}
                     </Button>
+                    {imageSave.iphone && (
+                      <Button
+                        variant="outline"
+                        disabled={!!busy || !isApproved}
+                        onClick={() => void exportImage()}
+                      >
+                        <Download /> Download
+                      </Button>
+                    )}
                     <CopyButton
                       data-ui-button=""
                       data-variant="outline"

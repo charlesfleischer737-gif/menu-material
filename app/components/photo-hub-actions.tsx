@@ -1,8 +1,16 @@
 "use client";
 import { useRef, useState, type Ref } from "react";
-import { BookOpen, Download, Megaphone, Package, Sparkles } from "lucide-react";
+import {
+  BookOpen,
+  Download,
+  ImageDown,
+  Megaphone,
+  Package,
+  Sparkles,
+} from "lucide-react";
 import { photoReviewReminder } from "@/lib/photo-use";
 import { ProBadge } from "./pro-badge";
+import { useIPhone } from "./image-save";
 
 export type PhotoAction = "download" | "pack" | "post" | "menu" | "promote";
 /** The same names wherever a finished photo can be used. */
@@ -36,6 +44,7 @@ export function PhotoHubActions({
   /** Actions marked Pro, so no one starts work their plan can't finish. */
   proActions?: PhotoAction[];
 }) {
+  const iphone = useIPhone();
   const [busy, setBusy] = useState(false),
     [error, setError] = useState("");
   const lock = useRef(false);
@@ -63,8 +72,12 @@ export function PhotoHubActions({
         disabled={disabled || busy}
         onClick={() => void start("download")}
       >
-        <Download size={18} aria-hidden="true" />
-        {photoActionLabels.download}
+        {iphone ? (
+          <ImageDown size={18} aria-hidden="true" />
+        ) : (
+          <Download size={18} aria-hidden="true" />
+        )}
+        {iphone ? "Save image" : photoActionLabels.download}
       </button>
       <div
         className="st-hub-row"
