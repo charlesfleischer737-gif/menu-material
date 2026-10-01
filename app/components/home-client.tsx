@@ -8,6 +8,7 @@ import {
   useState,
 } from "react";
 import Auth from "./auth";
+import EmailVerification from "./email-verification";
 import { usePresence } from "./motion";
 import Landing from "./menu-material-landing";
 import Brand from "./brand";
@@ -71,6 +72,7 @@ export default function HomeClient({ hasSession }: { hasSession: boolean }) {
     ),
     [sessionError, setSessionError] = useState(""),
     [auth, setAuth] = useState(false),
+    [verificationOpen, setVerificationOpen] = useState(false),
     [authMode, setAuthMode] = useState<"login" | "signup">("login"),
     [settings, setSettings] = useState(false),
     [guest, setGuest] = useState(false),
@@ -111,6 +113,18 @@ export default function HomeClient({ hasSession }: { hasSession: boolean }) {
     setLoaded(true);
     setSessionCheck("done");
   }, []);
+  useEffect(() => {
+    setVerificationOpen(!!state.emailVerification?.required);
+  }, [state.user?.id, state.emailVerification?.required]);
+  useEffect(() => {
+    const verify = () => {
+      setVerificationOpen(true);
+      void refresh();
+    };
+    window.addEventListener("menu-material:verify-email", verify);
+    return () =>
+      window.removeEventListener("menu-material:verify-email", verify);
+  }, [refresh]);
   const load = useCallback(
     () =>
       refresh().catch((e) => {
@@ -300,6 +314,14 @@ export default function HomeClient({ hasSession }: { hasSession: boolean }) {
     );
   return (
     <>
+      {state.emailVerification?.required && (
+        <div className="email-verification-banner" role="status">
+          <span>Verify your email to unlock your free images.</span>
+          <button onClick={() => setVerificationOpen(true)}>
+            Verify email
+          </button>
+        </div>
+      )}
       {guest ? (
         <Suspense
           fallback={
@@ -407,6 +429,17 @@ export default function HomeClient({ hasSession }: { hasSession: boolean }) {
             ×
           </button>
         </div>
+      )}
+      {state.user && state.emailVerification?.required && (
+        <EmailVerification
+          open={verificationOpen && !auth}
+          setOpen={setVerificationOpen}
+          email={state.emailVerification.email}
+          onDone={async () => {
+            await refresh();
+            setVerificationOpen(false);
+          }}
+        />
       )}
       <Auth
         open={auth}

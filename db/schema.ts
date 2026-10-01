@@ -13,6 +13,11 @@ export const users = sqliteTable("users", {
   email: text().notNull().unique(),
   password: text().notNull(),
   role: text().notNull().default("owner"),
+  // Existing accounts retain access; new public password signups opt in.
+  emailVerificationRequired: integer("email_verification_required")
+    .notNull()
+    .default(0),
+  emailVerifiedAt: integer("email_verified_at"),
   createdAt: integer("created_at").notNull(),
 });
 export const sessions = sqliteTable("sessions", {
@@ -22,6 +27,24 @@ export const sessions = sqliteTable("sessions", {
     .references(() => users.id),
   expiresAt: integer("expires_at").notNull(),
 });
+export const emailVerifications = sqliteTable(
+  "email_verifications",
+  {
+    sessionHash: text("session_hash")
+      .primaryKey()
+      .references(() => sessions.hash, { onDelete: "cascade" }),
+    userId: text("user_id")
+      .notNull()
+      .references(() => users.id, { onDelete: "cascade" }),
+    email: text().notNull(),
+    codeHash: text("code_hash").notNull(),
+    attempts: integer().notNull().default(0),
+    delivered: integer().notNull().default(0),
+    createdAt: integer("created_at").notNull(),
+    expiresAt: integer("expires_at").notNull(),
+  },
+  (t) => [index("idx_email_verifications_user").on(t.userId)],
+);
 // Google's stable subject identifies a person even if their email changes.
 export const googleIdentities = sqliteTable("google_identities", {
   subject: text().primaryKey(),

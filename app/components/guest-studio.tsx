@@ -254,13 +254,14 @@ export default function GuestStudio({
   useEffect(() => {
     if (
       !state.user ||
+      state.emailVerification?.required ||
       state.user.id === openedAs.current ||
       autoStarted.current === state.user.id
     )
       return;
     autoStarted.current = state.user.id;
     queueMicrotask(() => void transferWork(requested));
-  }, [state.user, requested, transferWork]);
+  }, [state.user, state.emailVerification?.required, requested, transferWork]);
   function update(patch: Row) {
     setDraft((d) => ({ ...d, ...patch, styleChosen: true }));
     if (!transfer.current?.dishId) transfer.current = null;
@@ -378,6 +379,8 @@ export default function GuestStudio({
     }
     setRequested(true);
     if (!state.user) onSignup();
+    else if (state.emailVerification?.required)
+      window.dispatchEvent(new Event("menu-material:verify-email"));
     else void continueCreation();
   }
   const selected = resolvePhotoLook(draft) || unavailablePhotoLook;
@@ -432,7 +435,9 @@ export default function GuestStudio({
                 // Out of images, a retry can't work; the photo stays here.
                 // Free images on their way need no plan.
                 (requested && state.remaining < 1 ? (
-                  state.freeImages?.status === "held" ? null : (
+                  ["held", "verification"].includes(
+                    state.freeImages?.status,
+                  ) ? null : (
                     <button
                       className="cx-link"
                       onClick={() =>

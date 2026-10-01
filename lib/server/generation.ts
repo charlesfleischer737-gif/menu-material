@@ -1,3 +1,4 @@
+import { requireVerifiedEmail } from "./email-verification";
 import type { Row } from "./core";
 import {
   effectiveStyle,
@@ -193,6 +194,7 @@ export async function enqueue(
   // were checked then, and the background never checks them again.
   { accepted = false }: { accepted?: boolean } = {},
 ) {
+  await requireVerifiedEmail(r.id);
   let correctionOriginal: Row | null = null;
   if (policy) {
     const claim = await one(

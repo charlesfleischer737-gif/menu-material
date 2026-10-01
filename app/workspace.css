@@ -892,3 +892,42 @@
     font-size: 22px;
   }
 }
+
+/* Email ownership fits the existing account dialog and keeps the studio mounted. */
+.verification-address {
+  overflow-wrap: anywhere;
+  font-size: 0.9375rem;
+  line-height: 1.5;
+}
+.auth-dialog .verification-code {
+  font-size: 1.5rem;
+  letter-spacing: 0.35em;
+  font-variant-numeric: tabular-nums;
+}
+.verification-actions {
+  display: flex;
+  flex-wrap: wrap;
+  justify-content: space-between;
+  gap: 0.75rem;
+}
+.email-verification-banner {
+  position: sticky;
+  top: 0;
+  z-index: 45;
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  justify-content: center;
+  gap: 0.5rem 1rem;
+  padding: 0.75rem 1rem;
+  background: #183c45;
+  color: white;
+  font-size: 0.9375rem;
+}
+.email-verification-banner button {
+  color: inherit;
+  text-decoration: underline;
+  font-weight: 600;
+  padding: 0.25rem 0.5rem;
+  cursor: pointer;
+}

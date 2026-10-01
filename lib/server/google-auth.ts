@@ -25,6 +25,7 @@ import {
   publicLimit,
 } from "./safeguards";
 import { signupFreeImages } from "./free-grants";
+import { finishEmailVerification } from "./email-verification";
 import { recordSignupSource } from "./funnel";
 import { isPlaceholderRestaurantName, slugify } from "../restaurant-identity";
 
@@ -220,6 +221,15 @@ export async function googleAuthRoute(
     );
     if (linked) {
       await consume(f);
+      if (identity.authoritative) {
+        await run(
+          "UPDATE users SET email_verification_required=0,email_verified_at=COALESCE(email_verified_at,?) WHERE id=? AND email=?",
+          now(),
+          linked.user_id,
+          identity.email,
+        );
+        await finishEmailVerification(linked.user_id);
+      }
       return signedIn(req, linked.user_id);
     }
     const existing = await one(
@@ -282,6 +292,15 @@ export async function googleAuthRoute(
     } catch (e) {
       conflict(e);
     }
+    if (f.authoritative) {
+      await run(
+        "UPDATE users SET email_verification_required=0,email_verified_at=COALESCE(email_verified_at,?) WHERE id=? AND email=?",
+        now(),
+        existing.id,
+        f.email,
+      );
+      await finishEmailVerification(existing.id);
+    }
     await loginSucceeded(f.email);
     return signedIn(req, existing.id);
   }
@@ -307,9 +326,9 @@ export async function googleAuthRoute(
     await db().batch([
       db()
         .prepare(
-          "INSERT INTO users (id,email,password,role,created_at) VALUES (?,?,?,'owner',?)",
+          "INSERT INTO users (id,email,password,role,created_at,email_verified_at) VALUES (?,?,?,'owner',?,?)",
         )
-        .bind(userId, f.email, GOOGLE_ONLY_PASSWORD, t),
+        .bind(userId, f.email, GOOGLE_ONLY_PASSWORD, t, t),
       db()
         .prepare(
           "INSERT INTO restaurants (id,user_id,name,slug,allowance,free_grant,timezone,created_at) VALUES (?,?,?,?,?,?,?,?)",
