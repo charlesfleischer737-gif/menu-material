@@ -575,7 +575,7 @@ export function StudioWorkbench({
     !signedOutGuest &&
     !guestUnavailable &&
     state.remaining <= 0 &&
-    state.freeImages?.status !== "held";
+    !["held", "verification"].includes(state.freeImages?.status);
   const showImage =
     b.look === "keep" && source
       ? source

@@ -14,6 +14,11 @@ import {
 import { billingRoute, billingSummary, billingEnabled } from "./billing";
 import { passwordResetEnabled, requestPasswordReset } from "./password-reset";
 import { googleAuthRoute } from "./google-auth";
+import {
+  emailVerificationRoute,
+  emailVerificationStatus,
+  finishEmailVerification,
+} from "./email-verification";
 import { validateImageDimensions } from "./image-validation";
 import { imagesAvailable } from "./image-availability";
 import {
@@ -278,9 +283,12 @@ async function signup(req: Request, b: Row) {
   if (!invited) await newAccountLimit(req);
   // Invitations keep their allowance. Otherwise there are no free images for
   // an email that already had them, and they're held past today's grants.
-  const free = invited
-    ? { allowance: invite.allowance, freeGrant: null }
-    : await signupFreeImages(email);
+  const needsVerification = !invited && config("LOCAL_DEVELOPMENT") !== "true";
+  const free = needsVerification
+    ? { allowance: 0, freeGrant: "verification" }
+    : invited
+      ? { allowance: invite.allowance, freeGrant: null }
+      : await signupFreeImages(email);
   const userId = id(),
     rid = id(),
     restaurant = z
@@ -294,7 +302,7 @@ async function signup(req: Request, b: Row) {
   await db().batch([
     db()
       .prepare(
-        "INSERT INTO users (id,email,password,role,created_at) SELECT ?,?,?,?,? WHERE (?=0 OR EXISTS(SELECT 1 FROM invites WHERE hash=? AND used_by IS NULL AND expires_at>?)) AND (?!='admin' OR NOT EXISTS(SELECT 1 FROM users WHERE role='admin'))",
+        "INSERT INTO users (id,email,password,role,created_at,email_verification_required) SELECT ?,?,?,?,?,? WHERE (?=0 OR EXISTS(SELECT 1 FROM invites WHERE hash=? AND used_by IS NULL AND expires_at>?)) AND (?!='admin' OR NOT EXISTS(SELECT 1 FROM users WHERE role='admin'))",
       )
       .bind(
         userId,
@@ -302,6 +310,7 @@ async function signup(req: Request, b: Row) {
         hashPassword(password),
         invite.role,
         t,
+        needsVerification ? 1 : 0,
         invited ? 1 : 0,
         hash,
         t,
@@ -731,6 +740,8 @@ async function route(req: Request) {
     }
     if (p[0] === "auth") {
       if (p[1] === "google") return await googleAuthRoute(req, p[2]);
+      if (p[1] === "email-verification")
+        return await emailVerificationRoute(req, p[2]);
       if (p[1] === "recovery" && method === "GET")
         return response({ enabled: passwordResetEnabled() });
       if (p[1] === "forgot-password") {
@@ -883,12 +894,17 @@ async function route(req: Request) {
           r.id,
         ),
       );
+      const emailVerification = await emailVerificationStatus(u.id);
+      // Recover if verification committed before a transient grant failure.
+      if (r.free_grant === "verification" && !emailVerification.required)
+        await finishEmailVerification(u.id);
       // First, as held free images may be granted now.
       const freeImages = r.free_grant ? await freeImagesStatus(r.id) : null;
       const billing = await billingSummary(r.id),
         saved = storedStyle(r.style);
       return response({
         user: u,
+        emailVerification,
         studioAvailability: await studioAvailability(r.id),
         restaurant: {
           ...r,

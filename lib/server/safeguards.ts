@@ -572,6 +572,7 @@ export async function housekeeping() {
     ]);
     await releaseStorage(row.id);
   }
+  await run("DELETE FROM email_verifications WHERE expires_at<=?", now());
   // Free images new accounts wait for, as today's grants allow.
   const { grantHeldImages } = await import("./free-grants");
   await grantHeldImages();
