@@ -937,7 +937,9 @@ textarea.st-input {
 }
 /* Result, Original and Compare are stacked in that frame (ResultPhotos). The
    view coming in fades in on top while the one leaving fades out beneath it,
-   quickly then slowly, so the frame never dips to the canvas between them. */
+   quickly then slowly, so the frame never dips to the canvas between them.
+   Once faded out a view leaves the layout, so on phones, where the photo
+   sets the frame's height, a taller original never pads the result. */
 .st-result > .st-layer {
   display: grid;
   grid-area: 1 / 1;
@@ -946,15 +948,23 @@ textarea.st-input {
   place-self: stretch;
   min-width: 0;
   min-height: 0;
-  transition: opacity var(--duration-fast) var(--ease-exit);
+  transition:
+    opacity var(--duration-fast) var(--ease-exit),
+    display var(--duration-fast) allow-discrete;
 }
 .st-result > .st-layer[data-shown] {
   z-index: 1;
   transition-timing-function: var(--ease);
 }
 .st-result > .st-layer:not([data-shown]) {
+  display: none;
   opacity: 0;
   pointer-events: none;
+}
+@starting-style {
+  .st-result > .st-layer[data-shown] {
+    opacity: 0;
+  }
 }
 .st-result .cx-photo-comparison {
   width: min(100%, calc(var(--st-photo-height) * var(--st-ratio, 1)));
@@ -2185,12 +2195,6 @@ textarea.st-input {
 }
 
 /* Motion ------------------------------------------------------------------ */
-@keyframes st-rise {
-  from {
-    opacity: 0;
-    transform: translateY(10px) scale(0.985);
-  }
-}
 @keyframes st-fade {
   from {
     opacity: 0;

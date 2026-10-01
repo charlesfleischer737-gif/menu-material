@@ -37,10 +37,14 @@ const wait = (ms: number) =>
  * A photo on the studio canvas. It settles in once it has loaded, never as
  * an empty frame (photo-studio.css).
  */
-export function StudioPhoto(props: ComponentProps<"img">) {
+export function StudioPhoto({
+  alt,
+  ...props
+}: ComponentProps<"img"> & { alt: string }) {
   return (
     <img
       {...props}
+      alt={alt}
       className="st-photo"
       data-settle=""
       onLoad={settle}
@@ -264,7 +268,13 @@ export function ResultPhotos({
         // A beat on the new photo, then the original sweeps in beside it.
         beat = window.setTimeout(() => {
           const now = latest.current;
-          if (now.view !== "result" || !now.comparable) return;
+          // Not if the owner moved on, or can't see it (another tab).
+          if (
+            now.view !== "result" ||
+            !now.comparable ||
+            !image.getClientRects().length
+          )
+            return;
           setSweep(true);
           now.onCompare?.();
         }, 300);

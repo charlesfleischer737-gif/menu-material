@@ -1151,7 +1151,7 @@ export default function PhotoStudio({
     { id: "compare", label: "Compare", show: canCompare && adjust !== "quick" },
     { id: "before", label: "Original", show: !!source && !resultIsOriginal },
   ].filter((view) => view.show);
-  const view = before ? "before" : comparing ? "compare" : "result";
+  const view = before && source ? "before" : comparing ? "compare" : "result";
   // Result, Compare and Original already name the photo on the canvas, so it
   // is labeled only when the view choice can't say what it is.
   const canvasLabel = comparing
