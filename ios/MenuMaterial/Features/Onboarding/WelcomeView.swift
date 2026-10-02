@@ -162,6 +162,11 @@ struct WelcomeHero: View {
                 }
             }
         }
+        .overlay(alignment: .top) {
+            // Keeps the status bar readable over the photo.
+            LinearGradient(colors: [.black.opacity(0.32), .clear], startPoint: .top, endPoint: .bottom)
+                .frame(height: 110)
+        }
         .overlay(alignment: .bottom) {
             LinearGradient(
                 stops: [

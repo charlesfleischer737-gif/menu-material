@@ -34,13 +34,18 @@ struct PhotoStage<Content: View>: View {
     @ViewBuilder var content: Content
 
     var body: some View {
-        ZStack {
-            Palette.stage
-            content
-        }
-        .aspectRatio(ratio, contentMode: .fit)
-        .frame(maxWidth: .infinity)
-        .clipShape(.rect(cornerRadius: radius))
+        // The frame comes from the ratio, so a photo that fills it can't
+        // stretch it.
+        Color.clear
+            .aspectRatio(ratio, contentMode: .fit)
+            .frame(maxWidth: .infinity)
+            .overlay {
+                ZStack {
+                    Palette.stage
+                    content
+                }
+            }
+            .clipShape(.rect(cornerRadius: radius))
     }
 }
 

@@ -522,7 +522,7 @@ private struct FormatPicker: View {
     var body: some View {
         VStack(alignment: .leading, spacing: 14) {
             SectionTitle(title: "Format") {
-                Label(selection.use, systemImage: symbol(selection))
+                Text(selection.use)
                     .font(.subheadline)
                     .foregroundStyle(Palette.muted)
                     .contentTransition(.opacity)
@@ -534,15 +534,6 @@ private struct FormatPicker: View {
             }
             .pickerStyle(.segmented)
             .sensoryFeedback(.selection, trigger: selection)
-        }
-    }
-
-    private func symbol(_ format: PhotoFormat) -> String {
-        switch format {
-        case .menu: "square"
-        case .feed: "rectangle.portrait"
-        case .story: "iphone"
-        case .doordash: "rectangle"
         }
     }
 }
