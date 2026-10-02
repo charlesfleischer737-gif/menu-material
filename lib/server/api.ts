@@ -15,7 +15,11 @@ import { billingRoute, billingSummary, billingEnabled } from "./billing";
 import { passwordResetEnabled, requestPasswordReset } from "./password-reset";
 import { googleAuthRoute } from "./google-auth";
 import { appleAuthRoute } from "./apple-auth";
-import { nativeConfigRoute, requireSupportedApp } from "./native";
+import {
+  nativeConfigRoute,
+  nativeStylesRoute,
+  requireSupportedApp,
+} from "./native";
 import { acknowledgePushes, claimPushes, devicesRoute } from "./push";
 import {
   emailVerificationRoute,
@@ -626,6 +630,8 @@ async function route(req: Request) {
     requireSupportedApp(req, p);
     if (p[0] === "native" && p[1] === "config" && method === "GET")
       return nativeConfigRoute();
+    if (p[0] === "native" && p[1] === "styles" && method === "GET")
+      return nativeStylesRoute();
     if (p[0] === "billing") return await billingRoute(req, p);
     if (["staff", "staff-links", "suggestions"].includes(p[0]))
       return response({ error: "This tool is no longer available." }, 410);

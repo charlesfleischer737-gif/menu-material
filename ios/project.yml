@@ -1,0 +1,114 @@
+# The Xcode project is generated from this file with XcodeGen, so it can be
+# reviewed and merged like any other source. Run `xcodegen generate` in ios/
+# after changing it or adding files (see ios/README.md).
+name: MenuMaterial
+options:
+  bundleIdPrefix: com.menumaterial
+  deploymentTarget:
+    iOS: "26.0"
+  createIntermediateGroups: true
+  developmentLanguage: en
+  groupSortPosition: top
+settings:
+  base:
+    SWIFT_VERSION: "6.0"
+    # Most of the app is UI: code runs on the main actor unless it says
+    # otherwise.
+    SWIFT_DEFAULT_ACTOR_ISOLATION: MainActor
+    SWIFT_APPROACHABLE_CONCURRENCY: YES
+    MARKETING_VERSION: "1.0.0"
+    CURRENT_PROJECT_VERSION: "1"
+    TARGETED_DEVICE_FAMILY: "1"
+    # The owner's Apple Developer team, set in Xcode or with
+    # DEVELOPMENT_TEAM=... on the command line.
+    DEVELOPMENT_TEAM: ""
+    CODE_SIGN_STYLE: Automatic
+    ENABLE_USER_SCRIPT_SANDBOXING: YES
+    ASSETCATALOG_COMPILER_GENERATE_ASSET_SYMBOLS: NO
+    LOCALIZATION_PREFERS_STRING_CATALOGS: YES
+packages:
+  MenuMaterialKit:
+    path: MenuMaterialKit
+targets:
+  MenuMaterial:
+    type: application
+    platform: iOS
+    sources:
+      - path: MenuMaterial
+      - path: Shared
+    dependencies:
+      - package: MenuMaterialKit
+      - target: PhotoActivity
+    entitlements:
+      path: MenuMaterial/Support/MenuMaterial.entitlements
+      properties:
+        com.apple.developer.applesignin: [Default]
+        aps-environment: development
+    info:
+      path: MenuMaterial/Support/Info.plist
+      properties:
+        CFBundleDisplayName: Menu Material
+        CFBundleShortVersionString: $(MARKETING_VERSION)
+        CFBundleVersion: $(CURRENT_PROJECT_VERSION)
+        LSRequiresIPhoneOS: true
+        ITSAppUsesNonExemptEncryption: false
+        UILaunchScreen:
+          UIColorName: LaunchBackground
+        UISupportedInterfaceOrientations: [UIInterfaceOrientationPortrait]
+        UIApplicationSceneManifest:
+          UIApplicationSupportsMultipleScenes: false
+        UIBackgroundModes: [remote-notification]
+        NSSupportsLiveActivities: true
+        NSCameraUsageDescription: Take a photo of a dish to style it for your menu, delivery apps and posts.
+        NSPhotoLibraryAddUsageDescription: Save your styled photos to your library.
+        # The server the app talks to; override per build configuration.
+        MenuMaterialServer: $(MENU_MATERIAL_SERVER)
+    settings:
+      base:
+        PRODUCT_BUNDLE_IDENTIFIER: com.menumaterial.app
+        PRODUCT_NAME: MenuMaterial
+        ASSETCATALOG_COMPILER_APPICON_NAME: AppIcon
+        ASSETCATALOG_COMPILER_GLOBAL_ACCENT_COLOR_NAME: AccentColor
+        MENU_MATERIAL_SERVER: https://menumaterial.com
+  PhotoActivity:
+    type: app-extension
+    platform: iOS
+    sources:
+      - path: PhotoActivity
+      - path: Shared
+    info:
+      path: PhotoActivity/Info.plist
+      properties:
+        CFBundleDisplayName: Menu Material
+        CFBundleShortVersionString: $(MARKETING_VERSION)
+        CFBundleVersion: $(CURRENT_PROJECT_VERSION)
+        NSExtension:
+          NSExtensionPointIdentifier: com.apple.widgetkit-extension
+    settings:
+      base:
+        PRODUCT_BUNDLE_IDENTIFIER: com.menumaterial.app.PhotoActivity
+        SKIP_INSTALL: YES
+  MenuMaterialTests:
+    type: bundle.unit-test
+    platform: iOS
+    sources:
+      - path: MenuMaterialTests
+    dependencies:
+      - target: MenuMaterial
+    settings:
+      base:
+        GENERATE_INFOPLIST_FILE: YES
+        PRODUCT_BUNDLE_IDENTIFIER: com.menumaterial.app.tests
+schemes:
+  MenuMaterial:
+    build:
+      targets:
+        MenuMaterial: all
+    run:
+      config: Debug
+    test:
+      config: Debug
+      targets:
+        - MenuMaterialTests
+    archive:
+      config: Release

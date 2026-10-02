@@ -282,6 +282,35 @@ try {
     "1.1",
   );
   await expect("state", undefined, 200, { native: false });
+  // The Studio's looks come from the web's own catalog.
+  const styles = (
+    await expect("native/styles", undefined, 200, { version: "1.0" })
+  ).json;
+  assert.equal(styles.polish.id, "keep");
+  assert.equal(styles.polish.plate, "keep");
+  assert.equal(styles.polish.photoPreset, "");
+  assert.match(styles.polish.photoStyle, /^Retain the original setting/);
+  assert.equal(styles.styles.length, 62);
+  assert.equal(styles.categories.length, 9);
+  const overhead = styles.styles.find((s) => s.id === "menu-overhead");
+  assert.match(overhead.photoStyle, /Preserve the original angle in this/);
+  assert.doesNotMatch(overhead.photoStyle, /Straight overhead/);
+  assert.equal(overhead.photoPreset, "menu-overhead");
+  assert.deepEqual(
+    styles.styles
+      .filter((s) => s.pro)
+      .map((s) => s.id)
+      .sort(),
+    ["fantasy-burst", "fantasy-melt", "fantasy-swirl"],
+  );
+  for (const look of styles.styles) {
+    assert.ok(look.photoStyle.length > 0 && look.photoStyle.length <= 300);
+    assert.equal(
+      look.thumbnail,
+      look.image.replace("/studio/styles/", "/studio/styles/thumbs/"),
+    );
+    assert.ok(["keep", "style"].includes(look.plate));
+  }
   env.IOS_MIN_VERSION = "";
 
   // ── Native sessions ────────────────────────────────────────────────────
