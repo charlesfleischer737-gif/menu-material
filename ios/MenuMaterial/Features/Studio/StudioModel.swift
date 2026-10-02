@@ -1,4 +1,3 @@
-import ActivityKit
 import Foundation
 import MenuMaterialKit
 import Observation
@@ -34,7 +33,6 @@ final class StudioModel {
     private(set) var sourceId: String?
     private(set) var dishId: String?
     private var uploadKey: String?
-    private var activity: Activity<PhotoActivityAttributes>?
     private var watcher: Task<Void, Never>?
     private var ticking: Task<Void, Never>?
     /// Something the screen should open: Plans, or email verification.
@@ -146,7 +144,7 @@ final class StudioModel {
             }
             stage = .creating(jobId: job.id)
             let typical = model.workspace?.jobs.first { $0.id == job.id }?.estimateMs ?? 45000
-            activity = PhotoActivities.start(
+            PhotoActivities.start(
                 jobId: job.id,
                 dishName: dishName.isEmpty ? "Your dish" : dishName,
                 lookName: look.name,
@@ -219,14 +217,12 @@ final class StudioModel {
     private func finished(jobId: String, assetId: String, model: AppModel) async {
         stage = .result(jobId: jobId, assetId: assetId)
         let seen = UIApplication.shared.applicationState == .active
-        await PhotoActivities.end(activity, ready: true, assetId: assetId, seen: seen)
-        activity = nil
+        await PhotoActivities.end(jobId: jobId, ready: true, assetId: assetId, seen: seen)
     }
 
     private func failed(jobId: String, message: String) async {
         stage = .failed(jobId: jobId, message: message)
-        await PhotoActivities.end(activity, ready: false, assetId: nil, seen: true)
-        activity = nil
+        await PhotoActivities.end(jobId: jobId, ready: false, assetId: nil, seen: true)
     }
 
     /// Stops following when the photo is no longer shown.

@@ -13,6 +13,8 @@ nonisolated struct PhotoActivityAttributes: ActivityAttributes {
         var expectedAt: Double?
     }
 
+    /// The photo's job, so the app can find this activity again.
+    var jobId: String
     var dishName: String
     var lookName: String
     /// When the photo was requested, in seconds since 1970.

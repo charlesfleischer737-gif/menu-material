@@ -11,10 +11,10 @@ enum PhotoActivities {
         lookName: String,
         expectedSeconds: Double,
         client: APIClient
-    ) -> Activity<PhotoActivityAttributes>? {
-        guard ActivityAuthorizationInfo().areActivitiesEnabled else { return nil }
+    ) {
+        guard ActivityAuthorizationInfo().areActivitiesEnabled else { return }
         let now = Date().timeIntervalSince1970
-        let attributes = PhotoActivityAttributes(dishName: dishName, lookName: lookName, startedAt: now)
+        let attributes = PhotoActivityAttributes(jobId: jobId, dishName: dishName, lookName: lookName, startedAt: now)
         let state = PhotoActivityAttributes.ContentState(
             phase: "creating",
             assetId: nil,
@@ -35,24 +35,24 @@ enum PhotoActivities {
                     )
                 }
             }
-            return activity
-        } catch {
-            return nil
-        }
+        } catch {}
     }
 
-    /// Ends it. While the app is open the result is on screen, so it goes
-    /// at once; otherwise it stays a few minutes on the Lock Screen.
-    static func end(_ activity: Activity<PhotoActivityAttributes>?, ready: Bool, assetId: String?, seen: Bool) async {
-        guard let activity else { return }
+    /// Ends the photo's activity. While the app is open the result is on
+    /// screen, so it goes at once; otherwise it stays a few minutes on the
+    /// Lock Screen. Runs off the main actor, like ActivityKit's own `end`, so
+    /// no activity crosses between actors.
+    @concurrent nonisolated static func end(jobId: String, ready: Bool, assetId: String?, seen: Bool) async {
         let state = PhotoActivityAttributes.ContentState(
             phase: ready ? "ready" : "failed",
             assetId: assetId,
             expectedAt: nil
         )
-        await activity.end(
-            ActivityContent(state: state, staleDate: nil),
-            dismissalPolicy: seen ? .immediate : .after(Date().addingTimeInterval(10 * 60))
-        )
+        for activity in Activity<PhotoActivityAttributes>.activities where activity.attributes.jobId == jobId {
+            await activity.end(
+                ActivityContent(state: state, staleDate: nil),
+                dismissalPolicy: seen ? .immediate : .after(Date().addingTimeInterval(10 * 60))
+            )
+        }
     }
 }
