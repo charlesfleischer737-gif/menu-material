@@ -770,7 +770,7 @@ private struct ProgressPanel: View {
     private var detail: String {
         if case .waiting(_, let hold) = outcome, let hold { return hold }
         if let lookName { return "\(lookName) look" }
-        return "Styling your photo"
+        return "Usually ready in about a minute"
     }
 }
 
