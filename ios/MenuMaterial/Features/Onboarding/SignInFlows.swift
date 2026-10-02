@@ -51,7 +51,7 @@ final class SignInFlows {
     ) async {
         guard let flow = appleFlow else { return }
         appleFlow = nil
-        defer { Task { await prepareApple(model.client) } }
+        defer { Task { await self.prepareApple(model.client) } }
         switch result {
         case .failure(let failure):
             if (failure as? ASAuthorizationError)?.code != .canceled {

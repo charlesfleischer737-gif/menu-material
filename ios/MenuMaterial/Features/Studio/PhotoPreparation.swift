@@ -21,10 +21,10 @@ nonisolated struct PreparedPhoto: Sendable {
     static func fromLibrary(_ data: Data) async throws -> PreparedPhoto {
         try await Task.detached(priority: .userInitiated) {
             guard let image = UIImage(data: data) else { throw PreparationError.unreadable }
-            let working = try normalized(image)
-            let kind = fileKind(data)
+            let working = try PreparedPhoto.normalized(image)
+            let kind = PreparedPhoto.fileKind(data)
             // Too large, or a kind the server won't take: send the working copy.
-            if data.count > maxOriginalBytes || kind == nil {
+            if data.count > PreparedPhoto.maxOriginalBytes || kind == nil {
                 return PreparedPhoto(
                     original: working, originalName: "photo.jpg", originalType: "image/jpeg",
                     working: working, preview: UIImage(data: working) ?? image
@@ -41,9 +41,9 @@ nonisolated struct PreparedPhoto: Sendable {
     static func fromCamera(_ image: UIImage) async throws -> PreparedPhoto {
         try await Task.detached(priority: .userInitiated) {
             guard let original = image.jpegData(compressionQuality: 0.92) else { throw PreparationError.unreadable }
-            let working = try normalized(image)
+            let working = try PreparedPhoto.normalized(image)
             return PreparedPhoto(
-                original: original.count > maxOriginalBytes ? working : original,
+                original: original.count > PreparedPhoto.maxOriginalBytes ? working : original,
                 originalName: "photo.jpg", originalType: "image/jpeg",
                 working: working, preview: UIImage(data: working) ?? image
             )
