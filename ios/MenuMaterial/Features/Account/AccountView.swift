@@ -2,7 +2,8 @@ import MenuMaterialKit
 import SwiftUI
 import UserNotifications
 
-/// The restaurant, its plan, notifications, help, and leaving.
+/// The restaurant, its plan, notifications, help, and leaving, laid out
+/// like Settings.
 struct AccountView: View {
     @Environment(AppModel.self) private var model
     @Environment(\.openURL) private var openURL
@@ -12,105 +13,162 @@ struct AccountView: View {
     @State private var confirmSignOut = false
     @State private var notifications: UNAuthorizationStatus = .notDetermined
 
+    private var isPro: Bool { model.billing?.isPro == true }
+
     var body: some View {
         NavigationStack {
             List {
                 Section {
-                    VStack(alignment: .leading, spacing: 6) {
-                        Text(model.restaurant?.name ?? "Your restaurant")
-                            .font(.display(26))
-                            .foregroundStyle(Palette.ink)
-                        Text(model.user?.email ?? "")
-                            .font(.callout)
-                            .foregroundStyle(Palette.muted)
-                    }
-                    .padding(.vertical, 6)
-                    Button("Rename restaurant") { showRename = true }
+                    profile
+                        .listRowBackground(Color.clear)
+                        .listRowInsets(EdgeInsets())
                 }
 
-                Section("Plan") {
+                Section {
                     Button {
                         showPlans = true
                     } label: {
-                        HStack {
-                            VStack(alignment: .leading, spacing: 3) {
-                                Text(model.billing?.isPro == true ? "Pro" : "Free")
-                                    .font(.headline)
-                                    .foregroundStyle(Palette.ink)
-                                Text("\(model.workspace?.remaining ?? 0) images left")
-                                    .font(.footnote)
-                                    .foregroundStyle(Palette.muted)
-                            }
-                            Spacer()
-                            Text(model.billing?.isPro == true ? "Manage" : "See Pro")
-                                .font(.callout.weight(.semibold))
-                        }
+                        planRow
                     }
                     .accessibilityIdentifier("plan-row")
                 }
 
                 Section {
-                    switch notifications {
-                    case .authorized, .provisional, .ephemeral:
-                        Label("On: we’ll tell you when photos are ready", systemImage: "bell.badge")
-                    case .denied:
-                        Button {
-                            if let url = URL(string: UIApplication.openSettingsURLString) { openURL(url) }
-                        } label: {
-                            Label("Off. Turn them on in Settings", systemImage: "bell.slash")
-                        }
-                    default:
-                        Button {
-                            Task {
-                                await model.askForNotifications()
-                                await readNotifications()
-                            }
-                        } label: {
-                            Label("Tell me when photos are ready", systemImage: "bell")
-                        }
+                    Button {
+                        showRename = true
+                    } label: {
+                        SettingsRow(symbol: "storefront.fill", color: .indigo, title: "Restaurant Name", value: model.restaurant?.name)
+                    }
+                    notificationsRow
+                }
+
+                Section {
+                    Link(destination: model.client.server) {
+                        SettingsRow(symbol: "safari.fill", color: .blue, title: "Menu Builder and Post Maker", external: true)
                     }
                 } header: {
-                    Text("Notifications")
+                    Text("On the Web")
+                } footer: {
+                    Text("Design menus, posts and campaigns on menumaterial.com with the same account.")
                 }
 
-                Section("More on the web") {
-                    Link(destination: model.client.server) {
-                        Label("Menu Builder, Post Maker and campaigns", systemImage: "safari")
-                    }
-                }
-
-                Section("Help") {
+                Section {
                     if let support = model.config?.links.support.flatMap({ URL(string: $0) }) {
-                        Link(destination: support) { Label("Contact support", systemImage: "envelope") }
+                        Link(destination: support) {
+                            SettingsRow(symbol: "envelope.fill", color: .green, title: "Contact Support", external: true)
+                        }
                     }
                     if let terms = model.config?.links.terms.flatMap({ URL(string: $0) }) {
-                        Link(destination: terms) { Label("Terms", systemImage: "doc.text") }
+                        Link(destination: terms) {
+                            SettingsRow(symbol: "doc.text.fill", color: .gray, title: "Terms", external: true)
+                        }
                     }
                     if let privacy = model.config?.links.privacy.flatMap({ URL(string: $0) }) {
-                        Link(destination: privacy) { Label("Privacy Policy", systemImage: "hand.raised") }
+                        Link(destination: privacy) {
+                            SettingsRow(symbol: "hand.raised.fill", color: .blue, title: "Privacy Policy", external: true)
+                        }
                     }
                     NavigationLink {
                         AboutView()
                     } label: {
-                        Label("About", systemImage: "info.circle")
+                        SettingsRow(symbol: "info", color: .gray, title: "About")
                     }
                 }
 
                 Section {
-                    Button("Sign out") { confirmSignOut = true }
-                    Button("Delete account", role: .destructive) { showDelete = true }
+                    Button("Sign Out") { confirmSignOut = true }
+                        .frame(maxWidth: .infinity)
+                }
+                Section {
+                    Button("Delete Account", role: .destructive) { showDelete = true }
+                        .frame(maxWidth: .infinity)
+                } footer: {
+                    Text("Deletes your restaurant, dishes, photos and menus for good.")
+                        .frame(maxWidth: .infinity)
                 }
             }
-            .scrollContentBackground(.hidden)
-            .canvasBackground()
+            .listStyle(.insetGrouped)
             .navigationTitle("Account")
+            .navigationBarTitleDisplayMode(.inline)
             .sheet(isPresented: $showPlans) { PlansView() }
             .sheet(isPresented: $showRename) { RenameRestaurantView() }
             .sheet(isPresented: $showDelete) { DeleteAccountView() }
             .confirmationDialog("Sign out of Menu Material?", isPresented: $confirmSignOut, titleVisibility: .visible) {
-                Button("Sign out", role: .destructive) { Task { await model.signOut() } }
+                Button("Sign Out", role: .destructive) { Task { await model.signOut() } }
             }
             .task { await readNotifications() }
+        }
+    }
+
+    private var profile: some View {
+        VStack(spacing: 10) {
+            RestaurantAvatar(name: model.restaurant?.name ?? "Menu Material")
+            VStack(spacing: 3) {
+                Text(model.restaurant?.name ?? "Your restaurant")
+                    .font(.title2.bold())
+                    .foregroundStyle(Palette.ink)
+                Text(model.user?.email ?? "")
+                    .font(.subheadline)
+                    .foregroundStyle(Palette.muted)
+            }
+        }
+        .frame(maxWidth: .infinity)
+        .padding(.vertical, 8)
+    }
+
+    private var planRow: some View {
+        HStack(spacing: 14) {
+            Image(systemName: "sparkles")
+                .font(.system(size: 20, weight: .semibold))
+                .foregroundStyle(.white)
+                .frame(width: 44, height: 44)
+                .background(
+                    LinearGradient(
+                        colors: [Color(red: 0.16, green: 0.55, blue: 0.37), Color(red: 0.05, green: 0.25, blue: 0.17)],
+                        startPoint: .topLeading,
+                        endPoint: .bottomTrailing
+                    ),
+                    in: .rect(cornerRadius: 11)
+                )
+            VStack(alignment: .leading, spacing: 3) {
+                HStack(spacing: 6) {
+                    Text(isPro ? "Menu Material Pro" : "Free Plan")
+                        .font(.headline)
+                        .foregroundStyle(Palette.ink)
+                    if isPro { ProBadge() }
+                }
+                Text("\(model.workspace?.remaining ?? 0) images left")
+                    .font(.subheadline)
+                    .foregroundStyle(Palette.muted)
+            }
+            Spacer()
+            Text(isPro ? "Manage" : "Upgrade")
+                .font(.subheadline.weight(.semibold))
+                .foregroundStyle(Palette.accent)
+        }
+        .padding(.vertical, 4)
+    }
+
+    @ViewBuilder
+    private var notificationsRow: some View {
+        switch notifications {
+        case .authorized, .provisional, .ephemeral:
+            SettingsRow(symbol: "bell.badge.fill", color: .red, title: "Photo Ready Alerts", value: "On")
+        case .denied:
+            Button {
+                if let url = URL(string: UIApplication.openSettingsURLString) { openURL(url) }
+            } label: {
+                SettingsRow(symbol: "bell.slash.fill", color: .red, title: "Photo Ready Alerts", value: "Off")
+            }
+        default:
+            Button {
+                Task {
+                    await model.askForNotifications()
+                    await readNotifications()
+                }
+            } label: {
+                SettingsRow(symbol: "bell.badge.fill", color: .red, title: "Photo Ready Alerts", value: "Turn On")
+            }
         }
     }
 
@@ -129,21 +187,22 @@ private struct RenameRestaurantView: View {
     var body: some View {
         NavigationStack {
             Form {
-                TextField("Restaurant name", text: $name)
-                    .textInputAutocapitalization(.words)
                 Section {
+                    TextField("Restaurant name", text: $name)
+                        .textInputAutocapitalization(.words)
+                } footer: {
                     Text("Live menus keep their current name until you publish them again on menumaterial.com.")
-                        .font(.footnote)
-                        .foregroundStyle(Palette.muted)
                 }
-                if let error { Text(error).foregroundStyle(Palette.danger) }
+                if let error { Section { Text(error).foregroundStyle(Palette.danger) } }
             }
-            .navigationTitle("Rename restaurant")
+            .navigationTitle("Restaurant Name")
             .navigationBarTitleDisplayMode(.inline)
             .toolbar {
-                ToolbarItem(placement: .cancellationAction) { Button("Cancel", role: .cancel) { dismiss() } }
+                ToolbarItem(placement: .cancellationAction) {
+                    Button("Cancel", systemImage: "xmark", role: .cancel) { dismiss() }
+                }
                 ToolbarItem(placement: .confirmationAction) {
-                    Button("Save") { Task { await save() } }
+                    Button("Save", systemImage: "checkmark") { Task { await save() } }
                         .disabled(busy || name.trimmingCharacters(in: .whitespaces).count < 2)
                 }
             }
@@ -190,14 +249,20 @@ struct DeleteAccountView: View {
         NavigationStack {
             Form {
                 Section {
-                    Text("This permanently deletes your restaurant and everything in it: dishes, photos, menus, specials and posts. Your public menu pages stop working and you’re signed out everywhere. It can’t be undone.")
-                        .font(.callout)
+                    VStack(alignment: .leading, spacing: 10) {
+                        Image(systemName: "exclamationmark.triangle.fill")
+                            .font(.title)
+                            .foregroundStyle(Palette.danger)
+                        Text("This permanently deletes your restaurant and everything in it: dishes, photos, menus, specials and posts. Your public menu pages stop working and you’re signed out everywhere. It can’t be undone.")
+                            .font(.callout)
+                    }
+                    .padding(.vertical, 4)
                 }
                 if model.billing?.provider == "app_store", model.billing?.cancelAtPeriodEnd == false {
                     Section {
                         Text("Your Pro subscription renews through the App Store. Turn it off first; Apple keeps billing until you do.")
                             .font(.callout)
-                        Button("Manage subscription") { manageSubscription = true }
+                        Button("Manage Subscription") { manageSubscription = true }
                     }
                 }
                 Section {
@@ -222,15 +287,18 @@ struct DeleteAccountView: View {
                     Button(role: .destructive) {
                         Task { await delete() }
                     } label: {
-                        if busy { ProgressView() } else { Text("Delete account permanently") }
+                        if busy { ProgressView() } else { Text("Delete Account Permanently") }
                     }
+                    .frame(maxWidth: .infinity)
                     .disabled(!ready || busy)
                 }
             }
-            .navigationTitle("Delete account")
+            .navigationTitle("Delete Account")
             .navigationBarTitleDisplayMode(.inline)
             .toolbar {
-                ToolbarItem(placement: .cancellationAction) { Button("Cancel", role: .cancel) { dismiss() } }
+                ToolbarItem(placement: .cancellationAction) {
+                    Button("Cancel", systemImage: "xmark", role: .cancel) { dismiss() }
+                }
             }
             .manageSubscriptionsSheet(isPresented: $manageSubscription)
         }
@@ -257,7 +325,22 @@ private struct AboutView: View {
     var body: some View {
         List {
             Section {
-                LabeledContent("Version", value: model.client.appVersion)
+                VStack(spacing: 12) {
+                    Image("BrandMark")
+                        .renderingMode(.template)
+                        .resizable()
+                        .scaledToFit()
+                        .frame(height: 40)
+                        .foregroundStyle(Palette.accent)
+                    Text("Menu Material")
+                        .font(.title3.bold())
+                    Text("Version \(model.client.appVersion)")
+                        .font(.subheadline)
+                        .foregroundStyle(Palette.muted)
+                }
+                .frame(maxWidth: .infinity)
+                .padding(.vertical, 12)
+                .listRowBackground(Color.clear)
             }
             Section("Credits") {
                 Text("The welcome example is an AI edit of “Burger” by cyclonebill on Wikimedia Commons, shared under CC BY-SA 2.0, as is the edit.")
@@ -266,8 +349,7 @@ private struct AboutView: View {
                     .font(.footnote)
             }
         }
-        .scrollContentBackground(.hidden)
-        .canvasBackground()
+        .listStyle(.insetGrouped)
         .navigationTitle("About")
     }
 }

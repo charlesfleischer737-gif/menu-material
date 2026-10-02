@@ -13,6 +13,7 @@ struct DishDetailView: View {
     @State private var note: String?
     @State private var error: String?
     @State private var showArchive = false
+    @State private var scrolledPastPhoto = false
 
     private var dish: Dish? { model.workspace?.dishes.first { $0.id == dishId } }
     private var photos: [Asset] { model.workspace?.photos(for: dishId) ?? [] }
@@ -33,49 +34,41 @@ struct DishDetailView: View {
     var body: some View {
         ScrollView {
             if let dish {
-                VStack(alignment: .leading, spacing: 22) {
-                    PhotoStage(ratio: 1) {
-                        if let main {
-                            AssetImage(id: main.id)
-                        } else {
-                            VStack(spacing: 10) {
-                                Image(systemName: "camera").font(.largeTitle)
-                                Text("No photo yet").font(.callout)
-                            }
-                            .foregroundStyle(.white.opacity(0.7))
+                VStack(alignment: .leading, spacing: 0) {
+                    HeroPhoto(id: main?.id)
+                    VStack(alignment: .leading, spacing: 28) {
+                        header(dish)
+                        availability(dish)
+                        if photos.count > 1 { photoStrip }
+                        details
+                        if let error { ErrorNote(message: error) }
+                        Button(role: .destructive) {
+                            showArchive = true
+                        } label: {
+                            Label("Archive Dish", systemImage: "archivebox")
+                                .frame(maxWidth: .infinity)
                         }
+                        .secondaryAction()
                     }
-                    if photos.count > 1 { photoStrip(dish) }
-
-                    availability(dish)
-                    details
-
-                    if let note {
-                        Label(note, systemImage: "checkmark.circle.fill")
-                            .font(.callout)
-                            .foregroundStyle(Palette.accent)
-                    }
-                    if let error { ErrorNote(message: error) }
-
-                    Button(role: .destructive) {
-                        showArchive = true
-                    } label: {
-                        Label("Archive dish", systemImage: "archivebox")
-                    }
-                    .frame(maxWidth: .infinity)
-                    .padding(.top, 8)
+                    .padding(.horizontal, Metrics.gutter)
+                    .padding(.top, 22)
+                    .padding(.bottom, 40)
                 }
-                .padding(.horizontal, Metrics.gutter)
-                .padding(.bottom, 32)
             }
         }
+        .ignoresSafeArea(.container, edges: .top)
+        .onScrollGeometryChange(for: Bool.self) { geometry in
+            geometry.contentOffset.y + geometry.contentInsets.top > geometry.containerSize.width * 0.8
+        } action: { _, past in
+            withAnimation(.smooth(duration: 0.2)) { scrolledPastPhoto = past }
+        }
         .canvasBackground()
-        .navigationTitle(dish?.name ?? "Dish")
+        .navigationTitle(scrolledPastPhoto ? (dish?.name ?? "Dish") : "")
         .navigationBarTitleDisplayMode(.inline)
         .toolbar {
-            ToolbarItem(placement: .confirmationAction) {
-                if changed {
-                    Button("Save") { Task { await save() } }
+            if changed {
+                ToolbarItem(placement: .confirmationAction) {
+                    Button("Save", systemImage: "checkmark") { Task { await save() } }
                         .disabled(busy || priceHundredths < 0 || (draft?.name.isEmpty ?? true))
                 }
             }
@@ -85,31 +78,63 @@ struct DishDetailView: View {
         } message: {
             Text("It leaves My Dishes. Published menus and posts that show it stay as they are.")
         }
+        .toast($note)
         .onAppear(perform: reset)
     }
 
-    private func photoStrip(_ dish: Dish) -> some View {
-        ScrollView(.horizontal, showsIndicators: false) {
-            HStack(spacing: 10) {
-                ForEach(photos) { photo in
-                    AssetImage(id: photo.id)
-                        .frame(width: 76, height: 76)
-                        .clipShape(.rect(cornerRadius: 14))
-                        .overlay {
-                            RoundedRectangle(cornerRadius: 14)
-                                .strokeBorder(photo.id == main?.id ? Palette.accent : .clear, lineWidth: 2.5)
-                        }
-                        .contextMenu {
-                            if photo.id != main?.id {
-                                Button("Use as main photo", systemImage: "star") {
-                                    Task { await makeMain(photo.id) }
-                                }
-                            }
-                        }
+    private func header(_ dish: Dish) -> some View {
+        VStack(alignment: .leading, spacing: 6) {
+            Text(dish.name)
+                .font(.display(.largeTitle))
+                .foregroundStyle(Palette.ink)
+                .fixedSize(horizontal: false, vertical: true)
+            HStack(spacing: 8) {
+                if dish.price > 0 {
+                    Text(Money.format(hundredths: dish.price, currency: currency))
+                        .foregroundStyle(Palette.ink)
                 }
+                Text(dish.displayCategory)
+                    .foregroundStyle(Palette.muted)
+            }
+            .font(.title3.weight(.medium))
+            if !dish.description.isEmpty {
+                Text(dish.description)
+                    .font(.body)
+                    .foregroundStyle(Palette.muted)
+                    .padding(.top, 4)
+                    .fixedSize(horizontal: false, vertical: true)
             }
         }
-        .scrollClipDisabled()
+    }
+
+    private var photoStrip: some View {
+        VStack(alignment: .leading, spacing: 12) {
+            Text("Photos")
+                .font(.title3.bold())
+            ScrollView(.horizontal, showsIndicators: false) {
+                HStack(spacing: 10) {
+                    ForEach(photos) { photo in
+                        Button {
+                            if photo.id != main?.id { Task { await makeMain(photo.id) } }
+                        } label: {
+                            SquarePhoto(id: photo.id, radius: 16)
+                                .frame(width: 92, height: 92)
+                                .padding(3)
+                                .overlay {
+                                    RoundedRectangle(cornerRadius: 19)
+                                        .strokeBorder(photo.id == main?.id ? Palette.accent : .clear, lineWidth: 2.5)
+                                }
+                        }
+                        .buttonStyle(.plain)
+                        .accessibilityLabel(photo.id == main?.id ? "Main photo" : "Use as main photo")
+                    }
+                }
+            }
+            .scrollClipDisabled()
+            Text("Tap a photo to make it the one your menus show.")
+                .font(.footnote)
+                .foregroundStyle(Palette.muted)
+        }
     }
 
     private func availability(_ dish: Dish) -> some View {
@@ -117,12 +142,20 @@ struct DishDetailView: View {
             get: { dish.isAvailable },
             set: { on in Task { await setAvailable(on) } }
         )) {
-            VStack(alignment: .leading, spacing: 2) {
-                Text(dish.isAvailable ? "On the menu" : "Sold out")
-                    .font(.headline)
-                Text("Changes reach your live menus right away.")
-                    .font(.footnote)
-                    .foregroundStyle(Palette.muted)
+            HStack(spacing: 14) {
+                SettingsIcon(
+                    symbol: dish.isAvailable ? "checkmark" : "xmark",
+                    color: dish.isAvailable ? Palette.accent : Palette.warning
+                )
+                .contentTransition(.symbolEffect(.replace))
+                VStack(alignment: .leading, spacing: 2) {
+                    Text(dish.isAvailable ? "On the Menu" : "Sold Out")
+                        .font(.headline)
+                        .contentTransition(.opacity)
+                    Text("Changes reach your live menus right away.")
+                        .font(.footnote)
+                        .foregroundStyle(Palette.muted)
+                }
             }
         }
         .tint(Palette.accent)
@@ -133,35 +166,47 @@ struct DishDetailView: View {
     @ViewBuilder
     private var details: some View {
         if let binding = Binding($draft) {
-            VStack(alignment: .leading, spacing: 14) {
-                Text("Details").eyebrowStyle()
-                labeled("Name") {
-                    TextField("Dish name", text: binding.name)
-                        .textInputAutocapitalization(.words)
+            VStack(alignment: .leading, spacing: 12) {
+                Text("Details")
+                    .font(.title3.bold())
+                VStack(spacing: 0) {
+                    row("Name") {
+                        TextField("Dish name", text: binding.name)
+                            .textInputAutocapitalization(.words)
+                    }
+                    Divider().padding(.leading, 16)
+                    row("Section") {
+                        TextField("Dishes", text: binding.category)
+                            .textInputAutocapitalization(.words)
+                    }
+                    Divider().padding(.leading, 16)
+                    row("Price") {
+                        TextField(Money.format(hundredths: 0, currency: currency), text: $priceText)
+                            .keyboardType(.decimalPad)
+                    }
+                    Divider().padding(.leading, 16)
+                    VStack(alignment: .leading, spacing: 6) {
+                        Text("Description")
+                            .foregroundStyle(Palette.muted)
+                        TextField("Ingredients and how it’s served", text: binding.description, axis: .vertical)
+                            .lineLimit(2...6)
+                    }
+                    .padding(16)
                 }
-                labeled("Section") {
-                    TextField("Dishes", text: binding.category)
-                        .textInputAutocapitalization(.words)
-                }
-                labeled("Price") {
-                    TextField(Money.format(hundredths: 0, currency: currency), text: $priceText)
-                        .keyboardType(.decimalPad)
-                }
-                labeled("Description") {
-                    TextField("Ingredients and how it’s served", text: binding.description, axis: .vertical)
-                        .lineLimit(2...6)
-                }
+                .background(Palette.surface, in: .rect(cornerRadius: Metrics.controlRadius))
             }
         }
     }
 
-    private func labeled<Content: View>(_ title: String, @ViewBuilder _ content: () -> Content) -> some View {
-        VStack(alignment: .leading, spacing: 6) {
-            Text(title).font(.footnote.weight(.semibold)).foregroundStyle(Palette.muted)
+    private func row<Content: View>(_ title: String, @ViewBuilder _ content: () -> Content) -> some View {
+        HStack(spacing: 12) {
+            Text(title)
+                .foregroundStyle(Palette.muted)
+                .frame(width: 84, alignment: .leading)
             content()
-                .padding(12)
-                .background(Palette.surface, in: .rect(cornerRadius: Metrics.controlRadius))
         }
+        .padding(.horizontal, 16)
+        .frame(minHeight: Metrics.rowHeight)
     }
 
     private func reset() {
@@ -194,7 +239,7 @@ struct DishDetailView: View {
             await model.refresh()
             reset()
             let live = (reply.menus ?? []).filter { $0.live == true }.map(\.name)
-            note = live.isEmpty ? success : "\(success). Live on \(live.joined(separator: ", "))."
+            note = live.isEmpty ? success : "\(success) · \(live.joined(separator: ", "))"
         } catch let failure as APIError {
             if failure.status == 409 {
                 await model.refresh()
@@ -209,6 +254,7 @@ struct DishDetailView: View {
             let _: OK = try await model.client.post("assets/\(assetId)/use", PhotoUse(action: "main"))
             let _: OK = try await model.client.post("library/\(dishId)", LibraryUpdate(preferredPhotoId: assetId))
             await model.refresh()
+            note = "Main photo updated"
         } catch let failure as APIError {
             error = failure.message
         } catch {}
@@ -222,5 +268,36 @@ struct DishDetailView: View {
         } catch let failure as APIError {
             error = failure.message
         } catch {}
+    }
+}
+
+/// The dish's photo across the top, under the navigation bar. Pulling down
+/// stretches it, as in Music and the App Store.
+private struct HeroPhoto: View {
+    let id: String?
+
+    var body: some View {
+        Color.clear
+            .aspectRatio(1, contentMode: .fit)
+            .overlay {
+                if let id {
+                    AssetImage(id: id)
+                } else {
+                    ZStack {
+                        Palette.stage
+                        VStack(spacing: 10) {
+                            Image(systemName: "camera").font(.largeTitle)
+                            Text("No photo yet").font(.callout)
+                        }
+                        .foregroundStyle(.white.opacity(0.7))
+                    }
+                }
+            }
+            .clipped()
+            .visualEffect { content, proxy in
+                let pull = max(0, proxy.frame(in: .scrollView).minY)
+                return content
+                    .scaleEffect(1 + pull / max(1, proxy.size.height), anchor: .bottom)
+            }
     }
 }

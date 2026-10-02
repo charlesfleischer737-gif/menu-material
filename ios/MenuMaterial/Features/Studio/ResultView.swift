@@ -10,6 +10,7 @@ struct SharedFile: Identifiable {
 /// sharing marks it as chosen, as the web does before any download.
 struct ResultView: View {
     @Environment(AppModel.self) private var model
+    @Environment(\.accessibilityReduceMotion) private var reduceMotion
     let jobId: String
     let assetId: String
     let studio: StudioModel
@@ -19,7 +20,7 @@ struct ResultView: View {
     @State private var share: SharedFile?
     @State private var note: String?
     @State private var error: String?
-    @State private var done = 0
+    @State private var revealed = false
 
     enum Action { case save, share, main }
 
@@ -35,26 +36,35 @@ struct ResultView: View {
     }
 
     var body: some View {
-        VStack(alignment: .leading, spacing: 20) {
+        VStack(alignment: .leading, spacing: 24) {
             PhotoStage(ratio: ratio) {
                 if let before, let after {
                     BeforeAfterSlider(before: Image(uiImage: before), after: Image(uiImage: after))
-                        .transition(.opacity)
                 } else if let after {
                     Image(uiImage: after).resizable().scaledToFill()
                 } else {
                     ProgressView().tint(.white)
                 }
             }
-            .animation(.easeOut(duration: 0.3), value: after != nil)
+            .scaleEffect(revealed || reduceMotion ? 1 : 0.94)
+            .blur(radius: revealed || reduceMotion ? 0 : 14)
+            .opacity(revealed ? 1 : 0)
 
-            VStack(alignment: .leading, spacing: 6) {
+            VStack(alignment: .leading, spacing: 8) {
+                HStack(spacing: 6) {
+                    Image(systemName: "sparkles")
+                        .symbolEffect(.bounce, value: revealed)
+                    Text("Ready")
+                }
+                .font(.subheadline.weight(.semibold))
+                .foregroundStyle(Palette.accent)
                 Text(title)
-                    .font(.display(28))
+                    .font(.display(.title))
                     .foregroundStyle(Palette.ink)
-                Label("Check the food and portions before you use it.", systemImage: "eye")
-                    .font(.footnote)
+                Text("Drag to compare with your photo. Check the food and portions before you use it.")
+                    .font(.subheadline)
                     .foregroundStyle(Palette.muted)
+                    .fixedSize(horizontal: false, vertical: true)
             }
 
             VStack(spacing: 12) {
@@ -62,51 +72,49 @@ struct ResultView: View {
                     Task { await save() }
                 } label: {
                     actionLabel(.save, "Save to Photos", "square.and.arrow.down")
+                        .frame(maxWidth: .infinity)
                 }
-                .buttonStyle(.primary)
+                .primaryAction()
 
                 HStack(spacing: 12) {
                     Button {
                         Task { await prepareShare() }
                     } label: {
                         actionLabel(.share, "Share", "square.and.arrow.up")
+                            .frame(maxWidth: .infinity)
                     }
-                    .buttonStyle(.secondary)
+                    .secondaryAction()
                     if job?.dishId != nil {
                         Button {
                             Task { await makeMain() }
                         } label: {
-                            actionLabel(.main, isMain ? "Dish photo" : "Use for dish", isMain ? "checkmark.circle.fill" : "star")
+                            actionLabel(.main, isMain ? "Dish Photo" : "Use for Dish", isMain ? "checkmark.circle.fill" : "star")
+                                .frame(maxWidth: .infinity)
                         }
-                        .buttonStyle(.secondary)
+                        .secondaryAction()
                         .disabled(isMain)
                     }
                 }
             }
             .disabled(working != nil || after == nil)
 
-            if let note {
-                Label(note, systemImage: "checkmark.circle.fill")
-                    .font(.callout)
-                    .foregroundStyle(Palette.accent)
-                    .transition(.opacity)
-            }
             if let error { ErrorNote(message: error) }
 
-            HStack {
-                Button("Try another look", systemImage: "paintpalette") { studio.tryAnotherLook() }
+            HStack(spacing: 12) {
+                Button("Try Another Look", systemImage: "paintpalette") { studio.tryAnotherLook() }
                 Spacer()
-                Button("New photo", systemImage: "camera") { studio.startOver() }
+                Button("New Photo", systemImage: "camera") { studio.startOver() }
             }
-            .font(.callout.weight(.medium))
+            .font(.subheadline.weight(.semibold))
             .padding(.top, 4)
         }
+        .toast($note)
         .task(id: assetId) { await loadImages() }
         .sheet(item: $share) { file in
             ShareSheet(items: [file.url])
                 .presentationDetents([.medium, .large])
         }
-        .sensoryFeedback(.success, trigger: done)
+        .sensoryFeedback(.success, trigger: revealed) { _, shown in shown }
     }
 
     private var ratio: CGFloat {
@@ -129,10 +137,9 @@ struct ResultView: View {
         if let sourceId = job?.sourceId {
             original = await model.images.image(asset: sourceId)
         }
-        withAnimation {
-            after = result
-            before = original
-        }
+        after = result
+        before = original
+        withAnimation(.smooth(duration: 0.9)) { revealed = true }
     }
 
     /// Marks the photo as chosen, then fetches the full-quality file.
@@ -149,7 +156,7 @@ struct ResultView: View {
         error = nil
         do {
             try await PhotoLibrary.save(try await keep("download"))
-            show("Saved to your photos")
+            note = "Saved to Photos"
         } catch let failure as APIError {
             error = failure.message
         } catch {
@@ -182,18 +189,9 @@ struct ResultView: View {
             let _: OK = try await model.client.post("assets/\(assetId)/use", PhotoUse(action: "main"))
             let _: OK = try await model.client.post("library/\(dishId)", LibraryUpdate(preferredPhotoId: assetId))
             await model.refresh()
-            show("Now the main photo for this dish")
+            note = "Now the dish’s main photo"
         } catch let failure as APIError {
             error = failure.message
         } catch {}
-    }
-
-    private func show(_ message: String) {
-        done += 1
-        withAnimation { note = message }
-        Task {
-            try? await Task.sleep(for: .seconds(3))
-            withAnimation { if note == message { note = nil } }
-        }
     }
 }

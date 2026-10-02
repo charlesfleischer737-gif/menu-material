@@ -11,18 +11,17 @@ struct MenusView: View {
     var body: some View {
         NavigationStack {
             ScrollView {
-                VStack(alignment: .leading, spacing: 14) {
+                VStack(alignment: .leading, spacing: 18) {
                     if let menus {
                         if menus.isEmpty {
-                            EmptyState(
-                                symbol: "menucard",
-                                title: "No menus yet",
-                                message: "Build and publish your menu on menumaterial.com. Then update prices and sold-out dishes from here."
-                            ) {
+                            ContentUnavailableView {
+                                Label("No Menus Yet", systemImage: "menucard")
+                            } description: {
+                                Text("Build and publish your menu on menumaterial.com. Then update prices and sold-out dishes from here.")
+                            } actions: {
                                 Link("Open Menu Builder", destination: model.client.server)
-                                    .buttonStyle(.primary)
+                                    .primaryAction()
                             }
-                            .frame(maxWidth: .infinity)
                             .padding(.top, 40)
                         } else {
                             ForEach(menus) { menu in
@@ -32,11 +31,11 @@ struct MenusView: View {
                                 .buttonStyle(.plain)
                                 .accessibilityIdentifier("menu-card")
                             }
-                            Text("Design and publish menus on menumaterial.com.")
+                            Label("Design and publish menus on menumaterial.com.", systemImage: "safari")
                                 .font(.footnote)
                                 .foregroundStyle(Palette.muted)
                                 .frame(maxWidth: .infinity)
-                                .padding(.top, 8)
+                                .padding(.top, 6)
                         }
                     } else if let error {
                         ErrorNote(message: error)
@@ -45,6 +44,7 @@ struct MenusView: View {
                     }
                 }
                 .padding(.horizontal, Metrics.gutter)
+                .padding(.top, 4)
                 .padding(.bottom, 24)
             }
             .canvasBackground()
@@ -64,7 +64,7 @@ struct MenusView: View {
             let list: MenuList = initial
                 ? try await model.client.post("menus/initialize")
                 : try await model.client.get("menus")
-            menus = list.menus
+            withAnimation(.smooth) { menus = list.menus }
             error = nil
         } catch let failure as APIError {
             error = failure.message
@@ -72,45 +72,89 @@ struct MenusView: View {
     }
 }
 
+/// A menu as a card: a few of its dishes, its name, and whether guests see it.
 private struct MenuCard: View {
     let menu: MenuRecord
 
+    private var entries: [MenuEntry] { menu.published?.entries ?? menu.draft.sections.flatMap(\.items) }
+    private var photos: [String] { Array(entries.compactMap(\.photoId).prefix(3)) }
+
     var body: some View {
-        HStack(spacing: 16) {
-            ZStack {
-                RoundedRectangle(cornerRadius: 14).fill(menu.isLive ? Palette.action : Palette.raised)
-                Image(systemName: "menucard")
-                    .font(.title2)
-                    .foregroundStyle(menu.isLive ? Palette.onAction : Palette.muted)
-            }
-            .frame(width: 56, height: 56)
-            VStack(alignment: .leading, spacing: 4) {
-                Text(menu.name)
-                    .font(.headline)
-                    .foregroundStyle(Palette.ink)
-                HStack(spacing: 6) {
-                    Circle()
-                        .fill(menu.isLive ? Palette.accent : Palette.muted.opacity(0.5))
-                        .frame(width: 7, height: 7)
-                    Text(status)
-                        .font(.footnote)
+        VStack(alignment: .leading, spacing: 0) {
+            PhotoMosaic(ids: photos)
+                .frame(height: 168)
+                .overlay(alignment: .topLeading) {
+                    if menu.isPrimary {
+                        Text("Main Menu")
+                            .font(.caption.weight(.semibold))
+                            .padding(.horizontal, 10)
+                            .padding(.vertical, 6)
+                            .glassEffect(.regular, in: .capsule)
+                            .padding(12)
+                    }
+                }
+            HStack(alignment: .center, spacing: 12) {
+                VStack(alignment: .leading, spacing: 3) {
+                    Text(menu.name)
+                        .font(.headline)
+                        .foregroundStyle(Palette.ink)
+                    Text(summary)
+                        .font(.subheadline)
                         .foregroundStyle(Palette.muted)
                 }
+                Spacer()
+                StatusPill(text: menu.isLive ? "Live" : "Draft", color: menu.isLive ? Palette.accent : .secondary)
             }
-            Spacer()
-            Image(systemName: "chevron.right")
-                .font(.footnote.weight(.semibold))
-                .foregroundStyle(Palette.muted)
+            .padding(16)
         }
-        .card(padding: 14)
+        .background(Palette.surface)
+        .clipShape(.rect(cornerRadius: Metrics.cardRadius))
         .accessibilityElement(children: .combine)
     }
 
-    private var status: String {
-        var parts = [menu.isLive ? "Live" : "Draft"]
-        if menu.isPrimary { parts.append("Main menu") }
-        parts.append("\(menu.published?.entries.count ?? menu.draft.dishCount) dishes")
+    private var summary: String {
+        let count = entries.count
+        let soldOut = entries.filter { !$0.available }.count
+        var parts = [count == 1 ? "1 dish" : "\(count) dishes"]
+        if soldOut > 0 { parts.append("\(soldOut) sold out") }
         return parts.joined(separator: " · ")
+    }
+}
+
+/// Up to three photos: one large, two stacked beside it.
+struct PhotoMosaic: View {
+    let ids: [String]
+
+    var body: some View {
+        GeometryReader { proxy in
+            HStack(spacing: 2) {
+                tile(ids.first)
+                if ids.count > 1 {
+                    VStack(spacing: 2) {
+                        tile(ids[1])
+                        if ids.count > 2 { tile(ids[2]) }
+                    }
+                    .frame(width: proxy.size.width * 0.38)
+                }
+            }
+        }
+    }
+
+    private func tile(_ id: String?) -> some View {
+        Color.clear
+            .overlay {
+                if let id {
+                    AssetImage(id: id)
+                } else {
+                    ZStack {
+                        Palette.raised
+                        Image(systemName: "menucard")
+                            .font(.largeTitle)
+                            .foregroundStyle(.tertiary)
+                    }
+                }
+            }
+            .clipped()
     }
 }
 
@@ -130,44 +174,39 @@ struct MenuDetailView: View {
     private var currency: String { menu?.published?.currency ?? model.restaurant?.currency ?? "USD" }
 
     var body: some View {
-        ScrollView {
+        List {
             if let menu {
-                VStack(alignment: .leading, spacing: 22) {
-                    header(menu)
-                    if let note {
-                        Label(note, systemImage: "checkmark.circle.fill")
-                            .font(.callout)
-                            .foregroundStyle(Palette.accent)
+                Section {
+                    summary(menu)
+                }
+                if let error {
+                    Section { ErrorNote(message: error) }
+                }
+                if let live = menu.published {
+                    ForEach(live.sections.filter { !$0.items.isEmpty }) { section in
+                        LiveSection(
+                            section: section,
+                            currency: currency,
+                            busyEntry: busyEntry,
+                            setAvailable: { entry, available in Task { await setAvailable(entry, available) } },
+                            editPrice: { entry in editing = entry }
+                        )
                     }
-                    if let error { ErrorNote(message: error) }
-                    if let live = menu.published {
-                        Text("On the menu now").eyebrowStyle()
-                        ForEach(live.sections) { section in
-                            LiveSection(
-                                section: section,
-                                currency: currency,
-                                busyEntry: busyEntry,
-                                toggle: { entry, available in Task { await setAvailable(entry, available) } },
-                                editPrice: { entry in editing = entry }
-                            )
-                        }
-                        Button("Take this menu offline", role: .destructive) { showOffline = true }
-                            .frame(maxWidth: .infinity)
-                            .padding(.top, 10)
-                    } else {
+                    Section {
+                        Button("Take Menu Offline", role: .destructive) { showOffline = true }
+                    } footer: {
+                        Text("Prices and sold-out dishes change for guests right away. Design changes are made on menumaterial.com.")
+                    }
+                } else {
+                    Section {
                         Text("This menu isn’t live yet. Publish it on menumaterial.com, then update prices and sold-out dishes here.")
-                            .font(.callout)
                             .foregroundStyle(Palette.muted)
-                            .card()
                     }
                 }
-                .padding(.horizontal, Metrics.gutter)
-                .padding(.bottom, 32)
             }
         }
-        .canvasBackground()
+        .listStyle(.insetGrouped)
         .navigationTitle(menu?.name ?? "Menu")
-        .navigationBarTitleDisplayMode(.inline)
         .toolbar {
             if menu?.isLive == true {
                 ToolbarItem(placement: .topBarTrailing) {
@@ -185,28 +224,64 @@ struct MenuDetailView: View {
             if let menu { MenuShareView(menu: menu) }
         }
         .confirmationDialog("Take this menu offline?", isPresented: $showOffline, titleVisibility: .visible) {
-            Button("Take offline", role: .destructive) { Task { await takeOffline() } }
+            Button("Take Offline", role: .destructive) { Task { await takeOffline() } }
         } message: {
             Text("Guests can’t open it until you publish it again. Your draft is kept.")
         }
+        .toast($note)
     }
 
-    private func header(_ menu: MenuRecord) -> some View {
-        HStack(spacing: 10) {
-            Label(menu.isLive ? "Live" : "Draft", systemImage: menu.isLive ? "dot.radiowaves.left.and.right" : "pencil")
-                .font(.footnote.weight(.semibold))
-                .padding(.horizontal, 10)
-                .padding(.vertical, 6)
-                .foregroundStyle(menu.isLive ? Palette.onAction : Palette.ink)
-                .background(menu.isLive ? Palette.action : Palette.raised, in: .capsule)
-            if menu.isPrimary {
-                Text("Main menu")
-                    .font(.footnote.weight(.medium))
-                    .foregroundStyle(Palette.muted)
+    private func summary(_ menu: MenuRecord) -> some View {
+        let entries = menu.published?.entries ?? []
+        let soldOut = entries.filter { !$0.available }.count
+        return VStack(alignment: .leading, spacing: 12) {
+            HStack(spacing: 8) {
+                StatusPill(text: menu.isLive ? "Live" : "Draft", color: menu.isLive ? Palette.accent : .secondary)
+                if menu.isPrimary {
+                    Text("Main menu")
+                        .font(.footnote.weight(.medium))
+                        .foregroundStyle(Palette.muted)
+                }
+                Spacer()
             }
-            Spacer()
+            HStack(spacing: 0) {
+                stat("\(entries.count)", "Dishes")
+                Divider().frame(height: 32)
+                stat("\(soldOut)", "Sold out")
+                Divider().frame(height: 32)
+                stat(updated(menu), "Published")
+            }
+            if menu.isLive {
+                Button {
+                    showShare = true
+                } label: {
+                    Label("Share Menu and QR Code", systemImage: "qrcode")
+                        .frame(maxWidth: .infinity)
+                }
+                .buttonStyle(.glass)
+                .controlSize(.large)
+            }
         }
-        .padding(.top, 8)
+        .padding(.vertical, 6)
+    }
+
+    private func stat(_ value: String, _ label: String) -> some View {
+        VStack(spacing: 2) {
+            Text(value)
+                .font(.title3.weight(.semibold))
+                .monospacedDigit()
+                .contentTransition(.numericText())
+            Text(label)
+                .font(.caption)
+                .foregroundStyle(Palette.muted)
+        }
+        .frame(maxWidth: .infinity)
+    }
+
+    private func updated(_ menu: MenuRecord) -> String {
+        guard let at = menu.publishedAt else { return "–" }
+        let date = Date(timeIntervalSince1970: at / 1000)
+        return date.formatted(.relative(presentation: .numeric, unitsStyle: .abbreviated))
     }
 
     private func setAvailable(_ entry: MenuEntry, _ available: Bool) async {
@@ -235,7 +310,7 @@ struct MenuDetailView: View {
             }
             withAnimation { replace(updated) }
             let others = (updated.menus ?? []).map(\.name)
-            note = others.isEmpty ? success : "\(success). Also updated on \(others.joined(separator: ", "))."
+            note = others.isEmpty ? success : "\(success) · also \(others.joined(separator: ", "))"
             Task { await model.refresh() }
         } catch let failure as APIError {
             error = failure.message
@@ -261,48 +336,38 @@ struct MenuDetailView: View {
     }
 }
 
-/// One section of a live menu: each dish with its price and whether it's on.
+/// One section of a live menu. Swiping a dish marks it sold out or back on.
 private struct LiveSection: View {
     let section: MenuSection
     let currency: String
     let busyEntry: String?
-    let toggle: (MenuEntry, Bool) -> Void
+    let setAvailable: (MenuEntry, Bool) -> Void
     let editPrice: (MenuEntry) -> Void
 
     var body: some View {
-        if !section.items.isEmpty {
-            VStack(alignment: .leading, spacing: 0) {
-                if !section.name.isEmpty {
-                    Text(section.name)
-                        .font(.subheadline.weight(.semibold))
-                        .foregroundStyle(Palette.muted)
-                        .padding(.bottom, 8)
-                }
-                VStack(spacing: 0) {
-                    ForEach(section.items) { entry in
-                        row(entry)
+        Section {
+            ForEach(section.items) { entry in
+                EntryRow(
+                    entry: entry,
+                    currency: currency,
+                    busy: busyEntry == entry.id,
+                    toggle: { available in setAvailable(entry, available) },
+                    editPrice: { editPrice(entry) }
+                )
+                .swipeActions(edge: .trailing) {
+                    Button(entry.available ? "Sold Out" : "Back On") {
+                        setAvailable(entry, !entry.available)
                     }
+                    .tint(entry.available ? Palette.warning : Palette.accent)
                 }
-                .background(Palette.surface, in: .rect(cornerRadius: Metrics.cardRadius))
             }
-        }
-    }
-
-    @ViewBuilder
-    private func row(_ entry: MenuEntry) -> some View {
-        EntryRow(
-            entry: entry,
-            currency: currency,
-            busy: busyEntry == entry.id,
-            toggle: { available in toggle(entry, available) },
-            editPrice: { editPrice(entry) }
-        )
-        if entry.id != section.items.last?.id {
-            Divider().padding(.leading, 16)
+        } header: {
+            Text(section.name)
         }
     }
 }
 
+/// A dish on a live menu: its photo, price and whether it's on.
 private struct EntryRow: View {
     let entry: MenuEntry
     let currency: String
@@ -311,26 +376,37 @@ private struct EntryRow: View {
     let editPrice: () -> Void
 
     var body: some View {
-        HStack(spacing: 12) {
+        HStack(spacing: 14) {
+            SquarePhoto(id: entry.photoId, radius: 10)
+                .frame(width: 48, height: 48)
+                .saturation(entry.available ? 1 : 0)
+                .opacity(entry.available ? 1 : 0.6)
             VStack(alignment: .leading, spacing: 3) {
                 Text(entry.name)
                     .font(.body.weight(.medium))
                     .foregroundStyle(entry.available ? Palette.ink : Palette.muted)
-                    .strikethrough(!entry.available, color: Palette.muted)
-                if let price = priceText {
-                    Button(action: editPrice) {
-                        HStack(spacing: 4) {
-                            Text(price)
-                            Image(systemName: "pencil").font(.caption2)
+                    .lineLimit(1)
+                HStack(spacing: 6) {
+                    if let price = priceText {
+                        Button(action: editPrice) {
+                            HStack(spacing: 3) {
+                                Text(price)
+                                Image(systemName: "pencil").font(.caption2.weight(.semibold))
+                            }
+                            .font(.subheadline)
+                            .foregroundStyle(Palette.accent)
                         }
-                        .font(.footnote)
-                        .foregroundStyle(Palette.accent)
+                        .buttonStyle(.borderless)
+                        .accessibilityLabel("Price \(price). Edit")
                     }
-                    .buttonStyle(.plain)
-                    .accessibilityLabel("Price \(price). Edit")
+                    if !entry.available {
+                        Text("Sold out")
+                            .font(.subheadline.weight(.medium))
+                            .foregroundStyle(Palette.warning)
+                    }
                 }
             }
-            Spacer()
+            Spacer(minLength: 8)
             if busy {
                 ProgressView()
             } else {
@@ -340,8 +416,7 @@ private struct EntryRow: View {
                     .accessibilityLabel(entry.available ? "\(entry.name) is on the menu" : "\(entry.name) is sold out")
             }
         }
-        .padding(.horizontal, 16)
-        .padding(.vertical, 12)
+        .padding(.vertical, 2)
     }
 
     private var priceText: String? {
@@ -371,30 +446,37 @@ private struct PriceEditor: View {
     var body: some View {
         NavigationStack {
             Form {
-                if entry.priceMode == "variants" {
-                    ForEach(entry.variants) { variant in
-                        TextField(variant.label ?? "Price", text: Binding(
-                            get: { sizes[variant.id] ?? "" },
-                            set: { sizes[variant.id] = $0 }
-                        ))
-                        .keyboardType(.decimalPad)
-                    }
-                } else {
-                    TextField("Price", text: $single)
-                        .keyboardType(.decimalPad)
-                }
                 Section {
+                    if entry.priceMode == "variants" {
+                        ForEach(entry.variants) { variant in
+                            LabeledContent(variant.label ?? "Price") {
+                                TextField("Price", text: Binding(
+                                    get: { sizes[variant.id] ?? "" },
+                                    set: { sizes[variant.id] = $0 }
+                                ))
+                                .keyboardType(.decimalPad)
+                                .multilineTextAlignment(.trailing)
+                            }
+                        }
+                    } else {
+                        LabeledContent("Price") {
+                            TextField("Price", text: $single)
+                                .keyboardType(.decimalPad)
+                                .multilineTextAlignment(.trailing)
+                        }
+                    }
+                } footer: {
                     Text("Guests see the new price right away.")
-                        .font(.footnote)
-                        .foregroundStyle(Palette.muted)
                 }
             }
             .navigationTitle(entry.name)
             .navigationBarTitleDisplayMode(.inline)
             .toolbar {
-                ToolbarItem(placement: .cancellationAction) { Button("Cancel", role: .cancel) { dismiss() } }
+                ToolbarItem(placement: .cancellationAction) {
+                    Button("Cancel", systemImage: "xmark", role: .cancel) { dismiss() }
+                }
                 ToolbarItem(placement: .confirmationAction) {
-                    Button("Update") {
+                    Button("Update", systemImage: "checkmark") {
                         if let change { save(change); dismiss() }
                     }
                     .disabled(change == nil)

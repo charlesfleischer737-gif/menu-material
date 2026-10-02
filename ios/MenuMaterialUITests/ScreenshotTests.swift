@@ -7,14 +7,17 @@ import XCTest
 /// A screen that can't be reached is skipped rather than failed: these
 /// screenshots are for looking at, and the unit tests check behavior.
 final class ScreenshotTests: XCTestCase {
+    @MainActor
     func testLightScreens() {
         screens(theme: "light")
     }
 
+    @MainActor
     func testDarkScreens() {
         screens(theme: "dark")
     }
 
+    @MainActor
     private func screens(theme: String) {
         continueAfterFailure = true
 
@@ -56,7 +59,7 @@ final class ScreenshotTests: XCTestCase {
         app.terminate()
     }
 
-    @discardableResult
+    @MainActor @discardableResult
     private func launch(scene: String, theme: String) -> XCUIApplication {
         let app = XCUIApplication()
         app.launchEnvironment["MENU_MATERIAL_DEMO"] = "1"
@@ -66,6 +69,7 @@ final class ScreenshotTests: XCTestCase {
         return app
     }
 
+    @MainActor
     private func tab(_ app: XCUIApplication, _ name: String) -> Bool {
         let button = app.tabBars.buttons[name]
         guard button.waitForExistence(timeout: 8) else { return false }
@@ -73,6 +77,7 @@ final class ScreenshotTests: XCTestCase {
         return true
     }
 
+    @MainActor
     private func tapFirst(_ app: XCUIApplication, _ identifier: String) -> Bool {
         let element = app.descendants(matching: .any).matching(identifier: identifier).firstMatch
         guard element.waitForExistence(timeout: 8) else { return false }
@@ -82,6 +87,7 @@ final class ScreenshotTests: XCTestCase {
 
     /// Waits for photos to load and animations to settle, then keeps the
     /// screen.
+    @MainActor
     private func snap(_ name: String, _ theme: String) {
         Thread.sleep(forTimeInterval: 2.5)
         let attachment = XCTAttachment(screenshot: XCUIScreen.main.screenshot())

@@ -15,18 +15,22 @@ struct RootView: View {
                 OfflineView()
             case .signedOut:
                 WelcomeView()
+                    .transition(.opacity)
             case .updateRequired:
                 UpdateRequiredView()
             case .signedIn:
                 MainTabView()
+                    .transition(.opacity.combined(with: .scale(scale: 1.02)))
             }
         }
-        .animation(.smooth(duration: 0.35), value: model.phase)
+        .animation(.smooth(duration: 0.45), value: model.phase)
     }
 }
 
 struct MainTabView: View {
     @Environment(AppModel.self) private var model
+
+    private var making: Bool { model.workspace?.jobs.contains(where: \.isActive) ?? false }
 
     var body: some View {
         @Bindable var model = model
@@ -34,6 +38,7 @@ struct MainTabView: View {
             Tab("Studio", systemImage: "camera.aperture", value: AppModel.Tab.studio) {
                 StudioView()
             }
+            .badge(making && model.tab != .studio ? Text("1") : nil)
             Tab("Dishes", systemImage: "fork.knife", value: AppModel.Tab.dishes) {
                 DishesView()
             }
@@ -45,18 +50,23 @@ struct MainTabView: View {
             }
         }
         .tabBarMinimizeBehavior(.onScrollDown)
+        .sensoryFeedback(.selection, trigger: model.tab)
     }
 }
 
 struct LaunchView: View {
+    @Environment(\.accessibilityReduceMotion) private var reduceMotion
+
     var body: some View {
-        VStack(spacing: 18) {
-            BrandMark(height: 34)
-                .foregroundStyle(Palette.accent)
-            ProgressView()
-        }
-        .frame(maxWidth: .infinity, maxHeight: .infinity)
-        .canvasBackground()
+        BrandMark(height: 44)
+            .foregroundStyle(Palette.accent)
+            .phaseAnimator([0.94, 1.0]) { mark, scale in
+                mark.scaleEffect(reduceMotion ? 1 : scale)
+            } animation: { _ in
+                .easeInOut(duration: 1.1)
+            }
+            .frame(maxWidth: .infinity, maxHeight: .infinity)
+            .canvasBackground()
     }
 }
 
@@ -64,15 +74,14 @@ struct OfflineView: View {
     @Environment(AppModel.self) private var model
 
     var body: some View {
-        EmptyState(
-            symbol: "wifi.slash",
-            title: "Can’t reach Menu Material",
-            message: "Check your connection. Your work is saved on our side."
-        ) {
-            Button("Try again") { Task { await model.retryConnection() } }
-                .buttonStyle(.primary)
+        ContentUnavailableView {
+            Label("Can’t Reach Menu Material", systemImage: "wifi.slash")
+        } description: {
+            Text("Check your connection. Your work is saved.")
+        } actions: {
+            Button("Try Again") { Task { await model.retryConnection() } }
+                .primaryAction()
         }
-        .frame(maxWidth: .infinity, maxHeight: .infinity)
         .canvasBackground()
     }
 }
@@ -81,17 +90,16 @@ struct UpdateRequiredView: View {
     @Environment(\.openURL) private var openURL
 
     var body: some View {
-        EmptyState(
-            symbol: "arrow.down.app",
-            title: "Update Menu Material",
-            message: "This version is no longer supported. Update the app to keep going; your work is saved."
-        ) {
+        ContentUnavailableView {
+            Label("Update Menu Material", systemImage: "arrow.down.app")
+        } description: {
+            Text("This version is no longer supported. Update the app to keep going; your work is saved.")
+        } actions: {
             Button("Open the App Store") {
                 openURL(URL(string: "itms-apps://itunes.apple.com/app/menu-material")!)
             }
-            .buttonStyle(.primary)
+            .primaryAction()
         }
-        .frame(maxWidth: .infinity, maxHeight: .infinity)
         .canvasBackground()
     }
 }

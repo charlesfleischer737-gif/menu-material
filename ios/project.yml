@@ -120,6 +120,9 @@ targets:
         GENERATE_INFOPLIST_FILE: YES
         PRODUCT_BUNDLE_IDENTIFIER: com.menumaterial.app.uitests
         TEST_TARGET_NAME: MenuMaterial
+        # XCTestCase's initializers aren't on the main actor, so a test
+        # class can't be; its tests are, one by one.
+        SWIFT_DEFAULT_ACTOR_ISOLATION: nonisolated
 schemes:
   MenuMaterial:
     build:

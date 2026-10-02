@@ -47,7 +47,7 @@ final class ImagePipeline {
     }
 }
 
-/// A private photo from the workspace, faded in once loaded.
+/// A private photo from the workspace, faded in once loaded, as in Photos.
 struct AssetImage: View {
     @Environment(AppModel.self) private var model
     let id: String
@@ -63,8 +63,6 @@ struct AssetImage: View {
                     .resizable()
                     .aspectRatio(contentMode: contentMode)
                     .transition(.opacity)
-            } else {
-                ProgressView().tint(Palette.muted)
             }
         }
         .clipped()

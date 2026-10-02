@@ -201,6 +201,15 @@ final class AppModel {
 
     // MARK: Workspace changes made on this phone
 
+    /// Sold out, or back on. The whole dish is sent, as the server replaces it.
+    func setAvailable(_ dish: Dish, _ available: Bool) async throws -> DishSaveResult {
+        var save = DishSave(dish: dish)
+        save.available = available
+        let reply: DishSaveResult = try await client.post("dishes/\(dish.id)", save)
+        await refresh()
+        return reply
+    }
+
     func update(_ change: (inout Workspace) -> Void) {
         guard var current = workspace else { return }
         change(&current)
