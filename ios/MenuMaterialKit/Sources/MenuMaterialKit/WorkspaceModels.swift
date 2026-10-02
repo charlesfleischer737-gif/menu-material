@@ -240,7 +240,10 @@ public struct LossyArray<Element: Decodable & Sendable>: Decodable, Sendable {
         self.elements = elements
     }
 
-    private struct Skip: Decodable {}
+    /// Reads past any value.
+    private struct Skip: Decodable {
+        init(from decoder: any Decoder) throws {}
+    }
 }
 
 // MARK: Dishes
@@ -294,7 +297,7 @@ public struct DishSave: Encodable, Sendable {
 }
 
 public struct DishSaveResult: Decodable, Sendable {
-    public struct Menu: Decodable, Sendable {
+    public struct Menu: Decodable, Sendable, Equatable, Hashable {
         public let id: String
         public let name: String
         public let live: Bool?
