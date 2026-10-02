@@ -161,7 +161,7 @@ final class SignInFlows {
             error = failure.message
         } catch is CancellationError {
         } catch {
-            error = "That didn’t work. Please try again."
+            self.error = "That didn’t work. Please try again."
         }
     }
 

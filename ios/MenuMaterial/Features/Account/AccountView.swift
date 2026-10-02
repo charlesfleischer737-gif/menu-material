@@ -79,13 +79,13 @@ struct AccountView: View {
                 }
 
                 Section("Help") {
-                    if let support = model.config?.links.support.flatMap { URL(string: $0) } {
+                    if let support = model.config?.links.support.flatMap({ URL(string: $0) }) {
                         Link(destination: support) { Label("Contact support", systemImage: "envelope") }
                     }
-                    if let terms = model.config?.links.terms.flatMap { URL(string: $0) } {
+                    if let terms = model.config?.links.terms.flatMap({ URL(string: $0) }) {
                         Link(destination: terms) { Label("Terms", systemImage: "doc.text") }
                     }
-                    if let privacy = model.config?.links.privacy.flatMap { URL(string: $0) } {
+                    if let privacy = model.config?.links.privacy.flatMap({ URL(string: $0) }) {
                         Link(destination: privacy) { Label("Privacy Policy", systemImage: "hand.raised") }
                     }
                     NavigationLink {

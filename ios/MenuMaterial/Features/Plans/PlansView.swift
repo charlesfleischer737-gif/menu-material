@@ -167,7 +167,7 @@ struct PlansView: View {
                 if let terms = URL(string: model.config?.links.terms ?? "https://www.apple.com/legal/internet-services/itunes/dev/stdeula/") {
                     Link("Terms of Use", destination: terms)
                 }
-                if let privacy = model.config?.links.privacy.flatMap { URL(string: $0) } {
+                if let privacy = model.config?.links.privacy.flatMap({ URL(string: $0) }) {
                     Link("Privacy Policy", destination: privacy)
                 }
             }
