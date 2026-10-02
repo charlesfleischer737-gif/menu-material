@@ -7,6 +7,8 @@ import {
 } from "./core";
 import { siteContact } from "../site-contact";
 import { PRO_PLAN, PRO_PRICE_LABEL } from "../plans";
+import { looks, photoStyles, styleCategories, styleFor } from "../studio";
+import { styleThumbnail, type PhotoStyle } from "../photo-styles";
 import { appleSignInEnabled } from "./apple-auth";
 import { googleIosClientId } from "./google-auth";
 import { appStoreBillingEnabled, appStoreProductId } from "./app-store";
@@ -68,4 +70,50 @@ export function nativeConfigRoute() {
       privacy: origin ? `${origin}/privacy` : null,
     },
   });
+}
+
+// A look as the app shows and sends it. `photoStyle` and `photoPreset` come
+// from the web's own styleFor, with the original angle kept, so the app
+// sends exactly what the web does for the same look.
+function nativeLook(look: PhotoStyle) {
+  const style = styleFor({ look: look.id, angle: "keep" }, {});
+  return {
+    id: look.id,
+    name: look.name,
+    cue: look.cue,
+    category: look.category ?? null,
+    description: look.description ?? null,
+    bestFor: look.bestFor ?? null,
+    traits: look.traits ?? [],
+    pro: !!look.pro,
+    plate: look.plate || "keep",
+    image: look.image,
+    thumbnail: styleThumbnail(look.image),
+    photoStyle: String(style.photoStyle),
+    photoPreset: String(style.photoPreset),
+  };
+}
+
+/**
+ * The Photo Studio's catalog for the app (`GET /api/native/styles`), read
+ * from the same source as the web's, so a new or changed look reaches the
+ * app without an app update. Looks an administrator turns off are in
+ * `/api/state` (studioAvailability.disabledStyleIds).
+ */
+export function nativeStylesRoute() {
+  const polish = looks.find((look) => look.id === "keep")!;
+  return response(
+    {
+      categories: styleCategories.map(({ id, name, description, use }) => ({
+        id,
+        name,
+        description,
+        use,
+      })),
+      polish: { ...nativeLook(polish), plate: "keep" },
+      styles: photoStyles.filter((style) => !style.legacy).map(nativeLook),
+    },
+    200,
+    { "Cache-Control": "public, max-age=3600" },
+  );
 }

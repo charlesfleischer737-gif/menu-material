@@ -1,0 +1,64 @@
+# Builds the iPhone app and runs its tests on every change under ios/. The
+# Xcode project is generated from ios/project.yml with XcodeGen.
+name: iOS
+
+on:
+  pull_request:
+    paths: ["ios/**", ".github/workflows/ios.yml"]
+  push:
+    branches: [main]
+    paths: ["ios/**", ".github/workflows/ios.yml"]
+
+permissions:
+  contents: read
+
+concurrency:
+  group: ios-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  app:
+    name: Build and test the iPhone app
+    runs-on: macos-26
+    timeout-minutes: 45
+    steps:
+      - uses: actions/checkout@v4
+      - name: Select the newest Xcode
+        run: |
+          xcode=$(ls -d /Applications/Xcode_*.app | sort -V | tail -1)
+          sudo xcode-select -s "$xcode"
+          xcodebuild -version
+      - name: Install XcodeGen
+        run: brew install xcodegen
+      - name: Generate the Xcode project
+        working-directory: ios
+        run: xcodegen generate
+      - name: Test MenuMaterialKit
+        working-directory: ios/MenuMaterialKit
+        run: swift test
+      - name: Build the app and run its tests
+        working-directory: ios
+        run: |
+          set -o pipefail
+          # The newest available iPhone simulator.
+          device=$(xcrun simctl list devices available --json | python3 -c '
+          import json, sys
+          runtimes = json.load(sys.stdin)["devices"]
+          ios = sorted((k for k in runtimes if "iOS" in k), key=lambda k: [int(p) for p in k.split("iOS-")[-1].split("-")])
+          phones = [d for d in runtimes[ios[-1]] if d["name"].startswith("iPhone")]
+          print(phones[-1]["udid"])')
+          xcodebuild test \
+            -project MenuMaterial.xcodeproj \
+            -scheme MenuMaterial \
+            -destination "id=$device" \
+            -derivedDataPath build \
+            -resultBundlePath build/Tests.xcresult \
+            CODE_SIGNING_ALLOWED=NO \
+            -quiet
+      - name: Keep the test results
+        if: failure()
+        uses: actions/upload-artifact@v4
+        with:
+          name: ios-test-results
+          path: ios/build/Tests.xcresult
+          retention-days: 7
