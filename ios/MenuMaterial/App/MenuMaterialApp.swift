@@ -10,10 +10,19 @@ struct MenuMaterialApp: App {
             RootView()
                 .environment(model)
                 .tint(Palette.accent)
+                .preferredColorScheme(demoColorScheme)
                 .task {
                     appDelegate.model = model
                     await model.start()
                 }
         }
+    }
+
+    private var demoColorScheme: ColorScheme? {
+        #if DEBUG
+        Demo.colorScheme
+        #else
+        nil
+        #endif
     }
 }

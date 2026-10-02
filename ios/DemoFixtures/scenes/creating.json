@@ -1,0 +1,51 @@
+{
+ "dishes": [
+  {
+   "id": "dish-pasta",
+   "name": "Spaghetti Pomodoro",
+   "description": "Slow-cooked tomato, basil, Parmigiano.",
+   "category": "Mains",
+   "price": 2100,
+   "available": 1,
+   "dietary": [],
+   "preferred_photo_id": null,
+   "revision": 1,
+   "created_at": "@now-25",
+   "sample": 0
+  }
+ ],
+ "assets": [
+  {
+   "id": "asset-pasta-source",
+   "dish_id": "dish-pasta",
+   "kind": "source",
+   "mime": "image/jpeg",
+   "approved_at": null,
+   "needs_correction": 0,
+   "created_at": "@now-22",
+   "look_id": null
+  }
+ ],
+ "jobs": [
+  {
+   "id": "job-creating",
+   "dish_id": "dish-pasta",
+   "status": "processing",
+   "source_id": "asset-pasta-source",
+   "created_at": "@now-19",
+   "estimate_ms": 45000,
+   "details": null
+  }
+ ],
+ "outputs": [
+  {
+   "id": "out-creating",
+   "job_id": "job-creating",
+   "slot": 0,
+   "status": "processing",
+   "asset_id": null,
+   "error": null,
+   "submitted_at": "@now-16"
+  }
+ ]
+}

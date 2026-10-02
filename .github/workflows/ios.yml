@@ -20,7 +20,10 @@ jobs:
   app:
     name: Build and test the iPhone app
     runs-on: macos-26
-    timeout-minutes: 45
+    timeout-minutes: 60
+    permissions:
+      # Publishes the screenshots branch.
+      contents: write
     steps:
       - uses: actions/checkout@v4
       - name: Select the newest Xcode
@@ -36,25 +39,94 @@ jobs:
       - name: Test MenuMaterialKit
         working-directory: ios/MenuMaterialKit
         run: swift test
-      - name: Build the app and run its tests
-        working-directory: ios
+      - name: Pick the newest iPhone simulator
         run: |
-          set -o pipefail
-          # The newest available iPhone simulator.
           device=$(xcrun simctl list devices available --json | python3 -c '
           import json, sys
           runtimes = json.load(sys.stdin)["devices"]
           ios = sorted((k for k in runtimes if "iOS" in k), key=lambda k: [int(p) for p in k.split("iOS-")[-1].split("-")])
           phones = [d for d in runtimes[ios[-1]] if d["name"].startswith("iPhone")]
           print(phones[-1]["udid"])')
+          echo "DEVICE=$device" >> "$GITHUB_ENV"
+          # The status bar of Apple's own screenshots.
+          xcrun simctl boot "$device" || true
+          xcrun simctl bootstatus "$device"
+          xcrun simctl status_bar "$device" override --time "9:41" --dataNetwork wifi \
+            --wifiMode active --wifiBars 3 --cellularMode active --cellularBars 4 \
+            --batteryState charged --batteryLevel 100 || true
+      - name: Build the app and run its tests
+        working-directory: ios
+        run: |
+          set -o pipefail
           xcodebuild test \
             -project MenuMaterial.xcodeproj \
             -scheme MenuMaterial \
-            -destination "id=$device" \
+            -destination "id=$DEVICE" \
             -derivedDataPath build \
             -resultBundlePath build/Tests.xcresult \
             CODE_SIGNING_ALLOWED=NO \
             -quiet
+      # The UI tests photograph every screen of the sample restaurant. They
+      # go to the ios-screenshots branch, so anyone can look at the app on
+      # GitHub.
+      - name: Collect the screenshots
+        if: always()
+        working-directory: ios
+        run: |
+          [ -d build/Tests.xcresult ] || exit 0
+          xcrun xcresulttool export attachments --path build/Tests.xcresult --output-path build/attachments || exit 0
+          python3 - <<'PY'
+          import json, os, re, subprocess
+          source, out = "build/attachments", "build/screenshots"
+          os.makedirs(out, exist_ok=True)
+          def files(node):
+              if isinstance(node, dict):
+                  if "exportedFileName" in node:
+                      yield node["exportedFileName"], node.get("suggestedHumanReadableName") or node.get("name") or ""
+                  for value in node.values():
+                      yield from files(value)
+              elif isinstance(node, list):
+                  for value in node:
+                      yield from files(value)
+          try:
+              found = list(files(json.load(open(os.path.join(source, "manifest.json")))))
+          except Exception as error:
+              print("No manifest:", error)
+              found = [(name, name) for name in os.listdir(source)]
+          for exported, name in found:
+              match = re.search(r"\d\d-[a-z0-9-]+?-(?:light|dark)", name)
+              if not match:
+                  continue
+              subprocess.run(["sips", "-s", "format", "jpeg", "-s", "formatOptions", "85", "-Z", "1400",
+                              os.path.join(source, exported), "--out", os.path.join(out, match.group(0) + ".jpg")],
+                             check=True, capture_output=True)
+              print(match.group(0))
+          PY
+      - name: Publish the screenshots
+        if: always() && (github.event_name == 'push' || github.event.pull_request.head.repo.full_name == github.repository)
+        working-directory: ios
+        env:
+          TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          SHA: ${{ github.event.pull_request.head.sha || github.sha }}
+          REPO: ${{ github.repository }}
+        run: |
+          ls build/screenshots/*.jpg >/dev/null 2>&1 || { echo "No screenshots to publish"; exit 0; }
+          cd build/screenshots
+          {
+            echo "# Menu Material for iPhone"
+            echo
+            echo "Every screen of the sample restaurant, from $SHA."
+            echo
+            for shot in *-light.jpg; do
+              echo "<img src=\"$shot\" width=\"260\"> <img src=\"${shot%-light.jpg}-dark.jpg\" width=\"260\">"
+              echo
+            done
+          } > README.md
+          git init -q -b ios-screenshots
+          git add .
+          git -c user.name="github-actions[bot]" -c user.email="41898099+github-actions[bot]@users.noreply.github.com" \
+            commit -qm "Screenshots of $SHA"
+          git push -qf "https://x-access-token:$TOKEN@github.com/$REPO.git" ios-screenshots
       - name: Keep the test results
         if: failure()
         uses: actions/upload-artifact@v4

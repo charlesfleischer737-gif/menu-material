@@ -105,6 +105,9 @@ struct StudioView: View {
         .task {
             await studio.loadCatalog(model.client)
             studio.resume(model)
+            #if DEBUG
+            await studio.playDemoScene(model)
+            #endif
         }
     }
 

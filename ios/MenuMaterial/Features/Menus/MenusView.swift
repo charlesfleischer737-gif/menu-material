@@ -30,6 +30,7 @@ struct MenusView: View {
                                     MenuCard(menu: menu)
                                 }
                                 .buttonStyle(.plain)
+                                .accessibilityIdentifier("menu-card")
                             }
                             Text("Design and publish menus on menumaterial.com.")
                                 .font(.footnote)
@@ -171,6 +172,7 @@ struct MenuDetailView: View {
             if menu?.isLive == true {
                 ToolbarItem(placement: .topBarTrailing) {
                     Button("Share", systemImage: "qrcode") { showShare = true }
+                        .accessibilityIdentifier("share-menu")
                 }
             }
         }

@@ -1,0 +1,40 @@
+{
+ "id": "menu-brunch",
+ "draft": {
+  "name": "Weekend Brunch",
+  "sections": [
+   {
+    "id": "brunch",
+    "name": "Brunch",
+    "items": [
+     {
+      "id": "entry-tart",
+      "dishId": "dish-tart",
+      "name": "Strawberry Tart",
+      "price": 1100,
+      "priceMode": "single",
+      "variants": [],
+      "available": true,
+      "photoId": "photo-tart"
+     },
+     {
+      "id": "entry-latte",
+      "dishId": "dish-latte",
+      "name": "Oat Milk Latte",
+      "price": 600,
+      "priceMode": "single",
+      "variants": [],
+      "available": true,
+      "photoId": "photo-latte"
+     }
+    ]
+   }
+  ]
+ },
+ "revision": 2,
+ "published": null,
+ "publishedRevision": null,
+ "publishedAt": null,
+ "isPrimary": false,
+ "updatedAt": "@now-7200"
+}

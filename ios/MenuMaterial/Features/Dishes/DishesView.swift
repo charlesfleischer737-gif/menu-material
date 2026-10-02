@@ -41,6 +41,7 @@ struct DishesView: View {
                                     .matchedTransitionSource(id: dish.id, in: zoom)
                             }
                             .buttonStyle(.plain)
+                            .accessibilityIdentifier("dish-card")
                         }
                     }
                     .padding(.horizontal, Metrics.gutter)

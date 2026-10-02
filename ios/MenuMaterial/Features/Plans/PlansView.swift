@@ -118,6 +118,10 @@ struct PlansView: View {
                 }
                 .buttonStyle(.primary)
                 .disabled(buying || store.state?.canPurchase == false)
+            } else if model.isDemo, let price = model.config?.billing.priceLabel {
+                // The sample restaurant has no App Store product to buy.
+                Button("Get Pro for \(price) a month") {}
+                    .buttonStyle(.primary)
             } else if store.productUnavailable || model.config?.billing.appStore == false {
                 Text("Pro in the app is coming soon. Your free account is ready to use.")
                     .font(.callout)

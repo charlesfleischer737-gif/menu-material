@@ -46,6 +46,7 @@ struct AccountView: View {
                                 .font(.callout.weight(.semibold))
                         }
                     }
+                    .accessibilityIdentifier("plan-row")
                 }
 
                 Section {

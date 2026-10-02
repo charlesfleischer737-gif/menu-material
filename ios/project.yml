@@ -36,6 +36,11 @@ targets:
     sources:
       - path: MenuMaterial
       - path: Shared
+      # The sample restaurant of Debug builds (MenuMaterial/App/Demo.swift);
+      # left out of Release builds below.
+      - path: DemoFixtures
+        type: folder
+        buildPhase: resources
     dependencies:
       - package: MenuMaterialKit
       - target: PhotoActivity
@@ -70,6 +75,9 @@ targets:
         ASSETCATALOG_COMPILER_APPICON_NAME: AppIcon
         ASSETCATALOG_COMPILER_GLOBAL_ACCENT_COLOR_NAME: AccentColor
         MENU_MATERIAL_SERVER: https://menumaterial.com
+      configs:
+        Release:
+          EXCLUDED_SOURCE_FILE_NAMES: DemoFixtures
   PhotoActivity:
     type: app-extension
     platform: iOS
@@ -99,6 +107,19 @@ targets:
       base:
         GENERATE_INFOPLIST_FILE: YES
         PRODUCT_BUNDLE_IDENTIFIER: com.menumaterial.app.tests
+  # Screenshots of every screen, from the sample restaurant.
+  MenuMaterialUITests:
+    type: bundle.ui-testing
+    platform: iOS
+    sources:
+      - path: MenuMaterialUITests
+    dependencies:
+      - target: MenuMaterial
+    settings:
+      base:
+        GENERATE_INFOPLIST_FILE: YES
+        PRODUCT_BUNDLE_IDENTIFIER: com.menumaterial.app.uitests
+        TEST_TARGET_NAME: MenuMaterial
 schemes:
   MenuMaterial:
     build:
@@ -110,5 +131,15 @@ schemes:
       config: Debug
       targets:
         - MenuMaterialTests
+        - MenuMaterialUITests
     archive:
       config: Release
+  # The app with the sample restaurant instead of an account (Demo.swift).
+  MenuMaterial Demo:
+    build:
+      targets:
+        MenuMaterial: all
+    run:
+      config: Debug
+      environmentVariables:
+        MENU_MATERIAL_DEMO: "1"
