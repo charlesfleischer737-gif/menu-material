@@ -41,7 +41,7 @@ export function billingEnabled() {
 }
 export async function billingSummary(restaurantId: string) {
   const account = await one(
-    "SELECT status,cancel_at_period_end,customer_id FROM billing_accounts WHERE restaurant_id=?",
+    "SELECT status,cancel_at_period_end,customer_id,subscription_id FROM billing_accounts WHERE restaurant_id=?",
     restaurantId,
   );
   const live = await one(

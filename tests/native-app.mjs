@@ -759,6 +759,33 @@ try {
     ).n,
     0,
   );
+  // A Stripe subscriber can't also buy in the app, and Plans says where
+  // their Pro is billed.
+  await run(
+    "UPDATE app_store_subscriptions SET status='expired' WHERE restaurant_id=?",
+    nativeRestaurant,
+  );
+  await run(
+    "INSERT INTO billing_accounts (restaurant_id,customer_id,subscription_id,status) VALUES (?,?,?,?)",
+    nativeRestaurant,
+    "cus_fixture",
+    "sub_fixture",
+    "active",
+  );
+  const stripeOwner = await expect("billing/app-store", undefined, 200, {
+    token: nativeToken,
+  });
+  assert.equal(stripeOwner.json.canPurchase, false);
+  assert.match(stripeOwner.json.blockedReason, /menumaterial\.com/);
+  assert.equal(stripeOwner.json.billing.provider, "stripe");
+  await run(
+    "DELETE FROM billing_accounts WHERE restaurant_id=?",
+    nativeRestaurant,
+  );
+  await run(
+    "UPDATE app_store_subscriptions SET status='active' WHERE restaurant_id=?",
+    nativeRestaurant,
+  );
   // Without the App Store settings, buying in the app is off.
   const issuer = env.APP_STORE_ISSUER_ID;
   env.APP_STORE_ISSUER_ID = "";
