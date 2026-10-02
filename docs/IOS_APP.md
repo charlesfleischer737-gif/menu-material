@@ -17,7 +17,7 @@ A native SwiftUI app for iPhone, on the same API and accounts as menumaterial.co
 | Milestone | What | Status |
 |---|---|---|
 | 1. Server for the app | Native sessions, the version gate, Sign in with Apple, Google from the app, App Store subscriptions, push notifications and Live Activity updates | Done (this document's server sections) |
-| 2. App foundation and core screens | Xcode project, API client, design system, sign-in, Photo Studio, My Dishes, Menus, Plans, Settings, notifications, macOS CI | Next |
+| 2. App foundation and core screens | Xcode project, API client, design system, sign-in, Photo Studio, My Dishes, Menus, Plans, Account, notifications, macOS CI | Done (see [ios/README.md](../ios/README.md)) |
 | 3. Posts and sharing | Post Maker with the web's renderer, Instagram Stories sharing, menu QR and table card | Planned |
 | 4. Native extras | Share extension from Photos, widgets, Siri and Shortcuts actions (mark a dish sold out) | Planned |
 | 5. Beta and launch | TestFlight with pilot restaurants, physical-device checks (camera, HEIC, Instagram handoff), accessibility and performance passes, App Store listing, review | Planned |
@@ -31,6 +31,8 @@ Every request from the app carries `X-Menu-Material-Client: ios` and `X-Menu-Mat
 **Version gate.** Set `IOS_MIN_VERSION` (for example `1.2`) when a server change needs a newer app. Older apps get `426` with `code: "update_required"` and ask for an update. `GET /api/native/config` stays open to every version and tells the app what's available before sign-in: the minimum version, which sign-in methods are on, the App Store product, and the support, Terms and privacy links.
 
 **Sign in with Apple** (`/api/auth/apple/start`, `credential`, `complete`) follows Continue with Google: `start` returns a nonce and a flow token; the app asks Apple to sign `SHA-256(nonce)`; `credential` verifies Apple's identity token (Apple's keys, issuer, audience = the bundle ID, nonce, 10-minute age) and either signs in, asks for the existing account's password to link a matching email, or asks for the restaurant's name to create an account with the normal free images. Apple has verified the email, private relay addresses included, so no separate email check is needed. With a Sign in with Apple key, the authorization code is exchanged for a refresh token, kept only so deleting the account can revoke the app's access with Apple, as App Review requires.
+
+**The Studio's looks** come from `GET /api/native/styles`, built from the same catalog as the web's (`lib/photo-styles.ts`). Each look carries the exact `photoStyle` and `photoPreset` the web's `styleFor` sends with the original angle kept, so a new or changed look reaches the app without an update. Looks an administrator turns off arrive in `/api/state` (`studioAvailability.disabledStyleIds`).
 
 **Google from the app** uses the same routes as the web with the app's iOS client (`GOOGLE_IOS_CLIENT_ID`); the flow token travels in `X-Menu-Material-Auth-Flow` instead of a cookie.
 

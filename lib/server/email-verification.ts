@@ -195,8 +195,8 @@ export async function emailVerificationRoute(req: Request, action?: string) {
           from: sender.from,
           to: [status.email],
           subject: "Verify your Menu Material email",
-          text: `Your Menu Material verification code is ${code}.\n\nEnter it in the browser where you requested it. It expires in 15 minutes and works once. Never share this code.\n\nIf you didn't request this, ignore this email.`,
-          html: `<h1>Verify your email</h1><p>Enter this code in the browser where you requested it:</p><p style="font-size:32px;letter-spacing:6px;font-weight:bold">${code}</p><p>It expires in 15 minutes and works once. Never share this code.</p><p>If you didn't request this, ignore this email.</p>`,
+          text: `Your Menu Material verification code is ${code}.\n\nEnter it in the Menu Material app or browser where you requested it. It expires in 15 minutes and works once. Never share this code.\n\nIf you didn't request this, ignore this email.`,
+          html: `<h1>Verify your email</h1><p>Enter this code in the Menu Material app or browser where you requested it:</p><p style="font-size:32px;letter-spacing:6px;font-weight:bold">${code}</p><p>It expires in 15 minutes and works once. Never share this code.</p><p>If you didn't request this, ignore this email.</p>`,
         }),
       });
       const result = (await res.json().catch(() => null)) as {
