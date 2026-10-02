@@ -142,29 +142,13 @@ struct MenuDetailView: View {
                     if let live = menu.published {
                         Text("On the menu now").eyebrowStyle()
                         ForEach(live.sections) { section in
-                            if !section.items.isEmpty {
-                                VStack(alignment: .leading, spacing: 0) {
-                                    if !section.name.isEmpty {
-                                        Text(section.name)
-                                            .font(.subheadline.weight(.semibold))
-                                            .foregroundStyle(Palette.muted)
-                                            .padding(.bottom, 8)
-                                    }
-                                    VStack(spacing: 0) {
-                                        ForEach(section.items) { entry in
-                                            EntryRow(
-                                                entry: entry,
-                                                currency: currency,
-                                                busy: busyEntry == entry.id,
-                                                toggle: { Task { await setAvailable(entry, $0) } },
-                                                editPrice: { editing = entry }
-                                            )
-                                            if entry.id != section.items.last?.id { Divider().padding(.leading, 16) }
-                                        }
-                                    }
-                                    .background(Palette.surface, in: .rect(cornerRadius: Metrics.cardRadius))
-                                }
-                            }
+                            LiveSection(
+                                section: section,
+                                currency: currency,
+                                busyEntry: busyEntry,
+                                toggle: { entry, available in Task { await setAvailable(entry, available) } },
+                                editPrice: { entry in editing = entry }
+                            )
                         }
                         Button("Take this menu offline", role: .destructive) { showOffline = true }
                             .frame(maxWidth: .infinity)
@@ -275,6 +259,48 @@ struct MenuDetailView: View {
     }
 }
 
+/// One section of a live menu: each dish with its price and whether it's on.
+private struct LiveSection: View {
+    let section: MenuSection
+    let currency: String
+    let busyEntry: String?
+    let toggle: (MenuEntry, Bool) -> Void
+    let editPrice: (MenuEntry) -> Void
+
+    var body: some View {
+        if !section.items.isEmpty {
+            VStack(alignment: .leading, spacing: 0) {
+                if !section.name.isEmpty {
+                    Text(section.name)
+                        .font(.subheadline.weight(.semibold))
+                        .foregroundStyle(Palette.muted)
+                        .padding(.bottom, 8)
+                }
+                VStack(spacing: 0) {
+                    ForEach(section.items) { entry in
+                        row(entry)
+                    }
+                }
+                .background(Palette.surface, in: .rect(cornerRadius: Metrics.cardRadius))
+            }
+        }
+    }
+
+    @ViewBuilder
+    private func row(_ entry: MenuEntry) -> some View {
+        EntryRow(
+            entry: entry,
+            currency: currency,
+            busy: busyEntry == entry.id,
+            toggle: { available in toggle(entry, available) },
+            editPrice: { editPrice(entry) }
+        )
+        if entry.id != section.items.last?.id {
+            Divider().padding(.leading, 16)
+        }
+    }
+}
+
 private struct EntryRow: View {
     let entry: MenuEntry
     let currency: String
@@ -306,7 +332,7 @@ private struct EntryRow: View {
             if busy {
                 ProgressView()
             } else {
-                Toggle("Available", isOn: Binding(get: { entry.available }, set: toggle))
+                Toggle("Available", isOn: Binding(get: { entry.available }, set: { toggle($0) }))
                     .labelsHidden()
                     .tint(Palette.accent)
                     .accessibilityLabel(entry.available ? "\(entry.name) is on the menu" : "\(entry.name) is sold out")
