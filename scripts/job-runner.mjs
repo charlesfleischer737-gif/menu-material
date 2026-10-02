@@ -1,6 +1,7 @@
 // A dedicated, browser-independent process. No OpenAI credential is needed here.
 import { writeFile, readFile } from "node:fs/promises";
 import { setTimeout as delay } from "node:timers/promises";
+import { apnsSettings, createApnsClient } from "./apns.mjs";
 const heartbeat =
   process.env.RUNNER_HEARTBEAT_FILE || "/tmp/menu-material-runner-heartbeat";
 if (process.argv.includes("--health")) {
@@ -66,8 +67,47 @@ async function check() {
     running--;
   }
 }
+// The iPhone app's notifications, when APNS_KEY_ID, APNS_TEAM_ID (or
+// APPLE_TEAM_ID) and APNS_PRIVATE_KEY are set: claimed from the site, sent to
+// Apple, and acknowledged so delivered ones aren't sent again.
+const apnsKey = apnsSettings();
+const apns = apnsKey ? createApnsClient(apnsKey) : null;
+let delivering = false;
+async function internal(path, payload) {
+  const response = await fetch(new URL(path, origin.origin), {
+    method: "POST",
+    headers: {
+      Authorization: `Bearer ${secret}`,
+      ...(payload ? { "Content-Type": "application/json" } : {}),
+    },
+    ...(payload ? { body: JSON.stringify(payload) } : {}),
+    signal: AbortSignal.timeout(20000),
+  });
+  if (!response.ok) throw Error(`${path} returned HTTP ${response.status}`);
+  return response.json();
+}
+async function deliver() {
+  if (!apns || delivering) return;
+  delivering = true;
+  try {
+    const { messages } = await internal("/api/internal/push/claim");
+    if (messages?.length) {
+      const results = await Promise.all(messages.map((m) => apns.send(m)));
+      await internal("/api/internal/push/ack", { results });
+    }
+  } catch (error) {
+    console.error(
+      new Date().toISOString(),
+      "Notification delivery failed:",
+      error.message,
+    );
+  } finally {
+    delivering = false;
+  }
+}
 while (!shutdown.signal.aborted && (!once || Date.now() < onceUntil)) {
   if (running < maxRunning) void check();
+  void deliver();
   await delay(
     Math.min(
       60000,
@@ -78,3 +118,4 @@ while (!shutdown.signal.aborted && (!once || Date.now() < onceUntil)) {
     { signal: shutdown.signal },
   ).catch(() => {});
 }
+apns?.close();

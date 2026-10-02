@@ -1,8 +1,10 @@
 import { createHmac, timingSafeEqual } from "node:crypto";
+import { z } from "zod";
 import {
   all,
   AppError,
   assert,
+  body,
   config,
   db,
   id,
@@ -16,6 +18,15 @@ import {
 } from "./core";
 import { limitedBytes } from "./safeguards";
 import { featureAccess, imageEntitlement } from "./entitlements";
+import {
+  appStoreBillingEnabled,
+  appStoreNotification,
+  appStoreState,
+  closeAppStoreBilling,
+  liveAppStoreSubscription,
+  reconcileDueAppStoreSubscriptions,
+  syncAppStoreTransaction,
+} from "./app-store";
 import { PRO_PLAN, PRO_PRICE_LABEL } from "../plans";
 import { siteContact } from "../site-contact";
 
@@ -30,19 +41,24 @@ export function billingEnabled() {
 }
 export async function billingSummary(restaurantId: string) {
   const account = await one(
-    "SELECT status,cancel_at_period_end,customer_id FROM billing_accounts WHERE restaurant_id=?",
+    "SELECT status,cancel_at_period_end,customer_id,subscription_id FROM billing_accounts WHERE restaurant_id=?",
     restaurantId,
   );
   const live = await one(
     "SELECT count(*) AS n FROM menu_documents WHERE restaurant_id=? AND archived_at IS NULL AND published IS NOT NULL",
     restaurantId,
   );
+  // Pro bought in the iPhone app is managed in the App Store, not here.
+  const apple = await liveAppStoreSubscription(restaurantId);
   return {
     ...(await imageEntitlement(restaurantId)),
     enabled: billingEnabled(),
-    status: account?.status || "free",
-    cancelAtPeriodEnd: !!account?.cancel_at_period_end,
-    canManage: !!account?.customer_id && billingEnabled(),
+    status: apple?.status || account?.status || "free",
+    provider: apple ? "app_store" : account?.subscription_id ? "stripe" : null,
+    cancelAtPeriodEnd: apple
+      ? !apple.auto_renew
+      : !!account?.cancel_at_period_end,
+    canManage: !apple && !!account?.customer_id && billingEnabled(),
     // So controls can show what's Pro before anyone starts.
     features: {
       ...(await featureAccess(restaurantId)),
@@ -272,6 +288,7 @@ function stillSubscribed(account: Row) {
  * Stripe isn't contacted.
  */
 export async function closeBilling(restaurantId: string) {
+  await closeAppStoreBilling(restaurantId);
   const known = await one(
     "SELECT * FROM billing_accounts WHERE restaurant_id=?",
     restaurantId,
@@ -374,7 +391,11 @@ let billingCheckedAt = 0;
 export async function billingHousekeeping() {
   const interval = 5 * 60000;
   // Most callers stop here, without touching the database.
-  if (!billingEnabled() || now() - billingCheckedAt < interval) return null;
+  if (
+    (!billingEnabled() && !appStoreBillingEnabled()) ||
+    now() - billingCheckedAt < interval
+  )
+    return null;
   const claim = await run(
     "INSERT INTO app_settings (key,value) VALUES ('billing-check-last-run',?) ON CONFLICT(key) DO UPDATE SET value=excluded.value WHERE CAST(app_settings.value AS INTEGER)<?",
     String(now()),
@@ -382,7 +403,13 @@ export async function billingHousekeeping() {
   );
   billingCheckedAt = now();
   if (!claim.meta.changes) return null;
-  return reconcileDueSubscriptions();
+  const stripe = await reconcileDueSubscriptions(),
+    apple = await reconcileDueAppStoreSubscriptions();
+  return {
+    checked: stripe.checked + apple.checked,
+    failed: stripe.failed + apple.failed,
+    error: stripe.error ?? apple.error,
+  };
 }
 const billingSettings = [
   "STRIPE_SECRET_KEY",
@@ -488,9 +515,39 @@ async function webhook(req: Request) {
   }
   return response({ received: true });
 }
+async function appStoreRoute(req: Request, r: Row, action?: string) {
+  if (!action && req.method === "GET")
+    return response({
+      ...(await appStoreState(r.id)),
+      billing: await billingSummary(r.id),
+    });
+  assert(req.method === "POST", 405, "Method not allowed.");
+  assert(action === "verify", 404, "Not found.");
+  assert(
+    appStoreBillingEnabled(),
+    503,
+    "Pro in the app is coming soon. Your free account is ready to use.",
+  );
+  await limit("app-store:" + r.id, 30, 900);
+  const input = z
+    .object({ transactionId: z.string().regex(/^\d{1,30}$/) })
+    .parse(await body(req));
+  assert(
+    await syncAppStoreTransaction(input.transactionId, r.id),
+    404,
+    "That purchase couldn't be found. If you were charged, tap Restore purchases, or contact support.",
+  );
+  return response({
+    ...(await appStoreState(r.id)),
+    billing: await billingSummary(r.id),
+  });
+}
 export async function billingRoute(req: Request, path: string[]) {
   if (path[1] === "webhook") return webhook(req);
+  if (path[1] === "app-store" && path[2] === "notifications")
+    return appStoreNotification(req);
   const { u, r } = await owner(req);
+  if (path[1] === "app-store") return appStoreRoute(req, r, path[2]);
   if (path[1] === "status" && req.method === "GET")
     return response(await billingSummary(r.id));
   assert(req.method === "POST", 405, "Method not allowed.");
@@ -517,6 +574,11 @@ export async function billingRoute(req: Request, path: string[]) {
     return response({ url: session.url });
   }
   assert(path[1] === "checkout", 404, "Not found.");
+  assert(
+    !(await liveAppStoreSubscription(r.id)),
+    409,
+    "Your Pro plan is billed through the App Store. Manage it on your iPhone in Settings: tap your name, then Subscriptions.",
+  );
   return withAccount(r.id, async (account, lease) => {
     const price = await stripe(
       "prices/" + encodeURIComponent(config("STRIPE_PRO_PRICE_ID")),

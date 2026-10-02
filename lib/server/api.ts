@@ -14,6 +14,9 @@ import {
 import { billingRoute, billingSummary, billingEnabled } from "./billing";
 import { passwordResetEnabled, requestPasswordReset } from "./password-reset";
 import { googleAuthRoute } from "./google-auth";
+import { appleAuthRoute } from "./apple-auth";
+import { nativeConfigRoute, requireSupportedApp } from "./native";
+import { acknowledgePushes, claimPushes, devicesRoute } from "./push";
 import {
   emailVerificationRoute,
   emailVerificationStatus,
@@ -85,6 +88,7 @@ import {
   response,
   run,
   sameOrigin,
+  sessionToken,
   token,
   viewer,
   withRenewedSession,
@@ -619,6 +623,9 @@ async function route(req: Request) {
     const method = req.method;
     if (!(p[0] === "billing" && p[1] === "webhook") && method !== "GET")
       sameOrigin(req);
+    requireSupportedApp(req, p);
+    if (p[0] === "native" && p[1] === "config" && method === "GET")
+      return nativeConfigRoute();
     if (p[0] === "billing") return await billingRoute(req, p);
     if (["staff", "staff-links", "suggestions"].includes(p[0]))
       return response({ error: "This tool is no longer available." }, 410);
@@ -723,6 +730,20 @@ async function route(req: Request) {
       }
       return response({ menu, publishedAt: r.published_at, serverNow: now() });
     }
+    // The job runner delivers the iPhone app's notifications (push.ts).
+    if (p[0] === "internal" && p[1] === "push" && method === "POST") {
+      assert(
+        config("JOB_RUNNER_SECRET") &&
+          req.headers.get("authorization") ===
+            `Bearer ${config("JOB_RUNNER_SECRET")}`,
+        403,
+        "Access denied.",
+      );
+      if (p[2] === "claim") return response({ messages: await claimPushes() });
+      if (p[2] === "ack")
+        return response(await acknowledgePushes(await body(req)));
+      throw new AppError(404, "Not found.");
+    }
     if (p[0] === "internal" && p[1] === "tick" && method === "POST") {
       assert(
         config("JOB_RUNNER_SECRET") &&
@@ -740,6 +761,7 @@ async function route(req: Request) {
     }
     if (p[0] === "auth") {
       if (p[1] === "google") return await googleAuthRoute(req, p[2]);
+      if (p[1] === "apple") return await appleAuthRoute(req, p[2]);
       if (p[1] === "email-verification")
         return await emailVerificationRoute(req, p[2]);
       if (p[1] === "recovery" && method === "GET")
@@ -758,9 +780,7 @@ async function route(req: Request) {
       if (method === "POST" && p[1] === "login")
         await publicLimit(req, "login", 30);
       if (p[1] === "logout" && method === "POST") {
-        const s = req.headers
-          .get("cookie")
-          ?.match(/(?:^|;\s*)menu_material_session=([^;]+)/)?.[1];
+        const s = sessionToken(req)?.raw;
         if (s) await run("DELETE FROM sessions WHERE hash=?", digest(s));
         return response({ ok: true }, 200, {
           "Set-Cookie":
@@ -859,6 +879,7 @@ async function route(req: Request) {
       }
       throw new AppError(404, "Not found.");
     }
+    if (p[0] === "devices") return await devicesRoute(req, p);
     if (p[0] === "state" && method === "GET") {
       const u = await viewer(req);
       if (!u)
@@ -902,8 +923,19 @@ async function route(req: Request) {
       const freeImages = r.free_grant ? await freeImagesStatus(r.id) : null;
       const billing = await billingSummary(r.id),
         saved = storedStyle(r.style);
+      // How the owner signs in: an account made with Apple or Google has no
+      // password, so deleting it asks for the email instead.
+      const signIn = await one(
+        "SELECT substr(u.password,1,1)!='!' AS password,EXISTS(SELECT 1 FROM google_identities WHERE user_id=u.id) AS google,EXISTS(SELECT 1 FROM apple_identities WHERE user_id=u.id) AS apple FROM users u WHERE u.id=?",
+        u.id,
+      );
       return response({
         user: u,
+        signIn: {
+          password: !!signIn?.password,
+          google: !!signIn?.google,
+          apple: !!signIn?.apple,
+        },
         emailVerification,
         studioAvailability: await studioAvailability(r.id),
         restaurant: {
@@ -1283,7 +1315,9 @@ async function route(req: Request) {
       await limit("account-delete:" + u.id, 5);
       const input = z
         .object({
-          password: z.string().max(128),
+          password: z.string().max(128).default(""),
+          // Instead of a password, for accounts made with Apple or Google.
+          email: z.string().max(254).optional(),
           confirm: z
             .string()
             .refine(
@@ -1292,13 +1326,27 @@ async function route(req: Request) {
             ),
         })
         .parse(await body(req));
-      const account = await one("SELECT password FROM users WHERE id=?", u.id);
-      // 403, not 401: the owner is signed in; only the password is wrong.
-      assert(
-        checkPassword(input.password, account?.password),
-        403,
-        "That password is incorrect.",
+      const account = await one(
+        "SELECT email,password FROM users WHERE id=?",
+        u.id,
       );
+      // An account made with Sign in with Apple or Google has no password
+      // (stored as "!…", which nothing matches), and App Review requires
+      // that it can still be deleted in the app: typing its email confirms,
+      // as administrators do.
+      if (account?.password?.startsWith("!") && !input.password)
+        assert(
+          input.email?.trim().toLowerCase() === account.email,
+          403,
+          "Type your account’s email address to confirm.",
+        );
+      // 403, not 401: the owner is signed in; only the password is wrong.
+      else
+        assert(
+          checkPassword(input.password, account?.password),
+          403,
+          "That password is incorrect.",
+        );
       await deleteAccount(u, r);
       await event(null, "account_deleted");
       return response({ ok: true }, 200, {

@@ -2,6 +2,18 @@ import { AppError, config, now, one, type Row } from "./core";
 import { defaultStyle } from "../promotions";
 import { proFeatures, type ProFeature } from "../plans";
 
+/**
+ * Whether the subscription behind billing period `bp` is live: Stripe's
+ * (billing_accounts) or the App Store's (app_store_subscriptions, whose
+ * periods' subscription_id is its id). Both write the same period ledger.
+ */
+export const liveSubscriptionSql = (
+  bp: string,
+  statuses = "'active','past_due'",
+) =>
+  `(EXISTS(SELECT 1 FROM billing_accounts ba WHERE ba.restaurant_id=${bp}.restaurant_id AND ba.subscription_id=${bp}.subscription_id AND ba.status IN (${statuses}))
+    OR EXISTS(SELECT 1 FROM app_store_subscriptions s WHERE s.restaurant_id=${bp}.restaurant_id AND s.id=${bp}.subscription_id AND s.status IN (${statuses})))`;
+
 // Used by both the displayed balance and the atomic job reservation. Credits
 // belong to their original period, even when a failed job finishes next month.
 // restaurants.allowance (set in Administration as "Free-plan images") only
@@ -11,9 +23,8 @@ export const entitlementSql = `SELECT r.id,r.paused,
   COALESCE(p.allowance,r.allowance)+(SELECT count(*) FROM photo_corrections c WHERE c.restaurant_id=r.id AND c.credited_period=COALESCE(p.id,'free') AND c.credited_at IS NOT NULL) AS allowance,
   p.ends_at AS renews_at
   FROM restaurants r LEFT JOIN billing_periods p ON p.id=(
-    SELECT bp.id FROM billing_periods bp JOIN billing_accounts ba
-      ON ba.restaurant_id=bp.restaurant_id AND ba.subscription_id=bp.subscription_id
-    WHERE bp.restaurant_id=r.id AND ba.status IN ('active','past_due')
+    SELECT bp.id FROM billing_periods bp
+    WHERE bp.restaurant_id=r.id AND ${liveSubscriptionSql("bp")}
       AND bp.starts_at<=? AND bp.ends_at>?
     ORDER BY bp.starts_at DESC LIMIT 1
   ) WHERE r.id=?`;
@@ -55,17 +66,25 @@ export async function featureAccess(restaurantId: string) {
   const t = now();
   const row = await one(
     `SELECT r.pro_until,
-    EXISTS(SELECT 1 FROM billing_periods bp JOIN billing_accounts ba
-      ON ba.restaurant_id=bp.restaurant_id AND ba.subscription_id=bp.subscription_id
-      WHERE bp.restaurant_id=r.id AND ba.status IN ('active','past_due')
+    EXISTS(SELECT 1 FROM billing_periods bp
+      WHERE bp.restaurant_id=r.id AND ${liveSubscriptionSql("bp")}
         AND bp.starts_at<=? AND bp.ends_at>?) AS paid,
-    (SELECT ba.status FROM billing_periods bp JOIN billing_accounts ba
-      ON ba.restaurant_id=bp.restaurant_id AND ba.subscription_id=bp.subscription_id
-      WHERE bp.restaurant_id=r.id AND ba.status IN ('active','past_due')
-        AND bp.ends_at<=? AND bp.ends_at>? LIMIT 1) AS renewal
+    (SELECT status FROM (
+      SELECT ba.status FROM billing_periods bp JOIN billing_accounts ba
+        ON ba.restaurant_id=bp.restaurant_id AND ba.subscription_id=bp.subscription_id
+        WHERE bp.restaurant_id=r.id AND ba.status IN ('active','past_due')
+          AND bp.ends_at<=? AND bp.ends_at>?
+      UNION ALL
+      SELECT s.status FROM billing_periods bp JOIN app_store_subscriptions s
+        ON s.restaurant_id=bp.restaurant_id AND s.id=bp.subscription_id
+        WHERE bp.restaurant_id=r.id AND s.status IN ('active','past_due')
+          AND bp.ends_at<=? AND bp.ends_at>?
+    ) LIMIT 1) AS renewal
     FROM restaurants r WHERE r.id=?`,
     t,
     t,
+    t,
+    t - RENEWAL_GRACE_MS,
     t,
     t - RENEWAL_GRACE_MS,
     restaurantId,

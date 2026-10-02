@@ -26,6 +26,9 @@ export const sessions = sqliteTable("sessions", {
     .notNull()
     .references(() => users.id),
   expiresAt: integer("expires_at").notNull(),
+  // "web" sessions travel in a cookie; "ios" sessions in an Authorization
+  // header from the iPhone app, which keeps them in the Keychain.
+  client: text().notNull().default("web"),
 });
 export const emailVerifications = sqliteTable(
   "email_verifications",
@@ -66,6 +69,32 @@ export const googleAuthFlows = sqliteTable(
     expiresAt: integer("expires_at").notNull(),
   },
   (t) => [index("idx_google_auth_flows_expiry").on(t.expiresAt)],
+);
+// Apple's stable subject identifies a person even if they change the email
+// they share. The refresh token lets account deletion revoke the app's access
+// with Apple, as App Review requires.
+export const appleIdentities = sqliteTable("apple_identities", {
+  subject: text().primaryKey(),
+  userId: text("user_id")
+    .notNull()
+    .unique()
+    .references(() => users.id, { onDelete: "cascade" }),
+  refreshToken: text("refresh_token"),
+  createdAt: integer("created_at").notNull(),
+});
+// Short-lived Sign in with Apple proofs, as for Google. Apple's raw identity
+// token is never stored.
+export const appleAuthFlows = sqliteTable(
+  "apple_auth_flows",
+  {
+    hash: text().primaryKey(),
+    nonceHash: text("nonce_hash").notNull(),
+    subject: text(),
+    email: text(),
+    refreshToken: text("refresh_token"),
+    expiresAt: integer("expires_at").notNull(),
+  },
+  (t) => [index("idx_apple_auth_flows_expiry").on(t.expiresAt)],
 );
 // Browsers that have signed in to an account, by a hash of their device
 // cookie. Their sign-ins skip the per-account slowdown that anyone who knows
@@ -179,6 +208,29 @@ export const billingPeriods = sqliteTable(
       t.endsAt,
     ),
   ],
+);
+// Pro bought in the iPhone app. Apple's original transaction ID names the
+// subscription, and the id is "apple:" and that ID. Each paid renewal is a
+// billing_periods row with that subscription_id, so images and features read
+// the same ledger as Stripe. The App Store Server API is the source of truth.
+export const appStoreSubscriptions = sqliteTable(
+  "app_store_subscriptions",
+  {
+    id: text().primaryKey(),
+    restaurantId: text("restaurant_id")
+      .notNull()
+      .references(() => restaurants.id),
+    originalTransactionId: text("original_transaction_id").notNull(),
+    productId: text("product_id").notNull(),
+    environment: text().notNull(),
+    // active, past_due (billing retry or grace period), expired or revoked.
+    status: text().notNull(),
+    autoRenew: integer("auto_renew").notNull().default(1),
+    expiresAt: integer("expires_at"),
+    syncedAt: integer("synced_at").notNull().default(0),
+    createdAt: integer("created_at").notNull(),
+  },
+  (t) => [index("idx_app_store_subscriptions_restaurant").on(t.restaurantId)],
 );
 export const dishes = sqliteTable(
   "dishes",
@@ -574,3 +626,49 @@ export const batchItems = sqliteTable(
     uniqueIndex("idx_batch_dish").on(t.batchId, t.dishId),
   ],
 );
+// iPhones that asked to hear when a photo is ready. A token Apple reports as
+// unregistered is removed.
+export const pushDevices = sqliteTable(
+  "push_devices",
+  {
+    token: text().primaryKey(),
+    userId: text("user_id")
+      .notNull()
+      .references(() => users.id, { onDelete: "cascade" }),
+    restaurantId: text("restaurant_id").notNull(),
+    environment: text().notNull().default("production"),
+    createdAt: integer("created_at").notNull(),
+    updatedAt: integer("updated_at").notNull(),
+  },
+  (t) => [index("idx_push_devices_restaurant").on(t.restaurantId)],
+);
+// Notifications waiting for the job runner, which holds the APNs key and
+// speaks HTTP/2. A Live Activity update names its activity's push token.
+export const pushOutbox = sqliteTable(
+  "push_outbox",
+  {
+    id: text().primaryKey(),
+    restaurantId: text("restaurant_id").notNull(),
+    token: text().notNull(),
+    environment: text().notNull().default("production"),
+    pushType: text("push_type").notNull().default("alert"),
+    payload: text().notNull(),
+    collapseId: text("collapse_id"),
+    attempts: integer().notNull().default(0),
+    leaseUntil: integer("lease_until").notNull().default(0),
+    // Delivered (or given up on) rows stay a day, so a job that settles twice
+    // isn't announced twice.
+    sentAt: integer("sent_at"),
+    createdAt: integer("created_at").notNull(),
+  },
+  (t) => [index("idx_push_outbox_lease").on(t.sentAt, t.leaseUntil)],
+);
+// The Live Activity the app started for a photo, by its push token, so the
+// lock screen and Dynamic Island hear when the photo is ready.
+export const liveActivities = sqliteTable("live_activities", {
+  jobId: text("job_id").primaryKey(),
+  restaurantId: text("restaurant_id").notNull(),
+  token: text().notNull(),
+  environment: text().notNull().default("production"),
+  createdAt: integer("created_at").notNull(),
+});

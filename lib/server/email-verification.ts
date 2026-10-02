@@ -13,6 +13,7 @@ import {
   owner,
   response,
   run,
+  sessionToken,
 } from "./core";
 import { accountEmailSettings } from "./password-reset";
 import { grantHeldImages } from "./free-grants";
@@ -66,9 +67,7 @@ export async function finishEmailVerification(userId: string) {
 }
 
 function sessionProof(req: Request) {
-  const raw = req.headers
-    .get("cookie")
-    ?.match(/(?:^|;\s*)menu_material_session=([^;]+)/)?.[1];
+  const raw = sessionToken(req)?.raw;
   assert(raw, 401, "Sign in again to verify your email.");
   return { raw, hash: digest(raw) };
 }

@@ -9,6 +9,10 @@ services:
     environment:
       APP_ORIGIN: ${APP_ORIGIN:?Set the deployed Menu Material HTTPS origin}
       JOB_RUNNER_SECRET: ${JOB_RUNNER_SECRET:?Set the same secret on the site and runner}
+      # Optional: the iPhone app's notifications (docs/IOS_APP.md).
+      APNS_KEY_ID: ${APNS_KEY_ID:-}
+      APNS_TEAM_ID: ${APNS_TEAM_ID:-}
+      APNS_PRIVATE_KEY: ${APNS_PRIVATE_KEY:-}
     read_only: true
     tmpfs:
       - /tmp
