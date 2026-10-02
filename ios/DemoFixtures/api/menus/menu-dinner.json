@@ -1,0 +1,258 @@
+{
+ "id": "menu-dinner",
+ "draft": {
+  "name": "Dinner",
+  "sections": [
+   {
+    "id": "starters",
+    "name": "Starters",
+    "items": [
+     {
+      "id": "entry-burrata",
+      "dishId": "dish-burrata",
+      "name": "Burrata & Heirloom Tomatoes",
+      "price": 1700,
+      "priceMode": "single",
+      "variants": [],
+      "available": true,
+      "photoId": "photo-burrata"
+     },
+     {
+      "id": "entry-carpaccio",
+      "dishId": "dish-carpaccio",
+      "name": "Beet Carpaccio",
+      "price": 1500,
+      "priceMode": "single",
+      "variants": [],
+      "available": true,
+      "photoId": "photo-carpaccio"
+     },
+     {
+      "id": "entry-arancini",
+      "dishId": "dish-arancini",
+      "name": "Crispy Arancini",
+      "price": 1300,
+      "priceMode": "single",
+      "variants": [],
+      "available": true,
+      "photoId": "photo-arancini"
+     }
+    ]
+   },
+   {
+    "id": "mains",
+    "name": "Mains",
+    "items": [
+     {
+      "id": "entry-margherita",
+      "dishId": "dish-margherita",
+      "name": "Wood-Fired Margherita",
+      "price": 1800,
+      "priceMode": "single",
+      "variants": [],
+      "available": true,
+      "photoId": "photo-margherita"
+     },
+     {
+      "id": "entry-branzino",
+      "dishId": "dish-branzino",
+      "name": "Branzino with Fennel",
+      "price": 3200,
+      "priceMode": "single",
+      "variants": [],
+      "available": true,
+      "photoId": "photo-branzino"
+     },
+     {
+      "id": "entry-octopus",
+      "dishId": "dish-octopus",
+      "name": "Charred Octopus",
+      "price": 2400,
+      "priceMode": "single",
+      "variants": [],
+      "available": false,
+      "photoId": "photo-octopus"
+     },
+     {
+      "id": "entry-ravioli",
+      "dishId": "dish-ravioli",
+      "name": "Brown Butter Ravioli",
+      "price": 2600,
+      "priceMode": "single",
+      "variants": [],
+      "available": true,
+      "photoId": "photo-ravioli"
+     },
+     {
+      "id": "entry-burger",
+      "dishId": "dish-burger",
+      "name": "Ember Smash Burger",
+      "price": 1900,
+      "priceMode": "single",
+      "variants": [],
+      "available": true,
+      "photoId": "asset-burger-styled"
+     }
+    ]
+   },
+   {
+    "id": "desserts",
+    "name": "Desserts",
+    "items": [
+     {
+      "id": "entry-cheesecake",
+      "dishId": "dish-cheesecake",
+      "name": "Basque Cheesecake",
+      "price": 1200,
+      "priceMode": "single",
+      "variants": [],
+      "available": true,
+      "photoId": "photo-cheesecake"
+     },
+     {
+      "id": "entry-tart",
+      "dishId": "dish-tart",
+      "name": "Strawberry Tart",
+      "price": 1100,
+      "priceMode": "single",
+      "variants": [],
+      "available": true,
+      "photoId": "photo-tart"
+     }
+    ]
+   }
+  ]
+ },
+ "revision": 12,
+ "published": {
+  "title": "Dinner",
+  "sections": [
+   {
+    "id": "starters",
+    "name": "Starters",
+    "items": [
+     {
+      "id": "entry-burrata",
+      "dishId": "dish-burrata",
+      "name": "Burrata & Heirloom Tomatoes",
+      "price": 1700,
+      "priceMode": "single",
+      "variants": [],
+      "available": true,
+      "photoId": "photo-burrata"
+     },
+     {
+      "id": "entry-carpaccio",
+      "dishId": "dish-carpaccio",
+      "name": "Beet Carpaccio",
+      "price": 1500,
+      "priceMode": "single",
+      "variants": [],
+      "available": true,
+      "photoId": "photo-carpaccio"
+     },
+     {
+      "id": "entry-arancini",
+      "dishId": "dish-arancini",
+      "name": "Crispy Arancini",
+      "price": 1300,
+      "priceMode": "single",
+      "variants": [],
+      "available": true,
+      "photoId": "photo-arancini"
+     }
+    ]
+   },
+   {
+    "id": "mains",
+    "name": "Mains",
+    "items": [
+     {
+      "id": "entry-margherita",
+      "dishId": "dish-margherita",
+      "name": "Wood-Fired Margherita",
+      "price": 1800,
+      "priceMode": "single",
+      "variants": [],
+      "available": true,
+      "photoId": "photo-margherita"
+     },
+     {
+      "id": "entry-branzino",
+      "dishId": "dish-branzino",
+      "name": "Branzino with Fennel",
+      "price": 3200,
+      "priceMode": "single",
+      "variants": [],
+      "available": true,
+      "photoId": "photo-branzino"
+     },
+     {
+      "id": "entry-octopus",
+      "dishId": "dish-octopus",
+      "name": "Charred Octopus",
+      "price": 2400,
+      "priceMode": "single",
+      "variants": [],
+      "available": false,
+      "photoId": "photo-octopus"
+     },
+     {
+      "id": "entry-ravioli",
+      "dishId": "dish-ravioli",
+      "name": "Brown Butter Ravioli",
+      "price": 2600,
+      "priceMode": "single",
+      "variants": [],
+      "available": true,
+      "photoId": "photo-ravioli"
+     },
+     {
+      "id": "entry-burger",
+      "dishId": "dish-burger",
+      "name": "Ember Smash Burger",
+      "price": 1900,
+      "priceMode": "single",
+      "variants": [],
+      "available": true,
+      "photoId": "asset-burger-styled"
+     }
+    ]
+   },
+   {
+    "id": "desserts",
+    "name": "Desserts",
+    "items": [
+     {
+      "id": "entry-cheesecake",
+      "dishId": "dish-cheesecake",
+      "name": "Basque Cheesecake",
+      "price": 1200,
+      "priceMode": "single",
+      "variants": [],
+      "available": true,
+      "photoId": "photo-cheesecake"
+     },
+     {
+      "id": "entry-tart",
+      "dishId": "dish-tart",
+      "name": "Strawberry Tart",
+      "price": 1100,
+      "priceMode": "single",
+      "variants": [],
+      "available": true,
+      "photoId": "photo-tart"
+     }
+    ]
+   }
+  ],
+  "showUnavailable": true,
+  "restaurant": {
+   "currency": "USD"
+  }
+ },
+ "publishedRevision": 12,
+ "publishedAt": "@now-172800",
+ "isPrimary": true,
+ "updatedAt": "@now-7200"
+}

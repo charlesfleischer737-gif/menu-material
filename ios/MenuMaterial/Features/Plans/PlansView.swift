@@ -20,24 +20,35 @@ struct PlansView: View {
     private var billing: BillingSummary? { model.billing }
     private var isPro: Bool { billing?.features?.unlocked == true && billing?.features?.source != "free" }
     private var images: Int { model.config?.billing.imagesPerPeriod ?? 50 }
+    private var price: String { store.product?.displayPrice ?? model.config?.billing.priceLabel ?? "$9" }
 
     var body: some View {
         NavigationStack {
             ScrollView {
-                VStack(alignment: .leading, spacing: 24) {
+                VStack(spacing: 34) {
                     hero
                     features
-                    if isPro { current } else { buy }
+                    if isPro { current }
                     if let message {
                         Label(message, systemImage: "checkmark.circle.fill")
-                            .foregroundStyle(Palette.accent)
+                            .font(.callout.weight(.medium))
+                            .foregroundStyle(Palette.glow)
+                            .multilineTextAlignment(.center)
                     }
                     if let error { ErrorNote(message: error) }
                     legal
                 }
-                .padding(Metrics.gutter)
+                .padding(.horizontal, 24)
+                .padding(.bottom, 24)
             }
-            .canvasBackground()
+            .scrollIndicators(.hidden)
+            .bottomBar {
+                if !isPro { buy }
+            }
+            .background {
+                MeshBackdrop(colors: Palette.proMesh)
+                    .ignoresSafeArea()
+            }
             .toolbar {
                 ToolbarItem(placement: .cancellationAction) {
                     Button("Close", systemImage: "xmark") { dismiss() }
@@ -51,119 +62,169 @@ struct PlansView: View {
                 }
             }
         }
+        .environment(\.colorScheme, .dark)
+        .tint(Palette.glow)
     }
 
     private var hero: some View {
-        VStack(alignment: .leading, spacing: 10) {
-            HStack(spacing: 8) {
-                BrandMark(height: 18)
-                ProBadge()
+        VStack(spacing: 16) {
+            ZStack {
+                Circle()
+                    .fill(Palette.glow.opacity(0.18))
+                    .frame(width: 104, height: 104)
+                    .blur(radius: 18)
+                BrandMark(height: 46)
+                    .foregroundStyle(.white)
+                    .frame(width: 88, height: 88)
+                    .glassEffect(.regular.tint(Palette.glow.opacity(0.25)), in: .circle)
             }
-            .foregroundStyle(Palette.accent)
-            Text("Keep your restaurant looking its best, every week.")
-                .font(.display(32))
-                .foregroundStyle(Palette.ink)
-                .fixedSize(horizontal: false, vertical: true)
+            VStack(spacing: 10) {
+                HStack(spacing: 8) {
+                    Text("Menu Material")
+                        .font(.display(.largeTitle))
+                    ProBadge()
+                }
+                .foregroundStyle(.white)
+                Text("Studio-quality food photography every week, and everything that makes your restaurant look its best.")
+                    .font(.body)
+                    .foregroundStyle(.white.opacity(0.72))
+                    .multilineTextAlignment(.center)
+                    .fixedSize(horizontal: false, vertical: true)
+            }
             if let billing {
                 Text(billing.isPro
-                     ? "\(billing.remaining) of \(billing.allowance) Pro images left this month."
-                     : "\(billing.remaining) free images left.")
-                    .font(.callout)
-                    .foregroundStyle(Palette.muted)
+                     ? "\(billing.remaining) of \(billing.allowance) Pro images left this month"
+                     : "\(billing.remaining) free images left")
+                    .font(.footnote.weight(.semibold))
+                    .foregroundStyle(.white.opacity(0.9))
+                    .padding(.horizontal, 14)
+                    .padding(.vertical, 8)
+                    .glassEffect(.regular, in: .capsule)
             }
         }
+        .padding(.top, 8)
     }
 
     private var features: some View {
-        VStack(alignment: .leading, spacing: 14) {
-            feature("sparkles", "\(images) new images every month", "Full quality, every look and size.")
-            feature("wand.and.stars", "Food Fantasy looks", "Exaggerated food art that stops the scroll.")
-            feature("paintpalette", "Your restaurant look on everything", "Colors, fonts and photo style on new photos, menus and posts.")
-            feature("menucard", "Every menu and post design", "Up to 30 live menus, with a photo for every dish.")
-            feature("chart.bar", "Full menu insights", "Orders, calls and directions taps, by menu and QR code.")
-            feature("checkmark.seal", "No “Made with Menu Material” credit", "Your guest menus are all yours.")
+        VStack(alignment: .leading, spacing: 22) {
+            feature("sparkles", .orange, "\(images) new images every month", "Full quality, in every look and size.")
+            feature("wand.and.stars", .pink, "Food Fantasy looks", "Exaggerated food art that stops the scroll.")
+            feature("paintpalette.fill", .purple, "Your look on everything", "Your colors, fonts and photo style on new photos, menus and posts.")
+            feature("menucard.fill", .blue, "Every menu and post design", "Up to 30 live menus, with a photo for every dish.")
+            feature("chart.bar.fill", .teal, "Full menu insights", "Orders, calls and directions taps, by menu and QR code.")
+            feature("checkmark.seal.fill", .green, "No “Made with Menu Material”", "Your guest menus are all yours.")
         }
-        .card()
+        .frame(maxWidth: .infinity, alignment: .leading)
     }
 
-    private func feature(_ symbol: String, _ title: String, _ detail: String) -> some View {
-        HStack(alignment: .top, spacing: 14) {
+    private func feature(_ symbol: String, _ color: Color, _ title: String, _ detail: String) -> some View {
+        HStack(alignment: .top, spacing: 16) {
             Image(systemName: symbol)
-                .font(.body.weight(.semibold))
-                .foregroundStyle(Palette.accent)
-                .frame(width: 26)
-            VStack(alignment: .leading, spacing: 2) {
-                Text(title).font(.subheadline.weight(.semibold)).foregroundStyle(Palette.ink)
-                Text(detail).font(.footnote).foregroundStyle(Palette.muted)
+                .font(.system(size: 18, weight: .semibold))
+                .foregroundStyle(.white)
+                .frame(width: 40, height: 40)
+                .background(color.gradient, in: .rect(cornerRadius: 11))
+            VStack(alignment: .leading, spacing: 3) {
+                Text(title)
+                    .font(.headline)
+                    .foregroundStyle(.white)
+                Text(detail)
+                    .font(.subheadline)
+                    .foregroundStyle(.white.opacity(0.65))
+                    .fixedSize(horizontal: false, vertical: true)
             }
         }
+        .accessibilityElement(children: .combine)
     }
 
+    /// The price and the subscribe button, pinned to the bottom.
     @ViewBuilder
     private var buy: some View {
         VStack(spacing: 12) {
             if let reason = store.state?.blockedReason {
                 Text(reason)
                     .font(.callout)
-                    .foregroundStyle(Palette.muted)
+                    .foregroundStyle(.white.opacity(0.8))
+                    .multilineTextAlignment(.center)
             } else if let product = store.product {
-                Button {
-                    Task { await subscribe(product) }
-                } label: {
-                    if buying {
-                        ProgressView().tint(Palette.onAction)
-                    } else {
-                        Text("Get Pro for \(product.displayPrice) a month")
-                    }
-                }
-                .buttonStyle(.primary)
-                .disabled(buying || store.state?.canPurchase == false)
+                subscribeButton { Task { await subscribe(product) } }
+                    .disabled(buying || store.state?.canPurchase == false)
+            } else if model.isDemo {
+                // The sample restaurant has no App Store product to buy.
+                subscribeButton {}
             } else if store.productUnavailable || model.config?.billing.appStore == false {
                 Text("Pro in the app is coming soon. Your free account is ready to use.")
                     .font(.callout)
-                    .foregroundStyle(Palette.muted)
+                    .foregroundStyle(.white.opacity(0.8))
+                    .multilineTextAlignment(.center)
             } else {
-                ProgressView()
+                ProgressView().frame(height: 52)
             }
             Button {
                 Task { await restore() }
             } label: {
-                if restoring { ProgressView() } else { Text("Restore purchases") }
+                if restoring { ProgressView() } else { Text("Restore Purchases") }
             }
-            .font(.callout.weight(.medium))
+            .font(.footnote.weight(.semibold))
+            .foregroundStyle(.white.opacity(0.75))
             .disabled(restoring)
         }
+        .padding(.horizontal, 24)
+        .padding(.top, 10)
+        .padding(.bottom, 6)
+    }
+
+    private func subscribeButton(_ action: @escaping () -> Void) -> some View {
+        Button(action: action) {
+            VStack(spacing: 2) {
+                if buying {
+                    ProgressView().tint(.white)
+                } else {
+                    Text("Subscribe for \(price)/month")
+                        .font(.headline)
+                    Text("Cancel anytime")
+                        .font(.caption)
+                        .opacity(0.8)
+                }
+            }
+            .frame(maxWidth: .infinity)
+        }
+        .primaryAction()
+        .tint(Palette.accent)
     }
 
     @ViewBuilder
     private var current: some View {
-        VStack(alignment: .leading, spacing: 8) {
+        VStack(spacing: 10) {
             Label("You’re on Pro", systemImage: "checkmark.seal.fill")
                 .font(.headline)
-                .foregroundStyle(Palette.accent)
+                .foregroundStyle(Palette.glow)
             if let renewal = billing?.renewalDate {
                 Text("\(billing?.cancelAtPeriodEnd == true ? "Ends" : "Images renew") \(renewal.formatted(date: .abbreviated, time: .omitted)).")
                     .font(.callout)
-                    .foregroundStyle(Palette.muted)
+                    .foregroundStyle(.white.opacity(0.75))
             }
             if billing?.provider == "app_store" {
-                Button("Manage subscription") { manage = true }
-                    .buttonStyle(.secondary)
+                Button("Manage Subscription") { manage = true }
+                    .secondaryAction()
             } else if billing?.provider == "stripe" {
                 Text("Billed on menumaterial.com. Manage it there, under Plans.")
                     .font(.callout)
-                    .foregroundStyle(Palette.muted)
+                    .foregroundStyle(.white.opacity(0.75))
+                    .multilineTextAlignment(.center)
             }
         }
-        .card()
+        .frame(maxWidth: .infinity)
+        .padding(20)
+        .glassEffect(.regular, in: .rect(cornerRadius: Metrics.cardRadius))
     }
 
     @ViewBuilder
     private var legal: some View {
-        let price = store.product?.displayPrice ?? model.config?.billing.priceLabel ?? "$9"
-        VStack(alignment: .leading, spacing: 8) {
+        VStack(spacing: 10) {
             Text("Pro is \(price) a month for \(images) images each month, and renews automatically until you cancel. Payment is charged to your Apple Account. Cancel anytime in Settings, under your name, then Subscriptions, at least 24 hours before it renews. Unused images don’t roll over.")
-            HStack(spacing: 16) {
+                .multilineTextAlignment(.center)
+            HStack(spacing: 18) {
                 if let terms = URL(string: model.config?.links.terms ?? "https://www.apple.com/legal/internet-services/itunes/dev/stdeula/") {
                     Link("Terms of Use", destination: terms)
                 }
@@ -171,10 +232,10 @@ struct PlansView: View {
                     Link("Privacy Policy", destination: privacy)
                 }
             }
-            .font(.footnote.weight(.medium))
+            .font(.caption.weight(.semibold))
         }
-        .font(.footnote)
-        .foregroundStyle(Palette.muted)
+        .font(.caption)
+        .foregroundStyle(.white.opacity(0.5))
     }
 
     private func subscribe(_ product: Product) async {

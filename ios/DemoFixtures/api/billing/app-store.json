@@ -1,0 +1,23 @@
+{
+ "enabled": true,
+ "productId": "com.menumaterial.app.pro.monthly",
+ "appAccountToken": "6b1f6d0e-7a53-4c43-9d7e-3f2c1c9a8b10",
+ "canPurchase": true,
+ "blockedReason": null,
+ "subscription": null,
+ "billing": {
+  "plan": "free",
+  "allowance": 5,
+  "remaining": 4,
+  "renewsAt": null,
+  "enabled": true,
+  "status": null,
+  "provider": null,
+  "cancelAtPeriodEnd": false,
+  "features": {
+   "pro": false,
+   "source": "free",
+   "unlocked": false
+  }
+ }
+}

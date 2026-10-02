@@ -14,10 +14,12 @@ struct StudioView: View {
     @State private var showVerify = false
     @AppStorage("ai-consent") private var consentedUser = ""
 
+    private var composing: Bool { studio.stage == .composing || studio.stage == .submitting }
+
     var body: some View {
         NavigationStack {
             ScrollView {
-                VStack(alignment: .leading, spacing: 24) {
+                VStack(alignment: .leading, spacing: 32) {
                     switch studio.stage {
                     case .empty:
                         StudioStart(
@@ -37,24 +39,25 @@ struct StudioView: View {
                     }
                 }
                 .padding(.horizontal, Metrics.gutter)
-                .padding(.bottom, 24)
-                .animation(.smooth(duration: 0.4), value: studio.stage)
+                .padding(.top, 4)
+                .padding(.bottom, 32)
+                .animation(.smooth(duration: 0.45), value: studio.stage)
             }
             .scrollDismissesKeyboard(.interactively)
             .canvasBackground()
             .navigationTitle("Studio")
             .toolbar {
+                if studio.stage != .empty {
+                    ToolbarItem(placement: .topBarLeading) {
+                        Button("New Photo", systemImage: "plus") { studio.startOver() }
+                    }
+                }
                 ToolbarItem(placement: .topBarTrailing) {
                     BalanceBadge { showPlans = true }
                 }
-                if studio.stage != .empty {
-                    ToolbarItem(placement: .topBarLeading) {
-                        Button("New photo", systemImage: "plus") { studio.startOver() }
-                    }
-                }
             }
-            .safeAreaInset(edge: .bottom) {
-                if studio.stage == .composing || studio.stage == .submitting {
+            .bottomBar {
+                if composing {
                     CreateBar(studio: studio) {
                         if consentedUser == model.user?.id {
                             Task { await studio.create(model: model) }
@@ -66,8 +69,10 @@ struct StudioView: View {
                     } showVerify: {
                         showVerify = true
                     }
+                    .transition(.move(edge: .bottom).combined(with: .opacity))
                 }
             }
+            .animation(.smooth(duration: 0.35), value: composing)
         }
         .photosPicker(isPresented: $showLibrary, selection: $pickerItem, matching: .images, preferredItemEncoding: .current)
         .onChange(of: pickerItem) { _, item in
@@ -105,6 +110,9 @@ struct StudioView: View {
         .task {
             await studio.loadCatalog(model.client)
             studio.resume(model)
+            #if DEBUG
+            await studio.playDemoScene(model)
+            #endif
         }
     }
 
@@ -138,114 +146,109 @@ private struct StudioStart: View {
     let preparing: Bool
 
     var body: some View {
-        VStack(spacing: 0) {
+        VStack(spacing: 16) {
             ZStack {
-                RoundedRectangle(cornerRadius: Metrics.cardRadius)
-                    .fill(Palette.stage)
-                RadialGradient(
-                    colors: [Palette.glow.opacity(0.28), .clear],
-                    center: .top,
-                    startRadius: 10,
-                    endRadius: 320
-                )
-                .clipShape(.rect(cornerRadius: Metrics.cardRadius))
-                VStack(spacing: 14) {
+                MeshBackdrop(colors: Palette.studioMesh)
+                VStack(spacing: 18) {
                     if preparing {
-                        ProgressView().tint(.white).controlSize(.large)
+                        ProgressView()
+                            .controlSize(.large)
+                            .tint(.white)
                         Text("Getting your photo ready…")
                             .font(.callout)
-                            .foregroundStyle(.white.opacity(0.75))
+                            .foregroundStyle(.white.opacity(0.8))
                     } else {
                         Image(systemName: "camera.aperture")
-                            .font(.system(size: 48, weight: .light))
-                            .foregroundStyle(Palette.glow)
-                        Text("Photograph a dish")
-                            .font(.display(28))
-                            .foregroundStyle(.white)
-                        Text("Any phone photo works. Choose a look and Menu Material restyles it for your menu, delivery apps and posts.")
-                            .font(.callout)
-                            .foregroundStyle(.white.opacity(0.72))
-                            .multilineTextAlignment(.center)
-                            .padding(.horizontal, 28)
+                            .font(.system(size: 54, weight: .thin))
+                            .foregroundStyle(.white.opacity(0.9))
+                            .symbolEffect(.breathe)
+                        VStack(spacing: 10) {
+                            Text("Photograph a dish")
+                                .font(.display(.title))
+                                .foregroundStyle(.white)
+                            Text("Any phone photo works. Pick a look, and get menu-ready food photography in about a minute.")
+                                .font(.callout)
+                                .foregroundStyle(.white.opacity(0.72))
+                                .multilineTextAlignment(.center)
+                                .fixedSize(horizontal: false, vertical: true)
+                        }
                     }
                 }
+                .padding(32)
             }
             .aspectRatio(4 / 5, contentMode: .fit)
-            .padding(.top, 8)
+            .clipShape(.rect(cornerRadius: 32))
 
-            VStack(spacing: 12) {
+            HStack(spacing: 12) {
                 if CameraPicker.isAvailable {
                     Button {
                         showCamera = true
                     } label: {
-                        Label("Take a photo", systemImage: "camera.fill")
+                        Label("Camera", systemImage: "camera.fill")
+                            .frame(maxWidth: .infinity)
                     }
-                    .buttonStyle(.primary)
+                    .primaryAction()
+                    Button {
+                        showLibrary = true
+                    } label: {
+                        Label("Library", systemImage: "photo.on.rectangle.angled")
+                            .frame(maxWidth: .infinity)
+                    }
+                    .secondaryAction()
+                } else {
+                    Button {
+                        showLibrary = true
+                    } label: {
+                        Label("Choose a Photo", systemImage: "photo.on.rectangle.angled")
+                            .frame(maxWidth: .infinity)
+                    }
+                    .primaryAction()
                 }
-                Button {
-                    showLibrary = true
-                } label: {
-                    Label("Choose from your library", systemImage: "photo.on.rectangle")
-                }
-                .buttonStyle(
-                    CameraPicker.isAvailable
-                        ? AnyButtonStyle(SecondaryButtonStyle())
-                        : AnyButtonStyle(PrimaryButtonStyle())
-                )
             }
             .disabled(preparing)
-            .padding(.top, 18)
         }
     }
 }
 
-/// Lets one button switch between the two pill styles.
-struct AnyButtonStyle: ButtonStyle {
-    private let make: (Configuration) -> AnyView
-
-    init<S: ButtonStyle>(_ style: S) {
-        make = { AnyView(style.makeBody(configuration: $0)) }
-    }
-
-    func makeBody(configuration: Configuration) -> some View {
-        make(configuration)
-    }
-}
-
-/// Recent photos made in the Studio, to pick up again.
+/// Recent photos made in the Studio, to pick up again, in a Photos grid.
 private struct RecentPhotos: View {
     @Environment(AppModel.self) private var model
     let open: (String) -> Void
 
-    private var recent: [(job: Job, asset: String)] {
+    private struct Item: Identifiable {
+        let job: Job
+        let asset: String
+        var id: String { job.id }
+    }
+
+    private var recent: [Item] {
         guard let workspace = model.workspace else { return [] }
-        return workspace.jobs.prefix(30).compactMap { job in
+        let items = workspace.jobs.prefix(30).compactMap { job -> Item? in
             guard let output = workspace.outputs(for: job.id).first(where: { $0.status == "completed" }),
                   let asset = output.assetId else { return nil }
-            return (job, asset)
+            return Item(job: job, asset: asset)
         }
-        .prefix(12)
-        .map { $0 }
+        return Array(items.prefix(9))
     }
+
+    private let columns = Array(repeating: GridItem(.flexible(), spacing: 3), count: 3)
 
     var body: some View {
         if !recent.isEmpty {
-            VStack(alignment: .leading, spacing: 12) {
-                Text("Recent photos").eyebrowStyle()
-                ScrollView(.horizontal, showsIndicators: false) {
-                    HStack(spacing: 12) {
-                        ForEach(recent, id: \.job.id) { item in
-                            Button { open(item.job.id) } label: {
-                                AssetImage(id: item.asset)
-                                    .frame(width: 112, height: 112)
-                                    .clipShape(.rect(cornerRadius: 16))
-                            }
-                            .buttonStyle(.plain)
-                            .accessibilityLabel("Open this photo")
+            VStack(alignment: .leading, spacing: 14) {
+                Text("Recent")
+                    .font(.title2.bold())
+                    .foregroundStyle(Palette.ink)
+                LazyVGrid(columns: columns, spacing: 3) {
+                    ForEach(recent) { item in
+                        Button { open(item.job.id) } label: {
+                            SquarePhoto(id: item.asset)
                         }
+                        .buttonStyle(.plain)
+                        .accessibilityLabel("Open this photo")
                     }
                 }
-                .scrollClipDisabled()
+                .clipShape(.rect(cornerRadius: 22))
             }
         }
     }
@@ -260,8 +263,8 @@ private struct ComposeView: View {
     @Binding var showLibrary: Bool
 
     var body: some View {
-        VStack(alignment: .leading, spacing: 26) {
-            PhotoStage(ratio: 4 / 5) {
+        VStack(alignment: .leading, spacing: 32) {
+            PhotoStage(ratio: ratio) {
                 if let photo = studio.photo {
                     Image(uiImage: photo.preview)
                         .resizable()
@@ -273,62 +276,58 @@ private struct ComposeView: View {
             .overlay(alignment: .topTrailing) {
                 Menu {
                     if CameraPicker.isAvailable {
-                        Button("Take a new photo", systemImage: "camera") { showCamera = true }
+                        Button("Take a New Photo", systemImage: "camera") { showCamera = true }
                     }
-                    Button("Choose another photo", systemImage: "photo.on.rectangle") { showLibrary = true }
+                    Button("Choose Another Photo", systemImage: "photo.on.rectangle") { showLibrary = true }
                 } label: {
-                    Image(systemName: "arrow.triangle.2.circlepath.camera")
+                    Image(systemName: "arrow.triangle.2.circlepath")
                         .font(.body.weight(.semibold))
                         .frame(width: 44, height: 44)
                 }
                 .glassEffect(.regular.interactive(), in: .circle)
-                .padding(12)
+                .padding(14)
                 .accessibilityLabel("Replace photo")
             }
 
             if let catalog = studio.catalog {
                 LookPicker(catalog: catalog, studio: studio)
             } else {
-                HStack { ProgressView(); Text("Loading looks…").foregroundStyle(Palette.muted) }
+                HStack(spacing: 10) {
+                    ProgressView()
+                    Text("Loading looks…").foregroundStyle(Palette.muted)
+                }
             }
 
             FormatPicker(selection: $studio.format)
 
-            VStack(alignment: .leading, spacing: 10) {
-                Text("Details").eyebrowStyle()
-                TextField("What’s the dish? (optional)", text: $studio.dishName)
-                    .textInputAutocapitalization(.words)
-                    .padding(14)
-                    .background(Palette.surface, in: .rect(cornerRadius: Metrics.controlRadius))
-                    .disabled(studio.sourceId != nil && studio.photo == nil)
-                TextField("Anything to adjust? For example, more room above the dish", text: $studio.note, axis: .vertical)
-                    .lineLimit(2...4)
-                    .padding(14)
-                    .background(Palette.surface, in: .rect(cornerRadius: Metrics.controlRadius))
-            }
+            DetailsCard(studio: studio)
 
             if let error = studio.error {
                 ErrorNote(message: error)
             }
         }
     }
+
+    /// The photo's own shape, within reason.
+    private var ratio: CGFloat {
+        guard let size = studio.photo?.preview.size, size.height > 0 else { return 4 / 5 }
+        return min(max(size.width / size.height, 0.75), 1.6)
+    }
 }
 
-/// Where a photo sits: the dark artwork stage, so light and dark photos
-/// both stand out.
-struct PhotoStage<Content: View>: View {
-    var ratio: CGFloat
-    @ViewBuilder var content: Content
+/// A section title, with room for a detail on the right.
+private struct SectionTitle<Trailing: View>: View {
+    let title: String
+    @ViewBuilder var trailing: Trailing
 
     var body: some View {
-        ZStack {
-            Palette.stage
-            content
+        HStack(alignment: .firstTextBaseline) {
+            Text(title)
+                .font(.title3.bold())
+                .foregroundStyle(Palette.ink)
+            Spacer()
+            trailing
         }
-        .aspectRatio(ratio, contentMode: .fit)
-        .frame(maxWidth: .infinity)
-        .clipShape(.rect(cornerRadius: Metrics.cardRadius))
-        .shadow(color: .black.opacity(0.12), radius: 20, y: 10)
     }
 }
 
@@ -355,15 +354,14 @@ private struct LookPicker: View {
     }
 
     var body: some View {
-        VStack(alignment: .leading, spacing: 12) {
-            HStack {
-                Text("Look").eyebrowStyle()
-                Spacer()
+        VStack(alignment: .leading, spacing: 14) {
+            SectionTitle(title: "Look") {
                 if let look = studio.look {
                     Text(look.name)
-                        .font(.footnote.weight(.medium))
+                        .font(.subheadline)
                         .foregroundStyle(Palette.muted)
                         .contentTransition(.opacity)
+                        .lineLimit(1)
                 }
             }
             ScrollView(.horizontal, showsIndicators: false) {
@@ -373,8 +371,10 @@ private struct LookPicker: View {
                 }
             }
             .scrollClipDisabled()
+            .sensoryFeedback(.selection, trigger: category)
+
             ScrollView(.horizontal, showsIndicators: false) {
-                LazyHStack(spacing: 12) {
+                LazyHStack(alignment: .top, spacing: 14) {
                     ForEach(looks) { look in
                         LookTile(
                             look: look,
@@ -386,25 +386,29 @@ private struct LookPicker: View {
                         }
                     }
                 }
+                .scrollTargetLayout()
                 .padding(.vertical, 4)
             }
+            .scrollTargetBehavior(.viewAligned)
             .scrollClipDisabled()
             .sensoryFeedback(.selection, trigger: studio.lookId)
         }
     }
 
     private func chip(_ id: String, _ title: String) -> some View {
-        Button {
+        let selected = category == id
+        return Button {
             withAnimation(.snappy) { category = id }
         } label: {
             Text(title)
-                .font(.subheadline.weight(.medium))
-                .padding(.horizontal, 14)
-                .padding(.vertical, 8)
-                .foregroundStyle(category == id ? Palette.onAction : Palette.ink)
-                .background(category == id ? Palette.action : Palette.surface, in: .capsule)
+                .font(.subheadline.weight(.semibold))
+                .padding(.horizontal, 15)
+                .padding(.vertical, 9)
+                .foregroundStyle(selected ? Color.white : Palette.ink)
+                .background(selected ? Palette.accent : Palette.surface, in: .capsule)
         }
         .buttonStyle(.plain)
+        .accessibilityAddTraits(selected ? .isSelected : [])
     }
 }
 
@@ -418,63 +422,52 @@ private struct LookTile: View {
 
     var body: some View {
         Button(action: choose) {
-            VStack(alignment: .leading, spacing: 8) {
-                ZStack(alignment: .topTrailing) {
-                    preview
-                        .frame(width: 124, height: 124)
-                        .clipShape(.rect(cornerRadius: 18))
-                        .overlay {
-                            RoundedRectangle(cornerRadius: 18)
-                                .strokeBorder(selected ? Palette.accent : .clear, lineWidth: 3)
-                        }
-                    if selected {
-                        Image(systemName: "checkmark.circle.fill")
-                            .symbolRenderingMode(.palette)
-                            .foregroundStyle(.white, Palette.accent)
-                            .font(.title3)
-                            .padding(8)
-                            .transition(.scale.combined(with: .opacity))
-                    } else if look.pro {
-                        ProBadge().padding(8)
+            VStack(alignment: .leading, spacing: 10) {
+                preview
+                    .frame(width: 136, height: 170)
+                    .clipShape(.rect(cornerRadius: 20))
+                    .overlay(alignment: .topTrailing) { badge }
+                    .padding(3)
+                    .overlay {
+                        RoundedRectangle(cornerRadius: 23)
+                            .strokeBorder(selected ? Palette.accent : .clear, lineWidth: 2.5)
                     }
-                }
                 VStack(alignment: .leading, spacing: 2) {
                     Text(look.name)
                         .font(.footnote.weight(.semibold))
                         .foregroundStyle(Palette.ink)
-                        .lineLimit(1)
                     Text(look.cue)
-                        .font(.caption2)
+                        .font(.caption)
                         .foregroundStyle(Palette.muted)
-                        .lineLimit(1)
                 }
-                .frame(width: 124, alignment: .leading)
+                .lineLimit(1)
+                .frame(width: 136, alignment: .leading)
+                .padding(.leading, 3)
             }
         }
         .buttonStyle(.plain)
         .contextMenu {
+            Button("Choose This Look", systemImage: "checkmark", action: choose)
             if let best = look.bestFor { Text("Best for \(best.lowercased())") }
         } preview: {
-            VStack(alignment: .leading, spacing: 10) {
-                AsyncImage(url: model.client.publicURL(look.image)) { image in
-                    image.resizable().scaledToFill()
-                } placeholder: {
-                    Palette.stage
-                }
-                .frame(width: 320, height: 320)
-                .clipped()
-                VStack(alignment: .leading, spacing: 4) {
-                    Text(look.name).font(.headline)
-                    if let description = look.description {
-                        Text(description).font(.callout).foregroundStyle(.secondary)
-                    }
-                }
-                .padding([.horizontal, .bottom], 14)
-            }
-            .frame(width: 320)
+            LookPreview(look: look)
         }
         .accessibilityLabel("\(look.name). \(look.cue)")
         .accessibilityAddTraits(selected ? .isSelected : [])
+    }
+
+    @ViewBuilder
+    private var badge: some View {
+        if selected {
+            Image(systemName: "checkmark.circle.fill")
+                .symbolRenderingMode(.palette)
+                .foregroundStyle(.white, Palette.accent)
+                .font(.title2)
+                .padding(8)
+                .transition(.scale.combined(with: .opacity))
+        } else if look.pro {
+            ProBadge().padding(10)
+        }
     }
 
     @ViewBuilder
@@ -493,15 +486,33 @@ private struct LookTile: View {
     }
 }
 
-struct ProBadge: View {
+/// A look, large, with what it's for: the preview of a long press.
+private struct LookPreview: View {
+    @Environment(AppModel.self) private var model
+    let look: StyleCatalog.Look
+
     var body: some View {
-        Text("PRO")
-            .font(.caption2.weight(.heavy))
-            .tracking(0.6)
-            .padding(.horizontal, 7)
-            .padding(.vertical, 3)
-            .foregroundStyle(Palette.onAction)
-            .background(Palette.action, in: .capsule)
+        VStack(alignment: .leading, spacing: 10) {
+            AsyncImage(url: model.client.publicURL(look.image)) { image in
+                image.resizable().scaledToFill()
+            } placeholder: {
+                AsyncImage(url: model.client.publicURL(look.thumbnail)) { image in
+                    image.resizable().scaledToFill()
+                } placeholder: {
+                    Palette.stage
+                }
+            }
+            .frame(width: 320, height: 320)
+            .clipped()
+            VStack(alignment: .leading, spacing: 4) {
+                Text(look.name).font(.headline)
+                if let description = look.description {
+                    Text(description).font(.callout).foregroundStyle(.secondary)
+                }
+            }
+            .padding([.horizontal, .bottom], 16)
+        }
+        .frame(width: 320)
     }
 }
 
@@ -509,46 +520,53 @@ private struct FormatPicker: View {
     @Binding var selection: PhotoFormat
 
     var body: some View {
-        VStack(alignment: .leading, spacing: 12) {
-            Text("Format").eyebrowStyle()
-            HStack(spacing: 10) {
+        VStack(alignment: .leading, spacing: 14) {
+            SectionTitle(title: "Format") {
+                Text(selection.use)
+                    .font(.subheadline)
+                    .foregroundStyle(Palette.muted)
+                    .contentTransition(.opacity)
+            }
+            Picker("Format", selection: $selection.animation(.snappy)) {
                 ForEach(PhotoFormat.allCases) { format in
-                    Button {
-                        withAnimation(.snappy) { selection = format }
-                    } label: {
-                        VStack(spacing: 8) {
-                            RoundedRectangle(cornerRadius: 3)
-                                .strokeBorder(lineWidth: 1.5)
-                                .aspectRatio(format.ratio, contentMode: .fit)
-                                .frame(height: 30)
-                                .frame(height: 34)
-                            Text(format.name)
-                                .font(.caption.weight(.semibold))
-                            Text(format.use)
-                                .font(.caption2)
-                                .foregroundStyle(Palette.muted)
-                                .lineLimit(1)
-                                .minimumScaleFactor(0.8)
-                        }
-                        .frame(maxWidth: .infinity)
-                        .padding(.vertical, 12)
-                        .foregroundStyle(selection == format ? Palette.accent : Palette.ink)
-                        .background(Palette.surface, in: .rect(cornerRadius: Metrics.controlRadius))
-                        .overlay {
-                            RoundedRectangle(cornerRadius: Metrics.controlRadius)
-                                .strokeBorder(selection == format ? Palette.accent : Palette.hairline, lineWidth: selection == format ? 2 : 1)
-                        }
-                    }
-                    .buttonStyle(.plain)
-                    .accessibilityLabel("\(format.name), \(format.use)")
-                    .accessibilityAddTraits(selection == format ? .isSelected : [])
+                    Text(format.name).tag(format)
                 }
             }
+            .pickerStyle(.segmented)
+            .sensoryFeedback(.selection, trigger: selection)
         }
     }
 }
 
-/// The Create action, kept in reach, with what it costs.
+/// The dish's name and a note for the photo, as rows in a grouped card.
+private struct DetailsCard: View {
+    @Bindable var studio: StudioModel
+
+    var body: some View {
+        VStack(alignment: .leading, spacing: 14) {
+            SectionTitle(title: "Details") {
+                Text("Optional")
+                    .font(.subheadline)
+                    .foregroundStyle(Palette.muted)
+            }
+            VStack(spacing: 0) {
+                TextField("Dish name", text: $studio.dishName)
+                    .textInputAutocapitalization(.words)
+                    .disabled(studio.sourceId != nil && studio.photo == nil)
+                    .padding(.horizontal, 16)
+                    .frame(minHeight: Metrics.rowHeight)
+                Divider().padding(.leading, 16)
+                TextField("Notes, like “more room above the dish”", text: $studio.note, axis: .vertical)
+                    .lineLimit(1...4)
+                    .padding(.horizontal, 16)
+                    .padding(.vertical, 15)
+            }
+            .background(Palette.surface, in: .rect(cornerRadius: Metrics.controlRadius))
+        }
+    }
+}
+
+/// The Create action, floating in reach, with what it costs.
 private struct CreateBar: View {
     @Environment(AppModel.self) private var model
     let studio: StudioModel
@@ -558,46 +576,57 @@ private struct CreateBar: View {
 
     private var remaining: Int { model.workspace?.remaining ?? 0 }
     private var needsVerification: Bool { model.workspace?.emailVerification?.required ?? false }
+    private var submitting: Bool { studio.stage == .submitting }
     private var proLocked: Bool {
         (studio.look?.pro ?? false) && !(model.billing?.features?.unlocked ?? false)
     }
 
     var body: some View {
-        VStack(spacing: 8) {
+        VStack(spacing: 10) {
             if needsVerification {
-                Button("Confirm your email to unlock your free images", action: showVerify)
-                    .buttonStyle(.primary)
+                wide("Confirm Your Email for Free Images", "envelope.badge", action: showVerify)
             } else if proLocked {
-                Button("Food Fantasy looks are part of Pro", action: showPlans)
-                    .buttonStyle(.primary)
+                wide("Unlock Food Fantasy with Pro", "sparkles", action: showPlans)
             } else if remaining <= 0 {
-                Button("See Plans for more images", action: showPlans)
-                    .buttonStyle(.primary)
+                wide("See Plans for More Images", "sparkles", action: showPlans)
                 Text(freeImagesNote ?? "You’ve used your available images.")
-                    .font(.caption)
+                    .font(.footnote)
                     .foregroundStyle(Palette.muted)
             } else {
                 Button(action: create) {
-                    if studio.stage == .submitting {
-                        HStack(spacing: 10) {
-                            ProgressView().tint(Palette.onAction)
-                            Text("Sending your photo…")
-                        }
-                    } else {
-                        Label("Create photo", systemImage: "sparkles")
-                    }
+                    createLabel.frame(maxWidth: .infinity)
                 }
-                .buttonStyle(.primary)
-                .disabled(studio.stage == .submitting || studio.look == nil || !(model.workspace?.canCreateImages ?? true))
+                .primaryAction()
+                .disabled(submitting || studio.look == nil || !(model.workspace?.canCreateImages ?? true))
+                .sensoryFeedback(.impact(weight: .medium), trigger: submitting)
                 Text(caption)
-                    .font(.caption)
+                    .font(.footnote)
                     .foregroundStyle(Palette.muted)
             }
         }
         .padding(.horizontal, Metrics.gutter)
         .padding(.top, 12)
         .padding(.bottom, 8)
-        .background(.bar)
+    }
+
+    @ViewBuilder
+    private var createLabel: some View {
+        if submitting {
+            HStack(spacing: 10) {
+                ProgressView().tint(.white)
+                Text("Sending Your Photo…")
+            }
+        } else {
+            Label("Create Photo", systemImage: "sparkles")
+        }
+    }
+
+    private func wide(_ title: String, _ symbol: String, action: @escaping () -> Void) -> some View {
+        Button(action: action) {
+            Label(title, systemImage: symbol)
+                .frame(maxWidth: .infinity)
+        }
+        .primaryAction()
     }
 
     private var caption: String {
@@ -625,14 +654,20 @@ struct BalanceBadge: View {
     @Environment(AppModel.self) private var model
     let showPlans: () -> Void
 
+    private var remaining: Int { model.workspace?.remaining ?? 0 }
+
     var body: some View {
         Button(action: showPlans) {
-            Label("\(model.workspace?.remaining ?? 0)", systemImage: "sparkles")
-                .font(.subheadline.weight(.semibold))
-                .monospacedDigit()
-                .contentTransition(.numericText())
+            HStack(spacing: 5) {
+                Image(systemName: "sparkles")
+                Text("\(remaining)")
+                    .monospacedDigit()
+                    .contentTransition(.numericText(value: Double(remaining)))
+            }
+            .font(.subheadline.weight(.semibold))
         }
-        .accessibilityLabel("\(model.workspace?.remaining ?? 0) images left. Plans")
+        .animation(.snappy, value: remaining)
+        .accessibilityLabel("\(remaining) images left. Plans")
     }
 }
 
@@ -646,63 +681,77 @@ private struct CreatingView: View {
     private var job: Job? { model.workspace?.jobs.first { $0.id == jobId } }
 
     var body: some View {
-        VStack(alignment: .leading, spacing: 20) {
+        VStack(spacing: 28) {
             PhotoStage(ratio: 4 / 5) {
                 if let photo = studio.photo {
-                    Image(uiImage: photo.preview).resizable().scaledToFit()
+                    Image(uiImage: photo.preview).resizable().scaledToFill()
                 } else if let source = job?.sourceId ?? studio.sourceId {
-                    AssetImage(id: source, contentMode: .fit)
+                    AssetImage(id: source)
                 }
             }
             .shimmer()
-            .overlay(alignment: .bottom) {
-                TimelineView(.periodic(from: .now, by: 0.5)) { _ in
-                    ProgressCard(outcome: model.workspace?.outcome(of: jobId, now: model.serverNow), lookName: studio.look?.name)
-                }
-                .padding(14)
+            .clipShape(.rect(cornerRadius: Metrics.cardRadius))
+            .makingGlow()
+            .padding(.horizontal, 8)
+            .padding(.top, 12)
+
+            TimelineView(.periodic(from: .now, by: 0.5)) { _ in
+                ProgressPanel(
+                    outcome: model.workspace?.outcome(of: jobId, now: model.serverNow),
+                    lookName: studio.makingLook
+                )
             }
-            Text(model.workspace?.workerHealthy == false
-                 ? "Keep Menu Material open while your photo is made."
-                 : "You can leave the app. We’ll let you know when your photo is ready.")
-                .font(.footnote)
-                .foregroundStyle(Palette.muted)
-                .frame(maxWidth: .infinity)
-                .multilineTextAlignment(.center)
-            if job?.status == "queued" {
-                Button("Cancel this photo", role: .destructive) {
-                    Task {
-                        let _: OK? = try? await model.client.post("jobs/\(jobId)/cancel")
-                        await model.refresh()
+
+            VStack(spacing: 14) {
+                Text(model.workspace?.workerHealthy == false
+                     ? "Keep Menu Material open while your photo is made."
+                     : "You can leave the app. We’ll let you know when it’s ready.")
+                    .font(.footnote)
+                    .foregroundStyle(Palette.muted)
+                    .multilineTextAlignment(.center)
+                if job?.status == "queued" {
+                    Button("Cancel Photo", role: .destructive) {
+                        Task {
+                            let _: OK? = try? await model.client.post("jobs/\(jobId)/cancel")
+                            await model.refresh()
+                        }
                     }
+                    .buttonStyle(.glass)
                 }
-                .frame(maxWidth: .infinity)
             }
+            .frame(maxWidth: .infinity)
         }
     }
 }
 
-private struct ProgressCard: View {
+private struct ProgressPanel: View {
     let outcome: PhotoOutcome?
     let lookName: String?
     @State private var shown: Double = 0
 
     var body: some View {
-        VStack(alignment: .leading, spacing: 10) {
-            HStack {
-                Text(stage).font(.subheadline.weight(.semibold))
-                Spacer()
-                Text(time).font(.footnote).foregroundStyle(.secondary).monospacedDigit()
+        VStack(spacing: 14) {
+            VStack(spacing: 6) {
+                Text(stage)
+                    .font(.title2.bold())
+                    .foregroundStyle(Palette.ink)
+                    .contentTransition(.opacity)
+                    .animation(.smooth, value: stage)
+                Text(detail)
+                    .font(.subheadline)
+                    .foregroundStyle(Palette.muted)
+                    .multilineTextAlignment(.center)
             }
-            ProgressView(value: shown)
-                .tint(Palette.glow)
-            if let hold {
-                Text(hold).font(.caption).foregroundStyle(.secondary)
-            } else if let lookName {
-                Text("In \(lookName)").font(.caption).foregroundStyle(.secondary)
+            VStack(spacing: 8) {
+                ProgressView(value: shown)
+                    .tint(Palette.accent)
+                Text(time.isEmpty ? " " : time)
+                    .font(.footnote)
+                    .foregroundStyle(Palette.muted)
+                    .monospacedDigit()
             }
+            .padding(.horizontal, 24)
         }
-        .padding(16)
-        .glassEffect(.regular, in: .rect(cornerRadius: 20))
         .onChange(of: value, initial: true) { _, next in
             // Never backwards.
             withAnimation(.linear(duration: 0.5)) { shown = max(shown, next) }
@@ -718,9 +767,10 @@ private struct ProgressCard: View {
     private var value: Double { progress?.value ?? 0.02 }
     private var stage: String { progress?.stage ?? "Getting started" }
     private var time: String { progress?.time ?? "" }
-    private var hold: String? {
-        if case .waiting(_, let hold) = outcome { return hold }
-        return nil
+    private var detail: String {
+        if case .waiting(_, let hold) = outcome, let hold { return hold }
+        if let lookName { return "\(lookName) look" }
+        return "Usually ready in about a minute"
     }
 }
 
@@ -732,22 +782,28 @@ private struct FailedView: View {
     let studio: StudioModel
 
     var body: some View {
-        EmptyState(
-            symbol: "exclamationmark.triangle",
-            title: "This photo couldn’t be made",
-            message: message
-        ) {
+        ContentUnavailableView {
+            Label("This Photo Couldn’t Be Made", systemImage: "exclamationmark.triangle")
+        } description: {
+            Text(message)
+        } actions: {
             VStack(spacing: 12) {
-                Button("Try again") {
+                Button {
                     studio.tryAnotherLook()
                     Task { await studio.create(model: model) }
+                } label: {
+                    Text("Try Again").frame(maxWidth: .infinity)
                 }
-                .buttonStyle(.primary)
-                Button("Choose another look") { studio.tryAnotherLook() }
-                    .buttonStyle(.secondary)
+                .primaryAction()
+                Button {
+                    studio.tryAnotherLook()
+                } label: {
+                    Text("Choose Another Look").frame(maxWidth: .infinity)
+                }
+                .secondaryAction()
             }
+            .padding(.horizontal, 24)
         }
-        .frame(maxWidth: .infinity)
         .padding(.top, 40)
     }
 }
@@ -762,41 +818,58 @@ struct AIConsentView: View {
     let allow: () -> Void
 
     var body: some View {
-        NavigationStack {
-            VStack(alignment: .leading, spacing: 18) {
-                Image(systemName: "sparkles")
-                    .font(.system(size: 36))
-                    .foregroundStyle(Palette.accent)
-                Text("How your photos are styled")
-                    .font(.display(28))
-                    .foregroundStyle(Palette.ink)
-                VStack(alignment: .leading, spacing: 12) {
-                    point("photo", "To restyle a dish photo, Menu Material sends it, with the look and details you choose, to OpenAI, whose image model makes the new photo.")
-                    point("lock", "Your photos stay private to your restaurant unless you put them on a published menu or share them.")
-                    point("checkmark.seal", "Check every photo before you use it: food can change in small ways.")
+        ScrollView {
+            VStack(spacing: 28) {
+                VStack(spacing: 16) {
+                    Image(systemName: "sparkles")
+                        .font(.system(size: 44, weight: .medium))
+                        .foregroundStyle(Palette.accent)
+                    Text("How Your Photos Are Styled")
+                        .font(.title.bold())
+                        .multilineTextAlignment(.center)
+                }
+                .padding(.top, 40)
+                VStack(alignment: .leading, spacing: 22) {
+                    point("photo.on.rectangle.angled", "Sent to OpenAI to style", "Menu Material sends your photo, with the look and details you choose, to OpenAI, whose image model makes the new photo.")
+                    point("lock.fill", "Private to your restaurant", "Your photos stay private unless you put them on a published menu or share them.")
+                    point("eye.fill", "Check before you use it", "Food can change in small ways. Look over every photo before it goes on a menu.")
                 }
                 if let privacy = model.config?.links.privacy, let url = URL(string: privacy) {
-                    Link("Read the Privacy Policy", destination: url)
-                        .font(.callout.weight(.medium))
+                    Link("Privacy Policy", destination: url)
+                        .font(.callout.weight(.semibold))
                 }
-                Spacer()
-                Button("Allow and create photo", action: allow)
-                    .buttonStyle(.primary)
-                Button("Not now") { dismiss() }
-                    .frame(maxWidth: .infinity)
             }
-            .padding(Metrics.gutter)
-            .canvasBackground()
+            .padding(.horizontal, 32)
         }
+        .safeAreaInset(edge: .bottom) {
+            VStack(spacing: 6) {
+                Button(action: allow) {
+                    Text("Continue").frame(maxWidth: .infinity)
+                }
+                .primaryAction()
+                Button("Not Now") { dismiss() }
+                    .font(.body.weight(.semibold))
+                    .padding(.vertical, 10)
+            }
+            .padding(.horizontal, 24)
+            .padding(.top, 8)
+            .background(Color(uiColor: .systemBackground))
+        }
+        .background(Color(uiColor: .systemBackground))
         .presentationDetents([.large])
     }
 
-    private func point(_ symbol: String, _ text: String) -> some View {
-        Label {
-            Text(text).foregroundStyle(Palette.ink)
-        } icon: {
-            Image(systemName: symbol).foregroundStyle(Palette.accent)
+    private func point(_ symbol: String, _ title: String, _ text: String) -> some View {
+        HStack(alignment: .top, spacing: 16) {
+            Image(systemName: symbol)
+                .font(.title2)
+                .foregroundStyle(Palette.accent)
+                .frame(width: 36)
+            VStack(alignment: .leading, spacing: 3) {
+                Text(title).font(.headline)
+                Text(text).font(.subheadline).foregroundStyle(Palette.muted)
+            }
+            .fixedSize(horizontal: false, vertical: true)
         }
-        .font(.callout)
     }
 }

@@ -1,43 +1,5 @@
 import SwiftUI
 
-/// The main action on a screen: a full-width evergreen pill.
-struct PrimaryButtonStyle: ButtonStyle {
-    @Environment(\.isEnabled) private var isEnabled
-
-    func makeBody(configuration: Configuration) -> some View {
-        configuration.label
-            .font(.body.weight(.semibold))
-            .foregroundStyle(Palette.onAction)
-            .frame(maxWidth: .infinity, minHeight: Metrics.buttonHeight)
-            .padding(.horizontal, 20)
-            .background(Palette.action.opacity(isEnabled ? 1 : 0.35), in: .capsule)
-            .scaleEffect(configuration.isPressed ? 0.98 : 1)
-            .animation(.snappy(duration: 0.18), value: configuration.isPressed)
-    }
-}
-
-/// A quieter companion to the primary action.
-struct SecondaryButtonStyle: ButtonStyle {
-    func makeBody(configuration: Configuration) -> some View {
-        configuration.label
-            .font(.body.weight(.semibold))
-            .foregroundStyle(Palette.ink)
-            .frame(maxWidth: .infinity, minHeight: Metrics.buttonHeight)
-            .padding(.horizontal, 20)
-            .background(Palette.surface, in: .capsule)
-            .overlay(Capsule().strokeBorder(Palette.hairline, lineWidth: 1))
-            .opacity(configuration.isPressed ? 0.7 : 1)
-    }
-}
-
-extension ButtonStyle where Self == PrimaryButtonStyle {
-    static var primary: PrimaryButtonStyle { PrimaryButtonStyle() }
-}
-
-extension ButtonStyle where Self == SecondaryButtonStyle {
-    static var secondary: SecondaryButtonStyle { SecondaryButtonStyle() }
-}
-
 /// The fork, plate and knife.
 struct BrandMark: View {
     var height: CGFloat = 28
@@ -62,7 +24,105 @@ struct ErrorNote: View {
             .foregroundStyle(Palette.danger)
             .frame(maxWidth: .infinity, alignment: .leading)
             .transition(.opacity.combined(with: .move(edge: .top)))
-            .accessibilityAddTraits(.isStaticText)
+    }
+}
+
+/// Where a photo sits: a dark stage, so light and dark photos both stand out.
+struct PhotoStage<Content: View>: View {
+    var ratio: CGFloat
+    var radius: CGFloat = Metrics.cardRadius
+    @ViewBuilder var content: Content
+
+    var body: some View {
+        // The frame comes from the ratio, so a photo that fills it can't
+        // stretch it.
+        Color.clear
+            .aspectRatio(ratio, contentMode: .fit)
+            .frame(maxWidth: .infinity)
+            .overlay {
+                ZStack {
+                    Palette.stage
+                    content
+                }
+            }
+            .clipShape(.rect(cornerRadius: radius))
+    }
+}
+
+/// A square that a photo fills, cropped to fit, as in Photos.
+struct SquarePhoto: View {
+    let id: String?
+    var radius: CGFloat = 0
+
+    var body: some View {
+        Color.clear
+            .aspectRatio(1, contentMode: .fit)
+            .overlay {
+                if let id {
+                    AssetImage(id: id)
+                } else {
+                    ZStack {
+                        Palette.raised
+                        Image(systemName: "fork.knife")
+                            .font(.title2)
+                            .foregroundStyle(.tertiary)
+                    }
+                }
+            }
+            .clipShape(.rect(cornerRadius: radius))
+    }
+}
+
+/// Slow, warm light moving behind a hero, like a candle in a dark room.
+struct MeshBackdrop: View {
+    let colors: [Color]
+    @Environment(\.accessibilityReduceMotion) private var reduceMotion
+
+    var body: some View {
+        TimelineView(.animation(minimumInterval: 1 / 30, paused: reduceMotion)) { timeline in
+            let t = Float(timeline.date.timeIntervalSinceReferenceDate)
+            MeshGradient(width: 3, height: 3, points: Self.points(t), colors: colors)
+        }
+    }
+
+    private static func points(_ t: Float) -> [SIMD2<Float>] {
+        let x: Float = 0.5 + 0.16 * sin(t * 0.45)
+        let y: Float = 0.5 + 0.12 * cos(t * 0.38)
+        let top: Float = 0.5 + 0.10 * sin(t * 0.31)
+        let bottom: Float = 0.5 + 0.10 * cos(t * 0.27)
+        return [
+            SIMD2<Float>(0, 0), SIMD2<Float>(top, 0), SIMD2<Float>(1, 0),
+            SIMD2<Float>(0, 0.5), SIMD2<Float>(x, y), SIMD2<Float>(1, 0.5),
+            SIMD2<Float>(0, 1), SIMD2<Float>(bottom, 1), SIMD2<Float>(1, 1),
+        ]
+    }
+}
+
+/// Soft light circling a photo while it is being made, in the manner of
+/// Apple Intelligence.
+struct MakingGlow: ViewModifier {
+    var radius: CGFloat = Metrics.cardRadius
+    @Environment(\.accessibilityReduceMotion) private var reduceMotion
+
+    func body(content: Content) -> some View {
+        content.overlay {
+            TimelineView(.animation(paused: reduceMotion)) { timeline in
+                let seconds = timeline.date.timeIntervalSinceReferenceDate
+                let gradient = AngularGradient(
+                    colors: Palette.making,
+                    center: .center,
+                    angle: .degrees(seconds.truncatingRemainder(dividingBy: 5) / 5 * 360)
+                )
+                let shape = RoundedRectangle(cornerRadius: radius)
+                ZStack {
+                    shape.strokeBorder(gradient, lineWidth: 16).blur(radius: 26).opacity(0.75)
+                    shape.strokeBorder(gradient, lineWidth: 7).blur(radius: 8)
+                    shape.strokeBorder(gradient, lineWidth: 2.5)
+                }
+            }
+            .allowsHitTesting(false)
+            .accessibilityHidden(true)
+        }
     }
 }
 
@@ -76,17 +136,17 @@ struct Shimmer: ViewModifier {
             if !reduceMotion {
                 GeometryReader { proxy in
                     LinearGradient(
-                        colors: [.clear, .white.opacity(0.28), .clear],
+                        colors: [.clear, .white.opacity(0.22), .clear],
                         startPoint: .topLeading,
                         endPoint: .bottomTrailing
                     )
-                    .frame(width: proxy.size.width * 0.7)
+                    .frame(width: proxy.size.width * 0.6)
                     .offset(x: phase * proxy.size.width * 1.6)
                     .blendMode(.plusLighter)
                 }
                 .allowsHitTesting(false)
                 .onAppear {
-                    withAnimation(.easeInOut(duration: 2.2).repeatForever(autoreverses: false)) {
+                    withAnimation(.easeInOut(duration: 2.6).repeatForever(autoreverses: false)) {
                         phase = 1
                     }
                 }
@@ -97,16 +157,50 @@ struct Shimmer: ViewModifier {
 
 extension View {
     func shimmer() -> some View { modifier(Shimmer()) }
+    func makingGlow(radius: CGFloat = Metrics.cardRadius) -> some View { modifier(MakingGlow(radius: radius)) }
+
+    /// A confirmation that floats up in Liquid Glass, then goes.
+    func toast(_ message: Binding<String?>) -> some View { modifier(Toast(message: message)) }
 }
 
-/// The original and the styled photo, compared by dragging a divider. A tick
-/// marks the middle; VoiceOver adjusts it in steps.
+/// A short confirmation, such as "Saved to Photos", in a glass capsule.
+struct Toast: ViewModifier {
+    @Binding var message: String?
+
+    func body(content: Content) -> some View {
+        content
+            .overlay(alignment: .bottom) {
+                if let message {
+                    Label(message, systemImage: "checkmark.circle.fill")
+                        .font(.subheadline.weight(.semibold))
+                        .symbolRenderingMode(.hierarchical)
+                        .padding(.horizontal, 18)
+                        .padding(.vertical, 12)
+                        .glassEffect(.regular, in: .capsule)
+                        .padding(.horizontal, Metrics.gutter)
+                        .padding(.bottom, 14)
+                        .transition(.move(edge: .bottom).combined(with: .opacity))
+                        .task(id: message) {
+                            try? await Task.sleep(for: .seconds(2.6))
+                            withAnimation(.smooth) { self.message = nil }
+                        }
+                }
+            }
+            .animation(.smooth(duration: 0.35), value: message)
+            .sensoryFeedback(.success, trigger: message) { _, new in new != nil }
+    }
+}
+
+/// The original and the styled photo, compared by dragging a divider. It
+/// opens on the original and sweeps to the middle; a tick marks the middle,
+/// and VoiceOver adjusts it in steps.
 struct BeforeAfterSlider: View {
     let before: Image
     let after: Image
     var beforeLabel = "Original"
     var afterLabel = "Styled"
-    @State private var split: CGFloat = 0.5
+    @Environment(\.accessibilityReduceMotion) private var reduceMotion
+    @State private var split: CGFloat = 1
     @State private var crossedMiddle = 0
 
     var body: some View {
@@ -129,14 +223,14 @@ struct BeforeAfterSlider: View {
                 Rectangle()
                     .fill(.white)
                     .frame(width: 2)
-                    .shadow(color: .black.opacity(0.35), radius: 3)
+                    .shadow(color: .black.opacity(0.3), radius: 3)
                     .offset(x: width * split - 1)
                 Image(systemName: "chevron.left.chevron.right")
                     .font(.footnote.weight(.bold))
-                    .foregroundStyle(Palette.ink)
-                    .frame(width: 40, height: 40)
+                    .foregroundStyle(.primary)
+                    .frame(width: 44, height: 44)
                     .glassEffect(.regular.interactive(), in: .circle)
-                    .offset(x: width * split - 20)
+                    .offset(x: min(max(0, width * split - 22), width - 44))
                 labels
             }
             .contentShape(.rect)
@@ -148,6 +242,14 @@ struct BeforeAfterSlider: View {
                         split = next
                     }
             )
+        }
+        .onAppear {
+            guard split == 1 else { return }
+            if reduceMotion {
+                split = 0.5
+            } else {
+                withAnimation(.smooth(duration: 1.3).delay(0.35)) { split = 0.5 }
+            }
         }
         .sensoryFeedback(.selection, trigger: crossedMiddle)
         .accessibilityElement()
@@ -165,15 +267,15 @@ struct BeforeAfterSlider: View {
     private var labels: some View {
         VStack {
             HStack {
-                tag(beforeLabel).opacity(split > 0.12 ? 1 : 0)
+                tag(beforeLabel).opacity(split > 0.15 ? 1 : 0)
                 Spacer()
-                tag(afterLabel).opacity(split < 0.88 ? 1 : 0)
+                tag(afterLabel).opacity(split < 0.85 ? 1 : 0)
             }
             Spacer()
         }
         .padding(12)
-        .animation(.easeOut(duration: 0.15), value: split > 0.12)
-        .animation(.easeOut(duration: 0.15), value: split < 0.88)
+        .animation(.easeOut(duration: 0.15), value: split > 0.15)
+        .animation(.easeOut(duration: 0.15), value: split < 0.85)
     }
 
     private func tag(_ text: String) -> some View {
@@ -185,29 +287,112 @@ struct BeforeAfterSlider: View {
     }
 }
 
-/// A calm empty state: a symbol, a sentence and what to do next.
-struct EmptyState<Actions: View>: View {
-    let symbol: String
-    let title: String
-    let message: String
-    @ViewBuilder var actions: Actions
+/// "PRO", on looks and features that come with Pro.
+struct ProBadge: View {
+    var body: some View {
+        Text("PRO")
+            .font(.caption2.weight(.heavy))
+            .tracking(0.6)
+            .padding(.horizontal, 7)
+            .padding(.vertical, 3)
+            .foregroundStyle(.white)
+            .background(
+                LinearGradient(
+                    colors: [Color(red: 0.86, green: 0.66, blue: 0.27), Color(red: 0.62, green: 0.43, blue: 0.13)],
+                    startPoint: .topLeading,
+                    endPoint: .bottomTrailing
+                ),
+                in: .capsule
+            )
+            .accessibilityLabel("Pro")
+    }
+}
+
+/// A dot and a word, such as "Live".
+struct StatusPill: View {
+    let text: String
+    let color: Color
 
     var body: some View {
-        VStack(spacing: 14) {
-            Image(systemName: symbol)
-                .font(.system(size: 40, weight: .light))
-                .foregroundStyle(Palette.accent)
-                .padding(.bottom, 4)
-            Text(title)
-                .font(.title3.weight(.semibold))
-                .foregroundStyle(Palette.ink)
-            Text(message)
-                .font(.callout)
-                .foregroundStyle(Palette.muted)
-                .multilineTextAlignment(.center)
-            actions.padding(.top, 8)
+        HStack(spacing: 6) {
+            Circle().fill(color).frame(width: 7, height: 7)
+            Text(text)
         }
-        .frame(maxWidth: 360)
-        .padding(32)
+        .font(.footnote.weight(.semibold))
+        .foregroundStyle(color)
+        .padding(.horizontal, 10)
+        .padding(.vertical, 5)
+        .background(color.opacity(0.14), in: .capsule)
+    }
+}
+
+/// The white symbol on a colored rounded square that starts a row in
+/// Settings.
+struct SettingsIcon: View {
+    let symbol: String
+    let color: Color
+
+    var body: some View {
+        Image(systemName: symbol)
+            .font(.system(size: 15, weight: .semibold))
+            .foregroundStyle(.white)
+            .frame(width: 30, height: 30)
+            .background(color.gradient, in: .rect(cornerRadius: 8))
+            .accessibilityHidden(true)
+    }
+}
+
+/// A row with a Settings icon, a title and an optional value.
+struct SettingsRow: View {
+    let symbol: String
+    let color: Color
+    let title: String
+    var value: String?
+    var external = false
+
+    var body: some View {
+        HStack(spacing: 14) {
+            SettingsIcon(symbol: symbol, color: color)
+            Text(title).foregroundStyle(Palette.ink)
+            Spacer(minLength: 8)
+            if let value {
+                Text(value)
+                    .foregroundStyle(Palette.muted)
+                    .lineLimit(1)
+            }
+            if external {
+                Image(systemName: "arrow.up.right")
+                    .font(.footnote.weight(.semibold))
+                    .foregroundStyle(.tertiary)
+            }
+        }
+    }
+}
+
+/// The restaurant's initials in a circle, like a contact without a photo.
+struct RestaurantAvatar: View {
+    let name: String
+    var size: CGFloat = 88
+
+    private var initials: String {
+        let words = name.split(whereSeparator: { !$0.isLetter && !$0.isNumber })
+        let letters = words.prefix(2).compactMap(\.first).map { String($0) }
+        return letters.joined().uppercased()
+    }
+
+    var body: some View {
+        Text(initials.isEmpty ? "M" : initials)
+            .font(.system(size: size * 0.38, weight: .semibold, design: .rounded))
+            .foregroundStyle(.white)
+            .frame(width: size, height: size)
+            .background(
+                LinearGradient(
+                    colors: [Color(red: 0.16, green: 0.52, blue: 0.35), Color(red: 0.05, green: 0.24, blue: 0.16)],
+                    startPoint: .topLeading,
+                    endPoint: .bottomTrailing
+                ),
+                in: .circle
+            )
+            .accessibilityHidden(true)
     }
 }

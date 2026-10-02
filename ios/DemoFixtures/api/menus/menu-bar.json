@@ -1,0 +1,128 @@
+{
+ "id": "menu-bar",
+ "draft": {
+  "name": "Bar & Coffee",
+  "sections": [
+   {
+    "id": "cocktails",
+    "name": "Cocktails",
+    "items": [
+     {
+      "id": "entry-negroni",
+      "dishId": "dish-negroni",
+      "name": "Ember Negroni",
+      "price": 1500,
+      "priceMode": "single",
+      "variants": [],
+      "available": true,
+      "photoId": "photo-negroni"
+     },
+     {
+      "id": "entry-spritz",
+      "dishId": "dish-spritz",
+      "name": "Grapefruit Spritz",
+      "price": 1400,
+      "priceMode": "single",
+      "variants": [],
+      "available": true,
+      "photoId": "photo-spritz"
+     }
+    ]
+   },
+   {
+    "id": "coffee",
+    "name": "Coffee",
+    "items": [
+     {
+      "id": "entry-latte",
+      "dishId": "dish-latte",
+      "name": "Oat Milk Latte",
+      "price": null,
+      "priceMode": "variants",
+      "variants": [
+       {
+        "id": "small",
+        "label": "Small",
+        "price": 550
+       },
+       {
+        "id": "large",
+        "label": "Large",
+        "price": 650
+       }
+      ],
+      "available": true,
+      "photoId": "photo-latte"
+     }
+    ]
+   }
+  ]
+ },
+ "revision": 5,
+ "published": {
+  "title": "Bar & Coffee",
+  "sections": [
+   {
+    "id": "cocktails",
+    "name": "Cocktails",
+    "items": [
+     {
+      "id": "entry-negroni",
+      "dishId": "dish-negroni",
+      "name": "Ember Negroni",
+      "price": 1500,
+      "priceMode": "single",
+      "variants": [],
+      "available": true,
+      "photoId": "photo-negroni"
+     },
+     {
+      "id": "entry-spritz",
+      "dishId": "dish-spritz",
+      "name": "Grapefruit Spritz",
+      "price": 1400,
+      "priceMode": "single",
+      "variants": [],
+      "available": true,
+      "photoId": "photo-spritz"
+     }
+    ]
+   },
+   {
+    "id": "coffee",
+    "name": "Coffee",
+    "items": [
+     {
+      "id": "entry-latte",
+      "dishId": "dish-latte",
+      "name": "Oat Milk Latte",
+      "price": null,
+      "priceMode": "variants",
+      "variants": [
+       {
+        "id": "small",
+        "label": "Small",
+        "price": 550
+       },
+       {
+        "id": "large",
+        "label": "Large",
+        "price": 650
+       }
+      ],
+      "available": true,
+      "photoId": "photo-latte"
+     }
+    ]
+   }
+  ],
+  "showUnavailable": true,
+  "restaurant": {
+   "currency": "USD"
+  }
+ },
+ "publishedRevision": 5,
+ "publishedAt": "@now-172800",
+ "isPrimary": false,
+ "updatedAt": "@now-7200"
+}

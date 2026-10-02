@@ -5,66 +5,88 @@ import SwiftUI
 /// account, or enter the existing account's password to connect it.
 struct FinishSignInView: View {
     @Environment(AppModel.self) private var model
-    @Environment(\.dismiss) private var dismiss
     let pending: SignInFlows.Pending
     let flows: SignInFlows
     @State private var restaurant = ""
     @State private var password = ""
+    @FocusState private var focused: Bool
 
     private var provider: String { pending.provider == .apple ? "Apple" : "Google" }
     private var linking: Bool { pending.step == "link" }
+    private var ready: Bool {
+        linking ? !password.isEmpty : restaurant.trimmingCharacters(in: .whitespaces).count >= 2
+    }
 
     var body: some View {
         NavigationStack {
-            VStack(alignment: .leading, spacing: 18) {
-                if linking {
-                    Text("You already have a Menu Material account with \(pending.email). Enter its password to sign in with \(provider) from now on.")
+            VStack(alignment: .leading, spacing: 20) {
+                Image(systemName: linking ? "person.crop.circle.badge.checkmark" : "storefront")
+                    .font(.system(size: 40))
+                    .foregroundStyle(Palette.accent)
+                    .symbolRenderingMode(.hierarchical)
+                VStack(alignment: .leading, spacing: 8) {
+                    Text(linking ? "Connect your account" : "Name your restaurant")
+                        .font(.title.bold())
+                    Text(linking
+                         ? "You already have a Menu Material account with \(pending.email). Enter its password to sign in with \(provider) from now on."
+                         : "It appears on your menus and posts. You can change it later.")
                         .foregroundStyle(Palette.muted)
-                    SecureField("Your Menu Material password", text: $password)
-                        .textContentType(.password)
-                        .padding(14)
-                        .background(Palette.surface, in: .rect(cornerRadius: Metrics.controlRadius))
-                } else {
-                    Text("What’s your restaurant called? It appears on your menus and posts, and you can change it later.")
-                        .foregroundStyle(Palette.muted)
-                    TextField("Restaurant name", text: $restaurant)
-                        .textContentType(.organizationName)
-                        .padding(14)
-                        .background(Palette.surface, in: .rect(cornerRadius: Metrics.controlRadius))
+                        .fixedSize(horizontal: false, vertical: true)
                 }
+                Group {
+                    if linking {
+                        SecureField("Menu Material password", text: $password)
+                            .textContentType(.password)
+                    } else {
+                        TextField("Restaurant name", text: $restaurant)
+                            .textContentType(.organizationName)
+                            .textInputAutocapitalization(.words)
+                    }
+                }
+                .focused($focused)
+                .submitLabel(.go)
+                .onSubmit { Task { await finish() } }
+                .fieldRow()
+                .background(Palette.surface, in: .rect(cornerRadius: Metrics.controlRadius))
+
                 if let error = flows.error { ErrorNote(message: error) }
                 Button {
-                    Task {
-                        await flows.complete(
-                            pending,
-                            restaurant: linking ? nil : restaurant.trimmingCharacters(in: .whitespaces),
-                            password: linking ? password : nil,
-                            model: model
-                        )
-                    }
+                    Task { await finish() }
                 } label: {
-                    if flows.busy {
-                        ProgressView().tint(Palette.onAction)
-                    } else {
-                        Text(linking ? "Connect and sign in" : "Create my restaurant")
+                    Group {
+                        if flows.busy {
+                            ProgressView().tint(.white)
+                        } else {
+                            Text(linking ? "Connect and Sign In" : "Create My Restaurant")
+                        }
                     }
+                    .frame(maxWidth: .infinity)
                 }
-                .buttonStyle(.primary)
-                .disabled(flows.busy || (linking ? password.isEmpty : restaurant.trimmingCharacters(in: .whitespaces).count < 2))
+                .primaryAction()
+                .disabled(flows.busy || !ready)
                 Spacer()
             }
             .padding(Metrics.gutter)
             .canvasBackground()
-            .navigationTitle(linking ? "Connect your account" : "Welcome to Menu Material")
-            .navigationBarTitleDisplayMode(.inline)
             .toolbar {
                 ToolbarItem(placement: .cancellationAction) {
-                    Button("Cancel", role: .cancel) { flows.pending = nil }
+                    Button("Cancel", systemImage: "xmark", role: .cancel) { flows.pending = nil }
                 }
             }
         }
         .presentationDetents([.medium, .large])
         .interactiveDismissDisabled(flows.busy)
+        .onAppear { focused = true }
+    }
+
+    private func finish() async {
+        guard ready, !flows.busy else { return }
+        await flows.complete(
+            pending,
+            restaurant: linking ? nil : restaurant.trimmingCharacters(in: .whitespaces),
+            password: linking ? password : nil,
+            model: model
+        )
     }
 }
 
@@ -82,18 +104,22 @@ struct VerifyEmailView: View {
 
     var body: some View {
         NavigationStack {
-            VStack(alignment: .leading, spacing: 18) {
-                Text(sentTo.map { "We sent a six-digit code to \($0). It works for 15 minutes." }
-                     ?? "Confirm your email to unlock your five free images. Your photo and look are saved.")
-                    .foregroundStyle(Palette.muted)
-                TextField("123456", text: $code)
-                    .textContentType(.oneTimeCode)
-                    .keyboardType(.numberPad)
-                    .font(.system(size: 30, weight: .semibold, design: .monospaced))
-                    .multilineTextAlignment(.center)
-                    .padding(14)
-                    .background(Palette.surface, in: .rect(cornerRadius: Metrics.controlRadius))
-                    .focused($focused)
+            VStack(spacing: 22) {
+                Image(systemName: "envelope.open.fill")
+                    .font(.system(size: 44))
+                    .foregroundStyle(Palette.accent)
+                    .symbolRenderingMode(.hierarchical)
+                    .padding(.top, 8)
+                VStack(spacing: 8) {
+                    Text("Confirm your email")
+                        .font(.title.bold())
+                    Text(sentTo.map { "Enter the six-digit code we sent to \($0). It works for 15 minutes." }
+                         ?? "Confirm your email to unlock your five free images. Your photo and look are saved.")
+                        .foregroundStyle(Palette.muted)
+                        .multilineTextAlignment(.center)
+                        .fixedSize(horizontal: false, vertical: true)
+                }
+                CodeField(code: $code, focused: $focused)
                     .onChange(of: code) { _, value in
                         code = String(value.filter(\.isNumber).prefix(6))
                         if code.count == 6 { Task { await confirm() } }
@@ -102,21 +128,23 @@ struct VerifyEmailView: View {
                 Button {
                     Task { await confirm() }
                 } label: {
-                    if busy { ProgressView().tint(Palette.onAction) } else { Text("Confirm email") }
+                    Group {
+                        if busy { ProgressView().tint(.white) } else { Text("Confirm Email") }
+                    }
+                    .frame(maxWidth: .infinity)
                 }
-                .buttonStyle(.primary)
+                .primaryAction()
                 .disabled(code.count != 6 || busy)
-                Button(resendAfter > 0 ? "Send a new code in \(resendAfter) s" : "Send a new code") {
+                Button(resendAfter > 0 ? "Send a New Code in \(resendAfter)s" : "Send a New Code") {
                     Task { await send() }
                 }
+                .font(.subheadline.weight(.semibold))
+                .monospacedDigit()
                 .disabled(resendAfter > 0 || busy)
-                .frame(maxWidth: .infinity)
                 Spacer()
             }
             .padding(Metrics.gutter)
             .canvasBackground()
-            .navigationTitle("Confirm your email")
-            .navigationBarTitleDisplayMode(.inline)
             .toolbar {
                 ToolbarItem(placement: .cancellationAction) {
                     Button("Later", role: .cancel) { dismiss() }
@@ -164,5 +192,49 @@ struct VerifyEmailView: View {
             error = failure.message
             code = ""
         } catch {}
+    }
+}
+
+/// Six boxes for a one-time code, filled from one hidden field so the
+/// keyboard's code suggestion fills them all.
+private struct CodeField: View {
+    @Binding var code: String
+    var focused: FocusState<Bool>.Binding
+
+    var body: some View {
+        ZStack {
+            TextField("", text: $code)
+                .textContentType(.oneTimeCode)
+                .keyboardType(.numberPad)
+                .focused(focused)
+                .foregroundStyle(.clear)
+                .tint(.clear)
+                .frame(maxWidth: .infinity, maxHeight: .infinity)
+                .accessibilityLabel("Six-digit code")
+            HStack(spacing: 10) {
+                ForEach(0..<6, id: \.self) { index in
+                    let digit = digit(at: index)
+                    Text(digit ?? "")
+                        .font(.system(size: 28, weight: .semibold, design: .rounded))
+                        .monospacedDigit()
+                        .frame(maxWidth: .infinity, minHeight: 58)
+                        .background(Palette.surface, in: .rect(cornerRadius: 14))
+                        .overlay {
+                            RoundedRectangle(cornerRadius: 14)
+                                .strokeBorder(index == code.count ? Palette.accent : .clear, lineWidth: 2)
+                        }
+                        .contentTransition(.numericText())
+                }
+            }
+            .allowsHitTesting(false)
+            .accessibilityHidden(true)
+        }
+        .frame(height: 58)
+        .animation(.snappy, value: code)
+    }
+
+    private func digit(at index: Int) -> String? {
+        guard index < code.count else { return nil }
+        return String(code[code.index(code.startIndex, offsetBy: index)])
     }
 }

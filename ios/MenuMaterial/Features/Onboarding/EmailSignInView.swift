@@ -4,8 +4,8 @@ import SwiftUI
 /// Signing in, or creating an account, with an email and password.
 struct EmailSignInView: View {
     enum Mode: String, CaseIterable, Identifiable {
-        case signIn = "Sign in"
-        case create = "Create account"
+        case signIn = "Sign In"
+        case create = "Create Account"
         var id: Self { self }
     }
 
@@ -28,91 +28,89 @@ struct EmailSignInView: View {
 
     var body: some View {
         ScrollView {
-            VStack(alignment: .leading, spacing: 22) {
+            VStack(alignment: .leading, spacing: 24) {
+                VStack(alignment: .leading, spacing: 8) {
+                    Text(mode == .signIn ? "Welcome back" : "Create your account")
+                        .font(.display(.largeTitle))
+                        .contentTransition(.opacity)
+                    Text(mode == .signIn
+                         ? "Sign in with your Menu Material email and password."
+                         : "New accounts get five free images once you confirm your email.")
+                        .font(.body)
+                        .foregroundStyle(Palette.muted)
+                        .contentTransition(.opacity)
+                }
+                .fixedSize(horizontal: false, vertical: true)
+
                 Picker("Account", selection: $mode) {
                     ForEach(Mode.allCases) { Text($0.rawValue).tag($0) }
                 }
                 .pickerStyle(.segmented)
 
-                VStack(spacing: 12) {
-                    field("Email") {
-                        TextField("you@restaurant.com", text: $email)
-                            .textContentType(.username)
-                            .keyboardType(.emailAddress)
-                            .textInputAutocapitalization(.never)
-                            .autocorrectionDisabled()
-                            .focused($focus, equals: .email)
-                            .submitLabel(.next)
-                            .onSubmit { focus = .password }
-                    }
-                    field("Password") {
-                        SecureField(mode == .create ? "At least 12 characters" : "Your password", text: $password)
-                            .textContentType(mode == .create ? .newPassword : .password)
-                            .focused($focus, equals: .password)
-                            .submitLabel(mode == .create ? .next : .go)
-                            .onSubmit {
-                                if mode == .create { focus = .restaurant } else { Task { await submit() } }
-                            }
-                    }
-                    if mode == .create {
-                        field("Restaurant name") {
-                            TextField("Your restaurant", text: $restaurant)
-                                .textContentType(.organizationName)
-                                .focused($focus, equals: .restaurant)
-                                .submitLabel(.go)
-                                .onSubmit { Task { await submit() } }
+                VStack(spacing: 0) {
+                    TextField("Email", text: $email)
+                        .textContentType(.username)
+                        .keyboardType(.emailAddress)
+                        .textInputAutocapitalization(.never)
+                        .autocorrectionDisabled()
+                        .focused($focus, equals: .email)
+                        .submitLabel(.next)
+                        .onSubmit { focus = .password }
+                        .fieldRow()
+                    Divider().padding(.leading, 16)
+                    SecureField(mode == .create ? "Password (12 or more characters)" : "Password", text: $password)
+                        .textContentType(mode == .create ? .newPassword : .password)
+                        .focused($focus, equals: .password)
+                        .submitLabel(mode == .create ? .next : .go)
+                        .onSubmit {
+                            if mode == .create { focus = .restaurant } else { Task { await submit() } }
                         }
-                        .transition(.opacity.combined(with: .move(edge: .top)))
+                        .fieldRow()
+                    if mode == .create {
+                        Divider().padding(.leading, 16)
+                        TextField("Restaurant name", text: $restaurant)
+                            .textContentType(.organizationName)
+                            .focused($focus, equals: .restaurant)
+                            .submitLabel(.go)
+                            .onSubmit { Task { await submit() } }
+                            .fieldRow()
+                            .transition(.opacity.combined(with: .move(edge: .top)))
                     }
                 }
+                .background(Palette.surface, in: .rect(cornerRadius: Metrics.controlRadius))
 
                 if let error { ErrorNote(message: error) }
 
                 Button {
                     Task { await submit() }
                 } label: {
-                    if busy { ProgressView().tint(Palette.onAction) } else { Text(mode.rawValue) }
+                    Group {
+                        if busy { ProgressView().tint(.white) } else { Text(mode == .signIn ? "Sign In" : "Create Account") }
+                    }
+                    .frame(maxWidth: .infinity)
                 }
-                .buttonStyle(.primary)
+                .primaryAction()
                 .disabled(!ready || busy)
 
                 if mode == .signIn {
-                    Button("Forgot password?") { showReset = true }
-                        .font(.callout.weight(.medium))
+                    Button("Forgot Password?") { showReset = true }
+                        .font(.subheadline.weight(.semibold))
                         .frame(maxWidth: .infinity)
-                } else {
-                    Text("New accounts get five free images once you confirm your email.")
-                        .font(.footnote)
-                        .foregroundStyle(Palette.muted)
                 }
             }
-            .padding(Metrics.gutter)
+            .padding(.horizontal, Metrics.gutter + 4)
+            .padding(.top, 8)
+            .padding(.bottom, 32)
             .animation(.snappy, value: mode)
         }
+        .scrollDismissesKeyboard(.interactively)
         .canvasBackground()
-        .navigationTitle(mode == .signIn ? "Welcome back" : "Create your account")
         .navigationBarTitleDisplayMode(.inline)
         .sheet(isPresented: $showReset) {
             ResetPasswordView(email: email)
                 .presentationDetents([.medium])
         }
         .onAppear { focus = .email }
-    }
-
-    private func field<Content: View>(_ title: String, @ViewBuilder content: () -> Content) -> some View {
-        VStack(alignment: .leading, spacing: 6) {
-            Text(title)
-                .font(.footnote.weight(.semibold))
-                .foregroundStyle(Palette.muted)
-            content()
-                .padding(.horizontal, 14)
-                .frame(minHeight: 50)
-                .background(Palette.surface, in: .rect(cornerRadius: Metrics.controlRadius))
-                .overlay {
-                    RoundedRectangle(cornerRadius: Metrics.controlRadius)
-                        .strokeBorder(Palette.hairline, lineWidth: 1)
-                }
-        }
     }
 
     private func submit() async {
@@ -144,6 +142,15 @@ struct EmailSignInView: View {
     }
 }
 
+extension View {
+    /// A text field as a row of a grouped card.
+    func fieldRow() -> some View {
+        self
+            .padding(.horizontal, 16)
+            .frame(minHeight: Metrics.rowHeight)
+    }
+}
+
 /// Requests a reset link by email; the link opens on the website.
 struct ResetPasswordView: View {
     @Environment(AppModel.self) private var model
@@ -155,34 +162,52 @@ struct ResetPasswordView: View {
 
     var body: some View {
         NavigationStack {
-            VStack(alignment: .leading, spacing: 16) {
+            VStack(alignment: .leading, spacing: 18) {
                 if sent {
-                    Label("Check your email", systemImage: "envelope.badge")
-                        .font(.title3.weight(.semibold))
+                    Image(systemName: "envelope.badge.fill")
+                        .font(.system(size: 40))
+                        .foregroundStyle(Palette.accent)
+                        .symbolRenderingMode(.hierarchical)
+                    Text("Check your email")
+                        .font(.title2.bold())
                     Text("If \(email) has an account, a reset link is on its way. It works once, for 30 minutes, and opens on menumaterial.com.")
                         .foregroundStyle(Palette.muted)
-                    Button("Done") { dismiss() }.buttonStyle(.primary)
+                    Button {
+                        dismiss()
+                    } label: {
+                        Text("Done").frame(maxWidth: .infinity)
+                    }
+                    .primaryAction()
                 } else {
                     Text("Enter your account’s email and we’ll send a link to set a new password.")
                         .foregroundStyle(Palette.muted)
-                    TextField("you@restaurant.com", text: $email)
+                    TextField("Email", text: $email)
                         .textContentType(.username)
                         .keyboardType(.emailAddress)
                         .textInputAutocapitalization(.never)
                         .autocorrectionDisabled()
-                        .padding(14)
+                        .fieldRow()
                         .background(Palette.surface, in: .rect(cornerRadius: Metrics.controlRadius))
                     if let error { ErrorNote(message: error) }
-                    Button("Send reset link") { Task { await send() } }
-                        .buttonStyle(.primary)
-                        .disabled(!email.contains("@") || busy)
+                    Button {
+                        Task { await send() }
+                    } label: {
+                        Text("Send Reset Link").frame(maxWidth: .infinity)
+                    }
+                    .primaryAction()
+                    .disabled(!email.contains("@") || busy)
                 }
                 Spacer()
             }
             .padding(Metrics.gutter)
             .canvasBackground()
-            .navigationTitle("Reset password")
+            .navigationTitle("Reset Password")
             .navigationBarTitleDisplayMode(.inline)
+            .toolbar {
+                ToolbarItem(placement: .cancellationAction) {
+                    Button("Cancel", systemImage: "xmark", role: .cancel) { dismiss() }
+                }
+            }
         }
     }
 

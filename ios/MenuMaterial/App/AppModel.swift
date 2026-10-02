@@ -40,14 +40,32 @@ final class AppModel {
         let server = (info["MenuMaterialServer"] as? String).flatMap { URL(string: $0) }
             ?? URL(string: "https://menumaterial.com")!
         let version = info["CFBundleShortVersionString"] as? String ?? "1.0"
-        client = APIClient(server: server, appVersion: version)
-        client.sessionToken = keychain.string("session")
-        client.deviceToken = keychain.string("device")
+        #if DEBUG
+        let demo = Demo.client(version: version)
+        #else
+        let demo: APIClient? = nil
+        #endif
+        if let demo {
+            client = demo
+        } else {
+            client = APIClient(server: server, appVersion: version)
+            client.sessionToken = keychain.string("session")
+            client.deviceToken = keychain.string("device")
+        }
         store = StoreModel(client: client)
         images = ImagePipeline(client: client)
         client.onSignedOut = { [weak self] in self?.forgetSession() }
         client.onUpdateRequired = { [weak self] in self?.phase = .updateRequired }
         store.onChange = { [weak self] in await self?.refresh() }
+    }
+
+    /// The sample restaurant of Debug builds (Demo.swift), not a real account.
+    var isDemo: Bool {
+        #if DEBUG
+        Demo.isOn
+        #else
+        false
+        #endif
     }
 
     /// Now, on the server's clock, in milliseconds.
@@ -182,6 +200,15 @@ final class AppModel {
     }
 
     // MARK: Workspace changes made on this phone
+
+    /// Sold out, or back on. The whole dish is sent, as the server replaces it.
+    func setAvailable(_ dish: Dish, _ available: Bool) async throws -> DishSaveResult {
+        var save = DishSave(dish: dish)
+        save.available = available
+        let reply: DishSaveResult = try await client.post("dishes/\(dish.id)", save)
+        await refresh()
+        return reply
+    }
 
     func update(_ change: (inout Workspace) -> Void) {
         guard var current = workspace else { return }

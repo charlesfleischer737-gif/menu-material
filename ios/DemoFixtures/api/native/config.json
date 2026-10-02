@@ -1,0 +1,18 @@
+{
+ "minimumVersion": null,
+ "signIn": {
+  "apple": true,
+  "google": "demo.apps.googleusercontent.com"
+ },
+ "billing": {
+  "appStore": true,
+  "productId": "com.menumaterial.app.pro.monthly",
+  "priceLabel": "$9",
+  "imagesPerPeriod": 50
+ },
+ "links": {
+  "support": "mailto:support@menumaterial.com",
+  "terms": "https://menumaterial.com/terms",
+  "privacy": "https://menumaterial.com/privacy"
+ }
+}
