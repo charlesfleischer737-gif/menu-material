@@ -42,7 +42,7 @@ struct PlansView: View {
                 .padding(.bottom, 24)
             }
             .scrollIndicators(.hidden)
-            .safeAreaInset(edge: .bottom) {
+            .bottomBar {
                 if !isPro { buy }
             }
             .background {
@@ -170,16 +170,8 @@ struct PlansView: View {
             .disabled(restoring)
         }
         .padding(.horizontal, 24)
-        .padding(.top, 14)
+        .padding(.top, 10)
         .padding(.bottom, 6)
-        .background {
-            LinearGradient(
-                colors: [.black.opacity(0), .black.opacity(0.55)],
-                startPoint: .top,
-                endPoint: .bottom
-            )
-            .ignoresSafeArea()
-        }
     }
 
     private func subscribeButton(_ action: @escaping () -> Void) -> some View {

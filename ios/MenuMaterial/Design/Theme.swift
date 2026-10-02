@@ -87,6 +87,12 @@ extension View {
             .controlSize(.extraLarge)
     }
 
+    /// Actions pinned to the bottom, with content scrolling under them,
+    /// softened by the system's scroll edge effect.
+    func bottomBar<Bar: View>(@ViewBuilder _ bar: () -> Bar) -> some View {
+        safeAreaBar(edge: .bottom) { bar() }
+    }
+
     /// The page background, under the safe areas too.
     func canvasBackground() -> some View {
         background(Palette.canvas.ignoresSafeArea())

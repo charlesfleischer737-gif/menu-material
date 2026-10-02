@@ -18,7 +18,7 @@ struct WelcomeView: View {
             ScrollView {
                 VStack(spacing: 0) {
                     WelcomeHero()
-                        .containerRelativeFrame(.vertical) { height, _ in max(360, height * 0.54) }
+                        .containerRelativeFrame(.vertical) { height, _ in max(340, height * 0.47) }
                     VStack(alignment: .leading, spacing: 28) {
                         VStack(alignment: .leading, spacing: 12) {
                             HStack(spacing: 8) {

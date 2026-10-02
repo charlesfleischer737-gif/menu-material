@@ -38,6 +38,8 @@ final class StudioModel {
     /// Something the screen should open: Plans, or email verification.
     var needsPlans = false
     var needsVerification = false
+    /// The look of the photo being made, when it was chosen here.
+    private(set) var makingLook: String?
 
     var look: StyleCatalog.Look? { catalog?.look(id: lookId) }
 
@@ -82,6 +84,7 @@ final class StudioModel {
         sourceId = job.sourceId
         dishId = job.dishId
         photo = nil
+        makingLook = nil
         switch workspace.outcome(of: jobId, now: model.serverNow) {
         case .ready(let assetId):
             stage = .result(jobId: jobId, assetId: assetId)
@@ -142,6 +145,7 @@ final class StudioModel {
                 stage = .result(jobId: job.id, assetId: assetId)
                 return
             }
+            makingLook = look.name
             stage = .creating(jobId: job.id)
             let typical = model.workspace?.jobs.first { $0.id == job.id }?.estimateMs ?? 45000
             PhotoActivities.start(

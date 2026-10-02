@@ -144,7 +144,7 @@ struct DishDetailView: View {
         )) {
             HStack(spacing: 14) {
                 SettingsIcon(
-                    symbol: dish.isAvailable ? "checkmark" : "xmark",
+                    symbol: dish.isAvailable ? "fork.knife" : "nosign",
                     color: dish.isAvailable ? Palette.accent : Palette.warning
                 )
                 .contentTransition(.symbolEffect(.replace))

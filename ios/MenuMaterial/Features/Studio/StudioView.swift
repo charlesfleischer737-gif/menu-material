@@ -56,7 +56,7 @@ struct StudioView: View {
                     BalanceBadge { showPlans = true }
                 }
             }
-            .safeAreaInset(edge: .bottom) {
+            .bottomBar {
                 if composing {
                     CreateBar(studio: studio) {
                         if consentedUser == model.user?.id {
@@ -264,7 +264,7 @@ private struct ComposeView: View {
 
     var body: some View {
         VStack(alignment: .leading, spacing: 32) {
-            PhotoStage(ratio: 4 / 5) {
+            PhotoStage(ratio: ratio) {
                 if let photo = studio.photo {
                     Image(uiImage: photo.preview)
                         .resizable()
@@ -306,6 +306,12 @@ private struct ComposeView: View {
                 ErrorNote(message: error)
             }
         }
+    }
+
+    /// The photo's own shape, within reason.
+    private var ratio: CGFloat {
+        guard let size = studio.photo?.preview.size, size.height > 0 else { return 4 / 5 }
+        return min(max(size.width / size.height, 0.75), 1.6)
     }
 }
 
@@ -608,20 +614,8 @@ private struct CreateBar: View {
             }
         }
         .padding(.horizontal, Metrics.gutter)
-        .padding(.top, 20)
+        .padding(.top, 12)
         .padding(.bottom, 8)
-        .background {
-            LinearGradient(
-                stops: [
-                    .init(color: Palette.canvas.opacity(0), location: 0),
-                    .init(color: Palette.canvas.opacity(0.92), location: 0.35),
-                    .init(color: Palette.canvas, location: 1),
-                ],
-                startPoint: .top,
-                endPoint: .bottom
-            )
-            .ignoresSafeArea()
-        }
     }
 
     @ViewBuilder
@@ -699,9 +693,9 @@ private struct CreatingView: View {
         VStack(spacing: 28) {
             PhotoStage(ratio: 4 / 5) {
                 if let photo = studio.photo {
-                    Image(uiImage: photo.preview).resizable().scaledToFit()
+                    Image(uiImage: photo.preview).resizable().scaledToFill()
                 } else if let source = job?.sourceId ?? studio.sourceId {
-                    AssetImage(id: source, contentMode: .fit)
+                    AssetImage(id: source)
                 }
             }
             .shimmer()
@@ -713,7 +707,7 @@ private struct CreatingView: View {
             TimelineView(.periodic(from: .now, by: 0.5)) { _ in
                 ProgressPanel(
                     outcome: model.workspace?.outcome(of: jobId, now: model.serverNow),
-                    lookName: studio.look?.name
+                    lookName: studio.makingLook
                 )
             }
 
@@ -784,7 +778,7 @@ private struct ProgressPanel: View {
     private var time: String { progress?.time ?? "" }
     private var detail: String {
         if case .waiting(_, let hold) = outcome, let hold { return hold }
-        if let lookName { return "Styling in \(lookName)" }
+        if let lookName { return "\(lookName) look" }
         return "Styling your photo"
     }
 }

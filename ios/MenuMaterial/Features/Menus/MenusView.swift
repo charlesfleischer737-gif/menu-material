@@ -207,14 +207,6 @@ struct MenuDetailView: View {
         }
         .listStyle(.insetGrouped)
         .navigationTitle(menu?.name ?? "Menu")
-        .toolbar {
-            if menu?.isLive == true {
-                ToolbarItem(placement: .topBarTrailing) {
-                    Button("Share", systemImage: "qrcode") { showShare = true }
-                        .accessibilityIdentifier("share-menu")
-                }
-            }
-        }
         .sheet(item: $editing) { entry in
             PriceEditor(entry: entry, currency: currency) { change in
                 Task { await apply([change], success: "Price updated") }
@@ -260,6 +252,7 @@ struct MenuDetailView: View {
                 }
                 .buttonStyle(.glass)
                 .controlSize(.large)
+                .accessibilityIdentifier("share-menu")
             }
         }
         .padding(.vertical, 6)
@@ -280,8 +273,7 @@ struct MenuDetailView: View {
 
     private func updated(_ menu: MenuRecord) -> String {
         guard let at = menu.publishedAt else { return "–" }
-        let date = Date(timeIntervalSince1970: at / 1000)
-        return date.formatted(.relative(presentation: .numeric, unitsStyle: .abbreviated))
+        return Date(timeIntervalSince1970: at / 1000).formatted(.dateTime.month(.abbreviated).day())
     }
 
     private func setAvailable(_ entry: MenuEntry, _ available: Bool) async {

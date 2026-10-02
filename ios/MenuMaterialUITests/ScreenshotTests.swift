@@ -27,8 +27,10 @@ final class ScreenshotTests: XCTestCase {
         launch(scene: "", theme: theme)
         snap("02-studio", theme)
 
-        launch(scene: "compose", theme: theme)
+        let composing = launch(scene: "compose", theme: theme)
         snap("03-compose", theme)
+        composing.swipeUp()
+        snap("03-compose-looks", theme)
 
         launch(scene: "creating", theme: theme)
         snap("04-creating", theme)
