@@ -46,13 +46,8 @@ import UIKit
                         check(rgb(Palette.disabledInk,traits),rgb(Palette.disabledFill,traits),"\(name) disabled action")
                         check(rgb(Palette.onGold,traits),rgb(Palette.gold,traits),"\(name) Pro badge")
                         check(rgb(Palette.onDarkMuted,traits),rgb(Palette.darkSurface,traits),"\(name) fixed dark surface")
-                        // The Pro mesh can animate, so verify every control point
-                        // after the same scrim used by PlansView is composited.
-                        for mesh in Palette.proMesh {
-                            let bg = rgb(Palette.darkSurface.opacity(0.72),traits).over(rgb(mesh,traits))
-                            for color in [Color.white,Palette.onDarkMuted,Palette.glow] + (mode == .dark ? [Palette.danger] : []) {
-                                check(rgb(color,traits),bg,"\(name) Pro mesh")
-                            }
+                        for color in [Color.white,Palette.onDarkMuted,Palette.glow] + (mode == .dark ? [Palette.danger] : []) {
+                            check(rgb(color,traits),rgb(Palette.darkSurface,traits),"\(name) Pro surface")
                         }
                         // The brightest QR card corner includes its gold wash.
                         let qr = rgb(Color(red:0.86,green:0.62,blue:0.27).opacity(0.2),traits).over(rgb(Color(red:0.09,green:0.33,blue:0.22),traits))

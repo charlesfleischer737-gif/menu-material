@@ -7,6 +7,18 @@ import XCTest
 /// Missing screens fail the test instead of silently producing an incomplete set.
 final class ScreenshotTests: XCTestCase {
     @MainActor
+    func testPlansContrast() {
+        for theme in ["light", "dark"] {
+            let app = launch(scene: "", theme: theme)
+            if tab(app, "Account"), tapFirst(app, "plan-row") {
+                snap("28-plans-contrast", theme)
+                app.swipeUp(); app.swipeUp(); snap("29-plans-terms-contrast", theme)
+            }
+            app.terminate()
+        }
+    }
+
+    @MainActor
     func testToolbarContrast() {
         for theme in ["light", "dark"] {
             let setup = launch(scene: "onboarding", theme: theme)

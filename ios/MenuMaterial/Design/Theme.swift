@@ -47,13 +47,6 @@ enum Palette {
         Color(red: 0.03, green: 0.08, blue: 0.06), Color(red: 0.42, green: 0.17, blue: 0.10), Color(red: 0.03, green: 0.08, blue: 0.06),
     ]
 
-    /// Pro: evergreen and gold.
-    static let proMesh: [Color] = [
-        Color(red: 0.02, green: 0.07, blue: 0.05), Color(red: 0.05, green: 0.20, blue: 0.14), Color(red: 0.02, green: 0.06, blue: 0.05),
-        Color(red: 0.07, green: 0.30, blue: 0.20), Color(red: 0.13, green: 0.45, blue: 0.30), Color(red: 0.55, green: 0.41, blue: 0.16),
-        Color(red: 0.02, green: 0.05, blue: 0.04), Color(red: 0.05, green: 0.16, blue: 0.11), Color(red: 0.02, green: 0.05, blue: 0.04),
-    ]
-
     /// The light that circles a photo while it is being made.
     static let making: [Color] = [
         Color(red: 1.00, green: 0.64, blue: 0.24),

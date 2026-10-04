@@ -45,11 +45,7 @@ struct PlansView: View {
             .bottomBar {
                 if !isPro { buy }
             }
-            .background {
-                MeshBackdrop(colors: Palette.proMesh)
-                    .overlay(Palette.darkSurface.opacity(0.72))
-                    .ignoresSafeArea()
-            }
+            .background(Palette.darkSurface.ignoresSafeArea())
             .toolbar {
                 ToolbarItem(placement: .cancellationAction) { Group {
                     Button("Close", systemImage: "xmark") { dismiss() }

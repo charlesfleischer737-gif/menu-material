@@ -20,7 +20,7 @@ The app keeps the existing evergreen palette, serif display typography, adaptive
 
 ## Contrast
 
-Text uses at least WCAG 2.2 AA's 4.5:1 target, including small labels and prompts; essential control boundaries use 3:1. The shared colors are measured in light/dark, normal/Increase Contrast, and base/elevated appearances. Foreground opacity is avoided for informative text. Photo labels have opaque backgrounds, and Pro's animated background has a stable dark scrim.
+Text uses at least WCAG 2.2 AA's 4.5:1 target, including small labels and prompts; essential control boundaries use 3:1. The shared colors are measured in light/dark, normal/Increase Contrast, and base/elevated appearances. Foreground opacity is avoided for informative text. Photo labels and Pro's evergreen background are opaque, so text contrast stays stable.
 
 | Pair | Contrast |
 | --- | ---: |
