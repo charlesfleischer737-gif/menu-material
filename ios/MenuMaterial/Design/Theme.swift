@@ -143,8 +143,6 @@ extension View {
     /// The page background, under the safe areas too.
     func canvasBackground() -> some View {
         background(Palette.canvas.ignoresSafeArea())
-            .toolbarBackground(Palette.canvas, for: .navigationBar)
-            .toolbarBackground(.visible, for: .navigationBar)
-            .scrollEdgeEffectHidden()
+            .scrollEdgeEffectStyle(.hard, for: .all)
     }
 }

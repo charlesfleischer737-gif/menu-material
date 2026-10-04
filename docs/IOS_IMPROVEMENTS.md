@@ -31,7 +31,7 @@ Text uses at least WCAG 2.2 AA's 4.5:1 target, including small labels and prompt
 | Disabled action, light / dark | 5.67:1 / 7.55:1 |
 | Pro badge | 8.59:1 |
 
-The old dark-mode accent with white text measured 3.20:1. Filled actions and selected chips now use a separate, darker evergreen; the brighter dark-mode accent is reserved for foreground links. The same rules cover toolbars, onboarding, errors, prompts, post artwork, QR cards, share-extension copy and Live Activity text. Native navigation still uses system glass.
+The old dark-mode accent with white text measured 3.20:1. Filled actions and selected chips now use a separate, darker evergreen; the brighter dark-mode accent is reserved for foreground links. The same rules cover toolbars, onboarding, errors, prompts, post artwork, QR cards, share-extension copy and Live Activity text. Native navigation retains system glass with a stronger scroll-edge backdrop, while text-heavy controls, search fields, progress panels and image retry states have opaque surfaces.
 
 `ContrastTests` evaluates the actual resolved colors and their composites. The screenshot suite runs Apple's contrast audit as it visits light/dark screens and scroll positions. Nodes wholly outside the viewport or covered by other controls are audited when scrolled into view, rather than sampling unrelated screen pixels. These checks supplement visual review; they are not a certification of every possible system sheet or user photograph.
 

@@ -120,13 +120,13 @@ struct StyleArtwork: View {
                     AsyncImage(url: model.client.publicURL(path)) { phase in
                         switch phase {
                         case .success(let image): image.resizable().scaledToFill()
-                        case .failure: Button { attempt += 1 } label: { Label("Retry preview", systemImage: "arrow.clockwise").font(.caption) }.frame(maxWidth: .infinity, maxHeight: .infinity)
-                        default: ProgressView().frame(maxWidth: .infinity, maxHeight: .infinity)
+                        case .failure: Button { attempt += 1 } label: { Label("Retry preview", systemImage: "arrow.clockwise").font(.caption) }.buttonStyle(.plain).foregroundStyle(Palette.accent).frame(maxWidth: .infinity, maxHeight: .infinity)
+                        default: ProgressView().tint(Palette.muted).frame(maxWidth: .infinity, maxHeight: .infinity)
                         }
                     }.id(attempt)
                 }
             }.frame(width: proxy.size.width, height: proxy.size.height).clipped()
-        }.background(Palette.raised)
+        }.background(Palette.surface)
     }
 }
 

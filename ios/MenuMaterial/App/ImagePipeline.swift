@@ -72,7 +72,7 @@ struct AssetImage: View {
 
     var body: some View {
         ZStack {
-            Rectangle().fill(Palette.raised)
+            Rectangle().fill(Palette.surface)
             if let image {
                 Image(uiImage: image)
                     .resizable()
@@ -80,8 +80,8 @@ struct AssetImage: View {
                     .transition(.opacity)
             } else if failed {
                 Button { attempt += 1 } label: { Label("Retry photo", systemImage: "arrow.clockwise").font(.caption) }
-                    .buttonStyle(.bordered).accessibilityLabel("Photo unavailable. Retry loading")
-            } else { ProgressView() }
+                    .buttonStyle(.plain).foregroundStyle(Palette.accent).accessibilityLabel("Photo unavailable. Retry loading")
+            } else { ProgressView().tint(Palette.muted) }
         }
         .clipped()
         .task(id: "\(id)-\(original)-\(attempt)") {

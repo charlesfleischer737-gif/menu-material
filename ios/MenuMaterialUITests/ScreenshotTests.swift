@@ -14,8 +14,12 @@ final class ScreenshotTests: XCTestCase {
             setup.buttons["Continue"].tap()
             snap("24-toolbar-back", theme)
             let app = launch(scene: "", theme: theme)
+            snap("26-studio-navigation", theme)
             if tapFirst(app, "See all") { snap("25-toolbar-done", theme) }
             app.terminate()
+            let creating = launch(scene: "creating", theme: theme)
+            snap("27-creating-contrast", theme)
+            creating.terminate()
         }
     }
 

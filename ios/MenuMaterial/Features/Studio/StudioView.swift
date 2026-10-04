@@ -730,6 +730,7 @@ private struct CreatingView: View {
                     lookName: studio.makingLook
                 )
             }
+            .card()
 
             if let error = studio.error {
                 ErrorNote(message: error)
