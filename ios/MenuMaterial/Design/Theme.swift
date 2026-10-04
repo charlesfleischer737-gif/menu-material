@@ -136,6 +136,6 @@ extension View {
     /// The page background, under the safe areas too.
     func canvasBackground() -> some View {
         background(Palette.canvas.ignoresSafeArea())
-            .scrollEdgeEffectStyle(.hard, for: .all)
+            .scrollEdgeEffectStyle(.hard, for: .bottom)
     }
 }
