@@ -13,6 +13,10 @@ struct DishDetailView: View {
     @State private var note: String?
     @State private var error: String?
     @State private var showArchive = false
+    @State private var showMenuUpdate = false
+    @State private var conflict = false
+    private struct Edit: Codable { var draft: DishSave; var price: String }
+    private var draftKey: String { "dish-\(dishId).json" }
     @State private var scrolledPastPhoto = false
 
     private var dish: Dish? { model.workspace?.dishes.first { $0.id == dishId } }
@@ -38,14 +42,28 @@ struct DishDetailView: View {
                     HeroPhoto(id: main?.id)
                     VStack(alignment: .leading, spacing: 28) {
                         header(dish)
+                        HStack {
+                            Button { model.styleDish(dish) } label: { Label("Style photo", systemImage: "camera.aperture").frame(maxWidth: .infinity) }.primaryAction()
+                            Button { model.styleDish(dish, newPhoto: true) } label: { Image(systemName: "camera").frame(minWidth: 44) }.secondaryAction().accessibilityLabel("New photo for this dish")
+                        }
+                        HStack {
+                            Button("Create Post", systemImage: "rectangle.portrait") { model.makePost(dishId: dish.id) }
+                            Spacer()
+                            Button("Update Menus", systemImage: "menucard") { showMenuUpdate = true }
+                        }.font(.subheadline.weight(.semibold))
                         availability(dish)
                         if photos.count > 1 { photoStrip }
                         details
                         if let error { ErrorNote(message: error) }
+                        if conflict {
+                            Text("Your edits are still here. Review the latest dish before saving them over its new details.").font(.footnote).foregroundStyle(Palette.muted)
+                            Button("Use My Reviewed Edits") { draft?.revision = dish.revision; conflict = false; error = nil }
+                            Button("Discard My Edits", role: .destructive) { reset(); conflict = false; error = nil }
+                        }
                         Button(role: .destructive) {
-                            showArchive = true
+                            if dish.archivedAt != nil { Task { await restore() } } else { showArchive = true }
                         } label: {
-                            Label("Archive Dish", systemImage: "archivebox")
+                            Label(dish.archivedAt == nil ? "Archive Dish" : "Restore Dish", systemImage: "archivebox")
                                 .frame(maxWidth: .infinity)
                         }
                         .secondaryAction()
@@ -69,7 +87,7 @@ struct DishDetailView: View {
             if changed {
                 ToolbarItem(placement: .confirmationAction) {
                     Button("Save", systemImage: "checkmark") { Task { await save() } }
-                        .disabled(busy || priceHundredths < 0 || (draft?.name.isEmpty ?? true))
+                        .disabled(busy || conflict || priceHundredths < 0 || (draft?.name.isEmpty ?? true))
                 }
             }
         }
@@ -79,7 +97,17 @@ struct DishDetailView: View {
             Text("It leaves My Dishes. Published menus and posts that show it stay as they are.")
         }
         .toast($note)
-        .onAppear(perform: reset)
+        .onAppear {
+            if draft == nil {
+                if let saved: Edit = model.local.read(draftKey) { draft = saved.draft; priceText = saved.price }
+                else { reset() }
+            }
+        }
+        .onChange(of: draft?.name) { _, _ in persist() }
+        .onChange(of: draft?.description) { _, _ in persist() }
+        .onChange(of: draft?.category) { _, _ in persist() }
+        .onChange(of: priceText) { _, _ in persist() }
+        .sheet(isPresented: $showMenuUpdate) { DishMenusView(dishId: dishId) }
     }
 
     private func header(_ dish: Dish) -> some View {
@@ -131,7 +159,7 @@ struct DishDetailView: View {
                 }
             }
             .scrollClipDisabled()
-            Text("Tap a photo to make it the one your menus show.")
+            Text("Tap to choose the main dish photo. Use Update Menus to review and publish it to guests.")
                 .font(.footnote)
                 .foregroundStyle(Palette.muted)
         }
@@ -209,6 +237,15 @@ struct DishDetailView: View {
         .frame(minHeight: Metrics.rowHeight)
     }
 
+    private func persist() {
+        if let draft, !model.local.save(Edit(draft: draft, price: priceText), draftKey) { error = model.local.failure }
+    }
+    private func restore() async {
+        do {
+            let _: OK = try await model.client.post("library/\(dishId)", LibraryUpdate(archived: false))
+            await model.refresh(); note = "Dish restored"
+        } catch { self.error = error.localizedDescription }
+    }
     private func reset() {
         guard let dish else { return }
         draft = DishSave(dish: dish)
@@ -217,7 +254,6 @@ struct DishDetailView: View {
 
     private func save() async {
         guard var save = draft, let dish else { return }
-        save.revision = dish.revision
         save.price = Double(max(0, priceHundredths)) / 100
         save.available = dish.isAvailable
         await send(save, success: "Saved")
@@ -227,26 +263,30 @@ struct DishDetailView: View {
         guard let dish else { return }
         var save = DishSave(dish: dish)
         save.available = on
-        await send(save, success: on ? "Back on your menus" : "Marked sold out")
+        await send(save, success: on ? "Back on your menus" : "Marked sold out", preserveEdits: true)
     }
 
-    private func send(_ save: DishSave, success: String) async {
+    private func send(_ save: DishSave, success: String, preserveEdits: Bool = false) async {
         busy = true
         defer { busy = false }
         error = nil
         do {
             let reply: DishSaveResult = try await model.client.post("dishes/\(dishId)", save)
             await model.refresh()
-            reset()
+            if preserveEdits {
+                if draft?.revision == save.revision { draft?.revision = reply.revision }
+                else { conflict = true }
+                persist()
+            } else { reset(); model.local.remove(draftKey) }
             let live = (reply.menus ?? []).filter { $0.live == true }.map(\.name)
             note = live.isEmpty ? success : "\(success) · \(live.joined(separator: ", "))"
         } catch let failure as APIError {
             if failure.status == 409 {
                 await model.refresh()
-                reset()
+                conflict = true
             }
             error = failure.message
-        } catch {}
+        } catch { self.error = error.localizedDescription }
     }
 
     private func makeMain(_ assetId: String) async {
@@ -257,7 +297,7 @@ struct DishDetailView: View {
             note = "Main photo updated"
         } catch let failure as APIError {
             error = failure.message
-        } catch {}
+        } catch { self.error = error.localizedDescription }
     }
 
     private func archive() async {
@@ -267,7 +307,7 @@ struct DishDetailView: View {
             dismiss()
         } catch let failure as APIError {
             error = failure.message
-        } catch {}
+        } catch { self.error = error.localizedDescription }
     }
 }
 

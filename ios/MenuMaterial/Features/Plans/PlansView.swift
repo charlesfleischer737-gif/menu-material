@@ -153,12 +153,16 @@ struct PlansView: View {
                 // The sample restaurant has no App Store product to buy.
                 subscribeButton {}
             } else if store.productUnavailable || model.config?.billing.appStore == false {
-                Text("Pro in the app is coming soon. Your free account is ready to use.")
+                Text(model.config?.billing.appStore == false ? "Pro in the app is coming soon. Your free account is ready to use." : "The subscription couldn’t load. You can keep using your account and try again.")
                     .font(.callout)
                     .foregroundStyle(.white.opacity(0.8))
                     .multilineTextAlignment(.center)
             } else {
                 ProgressView().frame(height: 52)
+            }
+            if let loadError = store.error {
+                Text(loadError).font(.footnote).foregroundStyle(.white)
+                Button("Retry Plans") { Task { if let id = model.config?.billing.productId { await store.load(productId: id) } } }.font(.footnote.bold())
             }
             Button {
                 Task { await restore() }
@@ -254,7 +258,7 @@ struct PlansView: View {
                     celebrate += 1
                     message = "Welcome to Pro. Your \(images) images are ready."
                 } else {
-                    message = "Your purchase went through. Pro can take a minute to appear; pull to refresh or reopen Plans."
+                    message = "Your purchase is awaiting confirmation. Use Restore Purchases to check again."
                 }
             case .pending:
                 message = "Your purchase is waiting for approval. Pro unlocks as soon as it’s approved."
@@ -264,7 +268,7 @@ struct PlansView: View {
                 break
             }
         } catch {
-            self.error = "The App Store couldn’t complete the purchase. You haven’t been charged."
+            self.error = "The purchase could not be confirmed. Check your App Store subscriptions before trying again."
         }
     }
 
@@ -277,7 +281,7 @@ struct PlansView: View {
             await model.refresh()
             message = isPro ? "Pro restored." : "No Pro subscription was found for this Apple Account."
         } catch {
-            self.error = "The App Store couldn’t restore purchases. Try again in a moment."
+            self.error = error.localizedDescription
         }
     }
 }

@@ -96,6 +96,7 @@ public struct FreeImages: Decodable, Sendable, Equatable {
 }
 
 public struct Restaurant: Decodable, Sendable, Equatable {
+    public let nativeProfile: RestaurantProfile?
     public let id: String
     public let name: String
     public let slug: String?
@@ -201,6 +202,7 @@ public struct Job: Decodable, Sendable, Equatable, Identifiable, Hashable {
     public let status: String
     public let sourceId: String?
     public let parentId: String?
+    public let requestKey: String?
     public let createdAt: Double
     /// While queued or processing: how long images like this usually take.
     public let estimateMs: Double?
@@ -251,7 +253,7 @@ public struct LossyArray<Element: Decodable & Sendable>: Decodable, Sendable {
 /// `POST /api/dishes` (new) and `POST /api/dishes/<id>` (save). Saving
 /// replaces every field, so the app always sends them all. The price here is
 /// in major units (12.5), unlike everywhere else.
-public struct DishSave: Encodable, Sendable {
+public struct DishSave: Codable, Sendable {
     public var creationId: String?
     public var revision: Int?
     public var name: String

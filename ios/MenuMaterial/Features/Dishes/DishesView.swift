@@ -8,6 +8,9 @@ struct DishesView: View {
     @State private var search = ""
     @State private var showAdd = false
     @State private var note: String?
+    @State private var error: String?
+    @State private var archived = false
+    @AppStorage("dishes-compact") private var compact = false
 
     private struct DishGroup: Identifiable {
         let name: String
@@ -18,7 +21,7 @@ struct DishesView: View {
     private var query: String { search.trimmingCharacters(in: .whitespaces) }
 
     private var dishes: [Dish] {
-        let active = model.workspace?.activeDishes ?? []
+        let active = (model.workspace?.dishes ?? []).filter { $0.sample == 0 && (archived ? $0.archivedAt != nil : $0.archivedAt == nil) }
         guard !query.isEmpty else { return active }
         return active.filter {
             $0.name.localizedCaseInsensitiveContains(query) || $0.category.localizedCaseInsensitiveContains(query)
@@ -42,7 +45,8 @@ struct DishesView: View {
     var body: some View {
         NavigationStack {
             ScrollView {
-                if model.workspace?.activeDishes.isEmpty ?? true {
+                if let error { ErrorNote(message: error).padding(Metrics.gutter) }
+                if model.workspace?.dishes.isEmpty ?? true {
                     ContentUnavailableView {
                         Label("Your Dishes Live Here", systemImage: "fork.knife")
                     } description: {
@@ -62,10 +66,21 @@ struct DishesView: View {
                                 Text(group.name)
                                     .font(.title3.bold())
                                     .foregroundStyle(Palette.ink)
-                                LazyVGrid(columns: columns, spacing: 22) {
+                                if compact {
                                     ForEach(group.dishes) { dish in
-                                        card(dish)
+                                        NavigationLink(value: dish.id) {
+                                            HStack(spacing: 14) {
+                                                SquarePhoto(id: model.workspace?.preferredPhoto(for: dish)?.id, radius: 14).frame(width: 68, height: 68)
+                                                VStack(alignment: .leading, spacing: 5) {
+                                                    Text(dish.name).font(.headline).lineLimit(2).foregroundStyle(Palette.ink)
+                                                    Text(dish.isAvailable ? Money.format(hundredths: dish.price, currency: model.restaurant?.currency ?? "USD") : "Sold out").font(.subheadline).foregroundStyle(Palette.muted)
+                                                }
+                                                Spacer(); Image(systemName: "chevron.right").font(.caption).foregroundStyle(Palette.muted)
+                                            }.card()
+                                        }.buttonStyle(.plain).accessibilityIdentifier("dish-card")
                                     }
+                                } else {
+                                    LazyVGrid(columns: columns, spacing: 22) { ForEach(group.dishes) { card($0) } }
                                 }
                             }
                         }
@@ -76,10 +91,16 @@ struct DishesView: View {
                 }
             }
             .canvasBackground()
-            .navigationTitle("Dishes")
+            .navigationTitle(archived ? "Archived Dishes" : "Dishes")
             .searchable(text: $search, prompt: "Dishes and sections")
             .refreshable { await model.refresh() }
             .toolbar {
+                ToolbarItem(placement: .topBarLeading) {
+                    Menu("View", systemImage: "line.3.horizontal.decrease") {
+                        Toggle("Compact list", isOn: $compact)
+                        Toggle("Archived dishes", isOn: $archived)
+                    }
+                }
                 ToolbarItem(placement: .topBarTrailing) {
                     Button("Add Dish", systemImage: "plus") { showAdd = true }
                 }
@@ -101,6 +122,8 @@ struct DishesView: View {
         .buttonStyle(.plain)
         .accessibilityIdentifier("dish-card")
         .contextMenu {
+            Button("Style Photo", systemImage: "camera.aperture") { model.styleDish(dish) }
+            Button("Create Post", systemImage: "rectangle.portrait") { model.makePost(dishId: dish.id) }
             Button(
                 dish.isAvailable ? "Mark as Sold Out" : "Back on the Menu",
                 systemImage: dish.isAvailable ? "xmark.circle" : "checkmark.circle"
@@ -123,7 +146,7 @@ struct DishesView: View {
             let live = (reply.menus ?? []).filter { $0.live == true }.map(\.name)
             let done = available ? "\(dish.name) is back on" : "\(dish.name) is sold out"
             note = live.isEmpty ? done : "\(done) · \(live.joined(separator: ", "))"
-        } catch {}
+        } catch { self.error = error.localizedDescription }
     }
 }
 
@@ -152,7 +175,7 @@ private struct DishCard: View {
                 Text(dish.name)
                     .font(.subheadline.weight(.semibold))
                     .foregroundStyle(Palette.ink)
-                    .lineLimit(1)
+                    .lineLimit(2)
                 Text(dish.price > 0 ? Money.format(hundredths: dish.price, currency: currency) : "No price yet")
                     .font(.subheadline)
                     .foregroundStyle(Palette.muted)
@@ -197,6 +220,7 @@ struct AddDishView: View {
     @State private var busy = false
     @State private var error: String?
     @FocusState private var focused: Bool
+    @State private var creationId = UUID().uuidString.lowercased()
 
     var body: some View {
         NavigationStack {
@@ -209,6 +233,9 @@ struct AddDishView: View {
                         .textInputAutocapitalization(.words)
                     TextField("Price", text: $price)
                         .keyboardType(.decimalPad)
+                    if !price.isEmpty && Money.hundredths(from: price) == nil {
+                        Text("Enter a price such as 12.50, with no minus sign or extra text.").font(.footnote).foregroundStyle(Palette.danger)
+                    }
                 } footer: {
                     Text("Add photos from the Studio. The dish is ready for your menus right away.")
                 }
@@ -224,7 +251,7 @@ struct AddDishView: View {
                 }
                 ToolbarItem(placement: .confirmationAction) {
                     Button("Add", systemImage: "checkmark") { Task { await add() } }
-                        .disabled(name.trimmingCharacters(in: .whitespaces).isEmpty || busy)
+                        .disabled(name.trimmingCharacters(in: .whitespaces).isEmpty || busy || (!price.isEmpty && Money.hundredths(from: price) == nil))
                 }
             }
         }
@@ -235,7 +262,7 @@ struct AddDishView: View {
     private func add() async {
         busy = true
         defer { busy = false }
-        var save = DishSave(newDishNamed: name.trimmingCharacters(in: .whitespaces))
+        var save = DishSave(newDishNamed: name.trimmingCharacters(in: .whitespaces), id: creationId)
         let section = category.trimmingCharacters(in: .whitespaces)
         if !section.isEmpty { save.category = section }
         if let hundredths = Money.hundredths(from: price) { save.price = Double(hundredths) / 100 }
@@ -245,6 +272,6 @@ struct AddDishView: View {
             dismiss()
         } catch let failure as APIError {
             error = failure.message
-        } catch {}
+        } catch { self.error = error.localizedDescription }
     }
 }

@@ -44,11 +44,13 @@ targets:
     dependencies:
       - package: MenuMaterialKit
       - target: PhotoActivity
+      - target: PhotoShare
     entitlements:
       path: MenuMaterial/Support/MenuMaterial.entitlements
       properties:
         com.apple.developer.applesignin: [Default]
         aps-environment: development
+        com.apple.security.application-groups: [group.com.menumaterial.app]
     info:
       path: MenuMaterial/Support/Info.plist
       properties:
@@ -96,6 +98,35 @@ targets:
       base:
         PRODUCT_BUNDLE_IDENTIFIER: com.menumaterial.app.PhotoActivity
         SKIP_INSTALL: YES
+  PhotoShare:
+    type: app-extension
+    platform: iOS
+    sources:
+      - path: PhotoShare
+      - path: Shared/SharedPhotoInbox.swift
+      - path: MenuMaterial/Design/Theme.swift
+      - path: MenuMaterial/Resources/Assets.xcassets
+    info:
+      path: PhotoShare/Info.plist
+      properties:
+        CFBundleDisplayName: Menu Material
+        CFBundleShortVersionString: $(MARKETING_VERSION)
+        CFBundleVersion: $(CURRENT_PROJECT_VERSION)
+        NSExtension:
+          NSExtensionPointIdentifier: com.apple.share-services
+          NSExtensionPrincipalClass: $(PRODUCT_MODULE_NAME).ShareViewController
+          NSExtensionAttributes:
+            NSExtensionActivationRule:
+              NSExtensionActivationSupportsImageWithMaxCount: 1
+    entitlements:
+      path: PhotoShare/PhotoShare.entitlements
+      properties:
+        com.apple.security.application-groups: [group.com.menumaterial.app]
+    settings:
+      base:
+        PRODUCT_BUNDLE_IDENTIFIER: com.menumaterial.app.PhotoShare
+        SKIP_INSTALL: YES
+        APPLICATION_EXTENSION_API_ONLY: YES
   MenuMaterialTests:
     type: bundle.unit-test
     platform: iOS

@@ -29,7 +29,7 @@ struct RootView: View {
 
 struct MainTabView: View {
     @Environment(AppModel.self) private var model
-    @AppStorage("welcome-tour-seen") private var tourSeen = false
+    @Environment(\.scenePhase) private var scenePhase
 
     private var making: Bool { model.workspace?.jobs.contains(where: \.isActive) ?? false }
 
@@ -43,6 +43,9 @@ struct MainTabView: View {
             Tab("Dishes", systemImage: "fork.knife", value: AppModel.Tab.dishes) {
                 DishesView()
             }
+            Tab("Posts", systemImage: "rectangle.portrait.on.rectangle.portrait", value: AppModel.Tab.posts) {
+                PostsView()
+            }
             Tab("Menus", systemImage: "menucard", value: AppModel.Tab.menus) {
                 MenusView()
             }
@@ -50,72 +53,27 @@ struct MainTabView: View {
                 AccountView()
             }
         }
-        .tabBarMinimizeBehavior(.onScrollDown)
         .sensoryFeedback(.selection, trigger: model.tab)
-        .sheet(isPresented: Binding(
-            get: { !tourSeen && !model.isDemo },
-            set: { shown in if !shown { tourSeen = true } }
-        )) {
-            WelcomeTourView()
+        .sheet(isPresented: Binding(get: { model.sharedPhotoURL != nil && !model.showOnboarding }, set: { if !$0 { model.sharedPhotoURL = nil } })) {
+            if let url = model.sharedPhotoURL { SharedPhotoView(url: url) }
         }
-    }
-}
-
-/// Shown once, after the first sign-in: what's where, in the manner of
-/// Apple's own welcome screens.
-struct WelcomeTourView: View {
-    @Environment(\.dismiss) private var dismiss
-
-    var body: some View {
-        ScrollView {
-            VStack(spacing: 40) {
-                VStack(spacing: 16) {
-                    BrandMark(height: 46)
-                        .foregroundStyle(Palette.accent)
-                    Text("Welcome to Menu Material")
-                        .font(.display(.largeTitle))
-                        .multilineTextAlignment(.center)
-                }
-                .padding(.top, 52)
-                VStack(alignment: .leading, spacing: 28) {
-                    row("camera.aperture", "Studio", "Photograph a dish and pick a look. Your styled photo is ready in about a minute.")
-                    row("fork.knife", "Dishes", "Every photo is saved to its dish, with its price and whether it’s on the menu.")
-                    row("menucard", "Menus", "Mark dishes sold out and change prices on your live menus in a tap.")
-                    row("bell.badge", "Alerts", "Leave the app while a photo is made. We’ll tell you when it’s ready.")
-                }
-            }
-            .padding(.horizontal, 36)
-            .padding(.bottom, 24)
-        }
-        .safeAreaInset(edge: .bottom) {
-            Button {
-                dismiss()
-            } label: {
-                Text("Continue").frame(maxWidth: .infinity)
-            }
-            .primaryAction()
-            .padding(.horizontal, 24)
-            .padding(.vertical, 12)
-            .background(Color(uiColor: .systemBackground))
-        }
-        .background(Color(uiColor: .systemBackground))
-    }
-
-    private func row(_ symbol: String, _ title: String, _ text: String) -> some View {
-        HStack(alignment: .top, spacing: 18) {
-            Image(systemName: symbol)
-                .font(.system(size: 28))
-                .foregroundStyle(Palette.accent)
-                .frame(width: 40)
-            VStack(alignment: .leading, spacing: 3) {
-                Text(title).font(.headline)
-                Text(text)
-                    .font(.subheadline)
-                    .foregroundStyle(Palette.muted)
-                    .fixedSize(horizontal: false, vertical: true)
+        .sheet(isPresented: $model.showOnboarding) { RestaurantOnboardingView() }
+        .safeAreaInset(edge: .top, spacing: 0) {
+            if let error = model.connectionError {
+                HStack(spacing: 10) {
+                    Image(systemName: "wifi.slash")
+                    Text(model.workspace != nil ? "Showing saved work. Reconnect to update." : error).font(.caption)
+                    Spacer()
+                    Button("Retry") { Task { await model.start() } }.font(.caption.bold())
+                }.padding(10).background(Palette.surface)
             }
         }
-        .accessibilityElement(children: .combine)
+        .onChange(of: scenePhase) { _, phase in
+            if phase == .active { Task { await model.refresh(); await model.importSharedPhoto() } }
+            else { model.studio.persist() }
+        }
+        .task { await model.importSharedPhoto() }
+
     }
 }
 
@@ -142,7 +100,7 @@ struct OfflineView: View {
         ContentUnavailableView {
             Label("Can’t Reach Menu Material", systemImage: "wifi.slash")
         } description: {
-            Text("Check your connection. Your work is saved.")
+            Text(model.connectionError ?? "Check your connection and try again.")
         } actions: {
             Button("Try Again") { Task { await model.retryConnection() } }
                 .primaryAction()
@@ -153,6 +111,7 @@ struct OfflineView: View {
 
 struct UpdateRequiredView: View {
     @Environment(\.openURL) private var openURL
+    @Environment(AppModel.self) private var model
 
     var body: some View {
         ContentUnavailableView {
@@ -160,10 +119,11 @@ struct UpdateRequiredView: View {
         } description: {
             Text("This version is no longer supported. Update the app to keep going; your work is saved.")
         } actions: {
-            Button("Open the App Store") {
-                openURL(URL(string: "itms-apps://itunes.apple.com/app/menu-material")!)
+            if let link = model.config?.links.appStore, let url = URL(string: link) {
+                Button("Open the App Store") { openURL(url) }.primaryAction()
+            } else {
+                Link("Get the latest version", destination: model.client.server).primaryAction()
             }
-            .primaryAction()
         }
         .canvasBackground()
     }

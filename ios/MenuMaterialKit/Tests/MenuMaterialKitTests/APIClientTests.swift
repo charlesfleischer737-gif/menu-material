@@ -50,6 +50,17 @@ struct APIClientTests {
             == "https://menumaterial.example/studio/styles/thumbs/menu-stone.webp")
     }
 
+    @Test func failedPublicBootstrapDoesNotEndTheSession() async {
+        let client = APIClient(server: server, appVersion: "1.0", transport: StubTransport { _ in (401, #"{"error":"Unavailable"}"#) })
+        client.sessionToken = "existing-session"
+        var ended = false
+        client.onSignedOut = { ended = true }
+        let _: OK? = try? await client.get("native/config")
+        let _: OK? = try? await client.get("native/styles")
+        #expect(!ended)
+        #expect(client.sessionToken == "existing-session")
+    }
+
     @Test func readsTheServersErrors() async {
         let transport = StubTransport { request in
             if request.url!.path.hasSuffix("/jobs") {

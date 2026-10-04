@@ -9,6 +9,7 @@ struct AccountView: View {
     @Environment(\.openURL) private var openURL
     @State private var showPlans = false
     @State private var showRename = false
+    @State private var showPreferences = false
     @State private var showDelete = false
     @State private var confirmSignOut = false
     @State private var notifications: UNAuthorizationStatus = .notDetermined
@@ -38,6 +39,12 @@ struct AccountView: View {
                         showRename = true
                     } label: {
                         SettingsRow(symbol: "storefront.fill", color: .indigo, title: "Restaurant Name", value: model.restaurant?.name)
+                    }
+                    Button { showPreferences = true } label: {
+                        SettingsRow(symbol: "slider.horizontal.3", color: Palette.accent, title: "Restaurant Preferences")
+                    }
+                    NavigationLink { ExploreStylesView(studio: model.studio) } label: {
+                        SettingsRow(symbol: "paintpalette.fill", color: Palette.accent, title: "Restaurant Look")
                     }
                     notificationsRow
                 }
@@ -91,10 +98,13 @@ struct AccountView: View {
             .navigationTitle("Account")
             .navigationBarTitleDisplayMode(.inline)
             .sheet(isPresented: $showPlans) { PlansView() }
+            .sheet(isPresented: $showPreferences) { RestaurantOnboardingView(editing: true) }
             .sheet(isPresented: $showRename) { RenameRestaurantView() }
             .sheet(isPresented: $showDelete) { DeleteAccountView() }
             .confirmationDialog("Sign out of Menu Material?", isPresented: $confirmSignOut, titleVisibility: .visible) {
                 Button("Sign Out", role: .destructive) { Task { await model.signOut() } }
+            } message: {
+                Text("Submitted photos and restaurant data stay in your account. Unsent photo drafts, dish edits and post drafts saved only on this device will be removed.")
             }
             .task { await readNotifications() }
         }

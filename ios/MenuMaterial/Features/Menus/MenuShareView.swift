@@ -83,6 +83,7 @@ struct MenuShareView: View {
                 .padding(.bottom, 24)
             }
             .canvasBackground()
+            .refreshable { await model.refresh() }
             .navigationTitle("Share Menu")
             .navigationBarTitleDisplayMode(.inline)
             .toolbar {

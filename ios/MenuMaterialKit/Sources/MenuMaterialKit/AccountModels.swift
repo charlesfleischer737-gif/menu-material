@@ -16,6 +16,7 @@ public struct NativeConfig: Decodable, Sendable, Equatable {
     }
 
     public struct Links: Decodable, Sendable, Equatable {
+        public let appStore: String?
         public let support: String?
         public let terms: String?
         public let privacy: String?

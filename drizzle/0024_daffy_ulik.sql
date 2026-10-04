@@ -1,0 +1,1 @@
+ALTER TABLE `restaurants` ADD `native_profile` text DEFAULT '{}' NOT NULL;

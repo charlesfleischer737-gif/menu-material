@@ -61,9 +61,9 @@ public enum Money {
     public static func hundredths(from text: String) -> Int? {
         let cleaned = text
             .trimmingCharacters(in: .whitespaces)
+            .replacingOccurrences(of: #"^[\$€£¥]\s*"#, with: "", options: .regularExpression)
             .replacingOccurrences(of: ",", with: ".")
-            .filter { $0.isNumber || $0 == "." }
-        guard !cleaned.isEmpty, cleaned.filter({ $0 == "." }).count <= 1,
+        guard cleaned.range(of: #"^[0-9]+(?:\.[0-9]{1,2})?$"#, options: .regularExpression) != nil,
               let value = Decimal(string: cleaned) else { return nil }
         var scaled = value * 100
         var rounded = Decimal()

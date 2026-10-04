@@ -6,6 +6,7 @@ import FoundationNetworking
 public enum HTTPMethod: String, Sendable {
     case get = "GET"
     case post = "POST"
+    case put = "PUT"
     case delete = "DELETE"
 }
 
@@ -103,7 +104,9 @@ public final class APIClient {
             if error.updateRequired {
                 onUpdateRequired?()
             } else if error.signedOut, sessionToken != nil,
-                      !(request.url?.path.contains("/api/auth/") ?? false) {
+                      !(request.url?.path.contains("/api/auth/") ?? false),
+                      !(request.url?.path.contains("/api/native/config") ?? false),
+                      !(request.url?.path.contains("/api/native/styles") ?? false) {
                 onSignedOut?()
             }
             throw error

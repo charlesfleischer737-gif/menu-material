@@ -4,8 +4,7 @@ import XCTest
 /// builds, App/Demo.swift) and keeps a screenshot of each, in light and dark.
 /// CI publishes them to the repository's ios-screenshots branch.
 ///
-/// A screen that can't be reached is skipped rather than failed: these
-/// screenshots are for looking at, and the unit tests check behavior.
+/// Missing screens fail the test instead of silently producing an incomplete set.
 final class ScreenshotTests: XCTestCase {
     @MainActor
     func testLightScreens() {
@@ -74,7 +73,7 @@ final class ScreenshotTests: XCTestCase {
     @MainActor
     private func tab(_ app: XCUIApplication, _ name: String) -> Bool {
         let button = app.tabBars.buttons[name]
-        guard button.waitForExistence(timeout: 8) else { return false }
+        guard button.waitForExistence(timeout: 8) else { XCTFail("Missing tab: \(name)"); return false }
         button.tap()
         return true
     }
@@ -82,7 +81,7 @@ final class ScreenshotTests: XCTestCase {
     @MainActor
     private func tapFirst(_ app: XCUIApplication, _ identifier: String) -> Bool {
         let element = app.descendants(matching: .any).matching(identifier: identifier).firstMatch
-        guard element.waitForExistence(timeout: 8) else { return false }
+        guard element.waitForExistence(timeout: 8) else { XCTFail("Missing control: \(identifier)"); return false }
         element.tap()
         return true
     }

@@ -49,3 +49,7 @@ The **iOS** GitHub Actions workflow (`.github/workflows/ios.yml`) runs both on e
 2. Set `DEVELOPMENT_TEAM`, raise `MARKETING_VERSION` and `CURRENT_PROJECT_VERSION` in `project.yml`, and generate the project.
 3. In Xcode, Product → Archive, then Distribute App → App Store Connect. TestFlight builds use production push notifications and the App Store sandbox.
 4. When a release needs a newer app for a server change, set `IOS_MIN_VERSION` on the server once the new version is live.
+
+## Workflow update
+
+See [the implementation and release checklist](../docs/IOS_IMPROVEMENTS.md). The app and PhotoShare extension both require the `group.com.menumaterial.app` App Group when signing. Regenerate the project after pulling this update.
