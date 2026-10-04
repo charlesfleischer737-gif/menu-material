@@ -85,7 +85,7 @@ private struct PostDishPicker: View {
         NavigationStack {
             List {
                 let dishes = (model.workspace?.activeDishes ?? []).filter { search.isEmpty || $0.name.localizedCaseInsensitiveContains(search) }
-                if dishes.isEmpty { ContentUnavailableView("Add your first dish", systemImage: "fork.knife", description: Text("Add a dish and photo in Studio or Dishes, then create its first post.")) }
+                if dishes.isEmpty { ContentUnavailableView("Add your first dish", systemImage: "fork.knife", description: Text("Add a dish and photo in Studio or Dishes, then create its first post.").foregroundColor(Palette.muted)) }
                 ForEach(dishes) { dish in
                     Button { choose(dish) } label: {
                         HStack(spacing: 14) {
@@ -94,8 +94,8 @@ private struct PostDishPicker: View {
                         }
                     }
                 }
-            }.navigationTitle("Choose a Dish").searchable(text: $search)
-                .toolbar { ToolbarItem(placement: .cancellationAction) { Button("Cancel") { dismiss() } } }
+            }.navigationTitle("Choose a Dish").searchField(text: $search)
+                .toolbar { ToolbarItem(placement: .cancellationAction) { Group { Button("Cancel") { dismiss() } }.buttonStyle(.plain).tint(Palette.ink) }.sharedBackgroundVisibility(.hidden) }
         }
     }
 }
@@ -148,7 +148,7 @@ private struct PostEditorView: View {
                     }.card()
                     VStack(alignment: .leading, spacing: 12) {
                         HStack { Text("Caption").font(.title3.bold()); Spacer(); Button("Copy") { UIPasteboard.general.string = draft.caption; note = "Caption copied" } }
-                        TextField("Write your caption", text: $draft.caption, axis: .vertical).lineLimit(4...8).padding(16).background(Palette.surface, in: .rect(cornerRadius: 16))
+                        TextField("Write your caption", text: $draft.caption, prompt: Text("Write your caption").foregroundStyle(Palette.muted), axis: .vertical).lineLimit(4...8).padding(16).background(Palette.surface, in: .rect(cornerRadius: 16))
                         Text("Review your food, prices and offer terms before sharing.").font(.footnote).foregroundStyle(Palette.muted)
                     }
                     if let error { ErrorNote(message: error) }
@@ -159,7 +159,7 @@ private struct PostEditorView: View {
                     if busy { ProgressView("Preparing your post…").frame(maxWidth: .infinity) }
                 }.padding(Metrics.gutter)
             }.canvasBackground().navigationTitle("Create Post").navigationBarTitleDisplayMode(.inline)
-                .toolbar { ToolbarItem(placement: .confirmationAction) { Button("Done") { persist(); dismiss() }.disabled(busy) } }
+                .toolbar { ToolbarItem(placement: .confirmationAction) { Group { Button("Done") { persist(); dismiss() }.disabled(busy) }.buttonStyle(.plain).tint(Palette.accent) }.sharedBackgroundVisibility(.hidden) }
         }.interactiveDismissDisabled(busy)
             .onAppear { if !loaded { draft = initial; loaded = true; persist() } }
             .task { await loadPhoto() }
@@ -170,7 +170,7 @@ private struct PostEditorView: View {
     private func field(_ label: String, value: Binding<String>, limit: Int) -> some View {
         VStack(alignment: .leading, spacing: 6) {
             Text(label).font(.subheadline.weight(.medium)).foregroundStyle(Palette.muted)
-            TextField(label, text: Binding(get: { value.wrappedValue }, set: { value.wrappedValue = String($0.prefix(limit)) }), axis: .vertical).lineLimit(1...4)
+            TextField(label, text: Binding(get: { value.wrappedValue }, set: { value.wrappedValue = String($0.prefix(limit)) }), prompt: Text(label).foregroundStyle(Palette.muted), axis: .vertical).lineLimit(1...4)
         }
     }
     private func persist() { guard loaded else { return }; var saved = draft; saved.updatedAt = Date(); saveDraft(saved) }
@@ -211,26 +211,26 @@ struct PostArtwork: View {
             let width = geometry.size.width
             let height = geometry.size.height
             let dark = draft.template == "Special"
-            let ink: Color = dark ? .white : Palette.accent
+            let ink: Color = dark ? .white : Palette.actionFill
             VStack(alignment: .leading, spacing: width * 0.025) {
                 Text(restaurant.uppercased()).font(.system(size: width * 0.029, weight: .semibold)).tracking(width * 0.004).foregroundStyle(ink).lineLimit(1).minimumScaleFactor(0.6)
                 ZStack {
                     Palette.raised
                     if let image { Image(uiImage: image).resizable().scaledToFill() }
-                    else { Image(systemName: "photo").font(.largeTitle).foregroundStyle(.secondary) }
+                    else { Image(systemName: "photo").font(.largeTitle).foregroundStyle(Palette.muted) }
                 }.frame(width: width * 0.86, height: height * (story ? 0.38 : 0.47)).clipped().clipShape(.rect(cornerRadius: width * 0.02))
                 if draft.template != "Spotlight" {
                     Text(draft.template == "Special" ? "ON THE MENU" : "SOMETHING SPECIAL")
-                        .font(.system(size: width * 0.027, weight: .semibold)).tracking(width * 0.005).foregroundStyle(ink.opacity(0.72))
+                        .font(.system(size: width * 0.027, weight: .semibold)).tracking(width * 0.005).foregroundStyle(ink)
                 }
                 Text(draft.headline).font(.system(size: width * 0.074, weight: .bold, design: .serif)).foregroundStyle(ink).lineLimit(3).minimumScaleFactor(0.60).fixedSize(horizontal: false, vertical: true)
-                if !draft.detail.isEmpty { Text(draft.detail).font(.system(size: width * 0.032)).foregroundStyle(ink.opacity(0.78)).lineLimit(3).minimumScaleFactor(0.8).fixedSize(horizontal: false, vertical: true) }
+                if !draft.detail.isEmpty { Text(draft.detail).font(.system(size: width * 0.032)).foregroundStyle(ink).lineLimit(3).minimumScaleFactor(0.8).fixedSize(horizontal: false, vertical: true) }
                 if !draft.price.isEmpty { Text(draft.price).font(.system(size: width * 0.046, weight: .semibold)).foregroundStyle(ink).lineLimit(1) }
                 Spacer(minLength: 0)
             }.padding(.horizontal, width * 0.07).padding(.top, story ? height * 0.14 : width * 0.06)
                 .padding(.bottom, story ? height * 0.18 : width * 0.04)
                 .frame(width: width, height: height, alignment: .topLeading)
-                .background(dark ? Palette.accent : Color(uiColor: .systemBackground))
+                .background(dark ? Palette.actionFill : Color.white)
         }.environment(\.colorScheme, .light)
     }
 }

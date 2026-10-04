@@ -17,7 +17,7 @@ struct PhotoActivityWidget: Widget {
     var body: some WidgetConfiguration {
         ActivityConfiguration(for: PhotoActivityAttributes.self) { context in
             LockScreenView(attributes: context.attributes, state: context.state)
-                .activityBackgroundTint(evergreen.opacity(0.92))
+                .activityBackgroundTint(evergreen)
                 .activitySystemActionForegroundColor(.white)
         } dynamicIsland: { context in
             DynamicIsland {
@@ -33,11 +33,12 @@ struct PhotoActivityWidget: Widget {
                 DynamicIslandExpandedRegion(.center) {
                     VStack(spacing: 2) {
                         Text(context.attributes.dishName)
+                            .foregroundStyle(.white)
                             .font(.headline)
                             .lineLimit(1)
                         Text(context.attributes.lookName)
                             .font(.caption)
-                            .foregroundStyle(.secondary)
+                            .foregroundStyle(Palette.onDarkMuted)
                             .lineLimit(1)
                     }
                 }
@@ -76,7 +77,7 @@ private struct LockScreenView: View {
                     .foregroundStyle(.white)
                 Text("\(attributes.dishName) · \(attributes.lookName)")
                     .font(.subheadline)
-                    .foregroundStyle(.white.opacity(0.7))
+                    .foregroundStyle(Palette.onDarkMuted)
                     .lineLimit(1)
                 PhotoProgress(attributes: attributes, state: state)
             }
@@ -126,11 +127,11 @@ private struct PhotoProgress: View {
         } else if state.phase == "ready" {
             Text("Open Menu Material to review it.")
                 .font(.caption)
-                .foregroundStyle(.secondary)
+                .foregroundStyle(Palette.onDarkMuted)
         } else if state.phase == "failed" {
             Text("It wasn’t counted against your images.")
                 .font(.caption)
-                .foregroundStyle(.secondary)
+                .foregroundStyle(Palette.onDarkMuted)
         }
     }
 }

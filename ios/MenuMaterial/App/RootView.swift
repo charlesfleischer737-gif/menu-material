@@ -99,9 +99,9 @@ struct OfflineView: View {
     var body: some View {
         ContentUnavailableView {
             Label("Can’t Reach Menu Material", systemImage: "wifi.slash")
-        } description: {
+        } description: { Group {
             Text(model.connectionError ?? "Check your connection and try again.")
-        } actions: {
+        }.foregroundStyle(Palette.muted) } actions: {
             Button("Try Again") { Task { await model.retryConnection() } }
                 .primaryAction()
         }
@@ -116,9 +116,9 @@ struct UpdateRequiredView: View {
     var body: some View {
         ContentUnavailableView {
             Label("Update Menu Material", systemImage: "arrow.down.app")
-        } description: {
+        } description: { Group {
             Text("This version is no longer supported. Update the app to keep going; your work is saved.")
-        } actions: {
+        }.foregroundStyle(Palette.muted) } actions: {
             if let link = model.config?.links.appStore, let url = URL(string: link) {
                 Button("Open the App Store") { openURL(url) }.primaryAction()
             } else {

@@ -42,7 +42,7 @@ struct ExploreStylesView: View {
                         Button("Retry Styles") { Task { await studio.loadCatalog(model.client) } }
                     }
                     if studio.catalog == nil && studio.catalogError == nil { ProgressView().frame(maxWidth: .infinity) }
-                    else if looks.isEmpty { ContentUnavailableView("No matching styles", systemImage: "paintpalette", description: Text("Try a different search or save a favorite style.")) }
+                    else if looks.isEmpty { ContentUnavailableView("No matching styles", systemImage: "paintpalette", description: Text("Try a different search or save a favorite style.").foregroundColor(Palette.muted)) }
                     LazyVGrid(columns: [GridItem(.adaptive(minimum: 150), spacing: 16, alignment: .top)], spacing: 24) {
                         ForEach(looks) { look in
                             Button { detail = look } label: {
@@ -50,7 +50,7 @@ struct ExploreStylesView: View {
                                     StyleArtwork(path: look.thumbnail).aspectRatio(4 / 5, contentMode: .fit).clipShape(.rect(cornerRadius: 22))
                                         .overlay(alignment: .topTrailing) {
                                             if look.pro { ProBadge().padding(10) }
-                                            else if look.id == model.profile.defaultLook { Image(systemName: "checkmark.seal.fill").foregroundStyle(Palette.accent).padding(10).background(.regularMaterial, in: .circle).padding(8) }
+                                            else if look.id == model.profile.defaultLook { Image(systemName: "checkmark.seal.fill").foregroundStyle(Palette.accent).padding(10).background(Palette.surface, in: .circle).padding(8) }
                                         }
                                     Text(look.name).font(.subheadline.bold()).foregroundStyle(Palette.ink)
                                     Text(look.cue).font(.caption).foregroundStyle(Palette.muted)
@@ -60,8 +60,8 @@ struct ExploreStylesView: View {
                     }
                 }.padding(Metrics.gutter)
             }.canvasBackground().navigationTitle("Explore Styles").navigationBarTitleDisplayMode(.inline)
-                .searchable(text: $query, prompt: "Search mood, dish or occasion")
-                .toolbar { ToolbarItem(placement: .confirmationAction) { Button("Done") { dismiss() } } }
+                .searchField(text: $query, placeholder: "Search mood, dish or occasion")
+                .toolbar { ToolbarItem(placement: .confirmationAction) { Group { Button("Done") { dismiss() } }.buttonStyle(.plain).tint(Palette.accent) }.sharedBackgroundVisibility(.hidden) }
         }
         .task { await studio.loadCatalog(model.client) }
         .sheet(item: $detail) { look in
@@ -86,14 +86,14 @@ struct ExploreStylesView: View {
                         }.disabled(saving)
                         Text("A default look starts each new photo. You can still choose a different style anytime.").font(.footnote).foregroundStyle(Palette.muted)
                     }.padding(Metrics.gutter)
-                }.canvasBackground().toolbar { ToolbarItem(placement: .confirmationAction) { Button("Done") { detail = nil } } }
+                }.canvasBackground().toolbar { ToolbarItem(placement: .confirmationAction) { Group { Button("Done") { detail = nil } }.buttonStyle(.plain).tint(Palette.accent) }.sharedBackgroundVisibility(.hidden) }
             }
         }
     }
     private func chip(_ id: String, _ name: String) -> some View {
         Button { category = id } label: {
             Text(name).font(.subheadline.weight(.semibold)).padding(.horizontal, 16).padding(.vertical, 10)
-                .foregroundStyle(category == id ? Color.white : Palette.ink).background(category == id ? Palette.accent : Palette.surface, in: .capsule)
+                .foregroundStyle(category == id ? Color.white : Palette.ink).background(category == id ? Palette.actionFill : Palette.surface, in: .capsule)
         }.buttonStyle(.plain).accessibilityAddTraits(category == id ? .isSelected : [])
     }
     private func preference(_ look: StyleCatalog.Look, favorite: Bool) async {
@@ -163,9 +163,9 @@ struct ActivityView: View {
     var body: some View {
         NavigationStack {
             List {
-                Section { Label("\(model.workspace?.remaining ?? 0) images available", systemImage: "sparkles") } footer: {
+                Section { Label("\(model.workspace?.remaining ?? 0) images available", systemImage: "sparkles") } footer: { Group {
                     Text("Processing photos reserve an image. Failed creations release their reservation. Open a photo to review or recover it.")
-                }
+                }.foregroundStyle(Palette.muted) }
                 if model.workspace?.jobs.isEmpty ?? true { ContentUnavailableView("No activity yet", systemImage: "clock") }
                 ForEach(model.workspace?.jobs ?? []) { job in
                     Button {
@@ -183,7 +183,7 @@ struct ActivityView: View {
                     }
                 }
             }.navigationTitle("Activity").refreshable { await model.refresh() }
-                .toolbar { ToolbarItem(placement: .confirmationAction) { Button("Done") { dismiss() } } }
+                .toolbar { ToolbarItem(placement: .confirmationAction) { Group { Button("Done") { dismiss() } }.buttonStyle(.plain).tint(Palette.accent) }.sharedBackgroundVisibility(.hidden) }
         }
     }
 }

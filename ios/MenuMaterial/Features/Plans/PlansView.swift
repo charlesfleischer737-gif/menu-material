@@ -47,12 +47,13 @@ struct PlansView: View {
             }
             .background {
                 MeshBackdrop(colors: Palette.proMesh)
+                    .overlay(Palette.darkSurface.opacity(0.72))
                     .ignoresSafeArea()
             }
             .toolbar {
-                ToolbarItem(placement: .cancellationAction) {
+                ToolbarItem(placement: .cancellationAction) { Group {
                     Button("Close", systemImage: "xmark") { dismiss() }
-                }
+                }.buttonStyle(.plain).tint(Palette.ink) }.sharedBackgroundVisibility(.hidden)
             }
             .manageSubscriptionsSheet(isPresented: $manage)
             .sensoryFeedback(.success, trigger: celebrate)
@@ -62,6 +63,7 @@ struct PlansView: View {
                 }
             }
         }
+        .preferredColorScheme(.dark)
         .environment(\.colorScheme, .dark)
         .tint(Palette.glow)
     }
@@ -87,7 +89,7 @@ struct PlansView: View {
                 .foregroundStyle(.white)
                 Text("Studio-quality food photography every week, and everything that makes your restaurant look its best.")
                     .font(.body)
-                    .foregroundStyle(.white.opacity(0.72))
+                    .foregroundStyle(Palette.onDarkMuted)
                     .multilineTextAlignment(.center)
                     .fixedSize(horizontal: false, vertical: true)
             }
@@ -96,10 +98,10 @@ struct PlansView: View {
                      ? "\(billing.remaining) of \(billing.allowance) Pro images left this month"
                      : "\(billing.remaining) free images left")
                     .font(.footnote.weight(.semibold))
-                    .foregroundStyle(.white.opacity(0.9))
+                    .foregroundStyle(Palette.onDarkMuted)
                     .padding(.horizontal, 14)
                     .padding(.vertical, 8)
-                    .glassEffect(.regular, in: .capsule)
+                    .background(Palette.darkSurface, in: .capsule)
             }
         }
         .padding(.top, 8)
@@ -121,16 +123,16 @@ struct PlansView: View {
         HStack(alignment: .top, spacing: 16) {
             Image(systemName: symbol)
                 .font(.system(size: 18, weight: .semibold))
-                .foregroundStyle(.white)
+                .foregroundStyle(color)
                 .frame(width: 40, height: 40)
-                .background(color.gradient, in: .rect(cornerRadius: 11))
+                .background(Palette.darkSurface, in: .rect(cornerRadius: 11))
             VStack(alignment: .leading, spacing: 3) {
                 Text(title)
                     .font(.headline)
                     .foregroundStyle(.white)
                 Text(detail)
                     .font(.subheadline)
-                    .foregroundStyle(.white.opacity(0.65))
+                    .foregroundStyle(Palette.onDarkMuted)
                     .fixedSize(horizontal: false, vertical: true)
             }
         }
@@ -144,7 +146,7 @@ struct PlansView: View {
             if let reason = store.state?.blockedReason {
                 Text(reason)
                     .font(.callout)
-                    .foregroundStyle(.white.opacity(0.8))
+                    .foregroundStyle(Palette.onDarkMuted)
                     .multilineTextAlignment(.center)
             } else if let product = store.product {
                 subscribeButton { Task { await subscribe(product) } }
@@ -155,7 +157,7 @@ struct PlansView: View {
             } else if store.productUnavailable || model.config?.billing.appStore == false {
                 Text(model.config?.billing.appStore == false ? "Pro in the app is coming soon. Your free account is ready to use." : "The subscription couldn’t load. You can keep using your account and try again.")
                     .font(.callout)
-                    .foregroundStyle(.white.opacity(0.8))
+                    .foregroundStyle(Palette.onDarkMuted)
                     .multilineTextAlignment(.center)
             } else {
                 ProgressView().frame(height: 52)
@@ -170,25 +172,25 @@ struct PlansView: View {
                 if restoring { ProgressView() } else { Text("Restore Purchases") }
             }
             .font(.footnote.weight(.semibold))
-            .foregroundStyle(.white.opacity(0.75))
+            .foregroundStyle(Palette.onDarkMuted)
             .disabled(restoring)
         }
         .padding(.horizontal, 24)
         .padding(.top, 10)
         .padding(.bottom, 6)
+        .background(Palette.darkSurface)
     }
 
     private func subscribeButton(_ action: @escaping () -> Void) -> some View {
         Button(action: action) {
             VStack(spacing: 2) {
                 if buying {
-                    ProgressView().tint(.white)
+                    ProgressView()
                 } else {
                     Text("Subscribe for \(price)/month")
                         .font(.headline)
                     Text("Cancel anytime")
                         .font(.caption)
-                        .opacity(0.8)
                 }
             }
             .frame(maxWidth: .infinity)
@@ -206,7 +208,7 @@ struct PlansView: View {
             if let renewal = billing?.renewalDate {
                 Text("\(billing?.cancelAtPeriodEnd == true ? "Ends" : "Images renew") \(renewal.formatted(date: .abbreviated, time: .omitted)).")
                     .font(.callout)
-                    .foregroundStyle(.white.opacity(0.75))
+                    .foregroundStyle(Palette.onDarkMuted)
             }
             if billing?.provider == "app_store" {
                 Button("Manage Subscription") { manage = true }
@@ -214,13 +216,13 @@ struct PlansView: View {
             } else if billing?.provider == "stripe" {
                 Text("Billed on menumaterial.com. Manage it there, under Plans.")
                     .font(.callout)
-                    .foregroundStyle(.white.opacity(0.75))
+                    .foregroundStyle(Palette.onDarkMuted)
                     .multilineTextAlignment(.center)
             }
         }
         .frame(maxWidth: .infinity)
         .padding(20)
-        .glassEffect(.regular, in: .rect(cornerRadius: Metrics.cardRadius))
+        .background(Palette.darkSurface, in: .rect(cornerRadius: Metrics.cardRadius))
     }
 
     @ViewBuilder
@@ -239,7 +241,7 @@ struct PlansView: View {
             .font(.caption.weight(.semibold))
         }
         .font(.caption)
-        .foregroundStyle(.white.opacity(0.5))
+        .foregroundStyle(Palette.onDarkMuted)
     }
 
     private func subscribe(_ product: Product) async {

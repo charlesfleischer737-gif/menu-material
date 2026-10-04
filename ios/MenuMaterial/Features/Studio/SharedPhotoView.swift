@@ -14,13 +14,13 @@ struct SharedPhotoView: View {
         NavigationStack {
             Form {
                 if let photo { Image(uiImage: photo.preview).resizable().scaledToFit().clipShape(.rect(cornerRadius: 20)) }
-                Section("Save this photo to") {
+                Section {
                     Picker("Dish", selection: $dishId) {
                         Text("New dish").tag("")
                         ForEach(model.workspace?.activeDishes ?? []) { Text($0.name).tag($0.id) }
                     }
-                    if dishId.isEmpty { TextField("Dish name", text: $name) }
-                }
+                    if dishId.isEmpty { TextField("Dish name", text: $name, prompt: Text("Dish name").foregroundStyle(Palette.muted)) }
+                } header: { Text("Save this photo to").foregroundStyle(Palette.muted) }
                 if let error { ErrorNote(message: error) }
                 Button("Continue in Studio") {
                     if model.studio.stage != .empty { replace = true } else { use() }
@@ -30,7 +30,7 @@ struct SharedPhotoView: View {
                     catch { self.error = error.localizedDescription }
                 }
             }.navigationTitle("Shared Photo").navigationBarTitleDisplayMode(.inline)
-                .toolbar { ToolbarItem(placement: .cancellationAction) { Button("Later") { dismiss() } } }
+                .toolbar { ToolbarItem(placement: .cancellationAction) { Group { Button("Later") { dismiss() } }.buttonStyle(.plain).tint(Palette.ink) }.sharedBackgroundVisibility(.hidden) }
                 .confirmationDialog("Replace your current Studio draft?", isPresented: $replace, titleVisibility: .visible) { Button("Use Shared Photo", role: .destructive, action: use) }
         }.task {
             do { photo = try await PreparedPhoto.fromLibrary(Data(contentsOf: url)) }

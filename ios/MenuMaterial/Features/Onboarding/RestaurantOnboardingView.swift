@@ -62,10 +62,10 @@ struct RestaurantOnboardingView: View {
             .canvasBackground()
             .navigationBarTitleDisplayMode(.inline)
             .toolbar {
-                ToolbarItem(placement: .cancellationAction) {
-                    if step > 0 { Button("Back") { step -= 1 }.disabled(busy) }
+                ToolbarItem(placement: .cancellationAction) { Group {
+                    if step > 0 { Button("Back", systemImage: "chevron.left") { step -= 1 }.disabled(busy) }
                     else if editing { Button("Cancel") { dismiss() } }
-                }
+                }.buttonStyle(.plain).tint(Palette.ink) }.sharedBackgroundVisibility(.hidden)
             }
             .bottomBar {
                 Button { if step < 2 { withAnimation(.smooth) { step += 1 } } else { Task { await finish() } } } label: {
@@ -82,7 +82,7 @@ struct RestaurantOnboardingView: View {
     private func field(_ title: String, placeholder: String, value: Binding<String>) -> some View {
         VStack(alignment: .leading, spacing: 8) {
             Text(title).font(.subheadline.weight(.medium)).foregroundStyle(Palette.muted)
-            TextField(placeholder, text: value).textInputAutocapitalization(.words).submitLabel(.next)
+            TextField(placeholder, text: value, prompt: Text(placeholder).foregroundStyle(Palette.muted)).textInputAutocapitalization(.words).submitLabel(.next)
         }
     }
     private func finish() async {

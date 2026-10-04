@@ -49,15 +49,15 @@ struct DishesView: View {
                 if model.workspace?.dishes.isEmpty ?? true {
                     ContentUnavailableView {
                         Label("Your Dishes Live Here", systemImage: "fork.knife")
-                    } description: {
+                    } description: { Group {
                         Text("Every photo you style is saved to its dish, ready for your menus and posts.")
-                    } actions: {
+                    }.foregroundStyle(Palette.muted) } actions: {
                         Button("Style Your First Photo") { model.tab = .studio }
                             .primaryAction()
                     }
                     .padding(.top, 60)
                 } else if dishes.isEmpty {
-                    ContentUnavailableView.search(text: query)
+                    ContentUnavailableView { Label("No matching dishes", systemImage: "magnifyingglass") } description: { Text("Try another dish name or section.").foregroundStyle(Palette.muted) }
                         .padding(.top, 60)
                 } else {
                     LazyVStack(alignment: .leading, spacing: 30) {
@@ -92,7 +92,7 @@ struct DishesView: View {
             }
             .canvasBackground()
             .navigationTitle(archived ? "Archived Dishes" : "Dishes")
-            .searchable(text: $search, prompt: "Dishes and sections")
+            .searchField(text: $search, placeholder: "Dishes and sections")
             .refreshable { await model.refresh() }
             .toolbar {
                 ToolbarItem(placement: .topBarLeading) {
@@ -135,7 +135,6 @@ struct DishesView: View {
         }
         .scrollTransition(.animated(.smooth)) { content, phase in
             content
-                .opacity(phase.isIdentity ? 1 : 0.7)
                 .scaleEffect(phase.isIdentity ? 1 : 0.96)
         }
     }
@@ -167,7 +166,8 @@ private struct DishCard: View {
                             .font(.caption.weight(.semibold))
                             .padding(.horizontal, 10)
                             .padding(.vertical, 6)
-                            .glassEffect(.regular, in: .capsule)
+                            .foregroundStyle(Palette.ink)
+                            .background(Palette.surface, in: .capsule)
                             .padding(10)
                     }
                 }
@@ -200,7 +200,7 @@ private struct DishPreview: View {
                 if !dish.description.isEmpty {
                     Text(dish.description)
                         .font(.callout)
-                        .foregroundStyle(.secondary)
+                        .foregroundStyle(Palette.muted)
                         .lineLimit(3)
                 }
             }
@@ -226,19 +226,19 @@ struct AddDishView: View {
         NavigationStack {
             Form {
                 Section {
-                    TextField("Dish Name", text: $name)
+                    TextField("Dish Name", text: $name, prompt: Text("Dish Name").foregroundStyle(Palette.muted))
                         .textInputAutocapitalization(.words)
                         .focused($focused)
-                    TextField("Section, such as Mains", text: $category)
+                    TextField("Section, such as Mains", text: $category, prompt: Text("Section, such as Mains").foregroundStyle(Palette.muted))
                         .textInputAutocapitalization(.words)
-                    TextField("Price", text: $price)
+                    TextField("Price", text: $price, prompt: Text("Price").foregroundStyle(Palette.muted))
                         .keyboardType(.decimalPad)
                     if !price.isEmpty && Money.hundredths(from: price) == nil {
                         Text("Enter a price such as 12.50, with no minus sign or extra text.").font(.footnote).foregroundStyle(Palette.danger)
                     }
-                } footer: {
+                } footer: { Group {
                     Text("Add photos from the Studio. The dish is ready for your menus right away.")
-                }
+                }.foregroundStyle(Palette.muted) }
                 if let error {
                     Section { Text(error).foregroundStyle(Palette.danger) }
                 }
@@ -246,13 +246,13 @@ struct AddDishView: View {
             .navigationTitle("New Dish")
             .navigationBarTitleDisplayMode(.inline)
             .toolbar {
-                ToolbarItem(placement: .cancellationAction) {
+                ToolbarItem(placement: .cancellationAction) { Group {
                     Button("Cancel", systemImage: "xmark", role: .cancel) { dismiss() }
-                }
-                ToolbarItem(placement: .confirmationAction) {
+                }.buttonStyle(.plain).tint(Palette.ink) }.sharedBackgroundVisibility(.hidden)
+                ToolbarItem(placement: .confirmationAction) { Group {
                     Button("Add", systemImage: "checkmark") { Task { await add() } }
                         .disabled(name.trimmingCharacters(in: .whitespaces).isEmpty || busy || (!price.isEmpty && Money.hundredths(from: price) == nil))
-                }
+                }.buttonStyle(.plain).tint(Palette.accent) }.sharedBackgroundVisibility(.hidden)
             }
         }
         .presentationDetents([.medium, .large])

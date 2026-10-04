@@ -85,10 +85,10 @@ struct DishDetailView: View {
         .navigationBarTitleDisplayMode(.inline)
         .toolbar {
             if changed {
-                ToolbarItem(placement: .confirmationAction) {
+                ToolbarItem(placement: .confirmationAction) { Group {
                     Button("Save", systemImage: "checkmark") { Task { await save() } }
                         .disabled(busy || conflict || priceHundredths < 0 || (draft?.name.isEmpty ?? true))
-                }
+                }.buttonStyle(.plain).tint(Palette.accent) }.sharedBackgroundVisibility(.hidden)
             }
         }
         .confirmationDialog("Archive this dish?", isPresented: $showArchive, titleVisibility: .visible) {
@@ -186,7 +186,7 @@ struct DishDetailView: View {
                 }
             }
         }
-        .tint(Palette.accent)
+        .tint(Palette.actionFill)
         .card()
         .disabled(busy)
     }
@@ -199,24 +199,24 @@ struct DishDetailView: View {
                     .font(.title3.bold())
                 VStack(spacing: 0) {
                     row("Name") {
-                        TextField("Dish name", text: binding.name)
+                        TextField("Dish name", text: binding.name, prompt: Text("Dish name").foregroundStyle(Palette.muted))
                             .textInputAutocapitalization(.words)
                     }
                     Divider().padding(.leading, 16)
                     row("Section") {
-                        TextField("Dishes", text: binding.category)
+                        TextField("Dishes", text: binding.category, prompt: Text("Dishes").foregroundStyle(Palette.muted))
                             .textInputAutocapitalization(.words)
                     }
                     Divider().padding(.leading, 16)
                     row("Price") {
-                        TextField(Money.format(hundredths: 0, currency: currency), text: $priceText)
+                        TextField(Money.format(hundredths: 0, currency: currency), text: $priceText, prompt: Text(Money.format(hundredths: 0, currency: currency)).foregroundStyle(Palette.muted))
                             .keyboardType(.decimalPad)
                     }
                     Divider().padding(.leading, 16)
                     VStack(alignment: .leading, spacing: 6) {
                         Text("Description")
                             .foregroundStyle(Palette.muted)
-                        TextField("Ingredients and how it’s served", text: binding.description, axis: .vertical)
+                        TextField("Ingredients and how it’s served", text: binding.description, prompt: Text("Ingredients and how it’s served").foregroundStyle(Palette.muted), axis: .vertical)
                             .lineLimit(2...6)
                     }
                     .padding(16)
@@ -329,7 +329,7 @@ private struct HeroPhoto: View {
                             Image(systemName: "camera").font(.largeTitle)
                             Text("No photo yet").font(.callout)
                         }
-                        .foregroundStyle(.white.opacity(0.7))
+                        .foregroundStyle(Palette.onDarkMuted)
                     }
                 }
             }

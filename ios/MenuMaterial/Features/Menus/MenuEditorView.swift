@@ -25,7 +25,7 @@ struct MenuEditorView: View {
     var body: some View {
         NavigationStack {
             Form {
-                Section("Menu name") { TextField("Menu name", text: $name).textInputAutocapitalization(.words) }
+                Section { TextField("Menu name", text: $name, prompt: Text("Menu name").foregroundStyle(Palette.muted)).textInputAutocapitalization(.words) } header: { Text("Menu name").foregroundStyle(Palette.muted) }
                 Section {
                     ForEach(dishes) { dish in
                         Button {
@@ -39,23 +39,23 @@ struct MenuEditorView: View {
                         }.buttonStyle(.plain)
                     }
                     if dishes.isEmpty { Text("Add dishes in the Dishes tab, then choose them here.").foregroundStyle(Palette.muted) }
-                } header: { Text("Dishes · \(selected.count) selected") } footer: {
+                } header: { Group { Text("Dishes · \(selected.count) selected") }.foregroundStyle(Palette.muted) } footer: { Group {
                     Text("Your sections and design are kept. Unchecking a dish removes it from this draft. Imported entries stay as they are.")
-                }
+                }.foregroundStyle(Palette.muted) }
                 if menu != nil {
                     Section {
-                        Toggle("Use current dish photos", isOn: $refreshPhotos).tint(Palette.accent)
-                    } footer: { Text("Updates the selected dishes in this draft. Review and publish to change what guests see.") }
+                        Toggle("Use current dish photos", isOn: $refreshPhotos).tint(Palette.actionFill)
+                    } footer: { Group { Text("Updates the selected dishes in this draft. Review and publish to change what guests see.") }.foregroundStyle(Palette.muted) }
                 }
                 if let error { Section { ErrorNote(message: error) } }
-            }.searchable(text: $search, prompt: "Find a dish")
+            }.searchField(text: $search, placeholder: "Find a dish")
                 .navigationTitle(menu == nil ? "New Menu" : "Edit Menu").navigationBarTitleDisplayMode(.inline)
                 .toolbar {
-                    ToolbarItem(placement: .cancellationAction) { Button("Cancel") { dismiss() }.disabled(busy) }
-                    ToolbarItem(placement: .confirmationAction) {
+                    ToolbarItem(placement: .cancellationAction) { Group { Button("Cancel") { dismiss() }.disabled(busy) }.buttonStyle(.plain).tint(Palette.ink) }.sharedBackgroundVisibility(.hidden)
+                    ToolbarItem(placement: .confirmationAction) { Group {
                         Button(busy ? "Saving…" : "Save Draft") { Task { await save() } }
                             .disabled(busy || name.trimmingCharacters(in: .whitespaces).isEmpty || selected.isEmpty)
-                    }
+                    }.buttonStyle(.plain).tint(Palette.accent) }.sharedBackgroundVisibility(.hidden)
                 }
         }.interactiveDismissDisabled(busy)
             .onAppear {
@@ -88,7 +88,7 @@ struct MenuPublishView: View {
                     Text(menu.isLive ? "Publishing replaces the live menu with this saved draft." : "Publishing makes this menu available to guests.").foregroundStyle(Palette.muted)
                 }
                 ForEach(menu.draft.sections) { section in
-                    Section(section.name) {
+                    Section {
                         ForEach(section.items) { entry in
                             HStack(spacing: 14) {
                                 if let photo = entry.photoId { SquarePhoto(id: photo, radius: 10).frame(width: 56, height: 56) }
@@ -104,19 +104,19 @@ struct MenuPublishView: View {
                                 if entry.priceMode == "variants" { Text(entry.variants.map { "\($0.label ?? "") \(Money.format(hundredths: $0.price, currency: model.restaurant?.currency ?? "USD"))" }.joined(separator: "\n")).font(.caption) }
                             }
                         }
-                    }
+                    } header: { Text(section.name).foregroundStyle(Palette.muted) }
                 }
                 if model.restaurant?.slug == nil {
-                    Section("Menu address") {
-                        TextField("your-restaurant", text: $address).textInputAutocapitalization(.never).autocorrectionDisabled()
-                    }
+                    Section {
+                        TextField("your-restaurant", text: $address, prompt: Text("your-restaurant").foregroundStyle(Palette.muted)).textInputAutocapitalization(.never).autocorrectionDisabled()
+                    } header: { Text("Menu address").foregroundStyle(Palette.muted) }
                 }
                 Section {
-                    Toggle("I’ve checked the dishes, prices and photos", isOn: $confirmed).tint(Palette.accent)
-                } footer: { Text("Check ingredients and portions against what you actually serve. Your existing menu design is kept.") }
+                    Toggle("I’ve checked the dishes, prices and photos", isOn: $confirmed).tint(Palette.actionFill)
+                } footer: { Group { Text("Check ingredients and portions against what you actually serve. Your existing menu design is kept.") }.foregroundStyle(Palette.muted) }
                 if let error { Section { ErrorNote(message: error) } }
             }.navigationTitle("Review Menu").navigationBarTitleDisplayMode(.inline)
-                .toolbar { ToolbarItem(placement: .cancellationAction) { Button("Cancel") { dismiss() }.disabled(busy) } }
+                .toolbar { ToolbarItem(placement: .cancellationAction) { Group { Button("Cancel") { dismiss() }.disabled(busy) }.buttonStyle(.plain).tint(Palette.ink) }.sharedBackgroundVisibility(.hidden) }
                 .bottomBar {
                     Button { Task { await publish() } } label: { Text(busy ? "Publishing…" : "Publish Menu").frame(maxWidth: .infinity) }
                         .primaryAction().disabled(!confirmed || busy).padding(Metrics.gutter)
@@ -160,7 +160,7 @@ struct DishMenusView: View {
                 }
                 if let error { ErrorNote(message: error); Button("Retry") { Task { await load() } } }
             }.navigationTitle("Update Menus").navigationBarTitleDisplayMode(.inline)
-                .toolbar { ToolbarItem(placement: .confirmationAction) { Button("Done") { dismiss() } } }
+                .toolbar { ToolbarItem(placement: .confirmationAction) { Group { Button("Done") { dismiss() } }.buttonStyle(.plain).tint(Palette.accent) }.sharedBackgroundVisibility(.hidden) }
         }.task { await load() }.sheet(item: $review) { menu in
             MenuPublishView(menu: menu) { updated in
                 if let index = menus.firstIndex(where: { $0.id == updated.id }) { menus[index] = updated }

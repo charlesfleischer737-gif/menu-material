@@ -18,9 +18,9 @@ struct MenusView: View {
                         if menus.isEmpty {
                             ContentUnavailableView {
                                 Label("No Menus Yet", systemImage: "menucard")
-                            } description: {
+                            } description: { Group {
                                 Text("Choose dishes, review the details, and publish a menu your guests can open anywhere.")
-                            } actions: {
+                            }.foregroundStyle(Palette.muted) } actions: {
                                 Button("Create a Menu") { createMenu = true }.primaryAction()
                             }
                             .padding(.top, 40)
@@ -99,7 +99,8 @@ private struct MenuCard: View {
                             .font(.caption.weight(.semibold))
                             .padding(.horizontal, 10)
                             .padding(.vertical, 6)
-                            .glassEffect(.regular, in: .capsule)
+                            .foregroundStyle(Palette.ink)
+                            .background(Palette.surface, in: .capsule)
                             .padding(12)
                     }
                 }
@@ -113,7 +114,7 @@ private struct MenuCard: View {
                         .foregroundStyle(Palette.muted)
                 }
                 Spacer()
-                StatusPill(text: menu.isLive ? "Live" : "Draft", color: menu.isLive ? Palette.accent : .secondary)
+                StatusPill(text: menu.isLive ? "Live" : "Draft", color: menu.isLive ? Palette.accent : Palette.muted)
             }
             .padding(16)
         }
@@ -160,7 +161,7 @@ struct PhotoMosaic: View {
                         Palette.raised
                         Image(systemName: "menucard")
                             .font(.largeTitle)
-                            .foregroundStyle(.tertiary)
+                            .foregroundStyle(Palette.muted)
                     }
                 }
             }
@@ -212,9 +213,9 @@ struct MenuDetailView: View {
                     }
                     Section {
                         Button("Take Menu Offline", role: .destructive) { showOffline = true }.disabled(busy)
-                    } footer: {
+                    } footer: { Group {
                         Text("Prices and sold-out dishes change for guests right away. Design changes are made on menumaterial.com.")
-                    }
+                    }.foregroundStyle(Palette.muted) }
                 } else {
                     Section {
                         Text("This draft is saved. Review its dishes and photos, then publish when it’s ready.")
@@ -248,7 +249,7 @@ struct MenuDetailView: View {
         let soldOut = entries.filter { !$0.available }.count
         return VStack(alignment: .leading, spacing: 12) {
             HStack(spacing: 8) {
-                StatusPill(text: menu.isLive ? "Live" : "Draft", color: menu.isLive ? Palette.accent : .secondary)
+                StatusPill(text: menu.isLive ? "Live" : "Draft", color: menu.isLive ? Palette.accent : Palette.muted)
                 if menu.isPrimary {
                     Text("Main menu")
                         .font(.footnote.weight(.medium))
@@ -270,7 +271,7 @@ struct MenuDetailView: View {
                     Label("Share Menu and QR Code", systemImage: "qrcode")
                         .frame(maxWidth: .infinity)
                 }
-                .buttonStyle(.glass)
+                .buttonStyle(ReadableActionStyle())
                 .controlSize(.large)
                 .accessibilityIdentifier("share-menu")
             }
@@ -371,12 +372,12 @@ private struct LiveSection: View {
                     Button(entry.available ? "Sold Out" : "Back On") {
                         setAvailable(entry, !entry.available)
                     }
-                    .tint(entry.available ? Palette.warning : Palette.accent)
+                    .tint(entry.available ? Color(rgb: 0x805000) : Palette.actionFill)
                 }
             }
-        } header: {
+        } header: { Group {
             Text(section.name)
-        }
+        }.foregroundStyle(Palette.muted) }
     }
 }
 
@@ -425,7 +426,7 @@ private struct EntryRow: View {
             } else {
                 Toggle("Available", isOn: Binding(get: { entry.available }, set: { toggle($0) }))
                     .labelsHidden()
-                    .tint(Palette.accent)
+                    .tint(Palette.actionFill)
                     .accessibilityLabel(entry.available ? "\(entry.name) is on the menu" : "\(entry.name) is sold out")
             }
         }
@@ -469,29 +470,29 @@ private struct PriceEditor: View {
                                 TextField("Price", text: Binding(
                                     get: { sizes[variant.id] ?? "" },
                                     set: { sizes[variant.id] = $0 }
-                                ))
+                                ), prompt: Text("Price").foregroundStyle(Palette.muted))
                                 .keyboardType(.decimalPad)
                                 .multilineTextAlignment(.trailing)
                             }
                         }
                     } else {
                         LabeledContent("Price") {
-                            TextField("Price", text: $single)
+                            TextField("Price", text: $single, prompt: Text("Price").foregroundStyle(Palette.muted))
                                 .keyboardType(.decimalPad)
                                 .multilineTextAlignment(.trailing)
                         }
                     }
-                } footer: {
+                } footer: { Group {
                     Text("Guests see the new price right away.")
-                }
+                }.foregroundStyle(Palette.muted) }
             }
             .navigationTitle(entry.name)
             .navigationBarTitleDisplayMode(.inline)
             .toolbar {
-                ToolbarItem(placement: .cancellationAction) {
+                ToolbarItem(placement: .cancellationAction) { Group {
                     Button("Cancel", systemImage: "xmark", role: .cancel) { dismiss() }
-                }
-                ToolbarItem(placement: .confirmationAction) {
+                }.buttonStyle(.plain).tint(Palette.ink) }.sharedBackgroundVisibility(.hidden)
+                ToolbarItem(placement: .confirmationAction) { Group {
                     Button("Update", systemImage: "checkmark") {
                         guard let change else { return }
                         busy = true
@@ -502,7 +503,7 @@ private struct PriceEditor: View {
                         }
                     }
                     .disabled(change == nil || busy)
-                }
+                }.buttonStyle(.plain).tint(Palette.accent) }.sharedBackgroundVisibility(.hidden)
             }
         }
         .interactiveDismissDisabled(busy)

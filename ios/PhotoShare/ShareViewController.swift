@@ -28,7 +28,7 @@ private struct PhotoShareView: View {
                         Image(uiImage: image).resizable().scaledToFit().frame(maxHeight: 320).clipShape(.rect(cornerRadius: Metrics.cardRadius))
                     } else if error == nil { ProgressView() }
                     Text(saved ? "Ready for the Studio." : "A fresh look starts here.").font(.display(.largeTitle))
-                    Text(saved ? "Open Menu Material to choose a dish and style. Your photo is saved on this device." : "Save this photo to Menu Material, then finish it in the app.").foregroundStyle(.secondary).multilineTextAlignment(.center)
+                    Text(saved ? "Open Menu Material to choose a dish and style. Your photo is saved on this device." : "Save this photo to Menu Material, then finish it in the app.").foregroundStyle(Palette.muted).multilineTextAlignment(.center)
                     if let error { Text(error).foregroundStyle(Palette.danger) }
                     Button(saved ? "Done" : "Save to Menu Material") {
                         if saved { finish(); return }

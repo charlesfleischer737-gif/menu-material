@@ -303,7 +303,9 @@ private struct ComposeView: View {
                         .font(.body.weight(.semibold))
                         .frame(width: 44, height: 44)
                 }
-                .glassEffect(.regular.interactive(), in: .circle)
+                .foregroundStyle(Palette.ink)
+                .background(Palette.surface, in: .circle)
+                .overlay { Circle().strokeBorder(Palette.controlBorder, lineWidth: 1) }
                 .padding(14)
                 .accessibilityLabel("Replace photo")
             }
@@ -432,7 +434,7 @@ private struct LookPicker: View {
                 .padding(.horizontal, 15)
                 .padding(.vertical, 9)
                 .foregroundStyle(selected ? Color.white : Palette.ink)
-                .background(selected ? Palette.accent : Palette.surface, in: .capsule)
+                .background(selected ? Palette.actionFill : Palette.surface, in: .capsule)
         }
         .buttonStyle(.plain)
         .accessibilityAddTraits(selected ? .isSelected : [])
@@ -488,7 +490,7 @@ private struct LookTile: View {
         if selected {
             Image(systemName: "checkmark.circle.fill")
                 .symbolRenderingMode(.palette)
-                .foregroundStyle(.white, Palette.accent)
+                .foregroundStyle(Palette.onAction, Palette.actionFill)
                 .font(.title2)
                 .padding(8)
                 .transition(.scale.combined(with: .opacity))
@@ -534,7 +536,7 @@ private struct LookPreview: View {
             VStack(alignment: .leading, spacing: 4) {
                 Text(look.name).font(.headline)
                 if let description = look.description {
-                    Text(description).font(.callout).foregroundStyle(.secondary)
+                    Text(description).font(.callout).foregroundStyle(Palette.muted)
                 }
             }
             .padding([.horizontal, .bottom], 16)
@@ -577,13 +579,13 @@ private struct DetailsCard: View {
                     .foregroundStyle(Palette.muted)
             }
             VStack(spacing: 0) {
-                TextField("Dish name", text: $studio.dishName)
+                TextField("Dish name", text: $studio.dishName, prompt: Text("Dish name").foregroundStyle(Palette.muted))
                     .textInputAutocapitalization(.words)
                     .disabled(studio.sourceId != nil && studio.photo == nil)
                     .padding(.horizontal, 16)
                     .frame(minHeight: Metrics.rowHeight)
                 Divider().padding(.leading, 16)
-                TextField("Notes, like “more room above the dish”", text: $studio.note, axis: .vertical)
+                TextField("Notes, like “more room above the dish”", text: $studio.note, prompt: Text("Notes, like “more room above the dish”").foregroundStyle(Palette.muted), axis: .vertical)
                     .lineLimit(1...4)
                     .padding(.horizontal, 16)
                     .padding(.vertical, 15)
@@ -640,7 +642,7 @@ private struct CreateBar: View {
     private var createLabel: some View {
         if submitting {
             HStack(spacing: 10) {
-                ProgressView().tint(.white)
+                ProgressView()
                 Text("Sending Your Photo…")
             }
         } else {
@@ -817,9 +819,9 @@ private struct FailedView: View {
     var body: some View {
         ContentUnavailableView {
             Label("This Photo Couldn’t Be Made", systemImage: "exclamationmark.triangle")
-        } description: {
+        } description: { Group {
             Text(message)
-        } actions: {
+        }.foregroundStyle(Palette.muted) } actions: {
             VStack(spacing: 12) {
                 Button {
                     studio.tryAnotherLook()

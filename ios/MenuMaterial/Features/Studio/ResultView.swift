@@ -58,7 +58,7 @@ struct ResultView: View {
             }
             .overlay(alignment: .bottomTrailing) {
                 Button("Expand photo", systemImage: "arrow.up.left.and.arrow.down.right") { zoom = true }
-                    .labelStyle(.iconOnly).padding(12).glassEffect(.regular.interactive(), in: .circle).padding(12).disabled(after == nil)
+                    .labelStyle(.iconOnly).foregroundStyle(Palette.ink).padding(12).background(Palette.surface, in: .circle).overlay { Circle().strokeBorder(Palette.controlBorder, lineWidth: 1) }.padding(12).disabled(after == nil)
             }
             .scaleEffect(revealed || reduceMotion ? 1 : 0.94)
             .blur(radius: revealed || reduceMotion ? 0 : 14)

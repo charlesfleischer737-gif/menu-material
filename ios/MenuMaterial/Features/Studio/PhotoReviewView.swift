@@ -25,14 +25,14 @@ struct PhotoCorrectionView: View {
                         Text("Ingredients").tag("ingredients"); Text("Portion size").tag("portion"); Text("Plating").tag("plating")
                         Text("Branding").tag("branding"); Text("Looks artificial").tag("artificial"); Text("Something else").tag("other")
                     }
-                    TextField("Tell us what needs to match your original", text: $detail, axis: .vertical).lineLimit(3...6)
-                } footer: { Text("Reporting removes this photo from places where guests see it. Your original is kept. A food correction follows the same image-processing consent you gave in Studio.") }
+                    TextField("Tell us what needs to match your original", text: $detail, prompt: Text("Tell us what needs to match your original").foregroundStyle(Palette.muted), axis: .vertical).lineLimit(3...6)
+                } footer: { Group { Text("Reporting removes this photo from places where guests see it. Your original is kept. A food correction follows the same image-processing consent you gave in Studio.") }.foregroundStyle(Palette.muted) }
                 if let error { Section { ErrorNote(message: error); Button("Retry") { Task { await load() } } } }
                 if let eligibility, eligibility.canReport != false {
                     Button(busy ? "Submitting…" : "Report and Correct") { Task { await submit() } }.disabled(busy)
                 } else if eligibility == nil && error == nil { ProgressView() }
             }.navigationTitle("Correct This Photo").navigationBarTitleDisplayMode(.inline)
-                .toolbar { ToolbarItem(placement: .cancellationAction) { Button("Cancel") { dismiss() }.disabled(busy) } }
+                .toolbar { ToolbarItem(placement: .cancellationAction) { Group { Button("Cancel") { dismiss() }.disabled(busy) }.buttonStyle(.plain).tint(Palette.ink) }.sharedBackgroundVisibility(.hidden) }
         }.task { await load() }.interactiveDismissDisabled(busy)
     }
     private func load() async {
@@ -57,7 +57,7 @@ struct FullScreenPhotoView: View {
     var body: some View {
         NavigationStack {
             ZoomPhoto(image: image).background(Color.black).ignoresSafeArea(edges: .bottom)
-                .toolbar { ToolbarItem(placement: .confirmationAction) { Button("Done") { dismiss() } } }
+                .toolbar { ToolbarItem(placement: .confirmationAction) { Group { Button("Done") { dismiss() } }.buttonStyle(.plain).tint(Palette.accent) }.sharedBackgroundVisibility(.hidden) }
                 .preferredColorScheme(.dark)
         }
     }

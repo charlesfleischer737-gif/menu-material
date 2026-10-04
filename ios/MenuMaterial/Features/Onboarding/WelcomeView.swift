@@ -79,7 +79,6 @@ struct WelcomeView: View {
                 .frame(height: 54)
                 .clipShape(.capsule)
                 .disabled(flows.appleFlow == nil || flows.busy)
-                .opacity(flows.appleFlow == nil ? 0.5 : 1)
             }
             if model.config?.signIn.google != nil {
                 Button {
@@ -164,8 +163,11 @@ struct WelcomeHero: View {
         }
         .overlay(alignment: .top) {
             // Keeps the status bar readable over the photo.
-            LinearGradient(colors: [.black.opacity(0.32), .clear], startPoint: .top, endPoint: .bottom)
-                .frame(height: 110)
+            VStack(spacing: 0) {
+                Palette.canvas.opacity(0.96).frame(height: 64)
+                LinearGradient(colors: [Palette.canvas.opacity(0.96), .clear], startPoint: .top, endPoint: .bottom)
+                    .frame(height: 60)
+            }
         }
         .overlay(alignment: .bottom) {
             LinearGradient(
@@ -182,9 +184,10 @@ struct WelcomeHero: View {
         .overlay(alignment: .bottomLeading) {
             Text("Example AI edit of a phone photo")
                 .font(.caption.weight(.medium))
+                .foregroundStyle(Palette.ink)
                 .padding(.horizontal, 10)
                 .padding(.vertical, 6)
-                .glassEffect(.regular, in: .capsule)
+                .background(Palette.surface, in: .capsule)
                 .padding(.leading, Metrics.gutter + 4)
                 .padding(.bottom, 56)
         }

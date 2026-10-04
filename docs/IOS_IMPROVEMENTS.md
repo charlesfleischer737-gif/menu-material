@@ -1,6 +1,6 @@
 # iPhone workflow update
 
-The app keeps the existing evergreen palette, serif display typography, adaptive grouped surfaces, rounded photo cards, native glass controls and Dynamic Type. Explore Styles lives on Studio's home screen and opens a searchable gallery. Posts has its own tab; the five tabs are Studio, Dishes, Posts, Menus and Account.
+The app keeps the existing evergreen palette, serif display typography, adaptive grouped surfaces, rounded photo cards, native navigation, readable capsule actions and Dynamic Type. Explore Styles lives on Studio's home screen and opens a searchable gallery. Posts has its own tab; the five tabs are Studio, Dishes, Posts, Menus and Account.
 
 ## Delivered
 
@@ -17,6 +17,25 @@ The app keeps the existing evergreen palette, serif display typography, adaptive
 - A Photos share extension saves a photo to a protected app-group inbox. Opening Menu Material offers a dish choice; it asks before replacing an existing Studio draft. The extension does not use unsupported tricks to force-open the host app.
 - Entitlement recovery at app startup, unfinished transaction reconciliation, restore errors and accurate purchase messaging. The update screen uses the configured App Store URL, with a website fallback.
 - Restricted performance events for startup, upload, completed-result latency, recovery and post export. Events contain timings, outcome and version only; server job, use, correction and publishing events continue to provide outcome data.
+
+## Contrast
+
+Text uses at least WCAG 2.2 AA's 4.5:1 target, including small labels and prompts; essential control boundaries use 3:1. The shared colors are measured in light/dark, normal/Increase Contrast, and base/elevated appearances. Foreground opacity is avoided for informative text. Photo labels have opaque backgrounds, and Pro's animated background has a stable dark scrim.
+
+| Pair | Contrast |
+| --- | ---: |
+| White on the primary evergreen action | 7.77:1 |
+| Secondary text on the light canvas | 6.21:1 |
+| Secondary text on a light card | 6.93:1 |
+| Secondary text on a dark card | 9.60:1 |
+| Disabled action, light / dark | 5.67:1 / 7.55:1 |
+| Pro badge | 8.59:1 |
+
+The old dark-mode accent with white text measured 3.20:1. Filled actions and selected chips now use a separate, darker evergreen; the brighter dark-mode accent is reserved for foreground links. The same rules cover toolbars, onboarding, errors, prompts, post artwork, QR cards, share-extension copy and Live Activity text. Native navigation still uses system glass.
+
+`ContrastTests` evaluates the actual resolved colors and their composites. The screenshot suite runs Apple's contrast audit as it visits light/dark screens and scroll positions. Nodes wholly outside the viewport or covered by other controls are audited when scrolled into view, rather than sampling unrelated screen pixels. These checks supplement visual review; they are not a certification of every possible system sheet or user photograph.
+
+References: [WCAG text contrast](https://www.w3.org/WAI/WCAG22/Understanding/contrast-minimum.html), [non-text contrast](https://www.w3.org/WAI/WCAG22/Understanding/non-text-contrast.html), [Apple accessibility guidance](https://developer.apple.com/design/human-interface-guidelines/accessibility).
 
 ## Validation
 

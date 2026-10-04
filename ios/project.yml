@@ -85,6 +85,8 @@ targets:
     platform: iOS
     sources:
       - path: PhotoActivity
+      - path: MenuMaterial/Design/Theme.swift
+      - path: MenuMaterial/Resources/Assets.xcassets
       - path: Shared
     info:
       path: PhotoActivity/Info.plist

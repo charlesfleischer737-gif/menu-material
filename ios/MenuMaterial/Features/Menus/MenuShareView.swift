@@ -73,9 +73,9 @@ struct MenuShareView: View {
                     } else {
                         ContentUnavailableView {
                             Label("Address Not Ready", systemImage: "link")
-                        } description: {
+                        } description: { Group {
                             Text("Your menu’s address isn’t ready yet. Pull to refresh, or open Menus on menumaterial.com.")
-                        }
+                        }.foregroundStyle(Palette.muted) }
                     }
                 }
                 .padding(.horizontal, Metrics.gutter + 4)
@@ -87,10 +87,10 @@ struct MenuShareView: View {
             .navigationTitle("Share Menu")
             .navigationBarTitleDisplayMode(.inline)
             .toolbar {
-                ToolbarItem(placement: .confirmationAction) {
+                ToolbarItem(placement: .confirmationAction) { Group {
                     Button("Done", systemImage: "checkmark") { dismiss() }
                         .accessibilityLabel("Done")
-                }
+                }.buttonStyle(.plain).tint(Palette.accent) }.sharedBackgroundVisibility(.hidden)
             }
             .toast($copied)
         }
@@ -149,14 +149,14 @@ private struct MenuPass: View {
                     .tracking(0.8)
                     .padding(.horizontal, 9)
                     .padding(.vertical, 5)
-                    .background(.white.opacity(0.16), in: .capsule)
+                    .background(Palette.darkSurface, in: .capsule)
                     .contentTransition(.opacity)
             }
             VStack(alignment: .leading, spacing: 4) {
                 Text("MENU")
                     .font(.caption2.weight(.semibold))
                     .tracking(1.2)
-                    .foregroundStyle(.white.opacity(0.6))
+                    .foregroundStyle(Palette.onDarkMuted)
                 Text(menu)
                     .font(.display(.title))
                     .lineLimit(2)
@@ -174,16 +174,16 @@ private struct MenuPass: View {
                     .transition(.scale(scale: 0.9).combined(with: .opacity))
                 Text("Scan to see the menu")
                     .font(.footnote)
-                    .foregroundStyle(.white.opacity(0.7))
+                    .foregroundStyle(Palette.onDarkMuted)
                     .frame(maxWidth: .infinity)
             } else {
                 Text(link.absoluteString)
                     .font(.callout.monospaced())
-                    .foregroundStyle(.white.opacity(0.85))
+                    .foregroundStyle(Palette.onDarkMuted)
                     .textSelection(.enabled)
                     .padding(14)
                     .frame(maxWidth: .infinity, alignment: .leading)
-                    .background(.white.opacity(0.1), in: .rect(cornerRadius: 14))
+                    .background(Palette.darkSurface, in: .rect(cornerRadius: 14))
             }
         }
         .padding(22)
@@ -196,7 +196,7 @@ private struct MenuPass: View {
                     endPoint: .bottomTrailing
                 )
                 RadialGradient(
-                    colors: [Color(red: 0.86, green: 0.62, blue: 0.27).opacity(0.35), .clear],
+                    colors: [Color(red: 0.86, green: 0.62, blue: 0.27).opacity(0.2), .clear],
                     center: .topTrailing,
                     startRadius: 10,
                     endRadius: 260
