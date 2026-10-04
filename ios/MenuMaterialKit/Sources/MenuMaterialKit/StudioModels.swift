@@ -2,15 +2,15 @@ import Foundation
 
 /// `GET /api/native/styles`: the Photo Studio's looks, from the same catalog
 /// the web uses (lib/photo-styles.ts), so the app never drifts from it.
-public struct StyleCatalog: Decodable, Sendable, Equatable {
-    public struct Category: Decodable, Sendable, Equatable, Identifiable, Hashable {
+public struct StyleCatalog: Codable, Sendable, Equatable {
+    public struct Category: Codable, Sendable, Equatable, Identifiable, Hashable {
         public let id: String
         public let name: String
         public let description: String?
         public let use: String?
     }
 
-    public struct Look: Decodable, Sendable, Equatable, Identifiable, Hashable {
+    public struct Look: Codable, Sendable, Equatable, Identifiable, Hashable {
         public let id: String
         public let name: String
         public let cue: String
@@ -48,7 +48,7 @@ public struct StyleCatalog: Decodable, Sendable, Equatable {
 }
 
 /// The photo shapes the Studio offers, named by use.
-public enum PhotoFormat: String, CaseIterable, Sendable, Identifiable {
+public enum PhotoFormat: String, Codable, CaseIterable, Sendable, Identifiable {
     case menu, feed, story, doordash
 
     public var id: String { rawValue }

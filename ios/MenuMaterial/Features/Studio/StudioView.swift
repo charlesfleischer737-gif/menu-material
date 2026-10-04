@@ -5,7 +5,11 @@ import SwiftUI
 /// Photo Studio: a dish photo in, a styled photo out.
 struct StudioView: View {
     @Environment(AppModel.self) private var model
-    @State private var studio = StudioModel()
+    private var studio: StudioModel { model.studio }
+    @State private var explore = false
+    @State private var activity = false
+    @State private var replaceDraft = false
+    @State private var queuedIntent: StudioIntent?
     @State private var pickerItem: PhotosPickerItem?
     @State private var showLibrary = false
     @State private var showCamera = false
@@ -27,9 +31,13 @@ struct StudioView: View {
                             showLibrary: $showLibrary,
                             preparing: studio.preparing
                         )
+                        if let error = studio.error { ErrorNote(message: error) }
+                        if studio.dishId != nil { Text("New photo for \(studio.dishName)").font(.headline) }
+                        ExploreStylesPreview(studio: studio) { explore = true }
                         RecentPhotos { jobId in studio.open(jobId: jobId, model: model) }
                     case .composing, .submitting:
                         ComposeView(studio: studio, showCamera: $showCamera, showLibrary: $showLibrary)
+                            .disabled(studio.stage == .submitting || studio.hasUncertainRequest)
                     case .creating(let jobId):
                         CreatingView(jobId: jobId, studio: studio)
                     case .result(let jobId, let assetId):
@@ -49,8 +57,11 @@ struct StudioView: View {
             .toolbar {
                 if studio.stage != .empty {
                     ToolbarItem(placement: .topBarLeading) {
-                        Button("New Photo", systemImage: "plus") { studio.startOver() }
+                        Button("New Photo", systemImage: "plus") { replaceDraft = true }.disabled(studio.stage == .submitting)
                     }
+                }
+                ToolbarItem(placement: .topBarTrailing) {
+                    Button("Activity", systemImage: "clock") { activity = true }
                 }
                 ToolbarItem(placement: .topBarTrailing) {
                     BalanceBadge { showPlans = true }
@@ -73,6 +84,26 @@ struct StudioView: View {
                 }
             }
             .animation(.smooth(duration: 0.35), value: composing)
+        }
+        .sheet(isPresented: $explore) { ExploreStylesView(studio: studio) { if studio.stage == .empty { showLibrary = true } } }
+        .sheet(isPresented: $activity) { ActivityView() }
+        .confirmationDialog("Start a new photo?", isPresented: $replaceDraft, titleVisibility: .visible) {
+            Button("Start New Photo", role: .destructive) { studio.startOver(); studio.lookId = model.profile.defaultLook }
+        } message: { Text("This replaces the draft on this phone. Uploaded photos and submitted jobs stay in your workspace.") }
+        .onChange(of: model.exploreRequested, initial: true) { _, requested in
+            if requested { explore = true; model.exploreRequested = false }
+        }
+        .confirmationDialog("Replace your Studio draft?", isPresented: Binding(get: { queuedIntent != nil }, set: { if !$0 { queuedIntent = nil } }), titleVisibility: .visible) {
+            if let intent = queuedIntent {
+                Button("Continue with This Dish", role: .destructive) { apply(intent); queuedIntent = nil }
+            }
+        } message: { Text("Your current unsent photo and notes will be replaced. Submitted photos stay in Activity.") }
+        .onChange(of: model.studioIntent, initial: true) { _, intent in
+            guard let intent else { return }
+            model.studioIntent = nil
+            if studio.stage == .submitting { studio.error = "Your photo is being sent. Wait for it to finish before switching dishes."; return }
+            if studio.stage == .composing { queuedIntent = intent }
+            else { apply(intent) }
         }
         .photosPicker(isPresented: $showLibrary, selection: $pickerItem, matching: .images, preferredItemEncoding: .current)
         .onChange(of: pickerItem) { _, item in
@@ -99,7 +130,7 @@ struct StudioView: View {
         .onChange(of: studio.needsVerification) { _, needed in
             if needed { showVerify = true; studio.needsVerification = false }
         }
-        .onChange(of: model.focusedJob) { _, jobId in
+        .onChange(of: model.focusedJob, initial: true) { _, jobId in
             guard let jobId else { return }
             model.focusedJob = nil
             Task {
@@ -109,6 +140,7 @@ struct StudioView: View {
         }
         .task {
             await studio.loadCatalog(model.client)
+            if studio.stage == .empty { studio.lookId = model.profile.defaultLook }
             studio.resume(model)
             #if DEBUG
             await studio.playDemoScene(model)
@@ -116,11 +148,18 @@ struct StudioView: View {
         }
     }
 
+    private func apply(_ intent: StudioIntent) {
+        guard let dish = model.workspace?.dishes.first(where: { $0.id == intent.dishId }) else { return }
+        studio.select(dish: dish, workspace: model.workspace, newPhoto: intent.newPhoto)
+        studio.lookId = model.profile.defaultLook
+        if studio.sourceId == nil { showLibrary = true }
+    }
+
     private func load(_ item: PhotosPickerItem) async {
         studio.preparing = true
         defer { studio.preparing = false }
         do {
-            guard let data = try await item.loadTransferable(type: Data.self) else { return }
+            guard let data = try await item.loadTransferable(type: Data.self) else { throw PreparedPhoto.PreparationError.unreadable }
             studio.choose(try await PreparedPhoto.fromLibrary(data))
         } catch {
             studio.error = error.localizedDescription
@@ -147,37 +186,17 @@ private struct StudioStart: View {
 
     var body: some View {
         VStack(spacing: 16) {
-            ZStack {
-                MeshBackdrop(colors: Palette.studioMesh)
-                VStack(spacing: 18) {
-                    if preparing {
-                        ProgressView()
-                            .controlSize(.large)
-                            .tint(.white)
-                        Text("Getting your photo ready…")
-                            .font(.callout)
-                            .foregroundStyle(.white.opacity(0.8))
-                    } else {
-                        Image(systemName: "camera.aperture")
-                            .font(.system(size: 54, weight: .thin))
-                            .foregroundStyle(.white.opacity(0.9))
-                            .symbolEffect(.breathe)
-                        VStack(spacing: 10) {
-                            Text("Photograph a dish")
-                                .font(.display(.title))
-                                .foregroundStyle(.white)
-                            Text("Any phone photo works. Pick a look, and get menu-ready food photography in about a minute.")
-                                .font(.callout)
-                                .foregroundStyle(.white.opacity(0.72))
-                                .multilineTextAlignment(.center)
-                                .fixedSize(horizontal: false, vertical: true)
-                        }
-                    }
+            HStack(spacing: 20) {
+                VStack(alignment: .leading, spacing: 10) {
+                    Text(preparing ? "Preparing your photo…" : "Your next great photo.").font(.display(.title))
+                    Text("Start with a clear photo of your dish. We’ll take care of the setting.")
+                        .font(.subheadline).foregroundStyle(Palette.muted).fixedSize(horizontal: false, vertical: true)
+                    if preparing { ProgressView() }
                 }
-                .padding(32)
-            }
-            .aspectRatio(4 / 5, contentMode: .fit)
-            .clipShape(.rect(cornerRadius: 32))
+                Image("WelcomeAfter").resizable().scaledToFill().frame(width: 104, height: 148)
+                    .clipShape(.rect(cornerRadius: 22)).accessibilityHidden(true)
+            }.padding(22).frame(maxWidth: .infinity, alignment: .leading)
+                .background(Palette.surface, in: .rect(cornerRadius: Metrics.cardRadius))
 
             HStack(spacing: 12) {
                 if CameraPicker.isAvailable {
@@ -284,7 +303,9 @@ private struct ComposeView: View {
                         .font(.body.weight(.semibold))
                         .frame(width: 44, height: 44)
                 }
-                .glassEffect(.regular.interactive(), in: .circle)
+                .foregroundStyle(Palette.ink)
+                .background(Palette.surface, in: .circle)
+                .overlay { Circle().strokeBorder(Palette.controlBorder, lineWidth: 1) }
                 .padding(14)
                 .accessibilityLabel("Replace photo")
             }
@@ -292,15 +313,20 @@ private struct ComposeView: View {
             if let catalog = studio.catalog {
                 LookPicker(catalog: catalog, studio: studio)
             } else {
-                HStack(spacing: 10) {
-                    ProgressView()
-                    Text("Loading looks…").foregroundStyle(Palette.muted)
+                if let error = studio.catalogError {
+                    ErrorNote(message: error)
+                    Button("Retry Styles") { Task { await studio.loadCatalog(model.client) } }
+                } else {
+                    HStack(spacing: 10) { ProgressView(); Text("Loading looks…").foregroundStyle(Palette.muted) }
                 }
             }
 
-            FormatPicker(selection: $studio.format)
+            FormatPicker(selection: $studio.format).disabled(studio.hasUncertainRequest || studio.stage == .submitting)
 
             DetailsCard(studio: studio)
+            if studio.hasUncertainRequest {
+                Text("Checking an earlier request. Retry sends the same request and does not create another charge.").font(.footnote).foregroundStyle(Palette.muted)
+            }
 
             if let error = studio.error {
                 ErrorNote(message: error)
@@ -310,7 +336,7 @@ private struct ComposeView: View {
 
     /// The photo's own shape, within reason.
     private var ratio: CGFloat {
-        guard let size = studio.photo?.preview.size, size.height > 0 else { return 4 / 5 }
+        guard let size = studio.photo?.preview.size, size.height > 0 else { return 1 }
         return min(max(size.width / size.height, 0.75), 1.6)
     }
 }
@@ -344,7 +370,9 @@ private struct LookPicker: View {
     private var looks: [StyleCatalog.Look] {
         let shown: [StyleCatalog.Look]
         if category == "suggested" {
-            shown = [catalog.polish] + catalog.categories.compactMap { catalog.looks(in: $0).first }
+            let saved = ([model.profile.defaultLook] + model.profile.favoriteLooks + model.profile.recentLooks).compactMap { catalog.look(id: $0) }
+            var ids = Set<String>()
+            shown = (saved + [catalog.polish] + catalog.categories.compactMap { catalog.looks(in: $0).first }).filter { ids.insert($0.id).inserted }
         } else if let chosen = catalog.categories.first(where: { $0.id == category }) {
             shown = catalog.looks(in: chosen)
         } else {
@@ -392,7 +420,8 @@ private struct LookPicker: View {
             .scrollTargetBehavior(.viewAligned)
             .scrollClipDisabled()
             .sensoryFeedback(.selection, trigger: studio.lookId)
-        }
+            Button("Browse All Styles", systemImage: "square.grid.2x2") { model.exploreRequested = true }
+        }.disabled(studio.hasUncertainRequest || studio.stage == .submitting)
     }
 
     private func chip(_ id: String, _ title: String) -> some View {
@@ -405,7 +434,7 @@ private struct LookPicker: View {
                 .padding(.horizontal, 15)
                 .padding(.vertical, 9)
                 .foregroundStyle(selected ? Color.white : Palette.ink)
-                .background(selected ? Palette.accent : Palette.surface, in: .capsule)
+                .background(selected ? Palette.actionFill : Palette.surface, in: .capsule)
         }
         .buttonStyle(.plain)
         .accessibilityAddTraits(selected ? .isSelected : [])
@@ -461,7 +490,7 @@ private struct LookTile: View {
         if selected {
             Image(systemName: "checkmark.circle.fill")
                 .symbolRenderingMode(.palette)
-                .foregroundStyle(.white, Palette.accent)
+                .foregroundStyle(Palette.onAction, Palette.actionFill)
                 .font(.title2)
                 .padding(8)
                 .transition(.scale.combined(with: .opacity))
@@ -507,7 +536,7 @@ private struct LookPreview: View {
             VStack(alignment: .leading, spacing: 4) {
                 Text(look.name).font(.headline)
                 if let description = look.description {
-                    Text(description).font(.callout).foregroundStyle(.secondary)
+                    Text(description).font(.callout).foregroundStyle(Palette.muted)
                 }
             }
             .padding([.horizontal, .bottom], 16)
@@ -545,24 +574,24 @@ private struct DetailsCard: View {
     var body: some View {
         VStack(alignment: .leading, spacing: 14) {
             SectionTitle(title: "Details") {
-                Text("Optional")
+                Text("Notes optional")
                     .font(.subheadline)
                     .foregroundStyle(Palette.muted)
             }
             VStack(spacing: 0) {
-                TextField("Dish name", text: $studio.dishName)
+                TextField("Dish name", text: $studio.dishName, prompt: Text("Dish name").foregroundStyle(Palette.muted))
                     .textInputAutocapitalization(.words)
                     .disabled(studio.sourceId != nil && studio.photo == nil)
                     .padding(.horizontal, 16)
                     .frame(minHeight: Metrics.rowHeight)
                 Divider().padding(.leading, 16)
-                TextField("Notes, like “more room above the dish”", text: $studio.note, axis: .vertical)
+                TextField("Notes, like “more room above the dish”", text: $studio.note, prompt: Text("Notes, like “more room above the dish”").foregroundStyle(Palette.muted), axis: .vertical)
                     .lineLimit(1...4)
                     .padding(.horizontal, 16)
                     .padding(.vertical, 15)
             }
             .background(Palette.surface, in: .rect(cornerRadius: Metrics.controlRadius))
-        }
+        }.disabled(studio.hasUncertainRequest || studio.stage == .submitting)
     }
 }
 
@@ -613,7 +642,7 @@ private struct CreateBar: View {
     private var createLabel: some View {
         if submitting {
             HStack(spacing: 10) {
-                ProgressView().tint(.white)
+                ProgressView()
                 Text("Sending Your Photo…")
             }
         } else {
@@ -701,19 +730,26 @@ private struct CreatingView: View {
                     lookName: studio.makingLook
                 )
             }
+            .card()
 
+            if let error = studio.error {
+                ErrorNote(message: error)
+                Button("Check Status") { Task { await model.refresh(); studio.watch(jobId: jobId, model: model) } }.secondaryAction()
+            }
             VStack(spacing: 14) {
                 Text(model.workspace?.workerHealthy == false
                      ? "Keep Menu Material open while your photo is made."
-                     : "You can leave the app. We’ll let you know when it’s ready.")
+                     : (model.notificationsEnabled ? "You can leave the app. We’ll let you know when it’s ready." : "You can leave the app. Check Activity when you return."))
                     .font(.footnote)
                     .foregroundStyle(Palette.muted)
                     .multilineTextAlignment(.center)
                 if job?.status == "queued" {
                     Button("Cancel Photo", role: .destructive) {
                         Task {
-                            let _: OK? = try? await model.client.post("jobs/\(jobId)/cancel")
-                            await model.refresh()
+                            do {
+                                let _: OK = try await model.client.post("jobs/\(jobId)/cancel")
+                                await model.refresh()
+                            } catch { studio.error = error.localizedDescription }
                         }
                     }
                     .buttonStyle(.glass)
@@ -784,9 +820,9 @@ private struct FailedView: View {
     var body: some View {
         ContentUnavailableView {
             Label("This Photo Couldn’t Be Made", systemImage: "exclamationmark.triangle")
-        } description: {
+        } description: { Group {
             Text(message)
-        } actions: {
+        }.foregroundStyle(Palette.muted) } actions: {
             VStack(spacing: 12) {
                 Button {
                     studio.tryAnotherLook()

@@ -21,6 +21,11 @@ struct ResultView: View {
     @State private var note: String?
     @State private var error: String?
     @State private var revealed = false
+    @State private var display = "compare"
+    @State private var zoom = false
+    @State private var correction = false
+    @State private var menus = false
+    @State private var loadFailed = false
 
     enum Action { case save, share, main }
 
@@ -37,14 +42,23 @@ struct ResultView: View {
 
     var body: some View {
         VStack(alignment: .leading, spacing: 24) {
+            Picker("Photo view", selection: $display) {
+                Text("Compare").tag("compare"); Text("Original").tag("original"); Text("Result").tag("result")
+            }.pickerStyle(.segmented)
             PhotoStage(ratio: ratio) {
-                if let before, let after {
+                if display == "original", let before { Image(uiImage: before).resizable().scaledToFit() }
+                else if display == "result", let after { Image(uiImage: after).resizable().scaledToFit() }
+                else if let before, let after {
                     BeforeAfterSlider(before: Image(uiImage: before), after: Image(uiImage: after))
                 } else if let after {
                     Image(uiImage: after).resizable().scaledToFill()
-                } else {
-                    ProgressView().tint(.white)
-                }
+                } else if loadFailed {
+                    Button("Retry Photo", systemImage: "arrow.clockwise") { Task { await loadImages() } }.buttonStyle(.borderedProminent)
+                } else { ProgressView().tint(.white) }
+            }
+            .overlay(alignment: .bottomTrailing) {
+                Button("Expand photo", systemImage: "arrow.up.left.and.arrow.down.right") { zoom = true }
+                    .labelStyle(.iconOnly).foregroundStyle(Palette.ink).padding(12).background(Palette.surface, in: .circle).overlay { Circle().strokeBorder(Palette.controlBorder, lineWidth: 1) }.padding(12).disabled(after == nil)
             }
             .scaleEffect(revealed || reduceMotion ? 1 : 0.94)
             .blur(radius: revealed || reduceMotion ? 0 : 14)
@@ -98,6 +112,12 @@ struct ResultView: View {
             }
             .disabled(working != nil || after == nil)
 
+            HStack {
+                Button("Create Post", systemImage: "rectangle.portrait") { model.makePost(dishId: job?.dishId) }
+                Spacer()
+                Button("Update Menu", systemImage: "menucard") { menus = true }
+            }.font(.subheadline.weight(.semibold)).disabled(job?.dishId == nil)
+            Button("Food doesn’t look right?", systemImage: "arrow.uturn.backward") { correction = true }.font(.subheadline)
             if let error { ErrorNote(message: error) }
 
             HStack(spacing: 12) {
@@ -110,6 +130,9 @@ struct ResultView: View {
         }
         .toast($note)
         .task(id: assetId) { await loadImages() }
+        .fullScreenCover(isPresented: $zoom) { if let photo = display == "original" ? before : after { FullScreenPhotoView(image: photo) } }
+        .sheet(isPresented: $correction) { PhotoCorrectionView(assetId: assetId) }
+        .sheet(isPresented: $menus) { if let id = job?.dishId { DishMenusView(dishId: id) } }
         .sheet(item: $share) { file in
             ShareSheet(items: [file.url])
                 .presentationDetents([.medium, .large])
@@ -132,6 +155,7 @@ struct ResultView: View {
     }
 
     private func loadImages() async {
+        loadFailed = false; error = nil
         let result = await model.images.image(asset: assetId)
         var original: UIImage?
         if let sourceId = job?.sourceId {
@@ -139,6 +163,9 @@ struct ResultView: View {
         }
         after = result
         before = original
+        loadFailed = result == nil
+        if result == nil { error = "Your photo is ready, but it couldn’t be loaded. Tap Retry Photo." }
+        else if original == nil { error = "The original couldn’t be loaded. Retry from Activity to compare." }
         withAnimation(.smooth(duration: 0.9)) { revealed = true }
     }
 
@@ -192,6 +219,6 @@ struct ResultView: View {
             note = "Now the dish’s main photo"
         } catch let failure as APIError {
             error = failure.message
-        } catch {}
+        } catch { self.error = error.localizedDescription }
     }
 }

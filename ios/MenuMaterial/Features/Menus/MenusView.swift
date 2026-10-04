@@ -2,11 +2,13 @@ import MenuMaterialKit
 import SwiftUI
 
 /// The restaurant's menus: which are live, quick updates, and the guest
-/// link and QR code. Designing and publishing stay on the web.
+/// link and QR code, with safe draft edits and explicit publication.
 struct MenusView: View {
     @Environment(AppModel.self) private var model
     @State private var menus: [MenuRecord]?
     @State private var error: String?
+    @State private var createMenu = false
+    @Environment(\.scenePhase) private var scenePhase
 
     var body: some View {
         NavigationStack {
@@ -16,11 +18,10 @@ struct MenusView: View {
                         if menus.isEmpty {
                             ContentUnavailableView {
                                 Label("No Menus Yet", systemImage: "menucard")
-                            } description: {
-                                Text("Build and publish your menu on menumaterial.com. Then update prices and sold-out dishes from here.")
-                            } actions: {
-                                Link("Open Menu Builder", destination: model.client.server)
-                                    .primaryAction()
+                            } description: { Group {
+                                Text("Choose dishes, review the details, and publish a menu your guests can open anywhere.")
+                            }.foregroundStyle(Palette.muted) } actions: {
+                                Button("Create a Menu") { createMenu = true }.primaryAction()
                             }
                             .padding(.top, 40)
                         } else {
@@ -31,16 +32,18 @@ struct MenusView: View {
                                 .buttonStyle(.plain)
                                 .accessibilityIdentifier("menu-card")
                             }
-                            Label("Design and publish menus on menumaterial.com.", systemImage: "safari")
+                            Label("More menu design options on menumaterial.com.", systemImage: "safari")
                                 .font(.footnote)
                                 .foregroundStyle(Palette.muted)
                                 .frame(maxWidth: .infinity)
                                 .padding(.top, 6)
                         }
-                    } else if let error {
-                        ErrorNote(message: error)
-                    } else {
+                    } else if error == nil {
                         ProgressView().frame(maxWidth: .infinity).padding(.top, 60)
+                    }
+                    if let error {
+                        ErrorNote(message: error)
+                        Button("Retry Menus") { Task { await load(initial: false) } }
                     }
                 }
                 .padding(.horizontal, Metrics.gutter)
@@ -49,6 +52,12 @@ struct MenusView: View {
             }
             .canvasBackground()
             .navigationTitle("Menus")
+            .toolbar { ToolbarItem(placement: .topBarTrailing) { Button("New Menu", systemImage: "plus") { createMenu = true } } }
+            .sheet(isPresented: $createMenu) { MenuEditorView { created in
+                if menus == nil { menus = [] }; menus?.insert(created, at: 0)
+            } }
+            .onChange(of: scenePhase) { _, phase in if phase == .active { Task { await load(initial: false) } } }
+            .onChange(of: model.tab) { _, tab in if tab == .menus { Task { await load(initial: false) } } }
             .refreshable { await load(initial: false) }
             .navigationDestination(for: String.self) { id in
                 MenuDetailView(menuId: id, menus: $menus)
@@ -61,14 +70,15 @@ struct MenusView: View {
     /// existed, as the web does.
     private func load(initial: Bool) async {
         do {
-            let list: MenuList = initial
-                ? try await model.client.post("menus/initialize")
-                : try await model.client.get("menus")
+            if menus == nil, let cached = model.local.data("menus.json") { menus = (try? APIClient.decode(MenuList.self, from: cached))?.menus }
+            let data = try await model.client.send(model.client.request(initial ? .post : .get, initial ? "menus/initialize" : "menus", body: initial ? Data("{}".utf8) : nil))
+            let list = try APIClient.decode(MenuList.self, from: data)
+            model.local.save(data, "menus.json")
             withAnimation(.smooth) { menus = list.menus }
             error = nil
         } catch let failure as APIError {
             error = failure.message
-        } catch {}
+        } catch { self.error = error.localizedDescription }
     }
 }
 
@@ -89,7 +99,8 @@ private struct MenuCard: View {
                             .font(.caption.weight(.semibold))
                             .padding(.horizontal, 10)
                             .padding(.vertical, 6)
-                            .glassEffect(.regular, in: .capsule)
+                            .foregroundStyle(Palette.ink)
+                            .background(Palette.surface, in: .capsule)
                             .padding(12)
                     }
                 }
@@ -103,7 +114,7 @@ private struct MenuCard: View {
                         .foregroundStyle(Palette.muted)
                 }
                 Spacer()
-                StatusPill(text: menu.isLive ? "Live" : "Draft", color: menu.isLive ? Palette.accent : .secondary)
+                StatusPill(text: menu.isLive ? "Live" : "Draft", color: menu.isLive ? Palette.accent : Palette.muted)
             }
             .padding(16)
         }
@@ -150,7 +161,7 @@ struct PhotoMosaic: View {
                         Palette.raised
                         Image(systemName: "menucard")
                             .font(.largeTitle)
-                            .foregroundStyle(.tertiary)
+                            .foregroundStyle(Palette.muted)
                     }
                 }
             }
@@ -169,6 +180,9 @@ struct MenuDetailView: View {
     @State private var error: String?
     @State private var showOffline = false
     @State private var showShare = false
+    @State private var editMenu = false
+    @State private var publishMenu = false
+    @State private var busy = false
 
     private var menu: MenuRecord? { menus?.first { $0.id == menuId } }
     private var currency: String { menu?.published?.currency ?? model.restaurant?.currency ?? "USD" }
@@ -182,6 +196,11 @@ struct MenuDetailView: View {
                 if let error {
                     Section { ErrorNote(message: error) }
                 }
+                Section {
+                    Button("Edit Dishes and Photos", systemImage: "pencil") { editMenu = true }
+                    Button(menu.isLive ? "Review and Republish" : "Review and Publish", systemImage: "checkmark.seal") { publishMenu = true }
+                    if menu.isLive && !menu.isUpToDate { Text("This menu has unpublished changes.").font(.footnote).foregroundStyle(Palette.warning) }
+                }
                 if let live = menu.published {
                     ForEach(live.sections.filter { !$0.items.isEmpty }) { section in
                         LiveSection(
@@ -193,13 +212,13 @@ struct MenuDetailView: View {
                         )
                     }
                     Section {
-                        Button("Take Menu Offline", role: .destructive) { showOffline = true }
-                    } footer: {
+                        Button("Take Menu Offline", role: .destructive) { showOffline = true }.disabled(busy)
+                    } footer: { Group {
                         Text("Prices and sold-out dishes change for guests right away. Design changes are made on menumaterial.com.")
-                    }
+                    }.foregroundStyle(Palette.muted) }
                 } else {
                     Section {
-                        Text("This menu isn’t live yet. Publish it on menumaterial.com, then update prices and sold-out dishes here.")
+                        Text("This draft is saved. Review its dishes and photos, then publish when it’s ready.")
                             .foregroundStyle(Palette.muted)
                     }
                 }
@@ -209,9 +228,11 @@ struct MenuDetailView: View {
         .navigationTitle(menu?.name ?? "Menu")
         .sheet(item: $editing) { entry in
             PriceEditor(entry: entry, currency: currency) { change in
-                Task { await apply([change], success: "Price updated") }
+                try await apply([change], success: "Price updated")
             }
         }
+        .sheet(isPresented: $editMenu) { if let menu { MenuEditorView(menu: menu) { replace($0) } } }
+        .sheet(isPresented: $publishMenu) { if let menu { MenuPublishView(menu: menu) { replace($0); note = "Menu published" } } }
         .sheet(isPresented: $showShare) {
             if let menu { MenuShareView(menu: menu) }
         }
@@ -228,7 +249,7 @@ struct MenuDetailView: View {
         let soldOut = entries.filter { !$0.available }.count
         return VStack(alignment: .leading, spacing: 12) {
             HStack(spacing: 8) {
-                StatusPill(text: menu.isLive ? "Live" : "Draft", color: menu.isLive ? Palette.accent : .secondary)
+                StatusPill(text: menu.isLive ? "Live" : "Draft", color: menu.isLive ? Palette.accent : Palette.muted)
                 if menu.isPrimary {
                     Text("Main menu")
                         .font(.footnote.weight(.medium))
@@ -250,7 +271,7 @@ struct MenuDetailView: View {
                     Label("Share Menu and QR Code", systemImage: "qrcode")
                         .frame(maxWidth: .infinity)
                 }
-                .buttonStyle(.glass)
+                .buttonStyle(ReadableActionStyle())
                 .controlSize(.large)
                 .accessibilityIdentifier("share-menu")
             }
@@ -279,16 +300,15 @@ struct MenuDetailView: View {
     private func setAvailable(_ entry: MenuEntry, _ available: Bool) async {
         busyEntry = entry.id
         defer { busyEntry = nil }
-        await apply(
-            [QuickUpdate.Change(entryId: entry.id, available: available)],
-            success: available ? "\(entry.name) is back on" : "\(entry.name) is sold out"
-        )
+        do {
+            try await apply([QuickUpdate.Change(entryId: entry.id, available: available)], success: available ? "\(entry.name) is back on" : "\(entry.name) is sold out")
+        } catch { self.error = error.localizedDescription }
     }
 
     /// Sends a quick update with the menu's current revision. Another window
-    /// or a My Dishes edit can move the revision, so a conflict is fetched
-    /// and tried once more; the changes say what to show, so that's safe.
-    private func apply(_ changes: [QuickUpdate.Change], success: String) async {
+    /// or a My Dishes edit can move the revision. Fetch a conflict and keep
+    /// the editor open so the owner can review and retry deliberately.
+    private func apply(_ changes: [QuickUpdate.Change], success: String) async throws {
         guard let menu else { return }
         error = nil
         do {
@@ -298,7 +318,7 @@ struct MenuDetailView: View {
             } catch let failure as APIError where failure.status == 409 {
                 let latest: MenuRecord = try await model.client.get("menus/\(menuId)")
                 replace(latest)
-                updated = try await model.client.post("menus/\(menuId)/live", QuickUpdate(revision: latest.revision, changes: changes))
+                throw failure
             }
             withAnimation { replace(updated) }
             let others = (updated.menus ?? []).map(\.name)
@@ -306,11 +326,13 @@ struct MenuDetailView: View {
             Task { await model.refresh() }
         } catch let failure as APIError {
             error = failure.message
-        } catch {}
+            throw failure
+        } catch { self.error = error.localizedDescription; throw error }
     }
 
     private func takeOffline() async {
         guard let menu else { return }
+        busy = true; defer { busy = false }
         do {
             let _: OK = try await model.client.post("menus/\(menuId)/unpublish", RevisionRequest(revision: menu.revision))
             let latest: MenuRecord = try await model.client.get("menus/\(menuId)")
@@ -319,7 +341,7 @@ struct MenuDetailView: View {
             Task { await model.refresh() }
         } catch let failure as APIError {
             error = failure.message
-        } catch {}
+        } catch { self.error = error.localizedDescription }
     }
 
     private func replace(_ record: MenuRecord) {
@@ -350,12 +372,12 @@ private struct LiveSection: View {
                     Button(entry.available ? "Sold Out" : "Back On") {
                         setAvailable(entry, !entry.available)
                     }
-                    .tint(entry.available ? Palette.warning : Palette.accent)
+                    .tint(entry.available ? Color(rgb: 0x805000) : Palette.actionFill)
                 }
             }
-        } header: {
+        } header: { Group {
             Text(section.name)
-        }
+        }.foregroundStyle(Palette.muted) }
     }
 }
 
@@ -404,7 +426,7 @@ private struct EntryRow: View {
             } else {
                 Toggle("Available", isOn: Binding(get: { entry.available }, set: { toggle($0) }))
                     .labelsHidden()
-                    .tint(Palette.accent)
+                    .tint(Palette.actionFill)
                     .accessibilityLabel(entry.available ? "\(entry.name) is on the menu" : "\(entry.name) is sold out")
             }
         }
@@ -431,13 +453,16 @@ private struct PriceEditor: View {
     @Environment(\.dismiss) private var dismiss
     let entry: MenuEntry
     let currency: String
-    let save: (QuickUpdate.Change) -> Void
+    let save: (QuickUpdate.Change) async throws -> Void
+    @State private var busy = false
+    @State private var error: String?
     @State private var single = ""
     @State private var sizes: [String: String] = [:]
 
     var body: some View {
         NavigationStack {
             Form {
+                if let error { Section { ErrorNote(message: error) } }
                 Section {
                     if entry.priceMode == "variants" {
                         ForEach(entry.variants) { variant in
@@ -445,37 +470,44 @@ private struct PriceEditor: View {
                                 TextField("Price", text: Binding(
                                     get: { sizes[variant.id] ?? "" },
                                     set: { sizes[variant.id] = $0 }
-                                ))
+                                ), prompt: Text("Price").foregroundStyle(Palette.muted))
                                 .keyboardType(.decimalPad)
                                 .multilineTextAlignment(.trailing)
                             }
                         }
                     } else {
                         LabeledContent("Price") {
-                            TextField("Price", text: $single)
+                            TextField("Price", text: $single, prompt: Text("Price").foregroundStyle(Palette.muted))
                                 .keyboardType(.decimalPad)
                                 .multilineTextAlignment(.trailing)
                         }
                     }
-                } footer: {
+                } footer: { Group {
                     Text("Guests see the new price right away.")
-                }
+                }.foregroundStyle(Palette.muted) }
             }
             .navigationTitle(entry.name)
             .navigationBarTitleDisplayMode(.inline)
             .toolbar {
-                ToolbarItem(placement: .cancellationAction) {
+                ToolbarItem(placement: .cancellationAction) { Group {
                     Button("Cancel", systemImage: "xmark", role: .cancel) { dismiss() }
-                }
-                ToolbarItem(placement: .confirmationAction) {
+                }.buttonStyle(.plain).tint(Palette.ink) }.sharedBackgroundVisibility(.hidden)
+                ToolbarItem(placement: .confirmationAction) { Group {
                     Button("Update", systemImage: "checkmark") {
-                        if let change { save(change); dismiss() }
+                        guard let change else { return }
+                        busy = true
+                        Task {
+                            defer { busy = false }
+                            do { try await save(change); dismiss() }
+                            catch { self.error = error.localizedDescription }
+                        }
                     }
-                    .disabled(change == nil)
-                }
+                    .disabled(change == nil || busy)
+                }.buttonStyle(.plain).tint(Palette.accent) }.sharedBackgroundVisibility(.hidden)
             }
         }
-        .presentationDetents([.medium])
+        .interactiveDismissDisabled(busy)
+        .presentationDetents([.medium, .large])
         .onAppear {
             if let price = entry.price { single = String(format: "%.2f", Double(price) / 100) }
             for variant in entry.variants {

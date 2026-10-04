@@ -1,5 +1,42 @@
 import SwiftUI
 
+/// An opaque search field with the same measured prompt and text colors as
+/// the forms. It stays above the content rather than floating over labels.
+private struct SearchField: View {
+    @Binding var text: String
+    let placeholder: String
+    @FocusState private var focused: Bool
+    var body: some View {
+        HStack(spacing: 10) {
+            Image(systemName: "magnifyingglass").foregroundStyle(Palette.muted)
+            TextField(placeholder, text: $text, prompt: Text(placeholder).foregroundStyle(Palette.muted))
+                .foregroundStyle(Palette.ink).focused($focused)
+                .textInputAutocapitalization(.never).autocorrectionDisabled()
+                .submitLabel(.search).onSubmit { focused = false }
+            if !text.isEmpty {
+                Button("Clear search", systemImage: "xmark.circle.fill") { text = "" }
+                    .labelStyle(.iconOnly).foregroundStyle(Palette.muted)
+                    .frame(width: 32, height: 44)
+            }
+        }
+        .padding(.horizontal, 16).frame(minHeight: 48)
+        .background(Palette.surface, in: .capsule)
+        .overlay { Capsule().strokeBorder(Palette.controlBorder, lineWidth: 1) }
+        .padding(.horizontal, Metrics.gutter).padding(.vertical, 10)
+        .background(Palette.canvas)
+    }
+}
+
+extension View {
+    func searchField(text: Binding<String>, placeholder: String = "Find a dish") -> some View {
+        safeAreaInset(edge: .top, spacing: 0) {
+            SearchField(text: text, placeholder: placeholder)
+                .accessibilityElement(children: .contain)
+                .accessibilityIdentifier("search-controls")
+        }
+    }
+}
+
 /// The fork, plate and knife.
 struct BrandMark: View {
     var height: CGFloat = 28
@@ -65,7 +102,7 @@ struct SquarePhoto: View {
                         Palette.raised
                         Image(systemName: "fork.knife")
                             .font(.title2)
-                            .foregroundStyle(.tertiary)
+                            .foregroundStyle(Palette.muted)
                     }
                 }
             }
@@ -176,7 +213,9 @@ struct Toast: ViewModifier {
                         .symbolRenderingMode(.hierarchical)
                         .padding(.horizontal, 18)
                         .padding(.vertical, 12)
-                        .glassEffect(.regular, in: .capsule)
+                        .foregroundStyle(Palette.ink)
+                        .background(Palette.surface, in: .capsule)
+                        .overlay { Capsule().strokeBorder(Palette.controlBorder, lineWidth: 1) }
                         .padding(.horizontal, Metrics.gutter)
                         .padding(.bottom, 14)
                         .transition(.move(edge: .bottom).combined(with: .opacity))
@@ -227,9 +266,10 @@ struct BeforeAfterSlider: View {
                     .offset(x: width * split - 1)
                 Image(systemName: "chevron.left.chevron.right")
                     .font(.footnote.weight(.bold))
-                    .foregroundStyle(.primary)
+                    .foregroundStyle(Palette.ink)
                     .frame(width: 44, height: 44)
-                    .glassEffect(.regular.interactive(), in: .circle)
+                    .background(Palette.surface, in: .circle)
+                    .overlay { Circle().strokeBorder(Palette.controlBorder, lineWidth: 1) }
                     .offset(x: min(max(0, width * split - 22), width - 44))
                 labels
             }
@@ -281,9 +321,10 @@ struct BeforeAfterSlider: View {
     private func tag(_ text: String) -> some View {
         Text(text)
             .font(.caption.weight(.semibold))
+            .foregroundStyle(Palette.ink)
             .padding(.horizontal, 10)
             .padding(.vertical, 6)
-            .glassEffect(.regular, in: .capsule)
+            .background(Palette.surface, in: .capsule)
     }
 }
 
@@ -295,15 +336,8 @@ struct ProBadge: View {
             .tracking(0.6)
             .padding(.horizontal, 7)
             .padding(.vertical, 3)
-            .foregroundStyle(.white)
-            .background(
-                LinearGradient(
-                    colors: [Color(red: 0.86, green: 0.66, blue: 0.27), Color(red: 0.62, green: 0.43, blue: 0.13)],
-                    startPoint: .topLeading,
-                    endPoint: .bottomTrailing
-                ),
-                in: .capsule
-            )
+            .foregroundStyle(Palette.onGold)
+            .background(Palette.gold, in: .capsule)
             .accessibilityLabel("Pro")
     }
 }
@@ -319,15 +353,14 @@ struct StatusPill: View {
             Text(text)
         }
         .font(.footnote.weight(.semibold))
-        .foregroundStyle(color)
+        .foregroundStyle(Palette.ink)
         .padding(.horizontal, 10)
         .padding(.vertical, 5)
         .background(color.opacity(0.14), in: .capsule)
     }
 }
 
-/// The white symbol on a colored rounded square that starts a row in
-/// Settings.
+/// A colored accent accompanies a legible symbol on an opaque square.
 struct SettingsIcon: View {
     let symbol: String
     let color: Color
@@ -335,9 +368,10 @@ struct SettingsIcon: View {
     var body: some View {
         Image(systemName: symbol)
             .font(.system(size: 15, weight: .semibold))
-            .foregroundStyle(.white)
+            .foregroundStyle(Palette.ink)
             .frame(width: 30, height: 30)
-            .background(color.gradient, in: .rect(cornerRadius: 8))
+            .background(Palette.surface, in: .rect(cornerRadius: 8))
+            .overlay { RoundedRectangle(cornerRadius: 8).strokeBorder(color, lineWidth: 2) }
             .accessibilityHidden(true)
     }
 }
@@ -363,7 +397,7 @@ struct SettingsRow: View {
             if external {
                 Image(systemName: "arrow.up.right")
                     .font(.footnote.weight(.semibold))
-                    .foregroundStyle(.tertiary)
+                    .foregroundStyle(Palette.muted)
             }
         }
     }
@@ -387,7 +421,7 @@ struct RestaurantAvatar: View {
             .frame(width: size, height: size)
             .background(
                 LinearGradient(
-                    colors: [Color(red: 0.16, green: 0.52, blue: 0.35), Color(red: 0.05, green: 0.24, blue: 0.16)],
+                    colors: [Palette.actionFill, Palette.darkSurface],
                     startPoint: .topLeading,
                     endPoint: .bottomTrailing
                 ),

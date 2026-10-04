@@ -10,3 +10,6 @@ DerivedData/
 .swiftpm/
 *.xcresult
 xcuserdata/
+
+PhotoShare/Info.plist
+PhotoShare/PhotoShare.entitlements

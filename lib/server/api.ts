@@ -1,3 +1,4 @@
+import { nativeProfile, nativeWorkspaceRoute } from "./native-workspace";
 import type { Row } from "./core";
 import { z } from "zod";
 import { photoUseActions } from "../photo-use";
@@ -946,6 +947,8 @@ async function route(req: Request) {
         studioAvailability: await studioAvailability(r.id),
         restaurant: {
           ...r,
+          native_profile: undefined,
+          nativeProfile: nativeProfile(r.native_profile),
           // What new work uses: the saved look with Pro, defaults on Free.
           style: billing.features.unlocked ? saved : storedStyle("{}"),
           // What Restaurant settings edits and previews on any plan.
@@ -1376,6 +1379,8 @@ async function route(req: Request) {
       return response({ ok: true });
     }
     const { r } = await owner(req);
+    const nativeWorkspace = await nativeWorkspaceRoute(req, p, r);
+    if (nativeWorkspace) return nativeWorkspace;
     if (
       r.public_suspended &&
       method === "POST" &&

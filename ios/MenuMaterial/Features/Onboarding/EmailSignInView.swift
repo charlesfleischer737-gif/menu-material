@@ -48,7 +48,7 @@ struct EmailSignInView: View {
                 .pickerStyle(.segmented)
 
                 VStack(spacing: 0) {
-                    TextField("Email", text: $email)
+                    TextField("Email", text: $email, prompt: Text("Email").foregroundStyle(Palette.muted))
                         .textContentType(.username)
                         .keyboardType(.emailAddress)
                         .textInputAutocapitalization(.never)
@@ -58,7 +58,7 @@ struct EmailSignInView: View {
                         .onSubmit { focus = .password }
                         .fieldRow()
                     Divider().padding(.leading, 16)
-                    SecureField(mode == .create ? "Password (12 or more characters)" : "Password", text: $password)
+                    SecureField(mode == .create ? "Password (12 or more characters)" : "Password", text: $password, prompt: Text(mode == .create ? "Password (12 or more characters)" : "Password").foregroundStyle(Palette.muted))
                         .textContentType(mode == .create ? .newPassword : .password)
                         .focused($focus, equals: .password)
                         .submitLabel(mode == .create ? .next : .go)
@@ -68,7 +68,7 @@ struct EmailSignInView: View {
                         .fieldRow()
                     if mode == .create {
                         Divider().padding(.leading, 16)
-                        TextField("Restaurant name", text: $restaurant)
+                        TextField("Restaurant name", text: $restaurant, prompt: Text("Restaurant name").foregroundStyle(Palette.muted))
                             .textContentType(.organizationName)
                             .focused($focus, equals: .restaurant)
                             .submitLabel(.go)
@@ -85,7 +85,7 @@ struct EmailSignInView: View {
                     Task { await submit() }
                 } label: {
                     Group {
-                        if busy { ProgressView().tint(.white) } else { Text(mode == .signIn ? "Sign In" : "Create Account") }
+                        if busy { ProgressView() } else { Text(mode == .signIn ? "Sign In" : "Create Account") }
                     }
                     .frame(maxWidth: .infinity)
                 }
@@ -181,7 +181,7 @@ struct ResetPasswordView: View {
                 } else {
                     Text("Enter your account’s email and we’ll send a link to set a new password.")
                         .foregroundStyle(Palette.muted)
-                    TextField("Email", text: $email)
+                    TextField("Email", text: $email, prompt: Text("Email").foregroundStyle(Palette.muted))
                         .textContentType(.username)
                         .keyboardType(.emailAddress)
                         .textInputAutocapitalization(.never)
@@ -204,9 +204,9 @@ struct ResetPasswordView: View {
             .navigationTitle("Reset Password")
             .navigationBarTitleDisplayMode(.inline)
             .toolbar {
-                ToolbarItem(placement: .cancellationAction) {
+                ToolbarItem(placement: .cancellationAction) { Group {
                     Button("Cancel", systemImage: "xmark", role: .cancel) { dismiss() }
-                }
+                }.buttonStyle(.plain).tint(Palette.ink) }.sharedBackgroundVisibility(.hidden)
             }
         }
     }

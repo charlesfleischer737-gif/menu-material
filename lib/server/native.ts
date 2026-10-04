@@ -37,7 +37,11 @@ function minimumVersion() {
  * what to ask for.
  */
 export function requireSupportedApp(req: Request, path: string[]) {
-  if (!nativeClient(req) || path[0] === "health" || path[0] === "native")
+  if (
+    !nativeClient(req) ||
+    path[0] === "health" ||
+    (path[0] === "native" && ["config", "styles"].includes(path[1]))
+  )
     return;
   const minimum = minimumVersion();
   if (minimum && compareVersions(nativeVersion(req) || "0", minimum) < 0)
@@ -68,6 +72,11 @@ export function nativeConfigRoute() {
       support: contact.supportEmail ? `mailto:${contact.supportEmail}` : null,
       terms: contact.termsUrl || null,
       privacy: origin ? `${origin}/privacy` : null,
+      appStore: /^https:\/\/apps\.apple\.com\//.test(
+        config("IOS_APP_STORE_URL"),
+      )
+        ? config("IOS_APP_STORE_URL")
+        : null,
     },
   });
 }

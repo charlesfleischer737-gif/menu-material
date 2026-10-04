@@ -17,12 +17,27 @@ final class AppModel {
     }
 
     enum Tab: Hashable {
-        case studio, dishes, menus, account
+        case studio, dishes, posts, menus, account
     }
 
     private(set) var phase: Phase = .launching
     private(set) var config: NativeConfig?
     private(set) var workspace: Workspace?
+    var connectionError: String?
+    var isOffline = false
+    var notificationsEnabled = false
+    let local = LocalWorkspace()
+    let studio = StudioModel()
+    var studioIntent: StudioIntent?
+    var postDishId: String?
+    var sharedPhotoURL: URL?
+    func importSharedPhoto() async {
+        guard phase == .signedIn, !showOnboarding, sharedPhotoURL == nil else { return }
+        sharedPhotoURL = SharedPhotoInbox.next()
+    }
+    var exploreRequested = false
+    var showOnboarding = false
+    var profile = RestaurantProfile()
     var tab: Tab = .studio
     /// A photo to open, from a notification.
     var focusedJob: String?
@@ -35,7 +50,7 @@ final class AppModel {
     /// server's however this phone's clock is set.
     private var serverOffset: Double = 0
 
-    init() {
+    init(clientOverride: APIClient? = nil) {
         let info = Bundle.main.infoDictionary ?? [:]
         let server = (info["MenuMaterialServer"] as? String).flatMap { URL(string: $0) }
             ?? URL(string: "https://menumaterial.com")!
@@ -45,15 +60,25 @@ final class AppModel {
         #else
         let demo: APIClient? = nil
         #endif
-        if let demo {
+        if let override = clientOverride { client = override }
+        else if let demo {
             client = demo
         } else {
             client = APIClient(server: server, appVersion: version)
             client.sessionToken = keychain.string("session")
             client.deviceToken = keychain.string("device")
         }
+        local.configure(session: client.sessionToken)
+        #if DEBUG
+        if Demo.isOn && ProcessInfo.processInfo.environment["MENU_MATERIAL_DEMO_PERSIST"] != "1" {
+            local.clear(); local.configure(session: client.sessionToken)
+        }
+        #endif
         store = StoreModel(client: client)
         images = ImagePipeline(client: client)
+        images.local = local
+        studio.configure(local)
+        profile = local.read("profile.json") ?? RestaurantProfile()
         client.onSignedOut = { [weak self] in self?.forgetSession() }
         client.onUpdateRequired = { [weak self] in self?.phase = .updateRequired }
         store.onChange = { [weak self] in await self?.refresh() }
@@ -76,42 +101,63 @@ final class AppModel {
     var billing: BillingSummary? { workspace?.billing }
 
     func start() async {
+        let began = Date()
+        defer { recordMetric("startup", since: began, success: phase == .signedIn || phase == .signedOut) }
         store.listenForTransactions()
+        connectionError = nil
+        if workspace == nil, let cached = local.data("workspace.json") {
+            workspace = try? APIClient.decode(Workspace.self, from: cached)
+        }
         do {
-            config = try await client.get("native/config")
-        } catch let error as APIError where error.offline {
-            phase = .offline
-            return
-        } catch {}
+            let data = try await client.send(client.request(.get, "native/config"))
+            config = try APIClient.decode(NativeConfig.self, from: data)
+            local.save(data, "config.json")
+        } catch {
+            connectionError = error.localizedDescription
+            if let cached = local.data("config.json") { config = try? APIClient.decode(NativeConfig.self, from: cached) }
+            if workspace == nil { phase = .offline; return }
+        }
         if let minimum = config?.minimumVersion,
            AppVersion.compare(client.appVersion, minimum) == .orderedAscending {
-            phase = .updateRequired
-            return
+            phase = .updateRequired; return
         }
-        guard client.sessionToken != nil else {
-            phase = .signedOut
-            return
-        }
+        guard client.sessionToken != nil else { phase = .signedOut; return }
         await refresh()
-        if phase == .signedIn { await resumeNotifications() }
+        if phase == .signedIn {
+            await resumeNotifications()
+            await store.verifyCurrentEntitlements()
+        }
     }
 
-    /// Reloads the workspace. Signed out if the session has ended.
-    func refresh() async {
+    /// Keeps the last readable workspace on a network failure. Mutations still
+    /// require the server; an expired session never exposes cached data.
+    @discardableResult func refresh() async -> Bool {
+        let session = client.sessionToken
         do {
-            let state: Workspace = try await client.get("state")
-            guard state.user != nil else {
-                forgetSession()
-                return
-            }
+            let data = try await client.send(client.request(.get, "state"))
+            guard client.sessionToken == session else { return false }
+            let state = try APIClient.decode(Workspace.self, from: data)
+            guard state.user != nil else { forgetSession(); return false }
             workspace = state
-            if let serverTime = state.serverTime {
-                serverOffset = serverTime - Date().timeIntervalSince1970 * 1000
+            local.save(data, "workspace.json")
+            if let p = state.restaurant?.nativeProfile {
+                profile = p; local.save(p, "profile.json")
+                showOnboarding = !p.completed && !isDemo
+                #if DEBUG
+                if Demo.isOn && Demo.scene == "onboarding" { showOnboarding = !p.completed }
+                #endif
             }
+            if let serverTime = state.serverTime { serverOffset = serverTime - Date().timeIntervalSince1970 * 1000 }
+            connectionError = nil; isOffline = false
             if phase != .updateRequired { phase = .signedIn }
-        } catch let error as APIError where error.offline {
-            if workspace == nil { phase = .offline }
-        } catch {}
+            return true
+        } catch {
+            guard client.sessionToken == session, session != nil, phase != .updateRequired else { return false }
+            connectionError = error.localizedDescription
+            isOffline = true
+            phase = workspace == nil ? .offline : .signedIn
+            return false
+        }
     }
 
     // MARK: Signing in and out
@@ -125,6 +171,10 @@ final class AppModel {
             keychain.set(device, for: "device")
             client.deviceToken = device
         }
+        local.configure(session: token)
+        images.clear()
+        studio.configure(local)
+        profile = local.read("profile.json") ?? RestaurantProfile()
         tab = .studio
         await refresh()
         await resumeNotifications()
@@ -143,6 +193,16 @@ final class AppModel {
     func forgetSession() {
         keychain.set(nil, for: "session")
         client.sessionToken = nil
+        local.clear()
+        store.resetAccount()
+        sharedPhotoURL = nil
+        images.clear()
+        studio.resetAccount()
+        profile = RestaurantProfile()
+        showOnboarding = false
+        studioIntent = nil
+        postDishId = nil
+        connectionError = nil
         workspace = nil
         focusedJob = nil
         if phase != .updateRequired { phase = .signedOut }
@@ -162,15 +222,18 @@ final class AppModel {
         let settings = await center.notificationSettings()
         if settings.authorizationStatus == .notDetermined {
             let granted = (try? await center.requestAuthorization(options: [.alert, .sound, .badge])) ?? false
+            notificationsEnabled = granted
             if granted { UIApplication.shared.registerForRemoteNotifications() }
         } else if settings.authorizationStatus == .authorized {
+            notificationsEnabled = true
             UIApplication.shared.registerForRemoteNotifications()
         }
     }
 
     private func resumeNotifications() async {
         let settings = await UNUserNotificationCenter.current().notificationSettings()
-        if [.authorized, .provisional, .ephemeral].contains(settings.authorizationStatus) {
+        notificationsEnabled = [.authorized, .provisional, .ephemeral].contains(settings.authorizationStatus)
+        if notificationsEnabled {
             UIApplication.shared.registerForRemoteNotifications()
         }
     }
@@ -199,6 +262,31 @@ final class AppModel {
         focusedJob = jobId
     }
 
+    /// Performance only: no names, photos, notes or captions are sent.
+    func recordMetric(_ name: String, since start: Date, success: Bool = true) {
+        guard !isDemo, client.sessionToken != nil else { return }
+        struct Metric: Encodable { var name: String; var durationMs: Int; var outcome: String; var version: String }
+        let value = Metric(name: name, durationMs: min(3_600_000, max(0, Int(Date().timeIntervalSince(start) * 1000))), outcome: success ? "success" : "failure", version: client.appVersion)
+        Task { let _: OK? = try? await client.post("native/metrics", value) }
+    }
+
+    func styleDish(_ dish: Dish, newPhoto: Bool = false) {
+        studioIntent = StudioIntent(dishId: dish.id, newPhoto: newPhoto)
+        tab = .studio
+    }
+    func makePost(dishId: String?) { postDishId = dishId; tab = .posts }
+
+    func saveProfile(_ value: RestaurantProfile, restaurantName: String? = nil, cuisine: String? = nil) async throws {
+        struct Save: Encodable { let profile: RestaurantProfile; let restaurantName: String?; let cuisine: String? }
+        let session = client.sessionToken
+        let _: OK = try await client.post("native/profile", Save(profile: value, restaurantName: restaurantName, cuisine: cuisine))
+        guard client.sessionToken == session, session != nil else { throw CancellationError() }
+        profile = value
+        local.save(value, "profile.json")
+        showOnboarding = !value.completed
+        await refresh()
+    }
+
     // MARK: Workspace changes made on this phone
 
     /// Sold out, or back on. The whole dish is sent, as the server replaces it.
@@ -215,4 +303,10 @@ final class AppModel {
         change(&current)
         workspace = current
     }
+}
+
+struct StudioIntent: Identifiable, Equatable {
+    let id = UUID()
+    let dishId: String
+    var newPhoto = false
 }

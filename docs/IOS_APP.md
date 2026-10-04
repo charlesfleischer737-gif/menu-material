@@ -1,3 +1,5 @@
+> The October 2026 workflow update is documented in [IOS_IMPROVEMENTS.md](IOS_IMPROVEMENTS.md), including onboarding, Explore Styles, native posts, menu publishing, draft recovery and release checks. It supersedes the original scope notes below.
+
 # Menu Material for iPhone
 
 A native SwiftUI app for iPhone, on the same API and accounts as menumaterial.com. It is the phone-first part of the product: photograph a dish, style it, and share it; keep My Dishes in hand; update menus; post to Instagram. Menu Builder layout editing, campaigns, batches, full insights and administration stay on the web.

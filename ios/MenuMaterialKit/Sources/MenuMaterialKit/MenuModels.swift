@@ -107,6 +107,8 @@ public struct MenuEntry: Decodable, Sendable, Equatable, Identifiable {
     public let id: String
     public let dishId: String?
     public let name: String
+    public let description: String
+    public let priceLabel: String
     /// Hundredths, or nil.
     public var price: Int?
     /// single, variants, label or included.
@@ -115,13 +117,15 @@ public struct MenuEntry: Decodable, Sendable, Equatable, Identifiable {
     public var available: Bool
     public let photoId: String?
 
-    enum CodingKeys: String, CodingKey { case id, dishId, name, price, priceMode, variants, available, photoId }
+    enum CodingKeys: String, CodingKey { case id, dishId, name, description, priceLabel, price, priceMode, variants, available, photoId }
 
     public init(from decoder: any Decoder) throws {
         let c = try decoder.container(keyedBy: CodingKeys.self)
         id = try c.decode(String.self, forKey: .id)
         dishId = try? c.decode(String.self, forKey: .dishId)
         name = (try? c.decode(String.self, forKey: .name)) ?? ""
+        description = (try? c.decode(String.self, forKey: .description)) ?? ""
+        priceLabel = (try? c.decode(String.self, forKey: .priceLabel)) ?? ""
         price = try? c.decode(Int.self, forKey: .price)
         priceMode = (try? c.decode(String.self, forKey: .priceMode)) ?? "single"
         variants = (try? c.decode(LossyArray<Variant>.self, forKey: .variants))?.elements ?? []

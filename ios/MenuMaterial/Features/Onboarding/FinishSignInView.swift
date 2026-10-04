@@ -35,10 +35,10 @@ struct FinishSignInView: View {
                 }
                 Group {
                     if linking {
-                        SecureField("Menu Material password", text: $password)
+                        SecureField("Menu Material password", text: $password, prompt: Text("Menu Material password").foregroundStyle(Palette.muted))
                             .textContentType(.password)
                     } else {
-                        TextField("Restaurant name", text: $restaurant)
+                        TextField("Restaurant name", text: $restaurant, prompt: Text("Restaurant name").foregroundStyle(Palette.muted))
                             .textContentType(.organizationName)
                             .textInputAutocapitalization(.words)
                     }
@@ -55,7 +55,7 @@ struct FinishSignInView: View {
                 } label: {
                     Group {
                         if flows.busy {
-                            ProgressView().tint(.white)
+                            ProgressView()
                         } else {
                             Text(linking ? "Connect and Sign In" : "Create My Restaurant")
                         }
@@ -69,9 +69,9 @@ struct FinishSignInView: View {
             .padding(Metrics.gutter)
             .canvasBackground()
             .toolbar {
-                ToolbarItem(placement: .cancellationAction) {
+                ToolbarItem(placement: .cancellationAction) { Group {
                     Button("Cancel", systemImage: "xmark", role: .cancel) { flows.pending = nil }
-                }
+                }.buttonStyle(.plain).tint(Palette.ink) }.sharedBackgroundVisibility(.hidden)
             }
         }
         .presentationDetents([.medium, .large])
@@ -129,7 +129,7 @@ struct VerifyEmailView: View {
                     Task { await confirm() }
                 } label: {
                     Group {
-                        if busy { ProgressView().tint(.white) } else { Text("Confirm Email") }
+                        if busy { ProgressView() } else { Text("Confirm Email") }
                     }
                     .frame(maxWidth: .infinity)
                 }
@@ -146,9 +146,9 @@ struct VerifyEmailView: View {
             .padding(Metrics.gutter)
             .canvasBackground()
             .toolbar {
-                ToolbarItem(placement: .cancellationAction) {
+                ToolbarItem(placement: .cancellationAction) { Group {
                     Button("Later", role: .cancel) { dismiss() }
-                }
+                }.buttonStyle(.plain).tint(Palette.ink) }.sharedBackgroundVisibility(.hidden)
             }
         }
         .task {

@@ -34,7 +34,11 @@ enum Demo {
 /// Answers API requests from the fixtures: `/api/<path>` reads
 /// `api/<path>.json`, or the file itself for photos. Anything else, such as
 /// an action, simply succeeds.
-nonisolated struct DemoTransport: HTTPTransport {
+actor DemoTransport: HTTPTransport {
+    private var savedProfile: Data?
+    private var savedName: String?
+    private var savedMenus: [String: Data] = [:]
+    init(root: URL, scene: String) { self.root = root; self.scene = scene }
     let root: URL
     let scene: String
 
@@ -47,7 +51,25 @@ nonisolated struct DemoTransport: HTTPTransport {
         // A moment's wait, so loading states look as they do on a network.
         try? await Task.sleep(for: .milliseconds(120))
         let response = HTTPURLResponse(url: url, statusCode: 200, httpVersion: nil, headerFields: nil)!
-        return (body(for: path), response)
+        if path == "api/auth/login" || path == "api/auth/signup" {
+            return (Data(#"{"token":"demo-session","deviceToken":"demo-device"}"#.utf8), response)
+        }
+        if path == "api/native/profile", let data = request.httpBody,
+           let input = try? JSONSerialization.jsonObject(with: data) as? [String: Any] {
+            if let profile = input["profile"] { savedProfile = try? JSONSerialization.data(withJSONObject: profile) }
+            savedName = input["restaurantName"] as? String
+            return (Data(#"{"ok":true}"#.utf8), response)
+        }
+        var payload = body(for: path)
+        if path == "api/state", var state = try? JSONSerialization.jsonObject(with: payload) as? [String: Any],
+           var restaurant = state["restaurant"] as? [String: Any] {
+            if let savedProfile { restaurant["nativeProfile"] = try? JSONSerialization.jsonObject(with: savedProfile) }
+            else if scene == "onboarding" { restaurant["nativeProfile"] = try? JSONSerialization.jsonObject(with: JSONEncoder().encode(RestaurantProfile())) }
+            if let savedName { restaurant["name"] = savedName }
+            state["restaurant"] = restaurant
+            payload = (try? JSONSerialization.data(withJSONObject: state)) ?? payload
+        }
+        return (payload, response)
     }
 
     private func body(for path: String) -> Data {
@@ -77,7 +99,7 @@ nonisolated struct DemoTransport: HTTPTransport {
 
     /// `"@now"` and `"@now-90"` (seconds ago) become times in milliseconds,
     /// so the sample restaurant is always up to date.
-    static func resolveTimes(_ data: Data) -> Data {
+    nonisolated static func resolveTimes(_ data: Data) -> Data {
         let text = String(decoding: data, as: UTF8.self)
         guard let pattern = try? NSRegularExpression(pattern: #""@now(?:-(\d+))?""#) else { return data }
         let now = Date().timeIntervalSince1970 * 1000

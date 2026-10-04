@@ -9,6 +9,7 @@ struct AccountView: View {
     @Environment(\.openURL) private var openURL
     @State private var showPlans = false
     @State private var showRename = false
+    @State private var showPreferences = false
     @State private var showDelete = false
     @State private var confirmSignOut = false
     @State private var notifications: UNAuthorizationStatus = .notDetermined
@@ -39,6 +40,12 @@ struct AccountView: View {
                     } label: {
                         SettingsRow(symbol: "storefront.fill", color: .indigo, title: "Restaurant Name", value: model.restaurant?.name)
                     }
+                    Button { showPreferences = true } label: {
+                        SettingsRow(symbol: "slider.horizontal.3", color: Palette.accent, title: "Restaurant Preferences")
+                    }
+                    NavigationLink { ExploreStylesView(studio: model.studio) } label: {
+                        SettingsRow(symbol: "paintpalette.fill", color: Palette.accent, title: "Restaurant Look")
+                    }
                     notificationsRow
                 }
 
@@ -46,11 +53,11 @@ struct AccountView: View {
                     Link(destination: model.client.server) {
                         SettingsRow(symbol: "safari.fill", color: .blue, title: "Menu Builder and Post Maker", external: true)
                     }
-                } header: {
+                } header: { Group {
                     Text("On the Web")
-                } footer: {
+                }.foregroundStyle(Palette.muted) } footer: { Group {
                     Text("Design menus, posts and campaigns on menumaterial.com with the same account.")
-                }
+                }.foregroundStyle(Palette.muted) }
 
                 Section {
                     if let support = model.config?.links.support.flatMap({ URL(string: $0) }) {
@@ -80,21 +87,24 @@ struct AccountView: View {
                         .frame(maxWidth: .infinity)
                 }
                 Section {
-                    Button("Delete Account", role: .destructive) { showDelete = true }
+                    Button("Delete Account", role: .destructive) { showDelete = true }.foregroundStyle(Palette.danger)
                         .frame(maxWidth: .infinity)
-                } footer: {
+                } footer: { Group {
                     Text("Deletes your restaurant, dishes, photos and menus for good.")
                         .frame(maxWidth: .infinity)
-                }
+                }.foregroundStyle(Palette.muted) }
             }
             .listStyle(.insetGrouped)
             .navigationTitle("Account")
             .navigationBarTitleDisplayMode(.inline)
             .sheet(isPresented: $showPlans) { PlansView() }
+            .sheet(isPresented: $showPreferences) { RestaurantOnboardingView(editing: true) }
             .sheet(isPresented: $showRename) { RenameRestaurantView() }
             .sheet(isPresented: $showDelete) { DeleteAccountView() }
             .confirmationDialog("Sign out of Menu Material?", isPresented: $confirmSignOut, titleVisibility: .visible) {
                 Button("Sign Out", role: .destructive) { Task { await model.signOut() } }
+            } message: {
+                Text("Submitted photos and restaurant data stay in your account. Unsent photo drafts, dish edits and post drafts saved only on this device will be removed.")
             }
             .task { await readNotifications() }
         }
@@ -124,7 +134,7 @@ struct AccountView: View {
                 .frame(width: 44, height: 44)
                 .background(
                     LinearGradient(
-                        colors: [Color(red: 0.16, green: 0.55, blue: 0.37), Color(red: 0.05, green: 0.25, blue: 0.17)],
+                        colors: [Palette.actionFill, Palette.darkSurface],
                         startPoint: .topLeading,
                         endPoint: .bottomTrailing
                     ),
@@ -188,23 +198,23 @@ private struct RenameRestaurantView: View {
         NavigationStack {
             Form {
                 Section {
-                    TextField("Restaurant name", text: $name)
+                    TextField("Restaurant name", text: $name, prompt: Text("Restaurant name").foregroundStyle(Palette.muted))
                         .textInputAutocapitalization(.words)
-                } footer: {
+                } footer: { Group {
                     Text("Live menus keep their current name until you publish them again on menumaterial.com.")
-                }
+                }.foregroundStyle(Palette.muted) }
                 if let error { Section { Text(error).foregroundStyle(Palette.danger) } }
             }
             .navigationTitle("Restaurant Name")
             .navigationBarTitleDisplayMode(.inline)
             .toolbar {
-                ToolbarItem(placement: .cancellationAction) {
+                ToolbarItem(placement: .cancellationAction) { Group {
                     Button("Cancel", systemImage: "xmark", role: .cancel) { dismiss() }
-                }
-                ToolbarItem(placement: .confirmationAction) {
+                }.buttonStyle(.plain).tint(Palette.ink) }.sharedBackgroundVisibility(.hidden)
+                ToolbarItem(placement: .confirmationAction) { Group {
                     Button("Save", systemImage: "checkmark") { Task { await save() } }
                         .disabled(busy || name.trimmingCharacters(in: .whitespaces).count < 2)
-                }
+                }.buttonStyle(.plain).tint(Palette.accent) }.sharedBackgroundVisibility(.hidden)
             }
         }
         .presentationDetents([.medium])
@@ -267,16 +277,16 @@ struct DeleteAccountView: View {
                 }
                 Section {
                     if usesPassword {
-                        SecureField("Password", text: $password)
+                        SecureField("Password", text: $password, prompt: Text("Password").foregroundStyle(Palette.muted))
                             .textContentType(.password)
                     } else {
-                        TextField("Your account’s email", text: $email)
+                        TextField("Your account’s email", text: $email, prompt: Text("Your account’s email").foregroundStyle(Palette.muted))
                             .textContentType(.emailAddress)
                             .keyboardType(.emailAddress)
                             .textInputAutocapitalization(.never)
                             .autocorrectionDisabled()
                     }
-                    TextField("Type DELETE to confirm", text: $confirm)
+                    TextField("Type DELETE to confirm", text: $confirm, prompt: Text("Type DELETE to confirm").foregroundStyle(Palette.muted))
                         .textInputAutocapitalization(.characters)
                         .autocorrectionDisabled()
                 }
@@ -296,9 +306,9 @@ struct DeleteAccountView: View {
             .navigationTitle("Delete Account")
             .navigationBarTitleDisplayMode(.inline)
             .toolbar {
-                ToolbarItem(placement: .cancellationAction) {
+                ToolbarItem(placement: .cancellationAction) { Group {
                     Button("Cancel", systemImage: "xmark", role: .cancel) { dismiss() }
-                }
+                }.buttonStyle(.plain).tint(Palette.ink) }.sharedBackgroundVisibility(.hidden)
             }
             .manageSubscriptionsSheet(isPresented: $manageSubscription)
         }
@@ -342,12 +352,12 @@ private struct AboutView: View {
                 .padding(.vertical, 12)
                 .listRowBackground(Color.clear)
             }
-            Section("Credits") {
+            Section {
                 Text("The welcome example is an AI edit of “Burger” by cyclonebill on Wikimedia Commons, shared under CC BY-SA 2.0, as is the edit.")
                     .font(.footnote)
                 Link("CC BY-SA 2.0", destination: URL(string: "https://creativecommons.org/licenses/by-sa/2.0/")!)
                     .font(.footnote)
-            }
+            } header: { Text("Credits").foregroundStyle(Palette.muted) }
         }
         .listStyle(.insetGrouped)
         .navigationTitle("About")

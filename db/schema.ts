@@ -127,6 +127,7 @@ export const invites = sqliteTable("invites", {
   createdAt: integer("created_at").notNull(),
 });
 export const restaurants = sqliteTable("restaurants", {
+  nativeProfile: text("native_profile").notNull().default("{}"),
   id: text().primaryKey(),
   userId: text("user_id")
     .notNull()
