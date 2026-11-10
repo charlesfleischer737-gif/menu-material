@@ -9,9 +9,11 @@ import {
   DropdownMenuTrigger,
 } from "@/components/ui/dropdown-menu";
 import HomepageSections from "./homepage-sections";
+import InlineText from "./inline-text";
 import HomepageShowcase from "./homepage-showcase";
 import PhotoComparison from "./photo-comparison";
 import { SiteFooter, SiteHeader } from "./site-chrome";
+import { homeFaqs } from "@/lib/home-faqs";
 import { FREE_SIGNUP_IMAGES } from "@/lib/plans";
 /* eslint-disable @next/next/no-html-link-for-pages --
    Plain links on purpose: next/link's client navigation throws in the vinext
@@ -75,6 +77,7 @@ export default function Landing({
       <SiteHeader>
         <nav className="pw-nav" aria-label="Main navigation">
           <a href="#use-cases">Use cases</a>
+          <a href="/guides">Guides</a>
           <a href="/pricing">Pricing</a>
           {!signedIn && (
             <a className="pw-login" href="/?login" onClick={signIn}>
@@ -116,6 +119,9 @@ export default function Landing({
                 <a href="#use-cases">Use cases</a>
               </DropdownMenuItem>
               <DropdownMenuItem asChild>
+                <a href="/guides">Guides</a>
+              </DropdownMenuItem>
+              <DropdownMenuItem asChild>
                 <a href="/pricing">Pricing</a>
               </DropdownMenuItem>
               {!signedIn && (
@@ -148,6 +154,23 @@ export default function Landing({
         </section>
         <HomepageShowcase />
         <HomepageSections />
+        {/* The same questions are in the page's structured data
+            (homeStructuredData in app/site-metadata.ts). */}
+        <section className="pw-home-faq" aria-labelledby="home-faq-title">
+          <div className="pw-section-heading">
+            <h2 id="home-faq-title">Good questions.</h2>
+          </div>
+          <div className="pw-faq">
+            {homeFaqs.map((faq) => (
+              <details key={faq.question}>
+                <summary>{faq.question}</summary>
+                <p>
+                  <InlineText text={faq.answer} />
+                </p>
+              </details>
+            ))}
+          </div>
+        </section>
         <section className="pw-start" aria-labelledby="start-title">
           <h2 id="start-title">Start with one dish. See the difference.</h2>
           <p>

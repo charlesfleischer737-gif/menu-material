@@ -52,6 +52,13 @@ const pages = [
   "/guidelines",
   "/contact",
   "/terms",
+  "/about",
+  "/ai-food-photography",
+  "/qr-code-menu",
+  "/guides",
+  "/guides/doordash-photo-requirements",
+  "/for/bakeries",
+  "/llms.txt",
   "/no-such-page",
 ];
 const everyPath = [

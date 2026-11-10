@@ -2,6 +2,7 @@ import type { ReactNode } from "react";
 import Brand from "./brand";
 import Kitty from "./kitty";
 import { ContactLinks } from "./site-contact";
+import { footerGroups } from "@/lib/site-links";
 /* eslint-disable @next/next/no-html-link-for-pages --
    Plain links on purpose: next/link's client navigation throws in the vinext
    production build ("navigateClientSide is not a function"), so a <Link>
@@ -29,11 +30,20 @@ export function SiteFooter({ credits }: { credits?: ReactNode }) {
           <a className="pw-brand" href="/" aria-label="Menu Material home">
             <Brand />
           </a>
-          <nav className="pw-footer-links" aria-label="Help and information">
-            <a href="/pricing">Plans & pricing</a>
-            <a href="/privacy">Photo privacy</a>
-            <a href="/guidelines">Usage guidelines</a>
-            <ContactLinks />
+          {/* Every public page, grouped (lib/site-links.ts). The owner's
+              Contact and Terms links join the last group once they're set. */}
+          <nav className="pw-footer-groups" aria-label="Site">
+            {footerGroups.map((group, index) => (
+              <div className="pw-footer-links" key={group.title}>
+                <p>{group.title}</p>
+                {group.links.map((link) => (
+                  <a href={link.href} key={link.href}>
+                    {link.label}
+                  </a>
+                ))}
+                {index === footerGroups.length - 1 && <ContactLinks />}
+              </div>
+            ))}
           </nav>
         </div>
         <div className="pw-footer-bottom">

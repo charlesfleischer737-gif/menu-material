@@ -4,7 +4,12 @@ import ScrollMemory from "./components/scroll-memory";
 import SegmentGlide from "./components/segment-glide";
 import VisitSource from "./components/visit-source";
 import { SiteContactProvider } from "./components/site-contact";
-import { shareImage, siteName, siteOrigin } from "./site-metadata";
+import {
+  shareImage,
+  siteName,
+  siteOrigin,
+  siteVerification,
+} from "./site-metadata";
 import { config } from "@/lib/server/core";
 import { siteContact } from "@/lib/site-contact";
 // Imported here rather than from CSS so the build bundles the font files.
@@ -38,11 +43,14 @@ import { FREE_SIGNUP_IMAGES } from "@/lib/plans";
 // Defaults for every page. Public pages add their own canonical address and
 // link-preview text with pageMetadata() from ./site-metadata.
 export async function generateMetadata(): Promise<Metadata> {
+  // Proof of ownership for Search Console and Bing Webmaster Tools, once set.
+  const verification = siteVerification(config);
   return {
     // Makes canonical, og:url and og:image URLs absolute.
     metadataBase: new URL(await siteOrigin()),
-    title: "Menu Material — Make your food look as good as it tastes",
-    description: `Turn real dish photos into professional images and matching posts for Toast, delivery apps, your website, and Instagram. Start with ${FREE_SIGNUP_IMAGES} free images.`,
+    title: "Menu Material — AI food photography for restaurants",
+    description: `Turn phone photos of your real dishes into studio-quality images for menus, DoorDash, Uber Eats and Instagram. Start with ${FREE_SIGNUP_IMAGES} free images, no credit card.`,
+    ...(verification ? { verification } : {}),
     icons: {
       icon: "/favicon.svg?v=menu-material-2",
       shortcut: "/favicon.svg?v=menu-material-2",

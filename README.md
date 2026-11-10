@@ -127,6 +127,12 @@ Provider HTTP calls are deterministic test fixtures in the test process only. Li
 
 Configure secrets through the hosting provider, deploy the saved build, bootstrap the admin, and run the background worker against the hosted origin. Stripe billing for Pro is on only when `STRIPE_BILLING_ENABLED=true` and `STRIPE_SECRET_KEY`, `STRIPE_WEBHOOK_SECRET`, `STRIPE_PRO_PRICE_ID` and `APP_ORIGIN` are all set; otherwise Pro shows as coming soon ([Free and Pro plans](docs/FREE_PRO_PLANS.md)). Set the contact and legal details below before opening signup. There is no order processing, POS integration, automatic social publishing, inventory management or full staff accounts. Ordering links point to the restaurant’s existing ordering service.
 
+## Search and discoverability
+
+The public site has a page for each thing a restaurant owner searches for: what the product does (`/ai-food-photography`, `/delivery-app-photos`, `/restaurant-social-media-posts`, `/qr-code-menu`), who it is for (`/for/bakeries` and four more, each showing one collection of the style library), and what each platform asks of a menu photo (`/guides` and six guides). Their copy lives in `lib/site-pages.ts`, with numbers read from the product's own settings (plans, export sizes, `lib/channel-rules.ts`), and `app/components/content-page.tsx` draws them. `/about` says what Menu Material is in plain terms, and `/llms.txt` lists every page for AI assistants. The homepage, pricing and every search page carry schema.org data (organization, site, breadcrumbs, questions; guides are articles), the sitemap lists them all with the day each changed, and the footer links to them from every page.
+
+Set `GOOGLE_SITE_VERIFICATION` and `BING_SITE_VERIFICATION` to the tokens from Google Search Console and Bing Webmaster Tools ("HTML tag" verification) to prove ownership, then submit `/sitemap.xml` in each. `tests/site-pages.mjs` checks every page's title, description, links, photos and numbers. See [Search and discoverability](docs/SEO.md) for the keyword each page targets, how to add a page, and the steps that happen outside the code.
+
 ## iPhone app
 
 A native SwiftUI app for iPhone is being built on this API: Sign in with Apple, Pro as an App Store subscription, and push notifications when a photo is ready. The server side is in place and off until `APPLE_BUNDLE_ID` and the Apple keys are set. See [Menu Material for iPhone](docs/IOS_APP.md) for the plan, the setup in App Store Connect and every setting.

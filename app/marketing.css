@@ -559,6 +559,19 @@
   line-height: 1.47;
   color: var(--pw-muted);
 }
+.pw-use-case-link {
+  display: inline-flex;
+  align-items: center;
+  gap: 5px;
+  margin-top: 14px;
+  color: var(--green);
+  font-size: var(--text-callout);
+  font-weight: 500;
+}
+.pw-use-case-link:hover {
+  text-decoration: underline;
+  text-underline-offset: 3px;
+}
 .pw-gallery-controls {
   display: none;
 }
@@ -1117,6 +1130,29 @@
   outline-color: var(--green-bright);
 }
 
+/* Homepage questions: the pricing page's disclosure rows, on stone. */
+.pw-home-faq {
+  padding: var(--pw-band) var(--pw-gutter);
+  background: var(--gray-100);
+}
+.pw-home-faq .pw-faq {
+  max-width: 760px;
+  margin-inline: auto;
+  border-top: 1px solid var(--workspace-line);
+}
+.pw-home-faq details p {
+  max-width: 62ch;
+  margin: -2px 0 22px;
+  color: var(--pw-muted);
+  font-size: var(--text-callout);
+  line-height: 1.53;
+}
+.pw-home-faq details a {
+  color: var(--green);
+  text-decoration: underline;
+  text-underline-offset: 3px;
+}
+
 /* Footer */
 .pw-footer {
   background: var(--gray-100);
@@ -1132,29 +1168,50 @@
 .pw-footer-top {
   display: flex;
   flex-wrap: wrap;
-  align-items: center;
+  align-items: flex-start;
   justify-content: space-between;
-  gap: 8px 32px;
-  padding-bottom: 16px;
+  gap: 28px 48px;
+  padding-bottom: 28px;
   border-bottom: 1px solid var(--workspace-line);
 }
 .pw-footer .menu-material-wordmark {
   width: 124px;
 }
+/* Every public page, in groups (lib/site-links.ts). */
+.pw-footer-groups {
+  display: grid;
+  grid-template-columns: repeat(4, auto);
+  gap: 28px clamp(32px, 5vw, 64px);
+}
 .pw-footer-links {
   display: flex;
-  flex-wrap: wrap;
-  gap: 0 24px;
+  flex-direction: column;
+  align-items: flex-start;
   font-size: var(--text-footnote);
 }
+.pw-footer-links p {
+  margin-bottom: 6px;
+  color: var(--pw-ink);
+  font-weight: 600;
+}
 .pw-footer-links a {
-  padding-block: 12px;
+  padding-block: 5px;
   color: rgb(29 29 31 / 80%);
 }
 .pw-footer-links a:hover {
   color: var(--pw-ink);
   text-decoration: underline;
   text-underline-offset: 3px;
+}
+@media (max-width: 760px) {
+  .pw-footer-groups {
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+    width: 100%;
+  }
+  /* Roomier rows for thumbs. */
+  .pw-footer-links a {
+    padding-block: 8px;
+  }
 }
 .pw-footer-bottom {
   display: flex;
@@ -1283,6 +1340,315 @@
   color: var(--green);
   text-decoration: underline;
   text-underline-offset: 3px;
+}
+
+/* Search pages (lib/site-pages.ts, app/components/content-page.tsx) and
+   /about: where the page sits, and the pieces its sections are built from.
+   Selectors carry .pw-information so they outrank the section defaults
+   above. */
+.pw-breadcrumbs {
+  margin-bottom: 20px;
+  font-size: var(--text-footnote);
+  color: var(--pw-muted);
+}
+.pw-breadcrumbs ol {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0 8px;
+  margin: 0;
+  padding: 0;
+  list-style: none;
+}
+.pw-breadcrumbs li + li::before {
+  content: "/";
+  margin-right: 8px;
+  opacity: 0.5;
+}
+.pw-breadcrumbs a:hover {
+  color: var(--pw-ink);
+  text-decoration: underline;
+  text-underline-offset: 3px;
+}
+.pw-information-note {
+  margin-top: 16px;
+  font-size: var(--text-footnote);
+  color: var(--pw-muted);
+}
+.pw-information .pw-list,
+.pw-information .pw-steps {
+  max-width: 62ch;
+  margin: 14px 0 0;
+  padding-left: 1.15em;
+  font-size: var(--text-body);
+  line-height: 1.53;
+  color: rgb(29 29 31 / 86%);
+}
+.pw-information .pw-list {
+  list-style: disc;
+}
+.pw-list li + li {
+  margin-top: 8px;
+}
+.pw-list li::marker {
+  color: var(--pw-muted);
+}
+/* Numbered steps: the number sits in a quiet disc beside each step. */
+.pw-information .pw-steps {
+  padding-left: 0;
+  list-style: none;
+  counter-reset: pw-step;
+}
+.pw-steps li {
+  position: relative;
+  padding-left: 44px;
+  counter-increment: pw-step;
+}
+.pw-steps li + li {
+  margin-top: 16px;
+}
+.pw-steps li::before {
+  content: counter(pw-step);
+  position: absolute;
+  top: -1px;
+  left: 0;
+  display: grid;
+  place-items: center;
+  width: 28px;
+  height: 28px;
+  border-radius: 50%;
+  background: var(--gray-100);
+  color: var(--pw-ink);
+  font-size: var(--text-subhead);
+  font-weight: 600;
+}
+.pw-steps strong {
+  color: var(--pw-ink);
+  font-weight: 600;
+}
+/* A platform's numbers: what's asked on the left, the answer on the right. */
+.pw-specs {
+  width: 100%;
+  margin-top: 22px;
+  border-collapse: collapse;
+  font-size: var(--text-callout);
+  line-height: 1.45;
+}
+.pw-specs th,
+.pw-specs td {
+  padding: 14px 0;
+  border-bottom: 1px solid var(--workspace-line);
+  text-align: left;
+  vertical-align: top;
+}
+.pw-specs tr:first-child > * {
+  border-top: 1px solid var(--workspace-line);
+}
+.pw-specs th {
+  width: 34%;
+  padding-right: 20px;
+  color: var(--pw-muted);
+  font-weight: 400;
+}
+.pw-specs td {
+  color: var(--pw-ink);
+  font-weight: 500;
+}
+/* A collection's looks: the example beside its name and what it suits. */
+.pw-look-list {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 28px;
+  margin: 26px 0 0;
+  padding: 0;
+  list-style: none;
+}
+.pw-look-list li {
+  display: grid;
+  grid-template-columns: 112px minmax(0, 1fr);
+  gap: 16px;
+  align-items: start;
+}
+.pw-look-list img {
+  width: 112px;
+  height: 112px;
+  border-radius: var(--radius-card);
+  background: var(--gray-100);
+  object-fit: cover;
+}
+.pw-look-list h3 {
+  font-size: var(--text-body);
+  font-weight: 600;
+  line-height: 1.3;
+  letter-spacing: var(--tracking-tight);
+}
+.pw-information .pw-look-list p {
+  max-width: none;
+  margin-top: 4px;
+  font-size: var(--text-subhead);
+  line-height: 1.45;
+  color: var(--pw-muted);
+}
+.pw-information .pw-look-list .pw-look-use {
+  margin-top: 6px;
+  color: rgb(29 29 31 / 86%);
+}
+/* The library's collections, and example photos, as rounded tiles. */
+.pw-collections,
+.pw-examples {
+  display: grid;
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+  gap: 24px 16px;
+  margin: 26px 0 0;
+  padding: 0;
+  list-style: none;
+}
+.pw-examples {
+  gap: 12px;
+}
+.pw-collections img,
+.pw-examples img {
+  display: block;
+  width: 100%;
+  height: auto;
+  aspect-ratio: 1;
+  border-radius: var(--radius-card);
+  background: var(--gray-100);
+  object-fit: cover;
+}
+.pw-information .pw-collections :is(a, div) {
+  display: flex;
+  flex-direction: column;
+  color: inherit;
+  text-decoration: none;
+}
+.pw-collections strong {
+  margin-top: 12px;
+  color: var(--pw-ink);
+  font-size: var(--text-callout);
+  font-weight: 600;
+  line-height: 1.3;
+}
+.pw-collections span {
+  margin-top: 2px;
+  color: var(--pw-muted);
+  font-size: var(--text-footnote);
+  line-height: 1.4;
+}
+.pw-collections a:hover strong {
+  text-decoration: underline;
+  text-underline-offset: 3px;
+}
+.pw-examples figure {
+  margin: 0;
+}
+.pw-examples figcaption {
+  margin-top: 8px;
+  color: var(--pw-muted);
+  font-size: var(--text-footnote);
+}
+/* Links to other pages, each with a line about what's there. */
+.pw-page-cards {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 12px;
+  margin: 20px 0 0;
+  padding: 0;
+  list-style: none;
+}
+.pw-information .pw-page-cards a {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+  height: 100%;
+  padding: 18px 20px;
+  border-radius: var(--radius-card);
+  background: var(--gray-100);
+  color: var(--pw-ink);
+  text-decoration: none;
+  transition: background var(--duration-fast) var(--ease);
+}
+.pw-information .pw-page-cards a:hover {
+  background: var(--gray-200);
+}
+.pw-page-cards strong {
+  font-size: var(--text-callout);
+  font-weight: 600;
+  line-height: 1.3;
+}
+.pw-page-cards span {
+  color: var(--pw-muted);
+  font-size: var(--text-subhead);
+  line-height: 1.4;
+}
+/* A paragraph after a table or a grid of photos keeps its distance. */
+.pw-information > section :is(.pw-specs, .pw-look-list, .pw-collections, .pw-examples) + p {
+  margin-top: 26px;
+}
+.pw-information > section p + :is(.pw-examples, .pw-specs) {
+  margin-top: 26px;
+}
+.pw-information > section .pw-page-fineprint {
+  font-size: var(--text-footnote);
+  color: var(--pw-muted);
+}
+/* The closing invitation: the homepage's evergreen band, as a card. */
+.pw-information > .pw-page-start {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  margin-top: 72px;
+  padding: clamp(40px, 6vw, 60px) clamp(24px, 5vw, 48px);
+  border-radius: var(--radius-media);
+  background: var(--green-glow), var(--green-ink);
+  color: var(--on-dark);
+  text-align: center;
+}
+.pw-information .pw-page-start h2 {
+  font-size: var(--text-title1);
+  font-weight: 700;
+  line-height: 1.1;
+  letter-spacing: var(--tracking-display);
+}
+.pw-information .pw-page-start p {
+  max-width: 44ch;
+  margin-top: 10px;
+  color: var(--on-dark-muted);
+  text-wrap: pretty;
+}
+.pw-information .pw-page-start [data-ui-button] {
+  margin-top: 26px;
+  background: var(--gray-100);
+  color: var(--green-ink);
+  text-decoration: none;
+}
+.pw-information .pw-page-start [data-ui-button]:not(:disabled):hover {
+  background: #fff;
+}
+.pw-site .pw-page-start [data-ui-button]:focus-visible {
+  outline-color: var(--green-bright);
+}
+@media (max-width: 760px) {
+  .pw-look-list,
+  .pw-page-cards {
+    grid-template-columns: minmax(0, 1fr);
+  }
+  .pw-look-list {
+    gap: 22px;
+  }
+  .pw-look-list li {
+    grid-template-columns: 96px minmax(0, 1fr);
+  }
+  .pw-look-list img {
+    width: 96px;
+    height: 96px;
+  }
+  .pw-collections {
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+  }
+  .pw-specs th {
+    width: 38%;
+    padding-right: 14px;
+  }
 }
 
 /* Not-found and error pages: the page's two actions. */
