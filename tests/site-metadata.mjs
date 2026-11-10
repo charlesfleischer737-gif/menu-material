@@ -28,8 +28,15 @@ registerHooks({
     return nextResolve(specifier, context);
   },
 });
-const { siteOrigin, pageMetadata, homeStructuredData, shareImage } =
-  await import("../app/site-metadata.ts");
+const {
+  siteOrigin,
+  pageMetadata,
+  homeStructuredData,
+  pageStructuredData,
+  siteVerification,
+  shareImage,
+} = await import("../app/site-metadata.ts");
+const { contentPages, contentPage } = await import("../lib/site-pages.ts");
 const { default: robots } = await import("../app/robots.ts");
 const { default: sitemap } = await import("../app/sitemap.ts");
 const { siteContact } = await import("../lib/site-contact.ts");
@@ -107,16 +114,32 @@ try {
     assert.deepEqual(siteContact(settings({ [key]: value })), unset, value);
   checks += 7;
 
-  // The sitemap lists the public marketing pages with absolute URLs, and
-  // the contact page once a support address is set. /terms only redirects
-  // to the owner's Terms, so it is never listed.
-  const unlisted = (await sitemap()).map((entry) => entry.url);
+  // The sitemap lists the public marketing pages with absolute URLs: the
+  // homepage and pricing, every search page (lib/site-pages.ts) with the day
+  // it last changed, the information pages, and the contact page once a
+  // support address is set. /terms only redirects to the owner's Terms, so
+  // it is never listed.
+  const entries = await sitemap();
+  const unlisted = entries.map((entry) => entry.url);
   assert.deepEqual(
     unlisted,
-    ["/", "/pricing", "/privacy", "/guidelines"].map(
-      (path) => "https://menus.example.com" + path,
-    ),
+    [
+      "/",
+      "/pricing",
+      ...contentPages.map((page) => page.path),
+      "/about",
+      "/privacy",
+      "/guidelines",
+    ].map((path) => "https://menus.example.com" + path),
   );
+  assert.equal(new Set(unlisted).size, unlisted.length);
+  for (const page of contentPages) {
+    const entry = entries.find(
+      (item) => item.url === "https://menus.example.com" + page.path,
+    );
+    assert.equal(entry.lastModified, page.updated, page.path);
+    checks++;
+  }
   process.env.SUPPORT_EMAIL = "help@menus.example.com";
   process.env.TERMS_URL = "https://legal.example.com/terms";
   const pages = (await sitemap()).map((entry) => new URL(entry.url));
@@ -128,9 +151,25 @@ try {
   delete process.env.TERMS_URL;
   checks += 2;
   for (const { pathname } of pages) {
+    // Each sets its own canonical address and link-preview text. Search
+    // pages get theirs from the page list, through contentMetadata().
+    const listed = contentPage(pathname);
+    if (listed) {
+      const page =
+        listed.kind === "audience"
+          ? "app/for/[audience]/page.tsx"
+          : listed.kind === "guide"
+            ? "app/guides/[guide]/page.tsx"
+            : `app${pathname}/page.tsx`;
+      const source = readFileSync(page, "utf8");
+      assert.match(source, /contentMetadata\(path\)/, page);
+      if (listed.kind === "product" || listed.kind === "hub")
+        assert(source.includes(`const path = "${pathname}";`), page);
+      checks += 2;
+      continue;
+    }
     const page = pathname === "/" ? "app/page.tsx" : `app${pathname}/page.tsx`;
     const source = readFileSync(page, "utf8");
-    // Each sets its own canonical address and link-preview text.
     assert.match(
       source,
       new RegExp(`pageMetadata\\([\\s\\S]*path: "${pathname}"`),
@@ -138,6 +177,12 @@ try {
     );
     checks += 2;
   }
+  // The pages that draw the search pages build their tags with pageMetadata.
+  assert.match(
+    readFileSync("app/components/content-page.tsx", "utf8"),
+    /pageMetadata\(\{[\s\S]*path: page\.path/,
+  );
+  checks++;
 
   const metadata = pageMetadata({
     title: "Usage guidelines · Menu Material",
@@ -150,7 +195,43 @@ try {
   assert.equal(metadata.twitter.title, "Usage guidelines · Menu Material");
   assert.equal(metadata.twitter.card, "summary_large_image");
   assert.deepEqual(metadata.openGraph.images, [shareImage]);
-  checks += 6;
+  assert.equal(metadata.openGraph.type, "website");
+  // Guides are articles, with the day they last changed.
+  const guide = pageMetadata({
+    title: "A guide · Menu Material",
+    description: "What a platform asks for.",
+    path: "/guides/a-guide",
+    article: { modified: "2026-11-10" },
+  });
+  assert.equal(guide.openGraph.type, "article");
+  assert.equal(guide.openGraph.modifiedTime, "2026-11-10T00:00:00Z");
+  checks += 9;
+
+  // Search Console and Bing Webmaster Tools tokens become verification tags;
+  // anything that isn't a plain token is ignored.
+  assert.equal(siteVerification(settings({})), undefined);
+  assert.deepEqual(
+    siteVerification(
+      settings({
+        GOOGLE_SITE_VERIFICATION: " abc_DEF-123456 ",
+        BING_SITE_VERIFICATION: "0123456789ABCDEF",
+      }),
+    ),
+    {
+      google: "abc_DEF-123456",
+      other: { "msvalidate.01": "0123456789ABCDEF" },
+    },
+  );
+  assert.deepEqual(
+    siteVerification(
+      settings({
+        GOOGLE_SITE_VERIFICATION: 'x"><script>',
+        BING_SITE_VERIFICATION: "0123456789ABCDEF",
+      }),
+    ),
+    { other: { "msvalidate.01": "0123456789ABCDEF" } },
+  );
+  checks += 3;
 
   // The link-preview image exists at the size the tags announce, and is small
   // enough for apps that skip large preview images.
@@ -163,17 +244,83 @@ try {
   assert(readFileSync(file).length < 300 * 1024, `${file} is under 300 KB`);
   checks += 2;
 
-  // Homepage structured data: the organization and the web app, whose only
-  // offer is the free allowance (Pro isn't listed).
+  // Homepage structured data: the organization, the site, the web app, whose
+  // only offer is the free allowance (Pro isn't listed), and the homepage's
+  // questions as plain text.
   const data = homeStructuredData("https://menus.example.com");
   const types = data["@graph"].map((node) => node["@type"]);
-  assert.deepEqual(types, ["Organization", "SoftwareApplication"]);
-  const [organization, app] = data["@graph"];
+  assert.deepEqual(types, [
+    "Organization",
+    "WebSite",
+    "SoftwareApplication",
+    "FAQPage",
+  ]);
+  const [organization, website, app, questions] = data["@graph"];
   assert.equal(organization.url, "https://menus.example.com/");
   assert(existsSync("public" + new URL(organization.logo).pathname));
+  assert.match(organization.description, /AI food photography/);
+  assert.deepEqual(website.publisher, { "@id": organization["@id"] });
   assert.deepEqual([app.offers.price, app.offers.priceCurrency], ["0", "USD"]);
   assert.doesNotMatch(JSON.stringify(data), /9\.99|Pro\b/);
-  checks += 4;
+  assert(questions.mainEntity.length >= 4);
+  for (const question of questions.mainEntity) {
+    assert.equal(question["@type"], "Question");
+    assert.doesNotMatch(question.acceptedAnswer.text, /\]\(/, question.name);
+  }
+  const homepage = readFileSync(
+    "app/components/menu-material-landing.tsx",
+    "utf8",
+  );
+  // The same questions are on the page itself.
+  assert.match(homepage, /homeFaqs\.map/);
+  checks += 9;
+
+  // Other pages: where the page sits, the page (an Article for guides) and
+  // its questions.
+  const guidePage = contentPage("/guides/doordash-photo-requirements");
+  const guideData = pageStructuredData("https://menus.example.com", {
+    path: guidePage.path,
+    title: guidePage.title,
+    description: guidePage.description,
+    breadcrumbs: [
+      { href: "/", label: "Home" },
+      { href: "/guides", label: "Guides" },
+      { href: guidePage.path, label: guidePage.label },
+    ],
+    updated: guidePage.updated,
+    article: true,
+    faqs: guidePage.faqs,
+  });
+  assert.deepEqual(
+    guideData["@graph"].map((node) => node["@type"]),
+    ["Organization", "WebSite", "BreadcrumbList", "Article", "FAQPage"],
+  );
+  const [, , trail, article, guideQuestions] = guideData["@graph"];
+  assert.deepEqual(
+    trail.itemListElement.map((item) => [item.position, item.item]),
+    [
+      [1, "https://menus.example.com/"],
+      [2, "https://menus.example.com/guides"],
+      [3, "https://menus.example.com/guides/doordash-photo-requirements"],
+    ],
+  );
+  assert.equal(article.dateModified, `${guidePage.updated}T00:00:00Z`);
+  assert.equal(
+    article.mainEntityOfPage,
+    "https://menus.example.com/guides/doordash-photo-requirements",
+  );
+  assert.equal(guideQuestions.mainEntity.length, guidePage.faqs.length);
+  const plain = pageStructuredData("https://menus.example.com", {
+    path: "/about",
+    title: "About",
+    description: "About the site.",
+    breadcrumbs: [{ href: "/", label: "Home" }],
+  });
+  assert.deepEqual(
+    plain["@graph"].map((node) => node["@type"]),
+    ["Organization", "WebSite", "BreadcrumbList", "WebPage"],
+  );
+  checks += 6;
 
   // /favicon.ico is a real icon file with the classic sizes.
   const icon = readFileSync("public/favicon.ico");
@@ -200,5 +347,5 @@ try {
 }
 
 console.log(
-  `Site metadata: ${checks} checks passed (origin, robots.txt, contact and legal settings, sitemap, canonical and link-preview tags, share image, structured data, favicon.ico).`,
+  `Site metadata: ${checks} checks passed (origin, robots.txt, contact and legal settings, sitemap, canonical and link-preview tags, search-engine verification, share image, structured data, favicon.ico).`,
 );

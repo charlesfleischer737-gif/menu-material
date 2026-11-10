@@ -4,10 +4,13 @@ import { homeStructuredData, pageMetadata, siteOrigin } from "./site-metadata";
 import { jsonLd } from "@/lib/menu-structured-data";
 import { FREE_SIGNUP_IMAGES } from "@/lib/plans";
 
+// The title says what the product is, for search; link previews keep the
+// slogan.
 export const metadata = pageMetadata({
-  title: "Menu Material — Make your food look as good as it tastes",
-  description: `Turn real dish photos into professional images and matching posts for Toast, delivery apps, your website, and Instagram. Start with ${FREE_SIGNUP_IMAGES} free images.`,
+  title: "Menu Material — AI food photography for restaurants",
+  description: `Turn phone photos of your real dishes into studio-quality images for menus, DoorDash, Uber Eats and Instagram. Start with ${FREE_SIGNUP_IMAGES} free images, no credit card.`,
   path: "/",
+  shareTitle: "Menu Material — Make your food look as good as it tastes",
   shareDescription:
     "Better food photos for menus, delivery apps, and social media. Made from your actual dish.",
 });

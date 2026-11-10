@@ -1,6 +1,6 @@
 "use client";
 
-import { ArrowLeft, Heart, Minus, Plus } from "lucide-react";
+import { ArrowLeft, ArrowRight, Heart, Minus, Plus } from "lucide-react";
 import {
   Carousel,
   CarouselContent,
@@ -30,6 +30,8 @@ const useCases = [
     srcSet: responsive("restaurants", [320, 480, 640, 800], 960),
     alt: "Sliced steak with herb butter and golden fries on a ceramic plate",
     text: "Put your best photo on the listing. Download images ready for your delivery menu.",
+    href: "/delivery-app-photos",
+    link: "Photos for delivery apps",
   },
   {
     kind: "social",
@@ -37,6 +39,8 @@ const useCases = [
     image: "/homepage/social.webp",
     alt: "Crispy fish tacos with fresh slaw, herbs and lime, styled for a vibrant social post",
     text: "Give today’s special its moment with a finished post and a caption you can make your own.",
+    href: "/restaurant-social-media-posts",
+    link: "Posts for Instagram",
   },
   {
     kind: "menu",
@@ -45,6 +49,8 @@ const useCases = [
     srcSet: responsive("menus", [320, 480, 640, 800], 960),
     alt: "Tomato rigatoni with basil and Parmesan on a ceramic plate",
     text: "Bring your dishes to life on Toast, your website, or the menu platform you already use.",
+    href: "/ai-food-photography",
+    link: "How the photos are made",
   },
 ];
 
@@ -200,6 +206,10 @@ export default function HomepageSections() {
                   <div className="pw-use-case-copy">
                     <h3>{item.name}</h3>
                     <p>{item.text}</p>
+                    <a className="pw-use-case-link" href={item.href}>
+                      {item.link}
+                      <ArrowRight size={15} aria-hidden="true" />
+                    </a>
                   </div>
                 </article>
               </CarouselItem>

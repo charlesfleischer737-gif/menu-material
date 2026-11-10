@@ -5,15 +5,26 @@ import { billingEnabled } from "@/lib/server/billing";
 import { passwordResetEnabled } from "@/lib/server/password-reset";
 import { config } from "@/lib/server/core";
 import { siteContact } from "@/lib/site-contact";
-import { pageMetadata } from "../site-metadata";
+import { pageMetadata, pageStructuredData, siteOrigin } from "../site-metadata";
+import { jsonLd } from "@/lib/menu-structured-data";
 import { FREE_SIGNUP_IMAGES, PRO_PLAN, PRO_PRICE_LABEL } from "@/lib/plans";
 export const dynamic = "force-dynamic";
-export const metadata = pageMetadata({
-  title: "Free & Pro plans · Menu Material",
-  description: `Explore Menu Material plans for restaurant photography. Start with ${FREE_SIGNUP_IMAGES} free images.`,
-  path: "/pricing",
-});
-export default function Pricing() {
+const title = "Pricing: Free & Pro plans · Menu Material";
+// Pro is on sale only while billing is on, so the description says which.
+const describe = (enabled: boolean) =>
+  `Menu Material is free to start: ${FREE_SIGNUP_IMAGES} AI food photos, a live QR code menu and three post designs, no credit card. ${
+    enabled
+      ? `Pro is ${PRO_PRICE_LABEL} a month for ${PRO_PLAN.imagesPerPeriod} images.`
+      : `Pro is coming soon at ${PRO_PRICE_LABEL} a month.`
+  }`;
+export function generateMetadata() {
+  return pageMetadata({
+    title,
+    description: describe(billingEnabled()),
+    path: "/pricing",
+  });
+}
+export default async function Pricing() {
   const enabled = billingEnabled();
   const { supportEmail, termsUrl, refundPolicyUrl } = siteContact(config);
   const email = supportEmail && (
@@ -32,7 +43,9 @@ export default function Pricing() {
       For refunds, see the <a href="/terms">Terms</a>.
     </>
   ) : null;
-  const questions: [string, ReactNode][] = [
+  // Each question, its answer, and (for answers with links) the same answer
+  // in plain text for the page's structured data.
+  const questions: [string, ReactNode, string?][] = [
     [
       "What uses an image?",
       "Each new photo or AI revision uses one image. Cropping, touch-ups, menus, post layouts and downloads never use one, and images that fail to create are returned.",
@@ -62,6 +75,9 @@ export default function Pricing() {
       ) : (
         `Pro will be ${PRO_PRICE_LABEL} a month for ${PRO_PLAN.imagesPerPeriod} images each billing period, with payment and cancellation in Plans. Subscriptions aren’t open yet.`
       ),
+      enabled
+        ? `Pro is ${PRO_PRICE_LABEL} a month for ${PRO_PLAN.imagesPerPeriod} images each billing period, and renews every month until you cancel. Unused images don’t roll over. Cancel anytime from Plans in your workspace, under Manage billing.`
+        : undefined,
     ],
     [
       "What happens if I cancel?",
@@ -71,6 +87,7 @@ export default function Pricing() {
         and live menus stay live.
         {enabled && refunds}
       </>,
+      "Pro lasts until the end of the billing period you’ve paid for, then doesn’t renew. Your photos, posts, menus and saved looks stay available, and live menus stay live.",
     ],
     [
       "Is the quality the same on every plan?",
@@ -91,6 +108,23 @@ export default function Pricing() {
         restaurant’s name.
       </>,
     ]);
+  // Search engines read the questions too. Account help stays on the page.
+  const faqs = questions.flatMap(([question, answer, text]) => {
+    const plain = text ?? (typeof answer === "string" ? answer : "");
+    return plain && !/password|get help/i.test(question)
+      ? [{ question, answer: plain }]
+      : [];
+  });
+  const data = pageStructuredData(await siteOrigin(), {
+    path: "/pricing",
+    title,
+    description: describe(enabled),
+    breadcrumbs: [
+      { href: "/", label: "Home" },
+      { href: "/pricing", label: "Pricing" },
+    ],
+    faqs,
+  });
   return (
     <PublicInformation
       title="A little budget. A lot of good-looking food."
@@ -110,6 +144,10 @@ export default function Pricing() {
           </details>
         ))}
       </section>
+      <script
+        type="application/ld+json"
+        dangerouslySetInnerHTML={{ __html: jsonLd(data) }}
+      />
     </PublicInformation>
   );
 }

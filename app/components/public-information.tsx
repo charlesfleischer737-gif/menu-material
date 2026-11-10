@@ -11,6 +11,8 @@ export default function PublicInformation({
   intro,
   sections = [],
   art,
+  breadcrumbs = [],
+  note,
   children,
 }: {
   title: string;
@@ -18,6 +20,10 @@ export default function PublicInformation({
   sections?: { id: string; label: string }[];
   /** Decorative illustration above the title. */
   art?: ReactNode;
+  /** The pages above this one, from the homepage down. */
+  breadcrumbs?: { href: string; label: string }[];
+  /** A quiet line under the intro, such as when a guide was last checked. */
+  note?: ReactNode;
   children: ReactNode;
 }) {
   return (
@@ -27,6 +33,7 @@ export default function PublicInformation({
       </a>
       <SiteHeader>
         <nav className="pw-nav" aria-label="Main navigation">
+          <a href="/guides">Guides</a>
           <a href="/pricing">Pricing</a>
           {/* The homepage opens sign-in for /?login. */}
           <a className="pw-login" href="/?login">
@@ -37,6 +44,7 @@ export default function PublicInformation({
           </Button>
           <PublicMenu
             links={[
+              { href: "/guides", label: "Guides" },
               { href: "/pricing", label: "Pricing" },
               { href: "/?login", label: "Log in" },
             ]}
@@ -45,9 +53,21 @@ export default function PublicInformation({
       </SiteHeader>
       <main id="main" className="pw-information">
         <header className="pw-information-header">
+          {breadcrumbs.length > 0 && (
+            <nav className="pw-breadcrumbs" aria-label="Breadcrumb">
+              <ol>
+                {breadcrumbs.map((crumb) => (
+                  <li key={crumb.href}>
+                    <a href={crumb.href}>{crumb.label}</a>
+                  </li>
+                ))}
+              </ol>
+            </nav>
+          )}
           {art}
           <h1>{title}</h1>
           <p className="pw-information-intro">{intro}</p>
+          {note && <p className="pw-information-note">{note}</p>}
         </header>
         {sections.length > 0 && (
           <nav className="pw-information-nav" aria-label="On this page">
